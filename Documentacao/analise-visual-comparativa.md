@@ -91,3 +91,13 @@ Os prints finais estão em `Documentacao/prints/`:
 - `07-portal-documentacao-mobile.png`
 
 Diferenças residuais justificadas: os mockups usam uma moldura fotográfica de aparelho e fontes/ilustrações geradas que não fazem parte dos arquivos originais do projeto. A implementação mantém HTML responsivo e fontes locais do sistema para funcionar offline. A mini fatia de torta substitui deliberadamente o carimbo circular do conceito, conforme solicitado, e o cupcake permanece restrito à logo original.
+
+## Consolidação do MVP final
+
+- A borda preta gravada no JPEG da logo foi eliminada visualmente com máscara circular interna e moldura creme.
+- A home recebeu chamada de reserva, sabores e localização.
+- Gestor ganhou painel, vendas, caixa, gastos, reservas, relatórios e configurações persistentes.
+- Formas de pagamento foram reorganizadas em duas colunas para evitar textos espremidos.
+- Mercado Pago Point e Link permanecem pendentes até aprovação mockada.
+- Cortesia, Permuta e Fidelidade usam recibo sem QR e sem carimbo.
+- Fontes: `Segoe Script`/`Brush Script MT` em títulos; `Georgia`/`Times New Roman` em textos; `Segoe UI`/`system-ui` em controles. Tudo funciona offline, sem CDN.

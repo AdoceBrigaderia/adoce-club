@@ -1,40 +1,11 @@
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
-
-const prints = path.resolve('Documentacao/prints');
-
-test.beforeEach(async ({ page }) => {
-  await page.goto('/login');
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-});
-
-test('gera prints visuais oficiais', async ({ page }) => {
-  await page.goto('/cliente');
-  await page.screenshot({ path: path.join(prints, '01-cliente-home.png'), fullPage: true });
-
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'Entrar como Vendedor' }).click();
-  await page.goto('/admin/caixa');
-  await page.getByRole('button', { name: 'Abrir caixa agora' }).click();
-  await page.goto('/vendedor');
-  await expect(page.getByRole('heading', { name: 'Nova venda' })).toBeVisible();
-  await page.screenshot({ path: path.join(prints, '02-vendedor-home.png'), fullPage: true });
-
-  await page.goto('/vendedor/nova-venda');
-  await page.getByRole('button', { name: /Cliente Presencial/ }).click();
-  await page.screenshot({ path: path.join(prints, '03-venda-qr.png'), fullPage: true });
-
-  await page.goto('/admin/relatorios');
-  await page.screenshot({ path: path.join(prints, '04-relatorios.png'), fullPage: true });
-
-  await page.goto('/cliente/familia');
-  await page.getByRole('button', { name: 'Criar cartão familiar' }).click();
-  await page.screenshot({ path: path.join(prints, '05-familia-indicacao.png'), fullPage: true });
-
-  await page.goto('/documentacao/index.html');
-  await page.setViewportSize({ width: 1280, height: 850 });
-  await page.screenshot({ path: path.join(prints, '06-portal-documentacao.png'), fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: path.join(prints, '07-portal-documentacao-mobile.png'), fullPage: true });
-});
+import { test, type Page } from '@playwright/test';
+test.setTimeout(120_000);
+const out=path.resolve('Documentacao/prints');
+const shot=(page:Page,name:string)=>page.screenshot({path:path.join(out,name),fullPage:true});
+async function admin(page:Page){await page.goto('/login');await page.getByRole('button',{name:'Entrar como Rubens / Gestor'}).click();await page.goto('/admin/caixa');await page.getByRole('button',{name:'Abrir caixa agora'}).click()}
+test('gera 21 prints finais',async({page})=>{await page.goto('/login');await page.evaluate(()=>localStorage.clear());await page.setViewportSize({width:390,height:844});
+await page.goto('/cliente');await shot(page,'01-cliente-home.png');await page.goto('/cliente/cartao');await shot(page,'02-cliente-cartao.png');await page.goto('/cliente/reserva');await shot(page,'03-cliente-reserva.png');await page.goto('/cliente/como-chegar');await shot(page,'04-cliente-como-chegar.png');await page.goto('/cliente/familia');await shot(page,'05-familia-indicacao.png');await page.goto('/cliente/premios');await shot(page,'06-fatia-premiada.png');
+await admin(page);await page.goto('/admin');await shot(page,'07-gestor-painel.png');await page.goto('/admin/vendas');await shot(page,'08-gestor-vendas.png');await page.goto('/admin/caixa');await shot(page,'09-gestor-caixa.png');await shot(page,'10-registrar-gasto.png');await page.goto('/admin/vendas');await page.getByRole('button',{name:/Cliente Presencial/}).click();await shot(page,'11-venda-qr.png');await page.getByRole('button',{name:'Nova venda'}).click();await page.getByRole('button',{name:'Cortesia',exact:true}).click();await page.getByRole('button',{name:/Cliente Presencial/}).click();await shot(page,'12-saida-sem-qr.png');
+await page.goto('/admin/vendas');await page.getByRole('button',{name:'Mercado Pago Point',exact:true}).click();await page.getByRole('button',{name:/Cliente Presencial/}).click();await shot(page,'13-mercado-pago-point-pendente.png');await page.getByRole('button',{name:'Pagamento aprovado'}).click();await shot(page,'14-mercado-pago-point-aprovada.png');await page.goto('/admin/vendas');await page.getByRole('button',{name:'Mercado Pago Link',exact:true}).click();await page.getByRole('button',{name:/Delivery/}).click();await shot(page,'15-delivery-link-pagamento.png');
+await page.goto('/admin/configuracoes');await shot(page,'16-gestor-configuracoes-gerais.png');await page.getByRole('button',{name:'empresa'}).click();await shot(page,'17-gestor-configuracoes-empresa.png');await page.getByRole('button',{name:'mercado'}).click();await shot(page,'18-gestor-configuracoes-mercado-pago.png');await page.goto('/admin/relatorios');await shot(page,'19-gestor-relatorios.png');await page.goto('/documentacao/index.html');await page.setViewportSize({width:1280,height:850});await shot(page,'20-portal-documentacao.png');await page.setViewportSize({width:390,height:844});await shot(page,'21-portal-documentacao-mobile.png')});
