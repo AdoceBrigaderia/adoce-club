@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "playwright test",
     "docs": "node scripts/gerar-portal-documentacao.js",
-    "asset": "node scripts/remover-fundo-carimbo.js"
+    "asset": "node scripts/remover-fundo-carimbo.js",
+    "prepare-assets": "node scripts/prepare-visual-assets.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

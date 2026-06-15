@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { BarChart3, CakeSlice, Home, LogOut, MoreHorizontal, Settings, ShoppingBag, Store, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import type { Role } from '../store';
+import { AdoceBackground, AdoceBrandHeader, DecorativeLayer } from './AdoceVisuals';
 
 const clientNav = [
   ['/cliente', Home, 'Início'],
@@ -26,21 +27,17 @@ export function AppShell({ children, role = 'cliente' }: { children: ReactNode; 
   const subtitle = isClient ? 'Doces momentos, mais vantagens!' : role === 'vendedor' ? 'Vendedor' : 'Gestão da Brigaderia';
   const navItems = isClient ? clientNav : staffNav;
 
-  return <div className={`app-shell role-${role}`}>
+  const surface = isClient ? 'client' : 'gestor';
+  return <AdoceBackground surface={surface}><div className={`app-shell role-${role}`}>
     <div className="status-bar" aria-hidden="true"><b>9:41</b><span></span><i>▮▮▮⌁▰</i></div>
-    <div className="decorative-bg" aria-hidden="true"><i/><i/><i/><span>✦</span><span>♡</span><span>✧</span><em>✦</em></div>
-    <header className="brand-header">
-      <span className="brand-logo-frame"><img className="brand-logo" src="/assets/logo-adoce.jpeg" alt="Adoce Brigaderia" /></span>
-      <div className="brand-copy">
-        <h1>Adoce Club <span>♥</span></h1>
-        <p><b>❧</b> {subtitle} <b>❧</b></p>
-      </div>
-      <button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => navigate(isClient ? '/cliente/perfil' : '/login')}>{isClient ? <Users /> : <LogOut />}</button>
-    </header>
+    <DecorativeLayer />
+    <AdoceBrandHeader subtitle={subtitle} action={<button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => navigate(isClient ? '/cliente/perfil' : '/login')}>{isClient ? <Users /> : <LogOut />}</button>} />
     <main>{children}</main>
-    <nav className="bottom-nav">{navItems.map(([href, Icon, label]) => {
+    <nav className="bottom-nav">{navItems.map(([href, Icon, label], index) => {
       const active = location.pathname === href || (href !== '/cliente' && href !== '/admin' && location.pathname.startsWith(href));
-      return <Link className={active ? 'active' : ''} to={href} key={href}><Icon/><span>{label}</span></Link>;
+      const iconNames = isClient ? ['home', 'card', 'family', 'referral', 'more'] : ['home', 'sales', 'cash', 'reports', 'settings'];
+      const iconPath = `/assets/icons/split/icon-${iconNames[index]}.png`;
+      return <Link className={active ? 'active' : ''} to={href} key={href}><img className="nav-asset-icon" src={iconPath} alt="" onError={event => { event.currentTarget.style.display = 'none'; const fallback = event.currentTarget.nextElementSibling as SVGElement | null; if (fallback) fallback.style.display = 'block'; }} /><Icon style={{ display: 'none' }}/><span>{label}</span></Link>;
     })}</nav>
-  </div>;
+  </div></AdoceBackground>;
 }

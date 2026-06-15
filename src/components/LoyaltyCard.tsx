@@ -1,7 +1,8 @@
 import { useStore } from '../store';
+import { ADOCE_ASSETS } from '../assets/adoceAssets';
 
 export function CakeSliceStamp() {
-  return <img className="cake-stamp" src="/assets/carimbo-fatia.png" alt="Carimbo de fatia de torta de chocolate" />;
+  return <img className="cake-stamp" src={ADOCE_ASSETS.stamps.alt} alt="Carimbo de fatia de torta de chocolate" />;
 }
 
 export function LoyaltyCard({ compact = false, family = false }: { compact?: boolean; family?: boolean }) {
