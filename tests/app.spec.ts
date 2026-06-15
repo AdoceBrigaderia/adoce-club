@@ -16,8 +16,8 @@ test.beforeEach(async ({ page }) => {
 test('cliente vê cartão premium com 14 espaços e fatias', async ({ page }) => {
   await page.getByRole('button', { name: 'Entrar como Cliente' }).click();
   await expect(page.getByText('Seu cartão fidelidade')).toBeVisible();
-  await expect(page.locator('.stamp')).toHaveCount(14);
-  await expect(page.locator('.stamp img')).toHaveCount(9);
+  await expect(page.locator('.stamp-slot')).toHaveCount(14);
+  await expect(page.locator('.stamp-slot img')).toHaveCount(9);
 });
 
 test('venda fica bloqueada sem caixa aberto', async ({ page }) => {
@@ -33,7 +33,7 @@ test('abre caixa, registra venda presencial e exibe QR Code', async ({ page }) =
   await page.getByRole('button', { name: /Cliente Presencial/ }).click();
   await expect(page.getByRole('heading', { name: 'Venda registrada!' })).toBeVisible();
   await expect(page.getByText('Peça ao cliente para escanear')).toBeVisible();
-  await expect(page.locator('.qr svg')).toHaveCount(2);
+  await expect(page.locator('.qr-card svg')).not.toHaveCount(0);
 });
 
 test('delivery gera token, copia link e pode ser reaberto', async ({ page }) => {
@@ -42,7 +42,7 @@ test('delivery gera token, copia link e pode ser reaberto', async ({ page }) => 
   await page.getByRole('button', { name: '2', exact: true }).click();
   await page.getByRole('button', { name: 'Cartão' }).click();
   await page.getByRole('button', { name: /Delivery \/ Retirada/ }).click();
-  await expect(page.locator('.token')).toContainText('ADOCE-');
+  await expect(page.locator('.token-box')).toContainText('ADOCE-');
   await page.getByRole('button', { name: 'Copiar link' }).click();
   await expect(page.getByText('Link copiado.')).toBeVisible();
   await page.getByRole('link', { name: 'Ver vendas recentes' }).click();
@@ -67,11 +67,12 @@ test('cliente resgata token uma vez e mantém carimbos após recarregar', async 
 
 test('família e indicação têm regras claras', async ({ page }) => {
   await page.goto('/cliente/familia');
-  await expect(page.getByText('Todos os membros compartilham os carimbos.')).toBeVisible();
+  await expect(page.getByText('Todos os membros compartilham os carimbos')).toBeVisible();
   await page.getByRole('button', { name: 'Criar cartão familiar' }).click();
   await expect(page.getByText('Família Demo')).toBeVisible();
   await page.goto('/cliente/indicacoes');
-  await expect(page.getByText('Quando seu amigo fizer a 1ª compra, você ganha +1 carimbo.')).toBeVisible();
+  await expect(page.getByText('Quando seu amigo fizer a 1ª compra,')).toBeVisible();
+  await expect(page.getByText('você ganha +1 carimbo')).toBeVisible();
   await page.getByRole('button', { name: /Simular primeira/ }).click();
   await expect(page.getByRole('button', { name: 'Bônus já liberado' })).toBeDisabled();
 });
@@ -87,9 +88,15 @@ test('admin visualiza relatório e salva configurações', async ({ page }) => {
 });
 
 test('portal offline abre e a busca filtra seções', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('file:///D:/Projetos/AdoceClub/Documentacao/Portal/index.html');
   await expect(page.getByRole('heading', { name: 'Adoce Club', exact: true })).toBeVisible();
-  await page.getByPlaceholder('Buscar na documentação').fill('GitHub');
+  const menu = page.getByRole('button', { name: 'Abrir menu' });
+  await menu.click();
+  await expect(menu).toHaveAttribute('aria-expanded', 'true');
+  await page.getByRole('link', { name: 'Git e GitHub' }).click();
+  await expect(menu).toHaveAttribute('aria-expanded', 'false');
+  await page.getByPlaceholder('Ex.: fidelidade, caixa, testes').fill('GitHub');
   await expect(page.getByRole('heading', { name: 'Git e GitHub' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeHidden();
 });

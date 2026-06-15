@@ -1,4 +1,25 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Documentação Adoce Club</title><style>:root{font-family:Segoe UI,sans-serif;color:#4e211a;background:#fff8f5}*{box-sizing:border-box}body{margin:0;display:grid;grid-template-columns:290px 1fr}aside{height:100vh;position:sticky;top:0;overflow:auto;padding:25px;background:#5a201b;color:#fff}aside h1{font-family:Georgia;font-style:italic;color:#ffd9e6}aside a{display:block;color:#fff;text-decoration:none;padding:8px;border-bottom:1px solid #ffffff20;font-size:13px}input{width:100%;padding:11px;border:0;border-radius:9px;margin:10px 0 15px}main{max-width:920px;padding:40px}article{background:#fff;border:1px solid #edc8be;border-radius:16px;padding:25px;margin-bottom:20px;box-shadow:0 8px 25px #63291c10}h1,h2{font-family:Georgia;color:#70231d}code{background:#fff0e7;padding:2px 5px;border-radius:4px}.eyebrow{color:#d83278;font-weight:700;font-size:12px}li{margin:7px 0}@media(max-width:760px){body{display:block}aside{height:auto;position:relative}aside nav{display:none}main{padding:16px}}</style></head><body><aside><h1>Adoce Club</h1><p>Portal offline do projeto</p><input id="q" placeholder="Buscar na documentação"><nav><a href="#d0">Visao-Geral</a><a href="#d1">Regras-de-Negocio</a><a href="#d2">Fluxo-Cliente</a><a href="#d3">Fluxo-Vendedor</a><a href="#d4">Fluxo-Admin</a><a href="#d5">Cartao-Familiar</a><a href="#d6">Indicacao-Amigos</a><a href="#d7">Controle-Caixa</a><a href="#d8">Modelo-Banco</a><a href="#d9">Arquitetura-Tecnica</a><a href="#d10">Instalacao-Local</a><a href="#d11">Testes</a><a href="#d12">Roadmap</a><a href="#d13">Decisoes-Tecnicas</a><a href="#d14">Seguranca-e-Privacidade</a><a href="#d15">Git-e-GitHub</a><a href="#d16">Como-Operar-no-Dia-a-Dia</a><a href="#d17">README</a></nav></aside><main><article id="d0" data-search="# visão geral
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#64231e">
+  <title>Adoce Club · Portal da Documentação</title>
+  <style>
+    :root{font-family:"Segoe UI",Arial,sans-serif;color:#57221d;background:#fff8f4;--brown:#64231e;--pink:#e92f80;--cream:#fff7ed;--gold:#d59b3d;--line:#e4b4a8}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(135deg,rgba(255,247,243,.92),rgba(255,228,237,.84)),radial-gradient(circle at 12% 8%,#fff 0 2px,transparent 3px);background-size:auto,36px 36px}.portal-header{position:relative;overflow:hidden;padding:38px 28px 34px;color:#fff;background:linear-gradient(135deg,#57201c,#7b2e2a);box-shadow:0 7px 25px #42141138}.portal-header:before,.portal-header:after{content:"";position:absolute;width:75%;height:90px;border:2px solid rgba(230,178,85,.45);border-width:2px 0 0;border-radius:50%;transform:rotate(-7deg)}.portal-header:before{right:-15%;top:30px}.portal-header:after{right:-5%;top:65px}.header-inner{position:relative;z-index:2;max-width:1180px;margin:auto;display:flex;align-items:center;gap:20px}.portal-mark{width:74px;height:74px;display:grid;place-items:center;border-radius:50%;color:var(--brown);background:linear-gradient(#fff5e9,#ffdce8);border:3px solid #fff8;box-shadow:0 8px 20px #200a0838;font-family:Georgia,serif;font-weight:700;font-size:24px}.portal-header h1{margin:0;font-family:Georgia,serif;font-style:italic;font-size:40px}.portal-header p{margin:5px 0 0;color:#ffe7ed}.menu-toggle{display:none;margin-left:auto;width:46px;height:46px;border:1px solid #ffffff55;border-radius:12px;color:white;background:#ffffff18;font-size:23px}.layout{display:grid;grid-template-columns:300px minmax(0,1fr);max-width:1380px;margin:auto}.sidebar{position:sticky;top:0;height:100vh;padding:24px 20px;overflow:auto;color:white;background:linear-gradient(180deg,#64231e,#4c1715)}.sidebar label{display:block;margin-bottom:6px;color:#ffdce7;font-size:12px;font-weight:700}.search-wrap{position:relative}.search-wrap input{width:100%;padding:12px 38px 12px 13px;border:1px solid #e4ad65;border-radius:11px;background:#fffaf4;color:var(--brown);outline:none;box-shadow:0 0 0 3px #fff2}.search-wrap span{position:absolute;right:12px;top:10px;color:var(--pink)}.sidebar nav{margin-top:18px}.sidebar nav a{display:flex;align-items:center;gap:9px;padding:9px 8px;border-bottom:1px solid #ffffff16;color:#fff7f2;text-decoration:none;font-size:12px;line-height:1.25}.sidebar nav a:hover,.sidebar nav a.active{border-radius:8px;color:#fff;background:#ffffff12}.sidebar nav a span{width:24px;color:#f3be68;font-weight:700}.sidebar-footer{margin-top:24px;padding:13px;border:1px solid #ffffff25;border-radius:12px;color:#f8dfe6;font-size:11px}.content{min-width:0;padding:28px 34px 70px}.cover{position:relative;overflow:hidden;padding:38px;margin-bottom:22px;border:1px solid var(--line);border-radius:24px;background:linear-gradient(145deg,rgba(255,250,241,.96),rgba(255,230,235,.92));box-shadow:0 12px 30px #5f211a18,inset 0 0 0 4px #fff7}.cover:after{content:"✦  ♡  ✧";position:absolute;right:32px;top:25px;color:var(--gold);font-size:23px}.cover .eyebrow{color:var(--pink);font-weight:800;letter-spacing:.12em;text-transform:uppercase;font-size:11px}.cover h2{max-width:700px;margin:9px 0;font-family:Georgia,serif;font-size:36px;color:var(--brown)}.cover p{max-width:760px;line-height:1.65}.quick-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-top:22px}.quick-grid a{min-height:100px;padding:15px;border:1px solid #e5b9ae;border-radius:15px;color:var(--brown);background:#fffaf4;text-decoration:none;box-shadow:0 5px 12px #60241e10}.quick-grid b{display:block;margin-bottom:6px;color:var(--pink)}.quick-grid span{font-size:12px;line-height:1.4}.overview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}.overview-card{padding:18px;border:1px solid var(--line);border-radius:17px;background:var(--cream);box-shadow:0 7px 18px #57211c12}.overview-card h3{margin:0 0 8px;font-family:Georgia,serif;color:var(--brown)}.overview-card p{margin:0;font-size:13px;line-height:1.55}.docs-title{display:flex;align-items:center;gap:11px;margin:30px 0 14px;font-family:Georgia,serif;color:var(--brown)}.docs-title:before,.docs-title:after{content:"";height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--gold),transparent)}.doc-card{scroll-margin-top:18px;margin-bottom:16px;padding:27px 30px;border:1px solid var(--line);border-radius:19px;background:rgba(255,250,244,.94);box-shadow:0 8px 20px #57211c12,inset 0 0 0 3px #fff8;transition:.2s}.doc-card.match{border-color:#e84a8c;box-shadow:0 9px 25px #e43a811e,inset 0 0 0 3px #fff8}.doc-card[hidden]{display:none}.doc-label{color:var(--pink);font-weight:800;font-size:11px}.doc-card h1,.doc-card h2,.doc-card h3{font-family:Georgia,serif;color:var(--brown)}.doc-card h1{font-size:29px;margin:8px 0 16px}.doc-card h2{font-size:21px;margin-top:24px}.doc-card p,.doc-card li{line-height:1.65}.doc-card code{padding:2px 6px;border-radius:5px;background:#fff0e8;color:#8a2b4f}.doc-card li{margin:6px 0}.no-results{display:none;padding:35px;text-align:center;border:1px dashed #d69d91;border-radius:17px;background:#fff7f1}.no-results.show{display:block}.portal-footer{padding:24px;text-align:center;color:#784139;font-size:12px}.top-button{position:fixed;right:22px;bottom:22px;width:46px;height:46px;border:1px solid #c91e68;border-radius:50%;color:#fff;background:linear-gradient(#f25499,#df2676);box-shadow:0 6px 15px #d52a7560}.menu-overlay{display:none}@media(max-width:980px){.quick-grid{grid-template-columns:repeat(2,1fr)}.overview-grid{grid-template-columns:1fr}.layout{grid-template-columns:260px 1fr}.content{padding:22px}}@media(max-width:720px){.portal-header{padding:22px 16px}.portal-mark{width:58px;height:58px;font-size:19px}.portal-header h1{font-size:29px}.portal-header p{font-size:12px}.menu-toggle{display:block}.layout{display:block}.sidebar{position:fixed;z-index:50;left:0;top:0;width:min(86vw,320px);height:100vh;transform:translateX(-105%);transition:.25s;box-shadow:10px 0 30px #280d0b4a}.sidebar.open{transform:translateX(0)}.menu-overlay{position:fixed;z-index:40;inset:0;background:#2f0e0b66}.menu-overlay.show{display:block}.content{padding:16px}.cover{padding:27px 20px}.cover h2{font-size:29px}.quick-grid{grid-template-columns:1fr 1fr}.quick-grid a{min-height:90px;padding:12px}.doc-card{padding:22px 19px}.doc-card h1{font-size:25px}.top-button{right:14px;bottom:14px}}
+  </style>
+</head>
+<body id="topo">
+  <header class="portal-header"><div class="header-inner"><div class="portal-mark">AC</div><div><h1>Adoce Club</h1><p>Portal offline da documentação</p></div><button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">☰</button></div></header>
+  <div id="menuOverlay" class="menu-overlay"></div>
+  <div class="layout">
+    <aside id="sidebar" class="sidebar"><label for="search">Buscar na documentação</label><div class="search-wrap"><input id="search" type="search" placeholder="Ex.: fidelidade, caixa, testes"><span>⌕</span></div><nav aria-label="Índice da documentação"><a href="#doc-0"><span>01</span>Visão Geral</a><a href="#doc-1"><span>02</span>Regras de Negócio</a><a href="#doc-2"><span>03</span>Fluxo Cliente</a><a href="#doc-3"><span>04</span>Fluxo Vendedor</a><a href="#doc-4"><span>05</span>Fluxo Admin</a><a href="#doc-5"><span>06</span>Cartão Familiar</a><a href="#doc-6"><span>07</span>Indicação de Amigos</a><a href="#doc-7"><span>08</span>Controle de Caixa</a><a href="#doc-8"><span>09</span>Modelo de Banco</a><a href="#doc-9"><span>10</span>Arquitetura Técnica</a><a href="#doc-10"><span>11</span>Instalação Local</a><a href="#doc-11"><span>12</span>Testes</a><a href="#doc-12"><span>13</span>Roadmap</a><a href="#doc-13"><span>14</span>Decisões Técnicas</a><a href="#doc-14"><span>15</span>Segurança e Privacidade</a><a href="#doc-15"><span>16</span>Git e GitHub</a><a href="#doc-16"><span>17</span>Como Operar no Dia a Dia</a><a href="#doc-17"><span>•</span>Documentação Adoce Club</a><a href="#doc-18"><span>•</span>Análise Visual Comparativa</a></nav><div class="sidebar-footer">Documentação local e privada.<br>Funciona sem internet.</div></aside>
+    <main class="content">
+      <section class="cover"><div class="eyebrow">Documentação oficial · MVP</div><h2>O guia completo do Adoce Club</h2><p>Regras, fluxos, arquitetura e operação da experiência digital de fidelidade da Adoce Brigaderia, organizada para consulta offline.</p><div class="quick-grid"><a href="#doc-0"><b>Visão Geral</b><span>Conheça o produto e seus objetivos.</span></a><a href="#doc-8"><b>Modelo do Banco</b><span>Estrutura preparada para Supabase.</span></a><a href="#doc-10"><b>Como testar</b><span>Instalação e validação local.</span></a><a href="#doc-12"><b>Roadmap</b><span>Fases atuais e evolução planejada.</span></a></div></section>
+      <section class="overview-grid" aria-label="Estado e referências"><article class="overview-card"><h3>Referências Visuais</h3><p>Conceitos aprovados, cartão físico, logo original e análise comparativa estão em <code>referencias/</code> e nesta documentação.</p></article><article class="overview-card"><h3>Estado Atual</h3><p>PWA funcional com estado demonstrativo local, caixa, vendas, QR, fidelidade, família, indicação e relatórios.</p></article><article class="overview-card"><h3>Como testar</h3><p>Execute <code>npm run dev</code>. Para aceite técnico, use lint, build e Playwright conforme o guia local.</p></article></section>
+      <h2 class="docs-title">Índice completo</h2>
+      <div id="noResults" class="no-results"><b>Nenhum resultado encontrado.</b><p>Tente outra palavra ou limpe a busca.</p></div>
+      <section id="documents" aria-label="Documentos do projeto"><article id="doc-0" class="doc-card" data-search="visão geral # visão geral
 
 o adoce club substitui o cartão físico da adoce brigaderia por um pwa. ele conecta clientes presenciais e delivery, vendedores e sócios em uma experiência de fidelidade visual.
 
@@ -9,12 +30,11 @@ o adoce club substitui o cartão físico da adoce brigaderia por um pwa. ele con
 - compartilhar progresso em cartão familiar.
 - premiar indicação após a primeira compra confirmada.
 - exibir indicadores operacionais básicos.
-"><div class="eyebrow">01-Visao-Geral.md</div><p><h1>Visão Geral</h1></p><p>O Adoce Club substitui o cartão físico da Adoce Brigaderia por um PWA. Ele conecta clientes presenciais e delivery, vendedores e sócios em uma experiência de fidelidade visual.</p><p><h2>Objetivos do MVP</h2></p><p><ul><li>Registrar vendas e meios de pagamento.</li>
-<li>Distribuir carimbos por QR Code ou link/token.</li>
-<li>Compartilhar progresso em cartão familiar.</li>
-<li>Premiar indicação após a primeira compra confirmada.</li>
-<li>Exibir indicadores operacionais básicos.</li>
-</ul></p></article><article id="d1" data-search="# regras de negócio
+"><div class="doc-label">01-Visao-Geral.md</div><h1>Visão Geral</h1>
+<p>O Adoce Club substitui o cartão físico da Adoce Brigaderia por um PWA. Ele conecta clientes presenciais e delivery, vendedores e sócios em uma experiência de fidelidade visual.</p>
+<h2>Objetivos do MVP</h2>
+<ul><li>Registrar vendas e meios de pagamento.</li><li>Distribuir carimbos por QR Code ou link/token.</li><li>Compartilhar progresso em cartão familiar.</li><li>Premiar indicação após a primeira compra confirmada.</li><li>Exibir indicadores operacionais básicos.</li></ul></article>
+<article id="doc-1" class="doc-card" data-search="regras de negócio # regras de negócio
 
 - cada fatia comprada gera um carimbo.
 - o cartão padrão possui 14 carimbos e concede uma fatia grátis.
@@ -23,50 +43,55 @@ o adoce club substitui o cartão físico da adoce brigaderia por um pwa. ele con
 - indicação concede +1 somente após a primeira compra do indicado.
 - caixa é único por dia e começa com fundo fixo e estoque informado.
 - preço, custo médio e meta de carimbos são configuráveis.
-"><div class="eyebrow">02-Regras-de-Negocio.md</div><p><h1>Regras de Negócio</h1></p><p><ul><li>Cada fatia comprada gera um carimbo.</li>
-<li>O cartão padrão possui 14 carimbos e concede uma fatia grátis.</li>
-<li>Carimbos de membros de família vão para o cartão compartilhado.</li>
-<li>Token de venda é único e não pode ser resgatado duas vezes.</li>
-<li>Indicação concede +1 somente após a primeira compra do indicado.</li>
-<li>Caixa é único por dia e começa com fundo fixo e estoque informado.</li>
-<li>Preço, custo médio e meta de carimbos são configuráveis.</li>
-</ul></p></article><article id="d2" data-search="# fluxo cliente
+"><div class="doc-label">02-Regras-de-Negocio.md</div><h1>Regras de Negócio</h1>
+<ul><li>Cada fatia comprada gera um carimbo.</li><li>O cartão padrão possui 14 carimbos e concede uma fatia grátis.</li><li>Carimbos de membros de família vão para o cartão compartilhado.</li><li>Token de venda é único e não pode ser resgatado duas vezes.</li><li>Indicação concede +1 somente após a primeira compra do indicado.</li><li>Caixa é único por dia e começa com fundo fixo e estoque informado.</li><li>Preço, custo médio e meta de carimbos são configuráveis.</li></ul></article>
+<article id="doc-2" class="doc-card" data-search="fluxo cliente # fluxo cliente
 
 o cliente entra no app, consulta o cartão, resgata tokens, acompanha prêmios, cria ou entra em família e compartilha seu código de indicação. delivery usa o mesmo fluxo por link recebido no whatsapp.
-"><div class="eyebrow">03-Fluxo-Cliente.md</div><p><h1>Fluxo Cliente</h1></p><p>O cliente entra no app, consulta o cartão, resgata tokens, acompanha prêmios, cria ou entra em família e compartilha seu código de indicação. Delivery usa o mesmo fluxo por link recebido no WhatsApp.
-</p></article><article id="d3" data-search="# fluxo vendedor
+"><div class="doc-label">03-Fluxo-Cliente.md</div><h1>Fluxo Cliente</h1>
+<p>O cliente entra no app, consulta o cartão, resgata tokens, acompanha prêmios, cria ou entra em família e compartilha seu código de indicação. Delivery usa o mesmo fluxo por link recebido no WhatsApp.</p></article>
+<article id="doc-3" class="doc-card" data-search="fluxo vendedor # fluxo vendedor
 
 o vendedor confere o caixa, informa quantidade, pagamento e modalidade. presencial gera qr code; delivery gera token/link. vendas recentes permitem reabrir o qr ou compartilhar novamente.
-"><div class="eyebrow">04-Fluxo-Vendedor.md</div><p><h1>Fluxo Vendedor</h1></p><p>O vendedor confere o caixa, informa quantidade, pagamento e modalidade. Presencial gera QR Code; delivery gera token/link. Vendas recentes permitem reabrir o QR ou compartilhar novamente.
-</p></article><article id="d4" data-search="# fluxo admin
+"><div class="doc-label">04-Fluxo-Vendedor.md</div><h1>Fluxo Vendedor</h1>
+<p>O vendedor confere o caixa, informa quantidade, pagamento e modalidade. Presencial gera QR Code; delivery gera token/link. Vendas recentes permitem reabrir o QR ou compartilhar novamente.</p></article>
+<article id="doc-4" class="doc-card" data-search="fluxo admin # fluxo admin
 
 o sócio abre o caixa, informa fundo e estoque, acompanha vendas, faturamento, custo e lucro estimado, e altera configurações comerciais.
-"><div class="eyebrow">05-Fluxo-Admin.md</div><p><h1>Fluxo Admin</h1></p><p>O sócio abre o caixa, informa fundo e estoque, acompanha vendas, faturamento, custo e lucro estimado, e altera configurações comerciais.
-</p></article><article id="d5" data-search="# cartão familiar
+"><div class="doc-label">05-Fluxo-Admin.md</div><h1>Fluxo Admin</h1>
+<p>O sócio abre o caixa, informa fundo e estoque, acompanha vendas, faturamento, custo e lucro estimado, e altera configurações comerciais.</p></article>
+<article id="doc-5" class="doc-card" data-search="cartão familiar # cartão familiar
 
 cada pessoa mantém perfil próprio, mas uma associação em `family_members` direciona eventos ao cartão da família. convites usam código único. todos recebem comunicação individual.
-"><div class="eyebrow">06-Cartao-Familiar.md</div><p><h1>Cartão Familiar</h1></p><p>Cada pessoa mantém perfil próprio, mas uma associação em <code>family_members</code> direciona eventos ao cartão da família. Convites usam código único. Todos recebem comunicação individual.
-</p></article><article id="d6" data-search="# indicação de amigos
+"><div class="doc-label">06-Cartao-Familiar.md</div><h1>Cartão Familiar</h1>
+<p>Cada pessoa mantém perfil próprio, mas uma associação em <code>family_members</code> direciona eventos ao cartão da família. Convites usam código único. Todos recebem comunicação individual.</p></article>
+<article id="doc-6" class="doc-card" data-search="indicação de amigos # indicação de amigos
 
 o indicado registra o código no cadastro. o bônus é liberado apenas no primeiro evento de compra e a restrição única evita duplicidade.
-"><div class="eyebrow">07-Indicacao-Amigos.md</div><p><h1>Indicação de Amigos</h1></p><p>O indicado registra o código no cadastro. O bônus é liberado apenas no primeiro evento de compra e a restrição única evita duplicidade.
-</p></article><article id="d7" data-search="# controle de caixa
+"><div class="doc-label">07-Indicacao-Amigos.md</div><h1>Indicação de Amigos</h1>
+<p>O indicado registra o código no cadastro. O bônus é liberado apenas no primeiro evento de compra e a restrição única evita duplicidade.</p></article>
+<article id="doc-7" class="doc-card" data-search="controle de caixa # controle de caixa
 
 a sessão diária registra operador, horário, fundo fixo e estoque inicial. relatórios comparam vendas, pagamentos, estoque estimado e fechamento informado para destacar divergências.
-"><div class="eyebrow">08-Controle-Caixa.md</div><p><h1>Controle de Caixa</h1></p><p>A sessão diária registra operador, horário, fundo fixo e estoque inicial. Relatórios comparam vendas, pagamentos, estoque estimado e fechamento informado para destacar divergências.
-</p></article><article id="d8" data-search="# modelo de banco
+"><div class="doc-label">08-Controle-Caixa.md</div><h1>Controle de Caixa</h1>
+<p>A sessão diária registra operador, horário, fundo fixo e estoque inicial. Relatórios comparam vendas, pagamentos, estoque estimado e fechamento informado para destacar divergências.</p></article>
+<article id="doc-8" class="doc-card" data-search="modelo de banco # modelo de banco
 
 o modelo postgresql está em `supabase/schema.sql`, dados demonstrativos em `seed.sql` e políticas rls em `policies.sql`. eventos de fidelidade e auditoria são imutáveis no uso normal.
-"><div class="eyebrow">09-Modelo-Banco.md</div><p><h1>Modelo de Banco</h1></p><p>O modelo PostgreSQL está em <code>supabase/schema.sql</code>, dados demonstrativos em <code>seed.sql</code> e políticas RLS em <code>policies.sql</code>. Eventos de fidelidade e auditoria são imutáveis no uso normal.
-</p></article><article id="d9" data-search="# arquitetura técnica
+"><div class="doc-label">09-Modelo-Banco.md</div><h1>Modelo de Banco</h1>
+<p>O modelo PostgreSQL está em <code>supabase/schema.sql</code>, dados demonstrativos em <code>seed.sql</code> e políticas RLS em <code>policies.sql</code>. Eventos de fidelidade e auditoria são imutáveis no uso normal.</p></article>
+<article id="doc-9" class="doc-card" data-search="arquitetura técnica # arquitetura técnica
 
 react + typescript + vite compõem o pwa. react router trata rotas e zustand persiste o protótipo no `localstorage` do aparelho para demonstração. supabase será a camada de autenticação, postgresql, rls e funções transacionais.
 
 ## limite atual
 
 o `localstorage` não sincroniza aparelhos, não oferece autenticação e não substitui um banco. ele existe apenas para a primeira demonstração não perder caixa, vendas e carimbos ao recarregar a página.
-"><div class="eyebrow">10-Arquitetura-Tecnica.md</div><p><h1>Arquitetura Técnica</h1></p><p>React + TypeScript + Vite compõem o PWA. React Router trata rotas e Zustand persiste o protótipo no <code>localStorage</code> do aparelho para demonstração. Supabase será a camada de autenticação, PostgreSQL, RLS e funções transacionais.</p><p><h2>Limite atual</h2></p><p>O <code>localStorage</code> não sincroniza aparelhos, não oferece autenticação e não substitui um banco. Ele existe apenas para a primeira demonstração não perder caixa, vendas e carimbos ao recarregar a página.
-</p></article><article id="d10" data-search="# instalação local
+"><div class="doc-label">10-Arquitetura-Tecnica.md</div><h1>Arquitetura Técnica</h1>
+<p>React + TypeScript + Vite compõem o PWA. React Router trata rotas e Zustand persiste o protótipo no <code>localStorage</code> do aparelho para demonstração. Supabase será a camada de autenticação, PostgreSQL, RLS e funções transacionais.</p>
+<h2>Limite atual</h2>
+<p>O <code>localStorage</code> não sincroniza aparelhos, não oferece autenticação e não substitui um banco. Ele existe apenas para a primeira demonstração não perder caixa, vendas e carimbos ao recarregar a página.</p></article>
+<article id="doc-10" class="doc-card" data-search="instalação local # instalação local
 
 1. use node.js 24 ou superior.
 2. execute `npm install`.
@@ -78,19 +103,19 @@ o `localstorage` não sincroniza aparelhos, não oferece autenticação e não s
 as variáveis futuras estão documentadas em `.env.example`.
 
 o portal abre diretamente em `documentacao/portal/index.html` e também é copiado para `public/documentacao/index.html` durante `npm run docs`.
-"><div class="eyebrow">11-Instalacao-Local.md</div><p><h1>Instalação Local</h1></p><p>1. Use Node.js 24 ou superior.
-2. Execute <code>npm install</code>.
-3. Execute <code>npm run asset</code>.
-4. Execute <code>npm run dev</code>.
-5. Para produção, execute <code>npm run build</code>.
-6. Para validar o código, execute <code>npm run lint</code> e <code>npm test</code>.</p><p>As variáveis futuras estão documentadas em <code>.env.example</code>.</p><p>O portal abre diretamente em <code>Documentacao/Portal/index.html</code> e também é copiado para <code>public/documentacao/index.html</code> durante <code>npm run docs</code>.
-</p></article><article id="d11" data-search="# testes
+"><div class="doc-label">11-Instalacao-Local.md</div><h1>Instalação Local</h1>
+<p>1. Use Node.js 24 ou superior. 2. Execute <code>npm install</code>. 3. Execute <code>npm run asset</code>. 4. Execute <code>npm run dev</code>. 5. Para produção, execute <code>npm run build</code>. 6. Para validar o código, execute <code>npm run lint</code> e <code>npm test</code>.</p>
+<p>As variáveis futuras estão documentadas em <code>.env.example</code>.</p>
+<p>O portal abre diretamente em <code>Documentacao/Portal/index.html</code> e também é copiado para <code>public/documentacao/index.html</code> durante <code>npm run docs</code>.</p></article>
+<article id="doc-11" class="doc-card" data-search="testes # testes
 
 playwright cobre login, bloqueio sem caixa, abertura de caixa, venda presencial, venda delivery, qr, reabertura de venda, resgate de token, persistência local, família, indicação, relatório, configurações e portal offline. execute `npm test`.
 
 o roteiro exploratório está em `tests/roteiro-manual.md`. integração real com supabase, câmera e whatsapp ainda depende da próxima etapa técnica.
-"><div class="eyebrow">12-Testes.md</div><p><h1>Testes</h1></p><p>Playwright cobre login, bloqueio sem caixa, abertura de caixa, venda presencial, venda delivery, QR, reabertura de venda, resgate de token, persistência local, família, indicação, relatório, configurações e portal offline. Execute <code>npm test</code>.</p><p>O roteiro exploratório está em <code>tests/roteiro-manual.md</code>. Integração real com Supabase, câmera e WhatsApp ainda depende da próxima etapa técnica.
-</p></article><article id="d12" data-search="# roadmap
+"><div class="doc-label">12-Testes.md</div><h1>Testes</h1>
+<p>Playwright cobre login, bloqueio sem caixa, abertura de caixa, venda presencial, venda delivery, QR, reabertura de venda, resgate de token, persistência local, família, indicação, relatório, configurações e portal offline. Execute <code>npm test</code>.</p>
+<p>O roteiro exploratório está em <code>tests/roteiro-manual.md</code>. Integração real com Supabase, câmera e WhatsApp ainda depende da próxima etapa técnica.</p></article>
+<article id="doc-12" class="doc-card" data-search="roadmap # roadmap
 
 ## fase 1
 
@@ -103,8 +128,14 @@ fatia premiada, aniversário, sabores, notificações e campanhas.
 ## fase 3
 
 torta ideal, votação, vip, vale-presente, compra em grupo, impressão e painel desktop avançado.
-"><div class="eyebrow">13-Roadmap.md</div><p><h1>Roadmap</h1></p><p><h2>Fase 1</h2></p><p>PWA, caixa, vendas, QR/token, fidelidade, família, indicação, relatórios e documentação.</p><p><h2>Fase 2</h2></p><p>Fatia premiada, aniversário, sabores, notificações e campanhas.</p><p><h2>Fase 3</h2></p><p>Torta ideal, votação, VIP, vale-presente, compra em grupo, impressão e painel desktop avançado.
-</p></article><article id="d13" data-search="# decisões técnicas
+"><div class="doc-label">13-Roadmap.md</div><h1>Roadmap</h1>
+<h2>Fase 1</h2>
+<p>PWA, caixa, vendas, QR/token, fidelidade, família, indicação, relatórios e documentação.</p>
+<h2>Fase 2</h2>
+<p>Fatia premiada, aniversário, sabores, notificações e campanhas.</p>
+<h2>Fase 3</h2>
+<p>Torta ideal, votação, VIP, vale-presente, compra em grupo, impressão e painel desktop avançado.</p></article>
+<article id="doc-13" class="doc-card" data-search="decisões técnicas # decisões técnicas
 
 - pwa reduz custo inicial e funciona por link.
 - vite mantém o mvp simples.
@@ -112,25 +143,25 @@ torta ideal, votação, vip, vale-presente, compra em grupo, impressão e painel
 - ledger de eventos evita editar saldo diretamente.
 - carimbo usa fatia de torta gerada para o projeto, não cupcake.
 - vendas ficam bloqueadas enquanto o caixa estiver fechado.
-"><div class="eyebrow">14-Decisoes-Tecnicas.md</div><p><h1>Decisões Técnicas</h1></p><p><ul><li>PWA reduz custo inicial e funciona por link.</li>
-<li>Vite mantém o MVP simples.</li>
-<li>Estado mockado persistido localmente permite validar UX antes do backend.</li>
-<li>Ledger de eventos evita editar saldo diretamente.</li>
-<li>Carimbo usa fatia de torta gerada para o projeto, não cupcake.</li>
-<li>Vendas ficam bloqueadas enquanto o caixa estiver fechado.</li>
-</ul></p></article><article id="d14" data-search="# segurança e privacidade
+"><div class="doc-label">14-Decisoes-Tecnicas.md</div><h1>Decisões Técnicas</h1>
+<ul><li>PWA reduz custo inicial e funciona por link.</li><li>Vite mantém o MVP simples.</li><li>Estado mockado persistido localmente permite validar UX antes do backend.</li><li>Ledger de eventos evita editar saldo diretamente.</li><li>Carimbo usa fatia de torta gerada para o projeto, não cupcake.</li><li>Vendas ficam bloqueadas enquanto o caixa estiver fechado.</li></ul></article>
+<article id="doc-14" class="doc-card" data-search="segurança e privacidade # segurança e privacidade
 
 nunca versionar `.env`, chaves ou dados reais. rls limita vendedor às próprias vendas e cliente aos próprios recursos. tokens devem ser aleatórios, expiráveis e resgatados por função transacional.
-"><div class="eyebrow">15-Seguranca-e-Privacidade.md</div><p><h1>Segurança e Privacidade</h1></p><p>Nunca versionar <code>.env</code>, chaves ou dados reais. RLS limita vendedor às próprias vendas e cliente aos próprios recursos. Tokens devem ser aleatórios, expiráveis e resgatados por função transacional.
-</p></article><article id="d15" data-search="# git e github
+"><div class="doc-label">15-Seguranca-e-Privacidade.md</div><h1>Segurança e Privacidade</h1>
+<p>Nunca versionar <code>.env</code>, chaves ou dados reais. RLS limita vendedor às próprias vendas e cliente aos próprios recursos. Tokens devem ser aleatórios, expiráveis e resgatados por função transacional.</p></article>
+<article id="doc-15" class="doc-card" data-search="git e github # git e github
 
 o repositório deve permanecer privado. commits precisam ser claros e nenhum segredo deve entrar no histórico. antes de publicar, conferir `git status` e visibilidade com github cli.
 
 ## estado da entrega
 
 o projeto local está versionado. a publicação e a confirmação de privacidade dependem de autenticação válida do github cli no computador.
-"><div class="eyebrow">16-Git-e-GitHub.md</div><p><h1>Git e GitHub</h1></p><p>O repositório deve permanecer privado. Commits precisam ser claros e nenhum segredo deve entrar no histórico. Antes de publicar, conferir <code>git status</code> e visibilidade com GitHub CLI.</p><p><h2>Estado da entrega</h2></p><p>O projeto local está versionado. A publicação e a confirmação de privacidade dependem de autenticação válida do GitHub CLI no computador.
-</p></article><article id="d16" data-search="# como operar no dia a dia
+"><div class="doc-label">16-Git-e-GitHub.md</div><h1>Git e GitHub</h1>
+<p>O repositório deve permanecer privado. Commits precisam ser claros e nenhum segredo deve entrar no histórico. Antes de publicar, conferir <code>git status</code> e visibilidade com GitHub CLI.</p>
+<h2>Estado da entrega</h2>
+<p>O projeto local está versionado. A publicação e a confirmação de privacidade dependem de autenticação válida do GitHub CLI no computador.</p></article>
+<article id="doc-16" class="doc-card" data-search="como operar no dia a dia # como operar no dia a dia
 
 1. admin abre o caixa e informa estoque.
 2. vendedor registra cada venda.
@@ -140,14 +171,140 @@ o projeto local está versionado. a publicação e a confirmação de privacidad
 6. ao fim do dia, confere divergências antes do fechamento.
 
 no protótipo, os dados ficam apenas no navegador utilizado. não limpar os dados do site durante uma demonstração, pois isso reinicia o estado local.
-"><div class="eyebrow">17-Como-Operar-no-Dia-a-Dia.md</div><p><h1>Como Operar no Dia a Dia</h1></p><p>1. Admin abre o caixa e informa estoque.
-2. Vendedor registra cada venda.
-3. Cliente recebe carimbos por QR ou link.
-4. Vendedor recupera vendas pendentes em Vendas Recentes.
-5. Admin acompanha estoque e valores no relatório.
-6. Ao fim do dia, confere divergências antes do fechamento.</p><p>No protótipo, os dados ficam apenas no navegador utilizado. Não limpar os dados do site durante uma demonstração, pois isso reinicia o estado local.
-</p></article><article id="d17" data-search="# documentação adoce club
+"><div class="doc-label">17-Como-Operar-no-Dia-a-Dia.md</div><h1>Como Operar no Dia a Dia</h1>
+<p>1. Admin abre o caixa e informa estoque. 2. Vendedor registra cada venda. 3. Cliente recebe carimbos por QR ou link. 4. Vendedor recupera vendas pendentes em Vendas Recentes. 5. Admin acompanha estoque e valores no relatório. 6. Ao fim do dia, confere divergências antes do fechamento.</p>
+<p>No protótipo, os dados ficam apenas no navegador utilizado. Não limpar os dados do site durante uma demonstração, pois isso reinicia o estado local.</p></article>
+<article id="doc-17" class="doc-card" data-search="documentação adoce club # documentação adoce club
 
 esta pasta reúne visão de produto, regras, fluxos, arquitetura, segurança e operação. execute `npm run docs` para regenerar o portal offline.
-"><div class="eyebrow">README.md</div><p><h1>Documentação Adoce Club</h1></p><p>Esta pasta reúne visão de produto, regras, fluxos, arquitetura, segurança e operação. Execute <code>npm run docs</code> para regenerar o portal offline.
-</p></article></main><script>q.oninput=()=>{const v=q.value.toLowerCase();document.querySelectorAll('article').forEach(a=>a.hidden=!a.dataset.search.includes(v))}</script></body></html>
+"><div class="doc-label">README.md</div><h1>Documentação Adoce Club</h1>
+<p>Esta pasta reúne visão de produto, regras, fluxos, arquitetura, segurança e operação. Execute <code>npm run docs</code> para regenerar o portal offline.</p></article>
+<article id="doc-18" class="doc-card" data-search="análise visual comparativa # análise visual comparativa
+
+## referências oficiais analisadas
+
+- `referencias/imagens/conceito-cliente.jpeg`: composição da home do cliente, cartão, sabores, atalhos e navegação.
+- `referencias/imagens/conceito-vendedor.jpeg`: composição do painel do vendedor, métricas, nova venda e vendas recentes.
+- `referencias/imagens/conceito-fatia-premiada.jpeg`: linguagem de celebração, sucesso, brilho e recompensa.
+- `referencias/imagens/conceito-familia-indicacao.jpeg`: cartão familiar, avatares, indicação e aniversário.
+- `referencias/imagens/cartao-fidelidade-frente.jpeg`: textura rosa, ondas douradas, brilho e promessa de recompensa.
+- `referencias/imagens/cartao-fidelidade-verso.jpeg`: grade de 14 espaços e linguagem das regras.
+- `referencias/imagens/logo-adoce-original.jpeg`: marca original; único local onde cupcake é permitido.
+
+## prints antigos analisados
+
+- `documentacao/prints/01-cliente.png`
+- `documentacao/prints/02-venda-delivery.png`
+- `documentacao/prints/03-venda-qr.png`
+- `documentacao/prints/04-relatorios.png`
+- `documentacao/prints/05-portal-busca.png`
+
+## por que o visual anterior foi reprovado
+
+o visual anterior validava os fluxos, mas parecia um protótipo simples. a repetição grosseira da logo no fundo substituía a textura delicada do conceito. o header era alto, fragmentado e sem a composição central da marca. os cards tinham pouca profundidade, quase nenhum ornamento, brilho ou acabamento dourado. a hierarquia tipográfica e os espaçamentos eram muito maiores e mais pesados que no conceito, reduzindo a quantidade de conteúdo visível na tela.
+
+o vendedor não recebia a composição única da referência: métricas, nova venda e vendas recentes estavam separados em telas. a tela de qr parecia técnica. família e indicação não formavam um painel contínuo. o portal tinha estrutura funcional, mas parecia html simples, sem capa, navegação mobile adequada ou identidade editorial oficial.
+
+## diferenças objetivas
+
+- fundo anterior: padrão repetitivo de logo. conceito: textura rosa aquarelada, luz difusa, ondas finas e sparkles.
+- header anterior: bloco horizontal com título quebrado. conceito: logo pequena, título central grande, subtítulo e ornamentos.
+- cards anteriores: grandes, planos e com borda simples. conceito: creme translúcido, borda rosada dupla, sombra suave e brilho interno.
+- tipografia anterior: pesada e pouco hierarquizada. conceito: títulos caligráficos elegantes com textos compactos em marrom.
+- navegação anterior: ícones genéricos e barra reta. conceito: barra creme arredondada, delicada e integrada.
+- vendedor anterior: operação fragmentada. conceito: dashboard completo em uma única composição vertical.
+- qr anterior: card técnico e vazio. conceito: celebração premium com ornamentos e ações volumosas.
+- portal anterior: sem capa e sem menu mobile funcional. conceito desejado: documentação oficial do mesmo produto.
+
+## plano de reconstrução
+
+1. criar um sistema visual local com textura css, ondas, brilhos, corações e ornamentos dourados.
+2. refazer `appshell`, header e navegação para reproduzir as proporções dos conceitos.
+3. refazer o cartão de fidelidade, slots e carimbo de fatia em escala compacta.
+4. unificar o painel vendedor com caixa, métricas, venda rápida e vendas recentes.
+5. refazer qr, relatórios, família e indicação como painéis premium contínuos.
+6. reconstruir o gerador do portal com html semântico, capa, cards de acesso rápido, busca normalizada, menu recolhível e botão de topo.
+7. gerar prints novos em viewport mobile e comparar novamente com as referências.
+
+## componentes refeitos
+
+- `appshell`, `brandheader`, `decorativebackground`, `visualornaments`
+- `loyaltycard`, `stampslot`, `chocolatecakeslicestamp`
+- `primarybutton`, `softcard`, `sectiontitle`, `bottomnav`
+- `metriccard`, `sellersalepanel`, `recentsalescard`
+- `qrcard`, `familyreferralpanel`, `reportcard`
+
+## telas refeitas
+
+- cliente/home e cartão
+- vendedor/home e nova venda
+- qr/venda registrada e delivery
+- relatórios
+- cartão familiar e indicação
+- portal offline desktop e mobile
+
+## regras preservadas
+
+- rosa claro, creme, marrom chocolate, rosa forte e dourado.
+- interface mobile-first e áreas de toque confortáveis.
+- quatorze carimbos e barra de progresso.
+- fluxos, rotas, estado local e regras de negócio existentes.
+- funcionamento sem cdn ou dependência visual externa.
+
+## exceções permitidas
+
+- o carimbo é uma mini fatia de torta de chocolate, e não o símbolo circular do conceito.
+- cupcake aparece somente dentro da logo original.
+- conteúdos inexistentes no mvp real permanecem demonstrativos, sem criar backend ou autenticação.
+
+## resultado da reconstrução
+
+o app foi reconstruído com composição compacta, cabeçalho centralizado, textura rosa suave, ondas douradas, cartões creme com borda dupla, tipografia caligráfica nos títulos e navegação inferior integrada. o painel do vendedor agora reúne caixa, métricas, venda rápida e histórico na mesma experiência. qr, relatórios, família e indicação receberam o mesmo acabamento visual.
+
+os prints finais estão em `documentacao/prints/`:
+
+- `01-cliente-home.png`
+- `02-vendedor-home.png`
+- `03-venda-qr.png`
+- `04-relatorios.png`
+- `05-familia-indicacao.png`
+- `06-portal-documentacao.png`
+- `07-portal-documentacao-mobile.png`
+
+diferenças residuais justificadas: os mockups usam uma moldura fotográfica de aparelho e fontes/ilustrações geradas que não fazem parte dos arquivos originais do projeto. a implementação mantém html responsivo e fontes locais do sistema para funcionar offline. a mini fatia de torta substitui deliberadamente o carimbo circular do conceito, conforme solicitado, e o cupcake permanece restrito à logo original.
+"><div class="doc-label">analise-visual-comparativa.md</div><h1>Análise Visual Comparativa</h1>
+<h2>Referências oficiais analisadas</h2>
+<ul><li><code>referencias/imagens/conceito-cliente.jpeg</code>: composição da home do cliente, cartão, sabores, atalhos e navegação.</li><li><code>referencias/imagens/conceito-vendedor.jpeg</code>: composição do painel do vendedor, métricas, nova venda e vendas recentes.</li><li><code>referencias/imagens/conceito-fatia-premiada.jpeg</code>: linguagem de celebração, sucesso, brilho e recompensa.</li><li><code>referencias/imagens/conceito-familia-indicacao.jpeg</code>: cartão familiar, avatares, indicação e aniversário.</li><li><code>referencias/imagens/cartao-fidelidade-frente.jpeg</code>: textura rosa, ondas douradas, brilho e promessa de recompensa.</li><li><code>referencias/imagens/cartao-fidelidade-verso.jpeg</code>: grade de 14 espaços e linguagem das regras.</li><li><code>referencias/imagens/logo-adoce-original.jpeg</code>: marca original; único local onde cupcake é permitido.</li></ul>
+<h2>Prints antigos analisados</h2>
+<ul><li><code>Documentacao/prints/01-cliente.png</code></li><li><code>Documentacao/prints/02-venda-delivery.png</code></li><li><code>Documentacao/prints/03-venda-qr.png</code></li><li><code>Documentacao/prints/04-relatorios.png</code></li><li><code>Documentacao/prints/05-portal-busca.png</code></li></ul>
+<h2>Por que o visual anterior foi reprovado</h2>
+<p>O visual anterior validava os fluxos, mas parecia um protótipo simples. A repetição grosseira da logo no fundo substituía a textura delicada do conceito. O header era alto, fragmentado e sem a composição central da marca. Os cards tinham pouca profundidade, quase nenhum ornamento, brilho ou acabamento dourado. A hierarquia tipográfica e os espaçamentos eram muito maiores e mais pesados que no conceito, reduzindo a quantidade de conteúdo visível na tela.</p>
+<p>O vendedor não recebia a composição única da referência: métricas, nova venda e vendas recentes estavam separados em telas. A tela de QR parecia técnica. Família e indicação não formavam um painel contínuo. O portal tinha estrutura funcional, mas parecia HTML simples, sem capa, navegação mobile adequada ou identidade editorial oficial.</p>
+<h2>Diferenças objetivas</h2>
+<ul><li>Fundo anterior: padrão repetitivo de logo. Conceito: textura rosa aquarelada, luz difusa, ondas finas e sparkles.</li><li>Header anterior: bloco horizontal com título quebrado. Conceito: logo pequena, título central grande, subtítulo e ornamentos.</li><li>Cards anteriores: grandes, planos e com borda simples. Conceito: creme translúcido, borda rosada dupla, sombra suave e brilho interno.</li><li>Tipografia anterior: pesada e pouco hierarquizada. Conceito: títulos caligráficos elegantes com textos compactos em marrom.</li><li>Navegação anterior: ícones genéricos e barra reta. Conceito: barra creme arredondada, delicada e integrada.</li><li>Vendedor anterior: operação fragmentada. Conceito: dashboard completo em uma única composição vertical.</li><li>QR anterior: card técnico e vazio. Conceito: celebração premium com ornamentos e ações volumosas.</li><li>Portal anterior: sem capa e sem menu mobile funcional. Conceito desejado: documentação oficial do mesmo produto.</li></ul>
+<h2>Plano de reconstrução</h2>
+<p>1. Criar um sistema visual local com textura CSS, ondas, brilhos, corações e ornamentos dourados. 2. Refazer <code>AppShell</code>, header e navegação para reproduzir as proporções dos conceitos. 3. Refazer o cartão de fidelidade, slots e carimbo de fatia em escala compacta. 4. Unificar o painel vendedor com caixa, métricas, venda rápida e vendas recentes. 5. Refazer QR, relatórios, família e indicação como painéis premium contínuos. 6. Reconstruir o gerador do portal com HTML semântico, capa, cards de acesso rápido, busca normalizada, menu recolhível e botão de topo. 7. Gerar prints novos em viewport mobile e comparar novamente com as referências.</p>
+<h2>Componentes refeitos</h2>
+<ul><li><code>AppShell</code>, <code>BrandHeader</code>, <code>DecorativeBackground</code>, <code>VisualOrnaments</code></li><li><code>LoyaltyCard</code>, <code>StampSlot</code>, <code>ChocolateCakeSliceStamp</code></li><li><code>PrimaryButton</code>, <code>SoftCard</code>, <code>SectionTitle</code>, <code>BottomNav</code></li><li><code>MetricCard</code>, <code>SellerSalePanel</code>, <code>RecentSalesCard</code></li><li><code>QRCard</code>, <code>FamilyReferralPanel</code>, <code>ReportCard</code></li></ul>
+<h2>Telas refeitas</h2>
+<ul><li>Cliente/Home e cartão</li><li>Vendedor/Home e Nova Venda</li><li>QR/Venda registrada e delivery</li><li>Relatórios</li><li>Cartão Familiar e Indicação</li><li>Portal offline desktop e mobile</li></ul>
+<h2>Regras preservadas</h2>
+<ul><li>Rosa claro, creme, marrom chocolate, rosa forte e dourado.</li><li>Interface mobile-first e áreas de toque confortáveis.</li><li>Quatorze carimbos e barra de progresso.</li><li>Fluxos, rotas, estado local e regras de negócio existentes.</li><li>Funcionamento sem CDN ou dependência visual externa.</li></ul>
+<h2>Exceções permitidas</h2>
+<ul><li>O carimbo é uma mini fatia de torta de chocolate, e não o símbolo circular do conceito.</li><li>Cupcake aparece somente dentro da logo original.</li><li>Conteúdos inexistentes no MVP real permanecem demonstrativos, sem criar backend ou autenticação.</li></ul>
+<h2>Resultado da reconstrução</h2>
+<p>O app foi reconstruído com composição compacta, cabeçalho centralizado, textura rosa suave, ondas douradas, cartões creme com borda dupla, tipografia caligráfica nos títulos e navegação inferior integrada. O painel do vendedor agora reúne caixa, métricas, venda rápida e histórico na mesma experiência. QR, relatórios, família e indicação receberam o mesmo acabamento visual.</p>
+<p>Os prints finais estão em <code>Documentacao/prints/</code>:</p>
+<ul><li><code>01-cliente-home.png</code></li><li><code>02-vendedor-home.png</code></li><li><code>03-venda-qr.png</code></li><li><code>04-relatorios.png</code></li><li><code>05-familia-indicacao.png</code></li><li><code>06-portal-documentacao.png</code></li><li><code>07-portal-documentacao-mobile.png</code></li></ul>
+<p>Diferenças residuais justificadas: os mockups usam uma moldura fotográfica de aparelho e fontes/ilustrações geradas que não fazem parte dos arquivos originais do projeto. A implementação mantém HTML responsivo e fontes locais do sistema para funcionar offline. A mini fatia de torta substitui deliberadamente o carimbo circular do conceito, conforme solicitado, e o cupcake permanece restrito à logo original.</p></article></section>
+    </main>
+  </div>
+  <footer class="portal-footer">Adoce Club · Documentação offline privada · Adoce Brigaderia</footer>
+  <button class="top-button" aria-label="Voltar ao topo" onclick="location.hash='topo'">↑</button>
+  <script>
+    const search=document.getElementById('search');const cards=[...document.querySelectorAll('.doc-card')];const noResults=document.getElementById('noResults');const normalize=value=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    search.addEventListener('input',()=>{const term=normalize(search.value.trim());let visible=0;cards.forEach(card=>{const match=!term||normalize(card.dataset.search).includes(term);card.hidden=!match;card.classList.toggle('match',Boolean(term&&match));if(match)visible++});noResults.classList.toggle('show',visible===0)});
+    const sidebar=document.getElementById('sidebar');const toggle=document.getElementById('menuToggle');const overlay=document.getElementById('menuOverlay');const setMenu=open=>{sidebar.classList.toggle('open',open);overlay.classList.toggle('show',open);toggle.setAttribute('aria-expanded',String(open));toggle.textContent=open?'×':'☰'};toggle.addEventListener('click',()=>setMenu(!sidebar.classList.contains('open')));overlay.addEventListener('click',()=>setMenu(false));sidebar.addEventListener('click',event=>{if(event.target.closest('a')&&innerWidth<=720)setMenu(false)});
+  </script>
+</body>
+</html>

@@ -1,26 +1,140 @@
-import {useState} from 'react';
-import {Routes,Route,useNavigate,useParams,Link} from 'react-router-dom';
-import {QRCodeSVG} from 'qrcode.react';
-import {Heart,ShoppingBag,Users,BarChart3,MoreHorizontal,ScanLine,Gift,Truck,Store,WalletCards,Copy,Share2,CheckCircle2,Settings,CakeSlice,ChevronRight} from 'lucide-react';
-import {Payment,Sale,useStore} from './store';
-import { AppShell as Shell } from './components/AppShell';
+import { useState } from 'react';
+import { Link, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
+import {
+  BarChart3, CakeSlice, Check, CheckCircle2, ChevronRight, Copy, Gift, Heart,
+  Minus, MoreHorizontal, Plus, ScanLine, Settings, Share2, Store,
+  Truck, Users, WalletCards,
+} from 'lucide-react';
+import { AppShell } from './components/AppShell';
 import { LoyaltyCard } from './components/LoyaltyCard';
+import { Payment, Sale, useStore } from './store';
 
-const money=(n:number)=>n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-function Login(){const nav=useNavigate();const setRole=useStore(s=>s.setRole);const enter=(r:'cliente'|'vendedor'|'admin')=>{setRole(r);nav(`/${r}`)};return <div className="login"><div className="spark-bg"/><img src="/assets/logo-adoce.jpeg" alt="Adoce Brigaderia"/><h1>Adoce Club</h1><p>Entre para adoçar sua experiência</p><button className="primary" onClick={()=>enter('cliente')}><Heart/> Entrar como Cliente</button><button onClick={()=>enter('vendedor')}><Store/> Entrar como Vendedor</button><button onClick={()=>enter('admin')}><BarChart3/> Entrar como Sócio / Admin</button><small>Ambiente demonstrativo, sem dados reais.</small></div>}
-function ClientHome(){return <Shell><LoyaltyCard compact/><Link className="primary big" to="/cliente/resgatar/ADOCE-A11"><ScanLine/> Escanear QR Code</Link><h2 className="script">Sabores da Semana</h2><section className="card flavors"><img className="flavor-slice" src="/assets/carimbo-fatia.png" alt="Fatia de torta de chocolate"/><ul><li>Ninho com Morango</li><li>Brigadeiro Clássico</li><li>Chocolate Belga</li></ul></section><div className="two"><Link className="card action" to="/cliente/familia"><Users/><b>Cartão Familiar</b><span>Compartilhe seus carimbos</span><ChevronRight/></Link><Link className="card action" to="/cliente/indicacoes"><Gift/><b>Indique Amigos</b><span>Ganhe benefícios deliciosos</span><ChevronRight/></Link></div></Shell>}
-function CardPage(){const reward=useStore(s=>s.reward);return <Shell><LoyaltyCard/>{reward>0&&<section className="card won"><Gift/><h2>Você ganhou!</h2><p>Sua próxima fatia será por nossa conta.</p></section>}<section className="card"><h3>Histórico recente</h3><p>+2 carimbos · Compra presencial</p><p>+3 carimbos · Compra por delivery</p></section></Shell>}
-function Family(){const family=useStore(s=>s.family),create=useStore(s=>s.createFamily),join=useStore(s=>s.joinFamily);const [code,setCode]=useState('');const [msg,setMsg]=useState('');const [copied,setCopied]=useState(false);return <Shell><section className="card hero-card"><Users/><h2>Cartão Familiar</h2><p>Todos os membros compartilham os carimbos.</p></section>{family?<><section className="card"><h3>{family.name}</h3><div className="avatars">{family.members.map(m=><span key={m}>{m.slice(0,2).toUpperCase()}</span>)}</div><LoyaltyCard compact/><label>Código de convite</label><button className="code copy-code" onClick={()=>{navigator.clipboard?.writeText(family.code);setCopied(true)}}>{family.code}<Copy/></button>{copied&&<p className="notice">Código copiado.</p>}</section></>:<section className="card"><h3>Crie ou entre em uma família</h3><button className="primary" onClick={create}>Criar cartão familiar</button><div className="divider">ou</div><input aria-label="Código da família" placeholder="Código da família" value={code} onChange={e=>setCode(e.target.value)}/><button onClick={()=>setMsg(join(code)?'Você entrou na família!':'Código não encontrado')}>Entrar com código</button>{msg&&<p>{msg}</p>}</section>}</Shell>}
-function Referrals(){const code=useStore(s=>s.referralCode),done=useStore(s=>s.referralBonus),activate=useStore(s=>s.activateReferral);const [copied,setCopied]=useState(false);const share=()=>window.open(`https://wa.me/?text=${encodeURIComponent(`Venha para o Adoce Club! Use meu código ${code}`)}`);return <Shell><section className="card hero-card"><Gift/><h2>Indique Amigos</h2><p>Convide amigos e ganhe benefícios deliciosos!</p></section><section className="card centered"><label>Seu código de convite</label><button className="code copy-code" onClick={()=>{navigator.clipboard?.writeText(code);setCopied(true)}}>{code}<Copy/></button>{copied&&<p className="notice">Código copiado.</p>}<button className="primary" onClick={share}><Share2/> Compartilhar no WhatsApp</button><p>Quando seu amigo fizer a 1ª compra, você ganha +1 carimbo.</p><button onClick={activate} disabled={done}>{done?'Bônus já liberado':'Simular primeira compra do indicado'}</button></section></Shell>}
-function Redeem(){const {token=''}=useParams();const claim=useStore(s=>s.claim);const nav=useNavigate();const [status,setStatus]=useState('');return <Shell><section className="card centered redeem"><ScanLine/><h2>Resgatar carimbos</h2><p>Token: <b>{token}</b></p><button className="primary" onClick={()=>setStatus(claim(token)?'Carimbos adicionados com sucesso!':'Este token é inválido ou já foi usado.')}>Receber carimbos</button>{status&&<div className="notice"><CheckCircle2/>{status}</div>}<button onClick={()=>nav('/cliente/cartao')}>Ver meu cartão</button></section></Shell>}
-function SellerHome(){const s=useStore();const sold=s.sales.reduce((a,x)=>a+x.qty,0),total=s.sales.reduce((a,x)=>a+x.value,0);return <Shell role="vendedor"><section className="card cash"><div><Store/><b>{s.cashOpen?'Caixa aberto':'Caixa fechado'}</b><small>{s.cashOpen?'Operação disponível':'Abra o caixa para iniciar'}</small></div><Link to="/admin/caixa">{s.cashOpen?'Ver caixa':'Abrir caixa'}</Link></section><div className="stats"><div><CakeSlice/><b>{sold}</b><span>fatias vendidas</span></div><div><Heart/><b>{money(total)}</b><span>total do dia</span></div><div><Truck/><b>{s.sales.filter(x=>x.kind.startsWith('Delivery')).length}</b><span>delivery</span></div></div><Link className="primary big" to="/vendedor/nova-venda"><ShoppingBag/> Nova Venda</Link><Recent compact/></Shell>}
-function NewSale(){const {price,addSale,cashOpen}=useStore();const [qty,setQty]=useState(3),[payment,setPayment]=useState<Payment>('Pix'),[sale,setSale]=useState<Sale|null>(null);const create=(kind:Sale['kind'])=>setSale(addSale({qty,value:qty*price,payment,kind,seller:'Atendimento Demo'}));if(!cashOpen)return <Shell role="vendedor"><section className="card centered redeem"><Store/><h2>Abra o caixa antes da primeira venda</h2><p>Informe o fundo fixo e as fatias disponíveis para liberar a operação.</p><Link className="primary" to="/admin/caixa">Abrir caixa</Link></section></Shell>;if(sale)return <QrSale sale={sale}/>;return <Shell role="vendedor"><section className="card sale-form"><h2 className="script">Nova Venda</h2><label>Quantidade de fatias</label><div className="counter"><button aria-label="Diminuir quantidade" onClick={()=>setQty(Math.max(1,qty-1))}>−</button><b>{qty}</b><button aria-label="Aumentar quantidade" onClick={()=>setQty(qty+1)}>+</button></div><div className="quick">{[1,2,3,4,6,10].map(n=><button className={qty===n?'active':''} onClick={()=>setQty(n)} key={n}>{n}</button>)}</div><h2>Total: <em>{money(qty*price)}</em></h2><div className="payments">{(['Dinheiro','Pix','Cartão','Cortesia','Fidelidade'] as Payment[]).map(p=><button className={payment===p?'active':''} onClick={()=>setPayment(p)} key={p}><WalletCards/>{p}</button>)}</div></section><div className="two sale-kind"><button onClick={()=>create('Presencial')}><Store/>Cliente Presencial<small>Gerar QR Code</small></button><button onClick={()=>create('Delivery / Retirada')}><Truck/>Delivery / Retirada<small>Gerar link</small></button></div></Shell>}
-function QrSale({sale}:{sale:Sale}){const link=`${location.origin}/cliente/resgatar/${sale.token}`;const [copied,setCopied]=useState(false);const copy=()=>{navigator.clipboard?.writeText(link);setCopied(true)};return <Shell role="vendedor"><section className="card centered qr"><CheckCircle2/><h2>Venda registrada!</h2><p>{sale.qty} fatias · {money(sale.value)} · {sale.payment}</p>{sale.kind==='Presencial'?<><QRCodeSVG value={link} size={220} fgColor="#572018" title="QR Code da venda"/><p>Peça ao cliente para escanear</p></>:<><div className="code token">{sale.token}</div><button onClick={copy}><Copy/> Copiar link</button>{copied&&<p className="notice">Link copiado.</p>}<button className="primary" onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent(`Seus carimbos Adoce Club: ${link}`)}`)}><Share2/> Abrir WhatsApp</button></>}<Link to="/vendedor/vendas-recentes">Ver vendas recentes</Link></section></Shell>}
-function Recent({compact=false}:{compact?:boolean}){const sales=useStore(s=>s.sales);return <section className="card recent"><h3>Vendas recentes</h3>{sales.slice(0,compact?3:99).map(s=><div className="sale-row" key={s.id}><span className="avatar">{s.seller.slice(0,2)}</span><div><b>{s.seller}</b><small>{s.qty} fatias · {s.kind}</small></div><div><b>{money(s.value)}</b><small>{s.payment} · {s.createdAt}</small></div><Link to={`/vendedor/venda/${s.id}`}><ChevronRight/></Link></div>)}</section>}
-function RecentPage(){return <Shell role="vendedor"><Recent/></Shell>}
-function SaleRoute(){const {id}=useParams();const sale=useStore(s=>s.sales.find(x=>x.id===id));return sale?<QrSale sale={sale}/>:<Shell role="vendedor"><p>Venda não encontrada.</p></Shell>}
-function Cash(){const open=useStore(s=>s.openCash),isOpen=useStore(s=>s.cashOpen),role=useStore(s=>s.role);const [fund,setFund]=useState(100),[available,setAvailable]=useState(72);return <Shell role={role==='vendedor'?'vendedor':'admin'}><section className="card"><h2>Abertura de Caixa</h2><p>Caixa único do dia. O usuário, data e hora serão registrados.</p><label htmlFor="cash-fund">Fundo fixo</label><input id="cash-fund" type="number" min="0" value={fund} onChange={e=>setFund(+e.target.value)}/><label htmlFor="available-slices">Fatias disponíveis hoje</label><input id="available-slices" type="number" min="0" value={available} onChange={e=>setAvailable(+e.target.value)}/><button className="primary" disabled={isOpen||fund<0||available<0} onClick={()=>open(fund,available)}>{isOpen?'Caixa já está aberto':'Abrir caixa agora'}</button></section></Shell>}
-function Reports(){const s=useStore();const sold=s.sales.reduce((a,x)=>a+x.qty,0),revenue=s.sales.reduce((a,x)=>a+x.value,0),cost=sold*s.cost;return <Shell role="admin"><section className="card"><h2>Relatório do Dia</h2><div className="report-grid"><div><span>Faturamento bruto</span><b>{money(revenue)}</b></div><div><span>Lucro bruto estimado</span><b>{money(revenue-cost)}</b></div><div><span>Fatias vendidas</span><b>{sold}</b></div><div><span>Fatias restantes</span><b>{Math.max(0,s.available-sold)}</b></div><div><span>Custo estimado</span><b>{money(cost)}</b></div><div><span>Delivery</span><b>{s.sales.filter(x=>x.kind.startsWith('Delivery')).length}</b></div></div></section><section className="card"><h3>Por forma de pagamento</h3>{(['Dinheiro','Pix','Cartão','Cortesia','Fidelidade'] as Payment[]).map(p=><p className="line" key={p}><span>{p}</span><b>{money(s.sales.filter(x=>x.payment===p).reduce((a,x)=>a+x.value,0))}</b></p>)}</section><Recent/></Shell>}
-function Admin(){return <Shell role="admin"><section className="card hero-card"><BarChart3/><h2>Painel Administrativo</h2><p>Visão geral da operação de hoje.</p></section><div className="menu-list"><Link to="/admin/caixa"><Store/>Abertura de Caixa<ChevronRight/></Link><Link to="/admin/relatorios"><BarChart3/>Relatórios<ChevronRight/></Link><Link to="/admin/configuracoes"><Settings/>Configurações<ChevronRight/></Link><a href="/documentacao/index.html"><MoreHorizontal/>Documentação<ChevronRight/></a></div></Shell>}
-function Config(){const s=useStore(),[price,setPrice]=useState(s.price),[cost,setCost]=useState(s.cost),[saved,setSaved]=useState(false);return <Shell role="admin"><section className="card"><h2>Configurações</h2><label htmlFor="slice-price">Preço da fatia</label><input id="slice-price" type="number" min="0" step="0.01" value={price} onChange={e=>setPrice(+e.target.value)}/><label htmlFor="average-cost">Custo médio da fatia</label><input id="average-cost" type="number" min="0" step="0.01" value={cost} onChange={e=>setCost(+e.target.value)}/><label htmlFor="stamps-required">Carimbos para prêmio</label><input id="stamps-required" value="14" disabled/><label htmlFor="instagram">Instagram</label><input id="instagram" defaultValue="@adocebrigaderia"/><label htmlFor="whatsapp">WhatsApp</label><input id="whatsapp" defaultValue="(11) 99999-9999"/><button className="primary" disabled={price<0||cost<0} onClick={()=>{s.setConfig(price,cost);setSaved(true)}}>Salvar configurações</button>{saved&&<p className="notice">Configurações salvas.</p>}</section></Shell>}
-export default function App(){return <Routes><Route path="*" element={<Login/>}/><Route path="/login" element={<Login/>}/><Route path="/cliente" element={<ClientHome/>}/><Route path="/cliente/cartao" element={<CardPage/>}/><Route path="/cliente/familia" element={<Family/>}/><Route path="/cliente/indicacoes" element={<Referrals/>}/><Route path="/cliente/resgatar/:token" element={<Redeem/>}/><Route path="/vendedor" element={<SellerHome/>}/><Route path="/vendedor/nova-venda" element={<NewSale/>}/><Route path="/vendedor/vendas-recentes" element={<RecentPage/>}/><Route path="/vendedor/venda/:id" element={<SaleRoute/>}/><Route path="/admin" element={<Admin/>}/><Route path="/admin/caixa" element={<Cash/>}/><Route path="/admin/relatorios" element={<Reports/>}/><Route path="/admin/configuracoes" element={<Config/>}/><Route path="/documentacao" element={<Admin/>}/></Routes>}
+const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const payments: Payment[] = ['Dinheiro', 'Pix', 'Cartão', 'Cortesia', 'Fidelidade'];
+
+function OrnamentTitle({ children }: { children: React.ReactNode }) {
+  return <div className="ornament-title"><span>❧</span><h2>{children}</h2><span>❧</span></div>;
+}
+
+function Login() {
+  const navigate = useNavigate();
+  const setRole = useStore(state => state.setRole);
+  const enter = (role: 'cliente' | 'vendedor' | 'admin') => { setRole(role); navigate(`/${role}`); };
+  return <div className="login-screen"><div className="login-glow"/><img src="/assets/logo-adoce.jpeg" alt="Adoce Brigaderia"/><h1>Adoce Club</h1><p>Doces momentos, mais vantagens!</p><div className="login-card"><button className="primary-button" onClick={() => enter('cliente')}><Heart/> Entrar como Cliente</button><button onClick={() => enter('vendedor')}><Store/> Entrar como Vendedor</button><button onClick={() => enter('admin')}><BarChart3/> Entrar como Sócio / Admin</button></div><small>Ambiente demonstrativo, sem dados reais.</small></div>;
+}
+
+function ClientHome() {
+  return <AppShell><LoyaltyCard compact/><Link className="primary-button scan-button" to="/cliente/resgatar/ADOCE-A11"><ScanLine/> Escanear QR Code</Link><OrnamentTitle>Sabores da Semana</OrnamentTitle><section className="soft-card flavor-card"><img src="/assets/carimbo-fatia.png" alt="Fatia de torta de chocolate"/><ul><li>Ninho com Morango</li><li>Brigadeiro Clássico</li><li>Beijinho</li><li>Chocolate Belga</li></ul><div className="floating-heart">♡</div></section><div className="quick-panels"><Link className="soft-card quick-panel" to="/cliente/familia"><Users/><div><b>Cartão Familiar</b><span>Compartilhe<br/>seus carimbos</span></div><ChevronRight/></Link><Link className="soft-card quick-panel" to="/cliente/indicacoes"><Gift/><div><b>Indique Amigos</b><span>E ganhe benefícios<br/>deliciosos!</span></div><ChevronRight/></Link></div></AppShell>;
+}
+
+function CardPage() {
+  const reward = useStore(state => state.reward);
+  return <AppShell>{reward > 0 && <section className="success-banner"><Check/><div><b>Fatia premiada!</b><span>Sua próxima fatia será por nossa conta.</span></div></section>}<LoyaltyCard/><section className="soft-card history-card"><OrnamentTitle>Histórico recente</OrnamentTitle><p><Heart fill="currentColor"/> +2 carimbos <span>Compra presencial</span></p><p><Heart fill="currentColor"/> +3 carimbos <span>Compra por delivery</span></p></section></AppShell>;
+}
+
+function FamilyReferralPanel() {
+  const family = useStore(state => state.family);
+  const createFamily = useStore(state => state.createFamily);
+  const joinFamily = useStore(state => state.joinFamily);
+  const referralCode = useStore(state => state.referralCode);
+  const referralBonus = useStore(state => state.referralBonus);
+  const activateReferral = useStore(state => state.activateReferral);
+  const [code, setCode] = useState('');
+  const [message, setMessage] = useState('');
+  const [copied, setCopied] = useState('');
+
+  return <>
+    <section className="soft-card family-panel">
+      <OrnamentTitle>Cartão Familiar</OrnamentTitle>
+      <p className="center-copy">Todos os membros compartilham os carimbos <Heart size={13} fill="currentColor"/></p>
+      {family ? <><div className="family-row"><Users/><b>{family.name}</b><div className="avatars">{family.members.map(member => <span key={member}>{member.slice(0, 2).toUpperCase()}</span>)}</div></div><LoyaltyCard compact family/><button className="invite-code" onClick={() => { navigator.clipboard?.writeText(family.code); setCopied('Código da família copiado.'); }}>{family.code}<Copy/></button></> : <div className="family-actions"><button className="primary-button" onClick={createFamily}>Criar cartão familiar</button><span>ou entre com um convite</span><div><input aria-label="Código da família" placeholder="Código da família" value={code} onChange={event => setCode(event.target.value)}/><button onClick={() => setMessage(joinFamily(code) ? 'Você entrou na família!' : 'Código não encontrado')}>Entrar</button></div></div>}
+      {(message || copied) && <p className="inline-notice">{message || copied}</p>}
+    </section>
+    <section className="soft-card referral-panel"><div className="gift-illustration"><Gift/><span>♥</span></div><OrnamentTitle>Indique Amigos</OrnamentTitle><p>Convide amigos e ganhe benefícios deliciosos!</p><label>Seu código de convite</label><button className="invite-code" onClick={() => { navigator.clipboard?.writeText(referralCode); setCopied('Código de indicação copiado.'); }}>{referralCode}<Copy/></button><button className="primary-button share-button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Venha para o Adoce Club! Use meu código ${referralCode}`)}`)}><Share2/> Compartilhar convite</button><small>Quando seu amigo fizer a 1ª compra,<br/>você ganha +1 carimbo <Heart size={12} fill="currentColor"/></small><button className="simulate-button" onClick={activateReferral} disabled={referralBonus}>{referralBonus ? 'Bônus já liberado' : 'Simular primeira compra do indicado'}</button></section>
+    <section className="soft-card birthday-card"><CakeSlice/><div><b>Semana do seu aniversário</b><span>Desconto especial em 1 fatia</span></div><ChevronRight/></section>
+  </>;
+}
+
+function Family() { return <AppShell><FamilyReferralPanel/></AppShell>; }
+function Referrals() { return <AppShell><FamilyReferralPanel/></AppShell>; }
+
+function Redeem() {
+  const { token = '' } = useParams();
+  const claim = useStore(state => state.claim);
+  const navigate = useNavigate();
+  const [status, setStatus] = useState('');
+  return <AppShell><section className="soft-card redeem-card"><div className="success-medal"><Check/></div><OrnamentTitle>Resgatar carimbos</OrnamentTitle><p>Seu mimo está quase lá!</p><div className="token-box">{token}</div><button className="primary-button" onClick={() => setStatus(claim(token) ? 'Carimbos adicionados com sucesso!' : 'Este token é inválido ou já foi usado.')}>Receber carimbos</button>{status && <div className="inline-notice"><CheckCircle2/>{status}</div>}<button className="text-button" onClick={() => navigate('/cliente/cartao')}>Ver meu cartão</button></section></AppShell>;
+}
+
+function MetricCard({ label, value, note, icon }: { label: string; value: string; note: string; icon: React.ReactNode }) {
+  return <div className="metric-card"><span>{label}</span>{icon}<b>{value}</b><small>{note}</small></div>;
+}
+
+function SellerSalePanel({ embedded = false }: { embedded?: boolean }) {
+  const { price, addSale, cashOpen } = useStore();
+  const [qty, setQty] = useState(3);
+  const [payment, setPayment] = useState<Payment>('Pix');
+  const [sale, setSale] = useState<Sale | null>(null);
+  const create = (kind: Sale['kind']) => setSale(addSale({ qty, value: qty * price, payment, kind, seller: 'Atendimento Demo' }));
+  if (!cashOpen) return <section className="soft-card closed-sale"><Store/><h2>Abra o caixa antes da primeira venda</h2><p>Informe o fundo fixo e as fatias disponíveis para liberar a operação.</p><Link className="primary-button" to="/admin/caixa">Abrir caixa</Link></section>;
+  if (sale) return <QRCard sale={sale}/>;
+  return <section className={`soft-card sale-panel ${embedded ? 'embedded' : ''}`}><OrnamentTitle>Nova venda</OrnamentTitle><label>Quantidade de fatias</label><div className="quantity-row"><button aria-label="Diminuir quantidade" onClick={() => setQty(Math.max(1, qty - 1))}><Minus/></button><div>{qty}</div><button aria-label="Aumentar quantidade" onClick={() => setQty(qty + 1)}><Plus/></button><small>Valor unitário<br/><b>{money(price)}</b></small></div><div className="quick-qty">{[1, 2, 3, 4, 6, 10].map(value => <button className={qty === value ? 'active' : ''} onClick={() => setQty(value)} key={value}>{value}</button>)}</div><div className="sale-total">Total: <Heart size={15} fill="currentColor"/> <b>{money(qty * price)}</b></div><div className="payment-grid">{payments.map(item => <button className={payment === item ? 'active' : ''} onClick={() => setPayment(item)} key={item}><WalletCards/>{item}</button>)}</div><div className="sale-types"><button onClick={() => create('Presencial')}><Users/><b>Cliente Presencial</b><small>Consumir agora</small></button><button onClick={() => create('Delivery / Retirada')}><Truck/><b>Delivery / Retirada</b><small>Entregar ou retirar</small></button></div></section>;
+}
+
+function SellerHome() {
+  const state = useStore();
+  const sold = state.sales.reduce((sum, sale) => sum + sale.qty, 0);
+  const total = state.sales.reduce((sum, sale) => sum + sale.value, 0);
+  const delivery = state.sales.filter(sale => sale.kind.startsWith('Delivery')).reduce((sum, sale) => sum + sale.qty, 0);
+  return <AppShell role="vendedor"><section className="soft-card cash-status"><Store/><div><b>{state.cashOpen ? 'Caixa aberto' : 'Caixa fechado'} <i/></b><span>{state.cashOpen ? 'Aberto para vendas' : 'Abra o caixa para iniciar'}</span></div><Link to="/admin/caixa">{state.cashOpen ? 'Fechar caixa' : 'Abrir caixa'}</Link></section><div className="metrics-grid"><MetricCard label="Fatias vendidas hoje" value={String(sold)} note="fatias" icon={<CakeSlice/>}/><MetricCard label="Total do dia" value={money(total)} note="em vendas" icon={<Heart fill="currentColor"/>}/><MetricCard label="Presencial x Delivery" value={`${sold - delivery} / ${delivery}`} note="presencial / delivery" icon={<Truck/>}/></div><SellerSalePanel embedded/><RecentSales compact/></AppShell>;
+}
+
+function NewSale() { return <AppShell role="vendedor"><SellerSalePanel/></AppShell>; }
+
+function QRCard({ sale }: { sale: Sale }) {
+  const link = `${location.origin}/cliente/resgatar/${sale.token}`;
+  const [copied, setCopied] = useState(false);
+  return <section className="soft-card qr-card"><div className="success-medal"><Check/></div><OrnamentTitle>Venda registrada!</OrnamentTitle><p>{sale.qty} fatias · {money(sale.value)} · {sale.payment}</p>{sale.kind === 'Presencial' ? <><div className="qr-frame"><QRCodeSVG value={link} size={205} fgColor="#5b201b" title="QR Code da venda"/></div><p className="qr-help">Peça ao cliente para escanear</p></> : <><div className="token-box">{sale.token}</div><button className="secondary-button" onClick={() => { navigator.clipboard?.writeText(link); setCopied(true); }}><Copy/> Copiar link</button>{copied && <p className="inline-notice">Link copiado.</p>}<button className="primary-button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Seus carimbos Adoce Club: ${link}`)}`)}><Share2/> Abrir WhatsApp</button></>}<div className="qr-actions"><Link to="/vendedor/nova-venda">Nova venda</Link><Link to="/vendedor/vendas-recentes">Ver vendas recentes</Link></div></section>;
+}
+
+function RecentSales({ compact = false }: { compact?: boolean }) {
+  const sales = useStore(state => state.sales);
+  return <section className="soft-card recent-card"><div className="recent-title"><h3>◷ Vendas recentes</h3><span><ScanLine/> Mostrar QR novamente</span></div>{sales.slice(0, compact ? 2 : 99).map(sale => <div className="sale-row" key={sale.id}><span className="sale-avatar">{sale.seller.slice(0, 2)}</span><div><b>{sale.seller}</b><small><Heart size={10} fill="currentColor"/> {sale.qty} fatias · {sale.kind}</small></div><div><b>{money(sale.value)}</b><small>{sale.payment} · {sale.createdAt}</small></div><Link aria-label={`Abrir venda ${sale.id}`} to={`/vendedor/venda/${sale.id}`}><ChevronRight/></Link></div>)}</section>;
+}
+
+function RecentPage() { return <AppShell role="vendedor"><RecentSales/></AppShell>; }
+function SaleRoute() { const { id } = useParams(); const sale = useStore(state => state.sales.find(item => item.id === id)); return sale ? <AppShell role="vendedor"><QRCard sale={sale}/></AppShell> : <AppShell role="vendedor"><p>Venda não encontrada.</p></AppShell>; }
+
+function Cash() {
+  const open = useStore(state => state.openCash);
+  const isOpen = useStore(state => state.cashOpen);
+  const role = useStore(state => state.role);
+  const [fund, setFund] = useState(100);
+  const [available, setAvailable] = useState(72);
+  return <AppShell role={role === 'vendedor' ? 'vendedor' : 'admin'}><section className="soft-card cash-form"><OrnamentTitle>Abertura de Caixa</OrnamentTitle><p>Prepare o festival de hoje com carinho.</p><label htmlFor="cash-fund">Fundo fixo</label><input id="cash-fund" type="number" min="0" value={fund} onChange={event => setFund(+event.target.value)}/><label htmlFor="available-slices">Fatias disponíveis hoje</label><input id="available-slices" type="number" min="0" value={available} onChange={event => setAvailable(+event.target.value)}/><button className="primary-button" disabled={isOpen || fund < 0 || available < 0} onClick={() => open(fund, available)}>{isOpen ? 'Caixa já está aberto' : 'Abrir caixa agora'}</button></section></AppShell>;
+}
+
+function Reports() {
+  const state = useStore();
+  const sold = state.sales.reduce((sum, sale) => sum + sale.qty, 0);
+  const revenue = state.sales.reduce((sum, sale) => sum + sale.value, 0);
+  const estimatedCost = sold * state.cost;
+  return <AppShell role="admin"><section className="soft-card report-hero"><OrnamentTitle>Relatório do Dia</OrnamentTitle><p>Um resumo doce da operação de hoje</p><div className="report-grid"><div><span>Faturamento bruto</span><b>{money(revenue)}</b></div><div><span>Lucro bruto estimado</span><b>{money(revenue - estimatedCost)}</b></div><div><span>Fatias vendidas</span><b>{sold}</b></div><div><span>Fatias restantes</span><b>{Math.max(0, state.available - sold)}</b></div><div><span>Custo estimado</span><b>{money(estimatedCost)}</b></div><div><span>Delivery</span><b>{state.sales.filter(sale => sale.kind.startsWith('Delivery')).length}</b></div></div></section><section className="soft-card payment-report"><OrnamentTitle>Por forma de pagamento</OrnamentTitle>{payments.map(payment => <p key={payment}><span>{payment}</span><b>{money(state.sales.filter(sale => sale.payment === payment).reduce((sum, sale) => sum + sale.value, 0))}</b></p>)}</section><RecentSales/></AppShell>;
+}
+
+function Admin() {
+  return <AppShell role="admin"><section className="soft-card admin-hero"><BarChart3/><OrnamentTitle>Painel Administrativo</OrnamentTitle><p>Visão geral da operação de hoje.</p></section><div className="admin-menu"><Link to="/admin/caixa"><Store/>Abertura de Caixa<ChevronRight/></Link><Link to="/admin/relatorios"><BarChart3/>Relatórios<ChevronRight/></Link><Link to="/admin/configuracoes"><Settings/>Configurações<ChevronRight/></Link><a href="/documentacao/index.html"><MoreHorizontal/>Documentação<ChevronRight/></a></div></AppShell>;
+}
+
+function Config() {
+  const state = useStore();
+  const [price, setPrice] = useState(state.price);
+  const [cost, setCost] = useState(state.cost);
+  const [saved, setSaved] = useState(false);
+  return <AppShell role="admin"><section className="soft-card config-card"><OrnamentTitle>Configurações</OrnamentTitle><label htmlFor="slice-price">Preço da fatia</label><input id="slice-price" type="number" min="0" step="0.01" value={price} onChange={event => setPrice(+event.target.value)}/><label htmlFor="average-cost">Custo médio da fatia</label><input id="average-cost" type="number" min="0" step="0.01" value={cost} onChange={event => setCost(+event.target.value)}/><label htmlFor="stamps-required">Carimbos para prêmio</label><input id="stamps-required" value="14" disabled/><label htmlFor="instagram">Instagram</label><input id="instagram" defaultValue="@adocebrigaderia"/><label htmlFor="whatsapp">WhatsApp</label><input id="whatsapp" defaultValue="(11) 99999-9999"/><button className="primary-button" disabled={price < 0 || cost < 0} onClick={() => { state.setConfig(price, cost); setSaved(true); }}>Salvar configurações</button>{saved && <p className="inline-notice">Configurações salvas.</p>}</section></AppShell>;
+}
+
+export default function App() {
+  return <Routes><Route path="*" element={<Login/>}/><Route path="/login" element={<Login/>}/><Route path="/cliente" element={<ClientHome/>}/><Route path="/cliente/cartao" element={<CardPage/>}/><Route path="/cliente/familia" element={<Family/>}/><Route path="/cliente/indicacoes" element={<Referrals/>}/><Route path="/cliente/resgatar/:token" element={<Redeem/>}/><Route path="/vendedor" element={<SellerHome/>}/><Route path="/vendedor/nova-venda" element={<NewSale/>}/><Route path="/vendedor/vendas-recentes" element={<RecentPage/>}/><Route path="/vendedor/venda/:id" element={<SaleRoute/>}/><Route path="/admin" element={<Admin/>}/><Route path="/admin/caixa" element={<Cash/>}/><Route path="/admin/relatorios" element={<Reports/>}/><Route path="/admin/configuracoes" element={<Config/>}/></Routes>;
+}

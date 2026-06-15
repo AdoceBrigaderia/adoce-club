@@ -1,0 +1,14 @@
+.gift-illustration {
+  left: 24px;
+  top: 74px;
+}
+
+.gift-illustration svg {
+  width: 38px;
+  height: 38px;
+}
+
+.referral-panel label {
+  margin-top: 12px;
+  padding-left: 60px;
+}
