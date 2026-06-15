@@ -1,0 +1,23 @@
+.flavor-slice {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  margin-right: 18px;
+}
+
+.copy-code {
+  width: 100%;
+  color: var(--brown);
+  box-shadow: none;
+}
+
+.app-shell nav a {
+  min-width: 64px;
+  min-height: 48px;
+  justify-content: center;
+}
+
+.icon {
+  min-width: 44px;
+  min-height: 44px;
+}

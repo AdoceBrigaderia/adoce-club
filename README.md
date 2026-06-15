@@ -10,6 +10,6 @@ npm run asset
 npm run dev
 ```
 
-Build: `npm run build`. Testes: `npm test`. Documentação: `npm run docs` e abra `Documentacao/Portal/index.html`.
+Validação: `npm run lint`, `npm run build` e `npm test`. Documentação: `npm run docs` e abra `Documentacao/Portal/index.html`.
 
-O front usa estado mockado em memória. A estrutura futura do Supabase está em `supabase/`.
+O front usa estado demonstrativo persistido no navegador. A estrutura futura do Supabase está em `supabase/`.

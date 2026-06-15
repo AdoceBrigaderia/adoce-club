@@ -9,3 +9,5 @@
 - `conceito-familia-indicacao.jpeg`: referência para cartão familiar e indicação.
 
 O app usa uma mini fatia de torta de chocolate como carimbo. Nenhum cupcake deve ser criado fora da logo original.
+
+As referências são materiais de design e não são dados de clientes. O carimbo final está em `public/assets/carimbo-fatia.png`.

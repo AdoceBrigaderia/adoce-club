@@ -6,3 +6,5 @@
 4. Vendedor recupera vendas pendentes em Vendas Recentes.
 5. Admin acompanha estoque e valores no relatório.
 6. Ao fim do dia, confere divergências antes do fechamento.
+
+No protótipo, os dados ficam apenas no navegador utilizado. Não limpar os dados do site durante uma demonstração, pois isso reinicia o estado local.
