@@ -1,0 +1,135 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Documentação Adoce Club</title><style>:root{font-family:Segoe UI,sans-serif;color:#4e211a;background:#fff8f5}*{box-sizing:border-box}body{margin:0;display:grid;grid-template-columns:290px 1fr}aside{height:100vh;position:sticky;top:0;overflow:auto;padding:25px;background:#5a201b;color:#fff}aside h1{font-family:Georgia;font-style:italic;color:#ffd9e6}aside a{display:block;color:#fff;text-decoration:none;padding:8px;border-bottom:1px solid #ffffff20;font-size:13px}input{width:100%;padding:11px;border:0;border-radius:9px;margin:10px 0 15px}main{max-width:920px;padding:40px}article{background:#fff;border:1px solid #edc8be;border-radius:16px;padding:25px;margin-bottom:20px;box-shadow:0 8px 25px #63291c10}h1,h2{font-family:Georgia;color:#70231d}code{background:#fff0e7;padding:2px 5px;border-radius:4px}.eyebrow{color:#d83278;font-weight:700;font-size:12px}li{margin:7px 0}@media(max-width:760px){body{display:block}aside{height:auto;position:relative}aside nav{display:none}main{padding:16px}}</style></head><body><aside><h1>Adoce Club</h1><p>Portal offline do projeto</p><input id="q" placeholder="Buscar na documentação"><nav><a href="#d0">Visao-Geral</a><a href="#d1">Regras-de-Negocio</a><a href="#d2">Fluxo-Cliente</a><a href="#d3">Fluxo-Vendedor</a><a href="#d4">Fluxo-Admin</a><a href="#d5">Cartao-Familiar</a><a href="#d6">Indicacao-Amigos</a><a href="#d7">Controle-Caixa</a><a href="#d8">Modelo-Banco</a><a href="#d9">Arquitetura-Tecnica</a><a href="#d10">Instalacao-Local</a><a href="#d11">Testes</a><a href="#d12">Roadmap</a><a href="#d13">Decisoes-Tecnicas</a><a href="#d14">Seguranca-e-Privacidade</a><a href="#d15">Git-e-GitHub</a><a href="#d16">Como-Operar-no-Dia-a-Dia</a><a href="#d17">README</a></nav></aside><main><article id="d0" data-search="# visão geral
+
+o adoce club substitui o cartão físico da adoce brigaderia por um pwa. ele conecta clientes presenciais e delivery, vendedores e sócios em uma experiência de fidelidade visual.
+
+## objetivos do mvp
+
+- registrar vendas e meios de pagamento.
+- distribuir carimbos por qr code ou link/token.
+- compartilhar progresso em cartão familiar.
+- premiar indicação após a primeira compra confirmada.
+- exibir indicadores operacionais básicos.
+"><div class="eyebrow">01-Visao-Geral.md</div><p><h1>Visão Geral</h1></p><p>O Adoce Club substitui o cartão físico da Adoce Brigaderia por um PWA. Ele conecta clientes presenciais e delivery, vendedores e sócios em uma experiência de fidelidade visual.</p><p><h2>Objetivos do MVP</h2></p><p><ul><li>Registrar vendas e meios de pagamento.</li>
+<li>Distribuir carimbos por QR Code ou link/token.</li>
+<li>Compartilhar progresso em cartão familiar.</li>
+<li>Premiar indicação após a primeira compra confirmada.</li>
+<li>Exibir indicadores operacionais básicos.</li>
+</ul></p></article><article id="d1" data-search="# regras de negócio
+
+- cada fatia comprada gera um carimbo.
+- o cartão padrão possui 14 carimbos e concede uma fatia grátis.
+- carimbos de membros de família vão para o cartão compartilhado.
+- token de venda é único e não pode ser resgatado duas vezes.
+- indicação concede +1 somente após a primeira compra do indicado.
+- caixa é único por dia e começa com fundo fixo e estoque informado.
+- preço, custo médio e meta de carimbos são configuráveis.
+"><div class="eyebrow">02-Regras-de-Negocio.md</div><p><h1>Regras de Negócio</h1></p><p><ul><li>Cada fatia comprada gera um carimbo.</li>
+<li>O cartão padrão possui 14 carimbos e concede uma fatia grátis.</li>
+<li>Carimbos de membros de família vão para o cartão compartilhado.</li>
+<li>Token de venda é único e não pode ser resgatado duas vezes.</li>
+<li>Indicação concede +1 somente após a primeira compra do indicado.</li>
+<li>Caixa é único por dia e começa com fundo fixo e estoque informado.</li>
+<li>Preço, custo médio e meta de carimbos são configuráveis.</li>
+</ul></p></article><article id="d2" data-search="# fluxo cliente
+
+o cliente entra no app, consulta o cartão, resgata tokens, acompanha prêmios, cria ou entra em família e compartilha seu código de indicação. delivery usa o mesmo fluxo por link recebido no whatsapp.
+"><div class="eyebrow">03-Fluxo-Cliente.md</div><p><h1>Fluxo Cliente</h1></p><p>O cliente entra no app, consulta o cartão, resgata tokens, acompanha prêmios, cria ou entra em família e compartilha seu código de indicação. Delivery usa o mesmo fluxo por link recebido no WhatsApp.
+</p></article><article id="d3" data-search="# fluxo vendedor
+
+o vendedor confere o caixa, informa quantidade, pagamento e modalidade. presencial gera qr code; delivery gera token/link. vendas recentes permitem reabrir o qr ou compartilhar novamente.
+"><div class="eyebrow">04-Fluxo-Vendedor.md</div><p><h1>Fluxo Vendedor</h1></p><p>O vendedor confere o caixa, informa quantidade, pagamento e modalidade. Presencial gera QR Code; delivery gera token/link. Vendas recentes permitem reabrir o QR ou compartilhar novamente.
+</p></article><article id="d4" data-search="# fluxo admin
+
+o sócio abre o caixa, informa fundo e estoque, acompanha vendas, faturamento, custo e lucro estimado, e altera configurações comerciais.
+"><div class="eyebrow">05-Fluxo-Admin.md</div><p><h1>Fluxo Admin</h1></p><p>O sócio abre o caixa, informa fundo e estoque, acompanha vendas, faturamento, custo e lucro estimado, e altera configurações comerciais.
+</p></article><article id="d5" data-search="# cartão familiar
+
+cada pessoa mantém perfil próprio, mas uma associação em `family_members` direciona eventos ao cartão da família. convites usam código único. todos recebem comunicação individual.
+"><div class="eyebrow">06-Cartao-Familiar.md</div><p><h1>Cartão Familiar</h1></p><p>Cada pessoa mantém perfil próprio, mas uma associação em <code>family_members</code> direciona eventos ao cartão da família. Convites usam código único. Todos recebem comunicação individual.
+</p></article><article id="d6" data-search="# indicação de amigos
+
+o indicado registra o código no cadastro. o bônus é liberado apenas no primeiro evento de compra e a restrição única evita duplicidade.
+"><div class="eyebrow">07-Indicacao-Amigos.md</div><p><h1>Indicação de Amigos</h1></p><p>O indicado registra o código no cadastro. O bônus é liberado apenas no primeiro evento de compra e a restrição única evita duplicidade.
+</p></article><article id="d7" data-search="# controle de caixa
+
+a sessão diária registra operador, horário, fundo fixo e estoque inicial. relatórios comparam vendas, pagamentos, estoque estimado e fechamento informado para destacar divergências.
+"><div class="eyebrow">08-Controle-Caixa.md</div><p><h1>Controle de Caixa</h1></p><p>A sessão diária registra operador, horário, fundo fixo e estoque inicial. Relatórios comparam vendas, pagamentos, estoque estimado e fechamento informado para destacar divergências.
+</p></article><article id="d8" data-search="# modelo de banco
+
+o modelo postgresql está em `supabase/schema.sql`, dados demonstrativos em `seed.sql` e políticas rls em `policies.sql`. eventos de fidelidade e auditoria são imutáveis no uso normal.
+"><div class="eyebrow">09-Modelo-Banco.md</div><p><h1>Modelo de Banco</h1></p><p>O modelo PostgreSQL está em <code>supabase/schema.sql</code>, dados demonstrativos em <code>seed.sql</code> e políticas RLS em <code>policies.sql</code>. Eventos de fidelidade e auditoria são imutáveis no uso normal.
+</p></article><article id="d9" data-search="# arquitetura técnica
+
+react + typescript + vite compõem o pwa. react router trata rotas, zustand mantém o protótipo local e supabase será a camada de autenticação, postgresql, rls e funções transacionais.
+"><div class="eyebrow">10-Arquitetura-Tecnica.md</div><p><h1>Arquitetura Técnica</h1></p><p>React + TypeScript + Vite compõem o PWA. React Router trata rotas, Zustand mantém o protótipo local e Supabase será a camada de autenticação, PostgreSQL, RLS e funções transacionais.
+</p></article><article id="d10" data-search="# instalação local
+
+1. use node.js 24 ou superior.
+2. execute `npm install`.
+3. execute `npm run asset`.
+4. execute `npm run dev`.
+5. para produção, execute `npm run build`.
+
+as variáveis futuras estão documentadas em `.env.example`.
+"><div class="eyebrow">11-Instalacao-Local.md</div><p><h1>Instalação Local</h1></p><p>1. Use Node.js 24 ou superior.
+2. Execute <code>npm install</code>.
+3. Execute <code>npm run asset</code>.
+4. Execute <code>npm run dev</code>.
+5. Para produção, execute <code>npm run build</code>.</p><p>As variáveis futuras estão documentadas em <code>.env.example</code>.
+</p></article><article id="d11" data-search="# testes
+
+playwright cobre abertura do app, login, caixa, venda, qr, vendas recentes, resgate, família, indicação e relatório. execute `npm test`. o roteiro exploratório está em `tests/roteiro-manual.md`.
+"><div class="eyebrow">12-Testes.md</div><p><h1>Testes</h1></p><p>Playwright cobre abertura do app, login, caixa, venda, QR, vendas recentes, resgate, família, indicação e relatório. Execute <code>npm test</code>. O roteiro exploratório está em <code>tests/roteiro-manual.md</code>.
+</p></article><article id="d12" data-search="# roadmap
+
+## fase 1
+
+pwa, caixa, vendas, qr/token, fidelidade, família, indicação, relatórios e documentação.
+
+## fase 2
+
+fatia premiada, aniversário, sabores, notificações e campanhas.
+
+## fase 3
+
+torta ideal, votação, vip, vale-presente, compra em grupo, impressão e painel desktop avançado.
+"><div class="eyebrow">13-Roadmap.md</div><p><h1>Roadmap</h1></p><p><h2>Fase 1</h2></p><p>PWA, caixa, vendas, QR/token, fidelidade, família, indicação, relatórios e documentação.</p><p><h2>Fase 2</h2></p><p>Fatia premiada, aniversário, sabores, notificações e campanhas.</p><p><h2>Fase 3</h2></p><p>Torta ideal, votação, VIP, vale-presente, compra em grupo, impressão e painel desktop avançado.
+</p></article><article id="d13" data-search="# decisões técnicas
+
+- pwa reduz custo inicial e funciona por link.
+- vite mantém o mvp simples.
+- estado mockado permite validar ux antes do backend.
+- ledger de eventos evita editar saldo diretamente.
+- carimbo usa fatia de torta gerada para o projeto, não cupcake.
+"><div class="eyebrow">14-Decisoes-Tecnicas.md</div><p><h1>Decisões Técnicas</h1></p><p><ul><li>PWA reduz custo inicial e funciona por link.</li>
+<li>Vite mantém o MVP simples.</li>
+<li>Estado mockado permite validar UX antes do backend.</li>
+<li>Ledger de eventos evita editar saldo diretamente.</li>
+<li>Carimbo usa fatia de torta gerada para o projeto, não cupcake.</li>
+</ul></p></article><article id="d14" data-search="# segurança e privacidade
+
+nunca versionar `.env`, chaves ou dados reais. rls limita vendedor às próprias vendas e cliente aos próprios recursos. tokens devem ser aleatórios, expiráveis e resgatados por função transacional.
+"><div class="eyebrow">15-Seguranca-e-Privacidade.md</div><p><h1>Segurança e Privacidade</h1></p><p>Nunca versionar <code>.env</code>, chaves ou dados reais. RLS limita vendedor às próprias vendas e cliente aos próprios recursos. Tokens devem ser aleatórios, expiráveis e resgatados por função transacional.
+</p></article><article id="d15" data-search="# git e github
+
+o repositório deve permanecer privado. commits precisam ser claros e nenhum segredo deve entrar no histórico. antes de publicar, conferir `git status` e visibilidade com github cli.
+"><div class="eyebrow">16-Git-e-GitHub.md</div><p><h1>Git e GitHub</h1></p><p>O repositório deve permanecer privado. Commits precisam ser claros e nenhum segredo deve entrar no histórico. Antes de publicar, conferir <code>git status</code> e visibilidade com GitHub CLI.
+</p></article><article id="d16" data-search="# como operar no dia a dia
+
+1. admin abre o caixa e informa estoque.
+2. vendedor registra cada venda.
+3. cliente recebe carimbos por qr ou link.
+4. vendedor recupera vendas pendentes em vendas recentes.
+5. admin acompanha estoque e valores no relatório.
+6. ao fim do dia, confere divergências antes do fechamento.
+"><div class="eyebrow">17-Como-Operar-no-Dia-a-Dia.md</div><p><h1>Como Operar no Dia a Dia</h1></p><p>1. Admin abre o caixa e informa estoque.
+2. Vendedor registra cada venda.
+3. Cliente recebe carimbos por QR ou link.
+4. Vendedor recupera vendas pendentes em Vendas Recentes.
+5. Admin acompanha estoque e valores no relatório.
+6. Ao fim do dia, confere divergências antes do fechamento.
+</p></article><article id="d17" data-search="# documentação adoce club
+
+esta pasta reúne visão de produto, regras, fluxos, arquitetura, segurança e operação. execute `npm run docs` para regenerar o portal offline.
+"><div class="eyebrow">README.md</div><p><h1>Documentação Adoce Club</h1></p><p>Esta pasta reúne visão de produto, regras, fluxos, arquitetura, segurança e operação. Execute <code>npm run docs</code> para regenerar o portal offline.
+</p></article></main><script>q.oninput=()=>{const v=q.value.toLowerCase();document.querySelectorAll('article').forEach(a=>a.hidden=!a.dataset.search.includes(v))}</script></body></html>
