@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { BarChart3, CakeSlice, Home, LogOut, MoreHorizontal, Settings, ShoppingBag, Store, Users } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import type { Role } from '../store';
+import { type Role, useStore } from '../store';
 import { AdoceBackground, AdoceBrandHeader, DecorativeLayer } from './AdoceVisuals';
 
 const clientNav = [
@@ -23,6 +23,7 @@ const staffNav = [
 export function AppShell({ children, role = 'cliente' }: { children: ReactNode; role?: Role }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const logoutStaff = useStore(state => state.logoutStaff);
   const isClient = role === 'cliente';
   const subtitle = isClient ? 'Doces momentos, mais vantagens!' : role === 'vendedor' ? 'Vendedor' : 'Gestão da Brigaderia';
   const navItems = isClient ? clientNav : staffNav;
@@ -31,7 +32,7 @@ export function AppShell({ children, role = 'cliente' }: { children: ReactNode; 
   return <AdoceBackground surface={surface}><div className={`app-shell role-${role}`}>
     <div className="status-bar" aria-hidden="true"><b>9:41</b><span></span><i>▮▮▮⌁▰</i></div>
     <DecorativeLayer />
-    <AdoceBrandHeader subtitle={subtitle} action={<button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => navigate(isClient ? '/cliente/perfil' : '/login')}>{isClient ? <Users /> : <LogOut />}</button>} />
+    <AdoceBrandHeader subtitle={subtitle} action={<button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => { if (isClient) navigate('/cliente/perfil'); else { logoutStaff(); navigate('/equipe'); } }}>{isClient ? <Users /> : <LogOut />}</button>} />
     <main>{children}</main>
     <nav className="bottom-nav">{navItems.map(([href, Icon, label]) => {
       const active = location.pathname === href || (href !== '/cliente' && href !== '/admin' && location.pathname.startsWith(href));
