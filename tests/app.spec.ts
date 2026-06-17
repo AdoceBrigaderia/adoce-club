@@ -1,95 +1,44 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
-async function openCash(page: import('@playwright/test').Page) {
-  await page.goto('/login');
-  await page.getByRole('button', { name: 'Entrar como Vendedor' }).click();
-  await page.goto('/admin/caixa');
-  await page.getByRole('button', { name: 'Abrir caixa agora' }).click();
-}
+async function reset(page:Page){await page.goto('/login');await page.evaluate(()=>localStorage.clear());await page.reload()}
+async function loginAdmin(page:Page){await page.goto('/login');await page.getByRole('button',{name:'Entrar como Rubens / Gestor'}).click()}
+async function openCash(page:Page){await loginAdmin(page);await page.goto('/admin/caixa');await page.getByRole('button',{name:'Abrir caixa agora'}).click()}
+async function choosePayment(page:Page,name:string){await page.getByRole('button',{name,exact:true}).click()}
 
-test.beforeEach(async ({ page }) => {
-  await page.goto('/login');
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-});
+test.beforeEach(async({page})=>reset(page));
 
-test('cliente vê cartão premium com 14 espaços e fatias', async ({ page }) => {
-  await page.getByRole('button', { name: 'Entrar como Cliente' }).click();
-  await expect(page.getByText('Seu cartão fidelidade')).toBeVisible();
-  await expect(page.locator('.stamp')).toHaveCount(14);
-  await expect(page.locator('.stamp img')).toHaveCount(9);
-});
+test('cliente home, navegação e logo sem borda preta',async({page})=>{await page.getByRole('button',{name:'Entrar como Cliente'}).click();await expect(page.getByText('Hoje é dia de fatia!')).toBeVisible();await expect(page.locator('.stamp-slot')).toHaveCount(14);await expect(page.locator('.brand-logo-frame')).toBeVisible();await expect(page.getByRole('link',{name:'Reservar agora'})).toBeVisible();await page.getByRole('link',{name:'Mais'}).click();await expect(page.getByText('Meu Perfil')).toBeVisible()});
 
-test('venda fica bloqueada sem caixa aberto', async ({ page }) => {
-  await page.goto('/vendedor/nova-venda');
-  await expect(page.getByText('Abra o caixa antes da primeira venda')).toBeVisible();
-});
+test('botões principais cabem no viewport mobile',async({page})=>{await page.goto('/cliente');const overflow=await page.locator('body').evaluate(el=>el.scrollWidth>el.clientWidth);expect(overflow).toBeFalsy();for(const button of await page.locator('.primary-button').all()){const box=await button.evaluate(el=>({scroll:el.scrollWidth,client:el.clientWidth,height:(el as HTMLElement).offsetHeight}));expect(box.scroll).toBeLessThanOrEqual(box.client+1);expect(box.height).toBeGreaterThanOrEqual(48)}});
 
-test('abre caixa, registra venda presencial e exibe QR Code', async ({ page }) => {
-  await openCash(page);
-  await page.goto('/vendedor/nova-venda');
-  await page.getByRole('button', { name: '3', exact: true }).click();
-  await page.getByRole('button', { name: 'Pix' }).click();
-  await page.getByRole('button', { name: /Cliente Presencial/ }).click();
-  await expect(page.getByRole('heading', { name: 'Venda registrada!' })).toBeVisible();
-  await expect(page.getByText('Peça ao cliente para escanear')).toBeVisible();
-  await expect(page.locator('.qr svg')).toHaveCount(2);
-});
+test('configurações gerais, empresa e taxas persistem',async({page})=>{await loginAdmin(page);await page.goto('/admin/configuracoes');await page.getByLabel('Preço da fatia').fill('18');await page.getByLabel('Carimbos para prêmio').fill('12');await page.getByLabel('Instagram').fill('@adoceoficial');await page.getByLabel('WhatsApp').fill('85988887777');await page.getByRole('button',{name:'Salvar configurações'}).click();await page.reload();await expect(page.getByLabel('Preço da fatia')).toHaveValue('18');await expect(page.getByLabel('Carimbos para prêmio')).toHaveValue('12');await page.getByRole('button',{name:'Empresa',exact:true}).click();await page.getByLabel('Nome fantasia').fill('Adoce Festival');await expect(page.getByLabel('Latitude')).toHaveCount(0);await expect(page.getByLabel('Longitude')).toHaveCount(0);await page.getByRole('button',{name:'Salvar dados da empresa'}).click();await page.reload();await page.getByRole('button',{name:'Empresa',exact:true}).click();await expect(page.getByLabel('Nome fantasia')).toHaveValue('Adoce Festival')});
 
-test('delivery gera token, copia link e pode ser reaberto', async ({ page }) => {
-  await openCash(page);
-  await page.goto('/vendedor/nova-venda');
-  await page.getByRole('button', { name: '2', exact: true }).click();
-  await page.getByRole('button', { name: 'Cartão' }).click();
-  await page.getByRole('button', { name: /Delivery \/ Retirada/ }).click();
-  await expect(page.locator('.token')).toContainText('ADOCE-');
-  await page.getByRole('button', { name: 'Copiar link' }).click();
-  await expect(page.getByText('Link copiado.')).toBeVisible();
-  await page.getByRole('link', { name: 'Ver vendas recentes' }).click();
-  const rows = page.locator('.sale-row');
-  await expect(rows).toHaveCount(3);
-  await rows.locator('a').first().click();
-  await expect(page.getByRole('heading', { name: 'Venda registrada!' })).toBeVisible();
-});
+test('caixa cadastra sabores, caldas e venda usa esses dados',async({page})=>{await loginAdmin(page);await page.goto('/admin/caixa');await page.getByLabel('Sabor 1').fill('Morango Supremo');await page.getByLabel('Quantidade 1').fill('7');await page.getByLabel('Sabor 2').fill('Pistache');await page.getByLabel('Quantidade 2').fill('5');await page.getByLabel('Sabor 3').fill('');await page.getByLabel('Quantidade 3').fill('0');await page.getByLabel('Sabor 4').fill('');await page.getByLabel('Quantidade 4').fill('0');await page.getByLabel('Caldas disponíveis').fill('Ninho, Chocolate');await page.getByRole('button',{name:'Abrir caixa agora'}).click();await page.goto('/admin/vendas');await page.getByLabel('Sabor da fatia').selectOption('Pistache');await page.getByLabel('Calda disponível').selectOption('Chocolate');await page.getByRole('button',{name:/Cliente Presencial/}).click();await expect(page.getByText('Pistache · Calda: Chocolate')).toBeVisible();await page.goto('/cliente');await expect(page.getByText('Pistache')).toBeVisible()});
 
-test('cliente resgata token uma vez e mantém carimbos após recarregar', async ({ page }) => {
-  await page.goto('/cliente/resgatar/ADOCE-A11');
-  await page.getByRole('button', { name: 'Receber carimbos' }).click();
-  await expect(page.getByText('Carimbos adicionados com sucesso!')).toBeVisible();
-  await page.getByRole('button', { name: 'Ver meu cartão' }).click();
-  await expect(page.getByText('11 de 14 carimbos')).toBeVisible();
-  await page.reload();
-  await expect(page.getByText('11 de 14 carimbos')).toBeVisible();
-  await page.goto('/cliente/resgatar/ADOCE-A11');
-  await page.getByRole('button', { name: 'Receber carimbos' }).click();
-  await expect(page.getByText('Este token é inválido ou já foi usado.')).toBeVisible();
-});
+for(const method of ['Dinheiro','Pix','Cartão'])test(`${method} gera QR e venda paga`,async({page})=>{await openCash(page);await page.goto('/admin/vendas');await choosePayment(page,method);await page.getByRole('button',{name:/Cliente Presencial/}).click();await expect(page.getByRole('heading',{name:'Venda registrada!'})).toBeVisible();await expect(page.locator('.qr-frame svg')).toBeVisible()});
 
-test('família e indicação têm regras claras', async ({ page }) => {
-  await page.goto('/cliente/familia');
-  await expect(page.getByText('Todos os membros compartilham os carimbos.')).toBeVisible();
-  await page.getByRole('button', { name: 'Criar cartão familiar' }).click();
-  await expect(page.getByText('Família Demo')).toBeVisible();
-  await page.goto('/cliente/indicacoes');
-  await expect(page.getByText('Quando seu amigo fizer a 1ª compra, você ganha +1 carimbo.')).toBeVisible();
-  await page.getByRole('button', { name: /Simular primeira/ }).click();
-  await expect(page.getByRole('button', { name: 'Bônus já liberado' })).toBeDisabled();
-});
+for(const method of ['Cortesia','Permuta','Fidelidade'])test(`${method} registra saída sem QR`,async({page})=>{await openCash(page);await page.goto('/admin/vendas');await choosePayment(page,method);await page.getByLabel('Observação').fill('Operação demonstrativa');await page.getByRole('button',{name:/Cliente Presencial/}).click();await expect(page.getByRole('heading',{name:'Saída registrada!'})).toBeVisible();await expect(page.getByText('Esta operação não gera QR nem carimbo.')).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0)});
 
-test('admin visualiza relatório e salva configurações', async ({ page }) => {
-  await page.goto('/admin/relatorios');
-  await expect(page.getByText('Faturamento bruto')).toBeVisible();
-  await expect(page.getByText('Lucro bruto estimado')).toBeVisible();
-  await page.goto('/admin/configuracoes');
-  await page.getByLabel('Preço da fatia').fill('18');
-  await page.getByRole('button', { name: 'Salvar configurações' }).click();
-  await expect(page.getByText('Configurações salvas.')).toBeVisible();
-});
+test('Mercado Pago Point usa terminal do login e só gera QR aprovado',async({page})=>{await openCash(page);await page.goto('/admin/vendas');await expect(page.getByText('Terminal:')).toContainText('Maquininha Rubens');await choosePayment(page,'Mercado Pago Point');await page.getByRole('button',{name:/Cliente Presencial/}).click();await expect(page.getByRole('heading',{name:'Aguardando pagamento'})).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0);await page.getByRole('button',{name:'Pagamento aprovado'}).click();await expect(page.getByRole('heading',{name:'Venda registrada!'})).toBeVisible()});
 
-test('portal offline abre e a busca filtra seções', async ({ page }) => {
-  await page.goto('file:///D:/Projetos/AdoceClub/Documentacao/Portal/index.html');
-  await expect(page.getByRole('heading', { name: 'Adoce Club', exact: true })).toBeVisible();
-  await page.getByPlaceholder('Buscar na documentação').fill('GitHub');
-  await expect(page.getByRole('heading', { name: 'Git e GitHub' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Visão Geral' })).toBeHidden();
-});
+test('login Beth carrega terminal Beth',async({page})=>{await page.getByRole('button',{name:'Entrar como Beth'}).click();await page.goto('/admin/caixa');await page.getByRole('button',{name:'Abrir caixa agora'}).click();await page.goto('/vendedor/nova-venda');await expect(page.getByText('Terminal:')).toContainText('Maquininha Beth')});
+
+test('Mercado Pago Link pendente não gera carimbo e pago libera QR',async({page})=>{await openCash(page);await page.goto('/admin/vendas');await choosePayment(page,'Mercado Pago Link');await page.getByRole('button',{name:/Delivery/}).click();await expect(page.getByText('Enquanto pendente, não gera QR nem carimbo.')).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0);await page.getByRole('button',{name:'Pagamento aprovado'}).click();await expect(page.getByRole('heading',{name:'Venda registrada!'})).toBeVisible()});
+
+test('gasto aparece no relatório e fechamento',async({page})=>{await openCash(page);await page.getByLabel('Valor').fill('25');await page.getByLabel('Descrição').fill('Lanche da equipe');await page.getByRole('button',{name:'Salvar gasto'}).click();await expect(page.getByText('Gasto registrado.')).toBeVisible();await page.goto('/admin/relatorios');await expect(page.getByText('Gastos do caixa')).toBeVisible();await expect(page.getByText('R$ 25,00')).toBeVisible()});
+
+test('reserva pendente não gera venda nem carimbo',async({page})=>{await page.goto('/cliente/reserva');await page.getByRole('button',{name:'Confirmar reserva'}).click();await expect(page.getByRole('heading',{name:'Reserva criada!'})).toBeVisible();await expect(page.getByText('Reserva pendente não baixa estoque e não gera carimbo.')).toBeVisible()});
+
+test('ações de reserva copiam link e abrem painel administrativo',async({page,context})=>{await context.grantPermissions(['clipboard-read','clipboard-write']);await page.goto('/cliente/reserva');await page.getByRole('button',{name:'Confirmar reserva'}).click();await page.getByRole('button',{name:'Copiar link de pagamento'}).click();await expect(page.getByText('Link de pagamento copiado.')).toBeVisible();await expect(await page.evaluate(()=>navigator.clipboard.readText())).toBe('https://mpago.la/reserva-demo');await loginAdmin(page);await page.goto('/admin/reservas');await expect(page.getByText('Cliente Demo · 1 fatia(s)')).toBeVisible();await page.getByRole('button',{name:'Marcar paga'}).click();await expect(page.getByText('paid · Mercado Pago Link')).toBeVisible();await page.getByRole('button',{name:'Retirada'}).click();await expect(page.getByText('picked_up · Mercado Pago Link')).toBeVisible();await page.getByRole('button',{name:'Cancelar'}).click();await expect(page.getByText('cancelled · Mercado Pago Link')).toBeVisible()});
+
+test('família, indicação convertida, perfil, prêmios e selos',async({page})=>{await page.goto('/cliente/familia');await expect(page.locator('.center-copy')).toContainText('Todos os membros compartilham os carimbos');await page.getByRole('button',{name:'Simular primeira compra paga'}).click();await expect(page.getByText('Indicação convertida e bônus liberado.')).toBeVisible();await page.goto('/cliente/perfil');await page.getByLabel('WhatsApp').fill('85999990000');await page.getByRole('button',{name:'Salvar perfil'}).click();await page.reload();await expect(page.getByLabel('WhatsApp')).toHaveValue('85999990000');await page.goto('/cliente/premios');await expect(page.getByText('Família Doce')).toBeVisible()});
+
+test('maps, waze e uber usam busca pelo nome do festival',async({page})=>{await page.goto('/cliente/como-chegar');await expect(page.getByText('Festival de fatias Adoce Brigaderia').first()).toBeVisible();await expect(page.getByRole('link',{name:'Abrir no Waze'})).toHaveAttribute('href',/Festival%20de%20fatias%20Adoce%20Brigaderia/);await expect(page.getByRole('link',{name:'Abrir no Google Maps'})).toHaveAttribute('href',/Festival%20de%20fatias%20Adoce%20Brigaderia/);await expect(page.getByRole('link',{name:'Chamar Uber'})).toHaveAttribute('href',/uber/)});
+
+test('atalhos e menus secundários navegam para o lugar certo',async({page})=>{await page.goto('/cliente');await page.getByRole('button',{name:'Perfil'}).click();await expect(page.getByRole('heading',{name:'Meu Perfil'})).toBeVisible();await page.goto('/cliente/mais');await page.getByRole('link',{name:/Sair/}).click();await expect(page.getByRole('button',{name:'Entrar como Cliente'})).toBeVisible();await loginAdmin(page);await page.goto('/admin');await page.getByRole('link',{name:/Registrar Gasto/}).click();await expect(page).toHaveURL(/#gastos$/);await expect(page.getByRole('heading',{name:'Registrar gasto'})).toBeVisible();await page.goto('/admin/mais');await page.getByRole('link',{name:/Usuários/}).click();await expect(page).toHaveURL(/tab=usuarios/);await expect(page.getByRole('heading',{name:'Usuários Internos'})).toBeVisible();await page.getByRole('button',{name:'Sair'}).click();await expect(page.getByRole('button',{name:'Entrar como Cliente'})).toBeVisible()});
+
+test('gestor navega e documentação volta ao painel',async({page})=>{await loginAdmin(page);for(const [label,url] of [['Vendas','/admin/vendas'],['Caixa','/admin/caixa'],['Relatórios','/admin/relatorios'],['Mais','/admin/mais']]){await page.getByRole('navigation').getByRole('link',{name:label,exact:true}).click();await expect(page).toHaveURL(new RegExp(url));await page.goto('/admin')}await page.goto('/admin/documentacao');await expect(page.getByRole('link',{name:'Voltar ao painel'})).toBeVisible()});
+
+test('pagamento recusado e cobrança cancelada encerram a venda sem QR',async({page})=>{await openCash(page);await page.goto('/admin/vendas');await choosePayment(page,'Mercado Pago Point');await page.getByRole('button',{name:/Cliente Presencial/}).click();await page.getByRole('button',{name:'Pagamento recusado'}).click();await expect(page.getByRole('heading',{name:'Pagamento recusado'})).toBeVisible();await expect(page.getByText('Esta venda não gerou QR nem carimbo.')).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0);await page.getByRole('button',{name:'Nova venda'}).click();await choosePayment(page,'Mercado Pago Link');await page.getByRole('button',{name:/Delivery/}).click();await page.getByRole('button',{name:'Cancelar cobrança'}).click();await expect(page.getByRole('heading',{name:'Cobrança cancelada'})).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0)});
+
+test('portal offline abre, busca e menu mobile funcionam',async({page})=>{await page.setViewportSize({width:390,height:844});await page.goto('file:///D:/Projetos/AdoceClub/Documentacao/Portal/index.html');await expect(page.getByRole('heading',{name:'Adoce Club',exact:true})).toBeVisible();const menu=page.getByRole('button',{name:'Abrir menu'});await menu.click();await expect(menu).toHaveAttribute('aria-expanded','true');await page.getByPlaceholder('Ex.: fidelidade, caixa, testes').fill('Mercado Pago');await expect(page.getByRole('heading',{name:'MVP Final Adoce Club'})).toBeVisible()});

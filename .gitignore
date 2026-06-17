@@ -7,3 +7,4 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 public/assets/carimbo-fatia-source.png
+public/assets/__backup_assets_*/

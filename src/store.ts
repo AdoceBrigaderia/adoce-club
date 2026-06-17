@@ -1,90 +1,62 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
-export type Payment = 'Dinheiro' | 'Pix' | 'Cartão' | 'Cortesia' | 'Fidelidade';
-export type Sale = {
-  id: string;
-  qty: number;
-  value: number;
-  payment: Payment;
-  kind: 'Presencial' | 'Delivery / Retirada';
-  seller: string;
-  token: string;
-  claimed: boolean;
-  createdAt: string;
-};
+export type Role = 'cliente' | 'vendedor' | 'admin';
+export type Payment = 'Dinheiro' | 'Pix' | 'Cartão' | 'Mercado Pago Point' | 'Mercado Pago Link' | 'Cortesia' | 'Permuta' | 'Fidelidade';
+export type SaleKind = 'Presencial' | 'Delivery / Retirada';
+export type PaymentStatus = 'paid' | 'pending' | 'created' | 'sent_to_terminal' | 'waiting_payment' | 'declined' | 'cancelled' | 'expired';
+export type ExpenseCategory = 'Custo c/ lanche' | 'Custo c/ insumos';
+export type FlavorStock = { name:string; quantity:number };
 
-type Role = 'cliente' | 'vendedor' | 'admin';
-type Family = { name: string; code: string; members: string[] };
+export type Sale = { id:string; qty:number; payment:Payment; kind:SaleKind; seller:string; operatorId:string; terminal?:string; terminalId?:string; flavor?:string; syrup?:string; token:string; claimed:boolean; createdAt:string; generatesQr:boolean; generatesStamps:boolean; grossAmount:number; feePercent:number; feeAmount:number; netAmount:number; status:PaymentStatus; notes?:string; paymentLinkUrl?:string };
+export type CashExpense = { id:string; amount:number; category:ExpenseCategory; description:string; createdBy:string; createdAt:string };
+export type Reservation = { id:string; customer:string; quantity:number; flavor:string; deliveryType:SaleKind; status:'pending'|'waiting_payment'|'paid'|'confirmed'|'picked_up'|'cancelled'|'expired'; paymentMethod:Payment; paymentLinkUrl?:string; createdAt:string; expiresAt:string; notes:string };
+export type Reward = { id:string; customer:string; type:string; origin:string; status:'pendente'|'retirado'|'expirado'|'cancelado'; generatedAt:string; redeemedAt?:string; confirmedBy?:string; notes?:string };
+export type Badge = { id:string; name:string; earned:boolean; reason:string };
+export type AuditLog = { id:string; action:string; createdAt:string; operator:string };
+export type Family = { name:string; code:string; members:string[] };
+export type Terminal = { id:string; name:string; nickname:string; operatorId:string; mercadoPagoTerminalId:string; storeId:string; posId:string; active:boolean; notes:string };
+export type InternalUser = { id:string; name:string; login:string; role:'Sócio/Admin'|'Vendedor'; active:boolean; defaultTerminalId:string; canSwitchTerminal:boolean };
+export type AppSettings = { price:number; cost:number; stampGoal:number; instagram:string; whatsapp:string; pixFee:number; cardFee:number; pointFee:number; linkPixFee:number; linkCardFee:number; referralBonusStamps:number; rewardValidityDays:number; birthdayDiscountEnabled:boolean; birthdayDiscountCapPercent:number; familyCardEnabled:boolean; luckySliceEnabled:boolean; defaultReward:string };
+export type CompanySettings = { legalName:string; tradeName:string; cnpj:string; stateRegistration:string; whatsapp:string; instagram:string; email:string; address:string; neighborhood:string; city:string; state:string; zipCode:string; reference:string; placeName:string; latitude:string; longitude:string; mapsUrl:string; wazeUrl:string; uberUrl:string; openingHours:string; dailyCallout:string };
+export type CustomerProfile = { name:string; whatsapp:string; instagram:string; birthDate:string; acceptsPromotions:boolean };
+
 type State = {
-  role: Role;
-  stamps: number;
-  reward: number;
-  cashOpen: boolean;
-  cashFund: number;
-  available: number;
-  price: number;
-  cost: number;
-  sales: Sale[];
-  family: Family | null;
-  referralCode: string;
-  referralBonus: boolean;
-  setRole: (role: Role) => void;
-  openCash: (fund: number, available: number) => void;
-  addSale: (sale: Omit<Sale, 'id' | 'token' | 'claimed' | 'createdAt'>) => Sale;
-  claim: (token: string) => boolean;
-  createFamily: () => void;
-  joinFamily: (code: string) => boolean;
-  activateReferral: () => void;
-  setConfig: (price: number, cost: number) => void;
+  role:Role; currentUserId:string; stamps:number; cashOpen:boolean; cashFund:number; available:number; producedPies:number; cashFlavors:FlavorStock[]; syrups:string[];
+  settings:AppSettings; company:CompanySettings; customer:CustomerProfile; sales:Sale[]; expenses:CashExpense[]; reservations:Reservation[]; rewards:Reward[]; badges:Badge[]; audit:AuditLog[]; family:Family|null; referralCode:string; referrals:{customer:string;invited:number;converted:number;bonus:number}[]; terminals:Terminal[]; users:InternalUser[];
+  setRole:(role:Role,userId?:string)=>void; openCash:(fund:number,available:number,producedPies?:number,flavors?:FlavorStock[],syrups?:string[])=>void; closeCash:()=>void;
+  addSale:(data:{qty:number;payment:Payment;kind:SaleKind;notes?:string;flavor?:string;syrup?:string})=>Sale; updatePayment:(id:string,status:PaymentStatus)=>Sale|undefined; claim:(token:string)=>boolean;
+  addExpense:(data:{amount:number;category:ExpenseCategory;description:string})=>void; addReservation:(data:Omit<Reservation,'id'|'createdAt'|'expiresAt'>)=>Reservation; updateReservation:(id:string,status:Reservation['status'])=>void;
+  redeemReward:(id:string)=>void; createFamily:()=>void; joinFamily:(code:string)=>boolean; convertReferral:()=>void;
+  saveSettings:(settings:Partial<AppSettings>)=>void; saveCompany:(company:Partial<CompanySettings>)=>void; saveCustomer:(customer:Partial<CustomerProfile>)=>void; saveTerminal:(terminal:Terminal)=>void; saveUser:(user:InternalUser)=>void;
 };
 
-const initialSales: Sale[] = [
-  { id: 'A12', qty: 3, value: 48, payment: 'Pix', kind: 'Presencial', seller: 'Atendimento Demo', token: 'ADOCE-A12', claimed: true, createdAt: '09:35' },
-  { id: 'A11', qty: 2, value: 32, payment: 'Dinheiro', kind: 'Delivery / Retirada', seller: 'Atendimento Demo', token: 'ADOCE-A11', claimed: false, createdAt: '09:20' },
-];
+export const paidPayments:Payment[]=['Dinheiro','Pix','Cartão','Mercado Pago Point','Mercado Pago Link'];
+export const noQrPayments:Payment[]=['Cortesia','Permuta','Fidelidade'];
+export const allPayments:Payment[]=[...paidPayments,...noQrPayments];
+const now=()=>new Date().toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const uid=(prefix:string)=>`${prefix}${Date.now().toString(36).toUpperCase()}${Math.floor(Math.random()*99)}`;
 
-export const useStore = create<State>()(
-  persist(
-    (set, get) => ({
-      role: 'cliente', stamps: 9, reward: 0, cashOpen: false, cashFund: 0,
-      available: 72, price: 16, cost: 6.67, sales: initialSales,
-      family: null, referralCode: 'ADOCE10', referralBonus: false,
-      setRole: role => set({ role }),
-      openCash: (cashFund, available) => set({ cashOpen: true, cashFund, available }),
-      addSale: data => {
-        const id = `A${Math.floor(100 + Math.random() * 900)}`;
-        const sale = {
-          ...data, id, token: `ADOCE-${id}-${Date.now().toString(36).toUpperCase()}`,
-          claimed: false, createdAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        };
-        set(state => ({ sales: [sale, ...state.sales] }));
-        return sale;
-      },
-      claim: token => {
-        const sale = get().sales.find(item => item.token === token);
-        if (!sale || sale.claimed) return false;
-        const total = get().stamps + sale.qty;
-        set(state => ({
-          stamps: total % 14,
-          reward: state.reward + Math.floor(total / 14),
-          sales: state.sales.map(item => item.token === token ? { ...item, claimed: true } : item),
-        }));
-        return true;
-      },
-      createFamily: () => set({ family: { name: 'Família Demo', code: 'FAMILIA-DOCE', members: ['Cliente Demo'] } }),
-      joinFamily: code => {
-        if (code.trim().toUpperCase() !== 'FAMILIA-DOCE') return false;
-        set({ family: { name: 'Família Demo', code: 'FAMILIA-DOCE', members: ['Cliente Demo', 'Novo membro'] } });
-        return true;
-      },
-      activateReferral: () => {
-        if (get().referralBonus) return;
-        const total = get().stamps + 1;
-        set(state => ({ referralBonus: true, stamps: total % 14, reward: state.reward + Math.floor(total / 14) }));
-      },
-      setConfig: (price, cost) => set({ price, cost }),
-    }),
-    { name: 'adoce-club-demo', storage: createJSONStorage(() => localStorage) },
-  ),
-);
+const defaultSettings:AppSettings={price:16,cost:6.67,stampGoal:14,instagram:'@adocebrigaderia',whatsapp:'(85) 99999-9999',pixFee:.99,cardFee:3.49,pointFee:3.49,linkPixFee:.99,linkCardFee:4.99,referralBonusStamps:1,rewardValidityDays:30,birthdayDiscountEnabled:true,birthdayDiscountCapPercent:20,familyCardEnabled:true,luckySliceEnabled:true,defaultReward:'1 fatia grátis'};
+const defaultCompany:CompanySettings={legalName:'',tradeName:'Adoce Brigaderia',cnpj:'',stateRegistration:'',whatsapp:'(85) 99999-9999',instagram:'@adocebrigaderia',email:'',address:'Festival de fatias Adoce Brigaderia',neighborhood:'',city:'',state:'CE',zipCode:'',reference:'',placeName:'Festival de fatias Adoce Brigaderia',latitude:'',longitude:'',mapsUrl:'https://www.google.com/maps/search/?api=1&query=Festival%20de%20fatias%20Adoce%20Brigaderia',wazeUrl:'https://waze.com/ul?q=Festival%20de%20fatias%20Adoce%20Brigaderia&navigate=yes',uberUrl:'',openingHours:'Quinta, sexta e sábado, 19h às 23h',dailyCallout:'Hoje é dia de fatia!'};
+const defaultFlavors:FlavorStock[]=[{name:'Ninho com Morango',quantity:24},{name:'Brigadeiro Clássico',quantity:18},{name:'Chocolate Belga',quantity:18},{name:'Doce de Leite',quantity:12}];
+const defaultSyrups=['Leite Ninho','Brigadeiro Belga','Doce de Leite','Nutella'];
+const terminals:Terminal[]=[{id:'term-rubens',name:'Maquininha Rubens',nickname:'Point Rubens',operatorId:'rubens',mercadoPagoTerminalId:'MOCK-RUBENS',storeId:'STORE-DEMO',posId:'POS-RUBENS',active:true,notes:'Terminal demonstrativo'},{id:'term-beth',name:'Maquininha Beth',nickname:'Point Beth',operatorId:'beth',mercadoPagoTerminalId:'MOCK-BETH',storeId:'STORE-DEMO',posId:'POS-BETH',active:true,notes:'Terminal demonstrativo'}];
+const users:InternalUser[]=[{id:'rubens',name:'Rubens',login:'rubens',role:'Sócio/Admin',active:true,defaultTerminalId:'term-rubens',canSwitchTerminal:true},{id:'beth',name:'Beth',login:'beth',role:'Vendedor',active:true,defaultTerminalId:'term-beth',canSwitchTerminal:false}];
+const feeFor=(p:Payment,s:AppSettings)=>p==='Pix'?s.pixFee:p==='Cartão'?s.cardFee:p==='Mercado Pago Point'?s.pointFee:p==='Mercado Pago Link'?s.linkCardFee:0;
+
+export const useStore=create<State>()(persist((set,get)=>({
+  role:'cliente',currentUserId:'rubens',stamps:9,cashOpen:false,cashFund:0,available:72,producedPies:6,cashFlavors:defaultFlavors,syrups:defaultSyrups,settings:defaultSettings,company:defaultCompany,customer:{name:'Cliente Demo',whatsapp:'',instagram:'',birthDate:'',acceptsPromotions:true},sales:[],expenses:[],reservations:[],rewards:[],badges:[{id:'top',name:'Cliente Top',earned:false,reason:'Complete sua primeira cartela'},{id:'first',name:'Primeira Cartela Completa',earned:false,reason:'Complete 14 carimbos'},{id:'family',name:'Família Doce',earned:true,reason:'Participa de cartão familiar'},{id:'referral',name:'Indicador Doce',earned:false,reason:'Converta 3 indicações'},{id:'delivery',name:'Cliente Delivery',earned:true,reason:'Já comprou por delivery'},{id:'vip',name:'Cliente VIP',earned:false,reason:'Benefício futuro'}],audit:[],family:{name:'Família Bezerra',code:'FAMILIA-DOCE',members:['MB','RB','AB']},referralCode:'BEZERRA10',referrals:[{customer:'Cliente Demo',invited:4,converted:2,bonus:2},{customer:'Maria Júlia',invited:3,converted:1,bonus:1}],terminals,users,
+  setRole:(role,userId)=>set({role,currentUserId:userId??(role==='vendedor'?'beth':'rubens')}),
+  openCash:(cashFund,available,producedPies=6,flavors,syrups)=>set(s=>{const cleanFlavors=(flavors?.filter(f=>f.name.trim()&&f.quantity>0)??s.cashFlavors);const cleanSyrups=(syrups?.map(v=>v.trim()).filter(Boolean)??s.syrups);const total=cleanFlavors.reduce((a,v)=>a+v.quantity,0)||available;return{cashOpen:true,cashFund,available:total,producedPies,cashFlavors:cleanFlavors,syrups:cleanSyrups,audit:[{id:uid('AUD'),action:`${s.users.find(u=>u.id===s.currentUserId)?.name} abriu o caixa com ${total} fatias.`,createdAt:now(),operator:s.currentUserId},...s.audit]};}),
+  closeCash:()=>set(s=>({cashOpen:false,audit:[{id:uid('AUD'),action:`${s.users.find(u=>u.id===s.currentUserId)?.name} fechou o caixa.`,createdAt:now(),operator:s.currentUserId},...s.audit]})),
+  addSale:data=>{const s=get();const user=s.users.find(u=>u.id===s.currentUserId)??s.users[0];const terminal=s.terminals.find(t=>t.id===user.defaultTerminalId);const paidManual=['Dinheiro','Pix','Cartão'].includes(data.payment);const nonRevenue=noQrPayments.includes(data.payment);const status:PaymentStatus=paidManual||nonRevenue?'paid':data.payment==='Mercado Pago Point'?'waiting_payment':'pending';const gross=nonRevenue?0:data.qty*s.settings.price;const fee=feeFor(data.payment,s.settings);const sale:Sale={id:uid('V'),qty:data.qty,payment:data.payment,kind:data.kind,seller:user.name,operatorId:user.id,terminal:terminal?.name,terminalId:terminal?.id,flavor:data.flavor,syrup:data.syrup,token:uid('ADOCE-'),claimed:false,createdAt:now(),generatesQr:paidManual,generatesStamps:paidManual,grossAmount:gross,feePercent:fee,feeAmount:+(gross*fee/100).toFixed(2),netAmount:+(gross-(gross*fee/100)).toFixed(2),status,notes:data.notes,paymentLinkUrl:data.payment==='Mercado Pago Link'?`https://mpago.la/mock-${uid('L')}`:undefined};set(st=>({sales:[sale,...st.sales],audit:[{id:uid('AUD'),action:`${user.name} registrou ${data.payment} de ${data.qty} fatias${data.flavor?` (${data.flavor})`:''}.`,createdAt:now(),operator:user.name},...st.audit]}));return sale;},
+  updatePayment:(id,status)=>{let result:Sale|undefined;set(s=>({sales:s.sales.map(sale=>{if(sale.id!==id)return sale;const paid=status==='paid';result={...sale,status,generatesQr:paid,generatesStamps:paid};return result;}),audit:[{id:uid('AUD'),action:`Pagamento ${status} na venda ${id}.`,createdAt:now(),operator:s.currentUserId},...s.audit]}));return result;},
+  claim:token=>{const s=get();const sale=s.sales.find(v=>v.token===token);if(!sale||sale.claimed||!sale.generatesStamps||sale.status!=='paid')return false;const total=s.stamps+sale.qty;const completed=Math.floor(total/s.settings.stampGoal);set(st=>({stamps:total%s.settings.stampGoal,sales:st.sales.map(v=>v.id===sale.id?{...v,claimed:true}:v),rewards:completed?[{id:uid('P'),customer:st.customer.name,type:st.settings.defaultReward,origin:'cartela completa',status:'pendente',generatedAt:now()},...st.rewards]:st.rewards,badges:completed?st.badges.map(b=>b.id==='top'||b.id==='first'?{...b,earned:true}:b):st.badges}));return true;},
+  addExpense:data=>set(s=>({expenses:[{...data,id:uid('G'),createdBy:s.users.find(u=>u.id===s.currentUserId)?.name??'Operador',createdAt:now()},...s.expenses],audit:[{id:uid('AUD'),action:`Gasto de R$ ${data.amount.toFixed(2)} em ${data.category}.`,createdAt:now(),operator:s.currentUserId},...s.audit]})),
+  addReservation:data=>{const reservation:Reservation={...data,id:uid('R'),createdAt:now(),expiresAt:'Hoje, 20:00'};set(s=>({reservations:[reservation,...s.reservations]}));return reservation;},
+  updateReservation:(id,status)=>set(s=>({reservations:s.reservations.map(r=>r.id===id?{...r,status}:r)})),redeemReward:id=>set(s=>({rewards:s.rewards.map(r=>r.id===id?{...r,status:'retirado',redeemedAt:now(),confirmedBy:s.currentUserId}:r)})),
+  createFamily:()=>set({family:{name:'Família Doce',code:'FAMILIA-DOCE',members:['Cliente Demo']}}),joinFamily:code=>{if(code.trim().toUpperCase()!=='FAMILIA-DOCE')return false;set({family:{name:'Família Doce',code:'FAMILIA-DOCE',members:['Cliente Demo','Novo membro']}});return true;},
+  convertReferral:()=>set(s=>{const total=s.stamps+s.settings.referralBonusStamps;return{stamps:total%s.settings.stampGoal,referrals:s.referrals.map((r,i)=>i? r:{...r,converted:r.converted+1,bonus:r.bonus+s.settings.referralBonusStamps}),badges:s.badges.map(b=>b.id==='referral'&&s.referrals[0].converted+1>=3?{...b,earned:true}:b)};}),
+  saveSettings:settings=>set(s=>({settings:{...s.settings,...settings},audit:[{id:uid('AUD'),action:'Configurações gerais alteradas.',createdAt:now(),operator:s.currentUserId},...s.audit]})),saveCompany:company=>set(s=>({company:{...s.company,...company}})),saveCustomer:customer=>set(s=>({customer:{...s.customer,...customer}})),saveTerminal:terminal=>set(s=>({terminals:s.terminals.some(t=>t.id===terminal.id)?s.terminals.map(t=>t.id===terminal.id?terminal:t):[...s.terminals,terminal]})),saveUser:user=>set(s=>({users:s.users.some(u=>u.id===user.id)?s.users.map(u=>u.id===user.id?user:u):[...s.users,user]})),
+}),{name:'adoce-club-mvp-final',storage:createJSONStorage(()=>localStorage),version:3}));

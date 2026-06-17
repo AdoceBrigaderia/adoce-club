@@ -1,22 +1,41 @@
 import type { ReactNode } from 'react';
-import { BarChart3, CakeSlice, Gift, Heart, Home, LogOut, Settings, ShoppingBag, Users } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { BarChart3, CakeSlice, Home, LogOut, MoreHorizontal, Settings, ShoppingBag, Store, Users } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import type { Role } from '../store';
+import { AdoceBackground, AdoceBrandHeader, DecorativeLayer } from './AdoceVisuals';
 
-type Role = 'cliente' | 'vendedor' | 'admin';
+const clientNav = [
+  ['/cliente', Home, 'Início'],
+  ['/cliente/cartao', CakeSlice, 'Cartão'],
+  ['/cliente/familia', Users, 'Família'],
+  ['/cliente/indicacoes', Users, 'Indique'],
+  ['/cliente/mais', MoreHorizontal, 'Mais'],
+] as const;
+
+const staffNav = [
+  ['/admin', Home, 'Painel'],
+  ['/admin/vendas', ShoppingBag, 'Vendas'],
+  ['/admin/caixa', Store, 'Caixa'],
+  ['/admin/relatorios', BarChart3, 'Relatórios'],
+  ['/admin/mais', Settings, 'Mais'],
+] as const;
 
 export function AppShell({ children, role = 'cliente' }: { children: ReactNode; role?: Role }) {
   const navigate = useNavigate();
-  return <div className="app-shell">
-    <header>
-      <img src="/assets/logo-adoce.jpeg" alt="Adoce Brigaderia" />
-      <div><h1>Adoce Club <Heart size={20} fill="currentColor" /></h1><p>{role === 'cliente' ? 'Doces momentos, mais vantagens!' : role === 'vendedor' ? 'Painel do Vendedor' : 'Gestão da Brigaderia'}</p></div>
-      <button className="icon" aria-label="Sair" onClick={() => navigate('/login')}><LogOut /></button>
-    </header>
+  const location = useLocation();
+  const isClient = role === 'cliente';
+  const subtitle = isClient ? 'Doces momentos, mais vantagens!' : role === 'vendedor' ? 'Vendedor' : 'Gestão da Brigaderia';
+  const navItems = isClient ? clientNav : staffNav;
+
+  const surface = isClient ? 'client' : 'gestor';
+  return <AdoceBackground surface={surface}><div className={`app-shell role-${role}`}>
+    <div className="status-bar" aria-hidden="true"><b>9:41</b><span></span><i>▮▮▮⌁▰</i></div>
+    <DecorativeLayer />
+    <AdoceBrandHeader subtitle={subtitle} action={<button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => navigate(isClient ? '/cliente/perfil' : '/login')}>{isClient ? <Users /> : <LogOut />}</button>} />
     <main>{children}</main>
-    <nav>{role === 'cliente' ? <>
-      <Link to="/cliente"><Home />Início</Link><Link to="/cliente/cartao"><CakeSlice />Cartão</Link><Link to="/cliente/familia"><Users />Família</Link><Link to="/cliente/indicacoes"><Gift />Indique</Link>
-    </> : <>
-      <Link to={`/${role}`}><Home />Início</Link><Link to="/vendedor/nova-venda"><ShoppingBag />Vendas</Link><Link to="/admin/relatorios"><BarChart3 />Relatórios</Link><Link to="/admin/configuracoes"><Settings />Mais</Link>
-    </>}</nav>
-  </div>;
+    <nav className="bottom-nav">{navItems.map(([href, Icon, label]) => {
+      const active = location.pathname === href || (href !== '/cliente' && href !== '/admin' && location.pathname.startsWith(href));
+      return <Link className={active ? 'active' : ''} to={href} key={href}><Icon /><span>{label}</span></Link>;
+    })}</nav>
+  </div></AdoceBackground>;
 }
