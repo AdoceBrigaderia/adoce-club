@@ -33,11 +33,9 @@ export function AppShell({ children, role = 'cliente' }: { children: ReactNode; 
     <DecorativeLayer />
     <AdoceBrandHeader subtitle={subtitle} action={<button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => navigate(isClient ? '/cliente/perfil' : '/login')}>{isClient ? <Users /> : <LogOut />}</button>} />
     <main>{children}</main>
-    <nav className="bottom-nav">{navItems.map(([href, Icon, label], index) => {
+    <nav className="bottom-nav">{navItems.map(([href, Icon, label]) => {
       const active = location.pathname === href || (href !== '/cliente' && href !== '/admin' && location.pathname.startsWith(href));
-      const iconNames = isClient ? ['home', 'card', 'family', 'referral', 'more'] : ['home', 'sales', 'cash', 'reports', 'settings'];
-      const iconPath = `/assets/icons/split/icon-${iconNames[index]}.png`;
-      return <Link className={active ? 'active' : ''} to={href} key={href}><img className="nav-asset-icon" src={iconPath} alt="" onError={event => { event.currentTarget.style.display = 'none'; const fallback = event.currentTarget.nextElementSibling as SVGElement | null; if (fallback) fallback.style.display = 'block'; }} /><Icon style={{ display: 'none' }}/><span>{label}</span></Link>;
+      return <Link className={active ? 'active' : ''} to={href} key={href}><Icon /><span>{label}</span></Link>;
     })}</nav>
   </div></AdoceBackground>;
 }

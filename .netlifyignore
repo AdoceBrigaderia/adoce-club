@@ -1,0 +1,10 @@
+node_modules
+dist
+test-results
+playwright-report
+.git
+.supabase
+supabase/.temp
+Documentacao/prints
+Documentacao/Planejamento
+*.log
