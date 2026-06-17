@@ -8,3 +8,6 @@ test-results/
 *.tsbuildinfo
 public/assets/carimbo-fatia-source.png
 public/assets/__backup_assets_*/
+
+# Local Netlify folder
+.netlify
