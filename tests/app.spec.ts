@@ -1,12 +1,33 @@
 import { expect, test, type Page } from '@playwright/test';
 
+async function mockBetaApi(page:Page){
+  await page.route('**/.netlify/functions/customer-register',async route=>{
+    const body=route.request().postDataJSON();
+    await route.fulfill({json:{token:'test-token',customer:{id:'c1',name:body.name,whatsapp:body.whatsapp,email:body.email||'',instagram:body.instagram||'',birth_date:body.birthDate||'',accepts_promotions:body.acceptsPromotions!==false},card:{stamps:0,stamps_required:14},events:[]}});
+  });
+  await page.route('**/.netlify/functions/customer-login',async route=>{
+    const body=route.request().postDataJSON();
+    await route.fulfill({json:{token:'test-token',customer:{id:'c1',name:'Cliente Beta',whatsapp:body.whatsapp,email:'',instagram:'',birth_date:'',accepts_promotions:true},card:{stamps:0,stamps_required:14},events:[]}});
+  });
+  await page.route('**/.netlify/functions/customer-update',async route=>{
+    const body=route.request().postDataJSON();
+    await route.fulfill({json:{customer:{id:'c1',name:body.name,whatsapp:body.whatsapp,email:body.email||'',instagram:body.instagram||'',birth_date:body.birthDate||'',accepts_promotions:body.acceptsPromotions!==false},card:{stamps:0,stamps_required:14},events:[]}});
+  });
+  await page.route('**/.netlify/functions/sale-create',async route=>{
+    await route.fulfill({json:{id:'sale-cloud',token:`ADOCE-TEST-${Date.now()}`}});
+  });
+  await page.route('**/.netlify/functions/loyalty-claim',async route=>{
+    await route.fulfill({json:{customer:{id:'c1',name:'Cliente Beta',whatsapp:'85999990000',email:'',instagram:'',birth_date:'',accepts_promotions:true},card:{stamps:3,stamps_required:14},events:[{event_type:'purchase',stamps:3,note:'Compra registrada',created_at:new Date().toISOString()}]}});
+  });
+}
+
 async function reset(page:Page){await page.goto('/cadastro');await page.evaluate(()=>localStorage.clear());await page.reload()}
 async function registerCustomer(page:Page){await page.goto('/cadastro');await page.getByRole('textbox',{name:'Nome'}).fill('Cliente Beta');await page.getByRole('textbox',{name:'WhatsApp'}).fill('85999990000');await page.getByLabel('Crie sua senha').fill('1234');await page.getByRole('checkbox',{name:/Aceito participar/}).check();await page.getByRole('checkbox',{name:/versão beta/}).check();await page.getByRole('button',{name:'Criar meu Adoce Club'}).click();await expect(page).toHaveURL(/\/cliente$/)}
 async function loginAdmin(page:Page){await page.goto('/equipe');await page.getByLabel('PIN temporário').fill('1706');await page.getByRole('button',{name:'Entrar na operação'}).click()}
 async function openCash(page:Page){await loginAdmin(page);await page.goto('/admin/caixa');await page.getByRole('button',{name:'Abrir caixa agora'}).click()}
 async function choosePayment(page:Page,name:string){await page.getByRole('button',{name,exact:true}).click()}
 
-test.beforeEach(async({page})=>{await reset(page);await registerCustomer(page)});
+test.beforeEach(async({page})=>{await mockBetaApi(page);await reset(page);await registerCustomer(page)});
 
 test('cadastro beta exige dados, LGPD e cria acesso do cliente',async({page})=>{await reset(page);await page.getByRole('button',{name:'Criar meu Adoce Club'}).click();await expect(page.getByText('Informe nome, WhatsApp válido')).toBeVisible();await registerCustomer(page);await page.goto('/entrar');await page.getByRole('textbox',{name:'WhatsApp'}).fill('85999990000');await page.getByLabel('Senha').fill('1234');await page.getByRole('button',{name:'Entrar'}).click();await expect(page.getByText('Hoje é dia de fatia!')).toBeVisible()});
 
