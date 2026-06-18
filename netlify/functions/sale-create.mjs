@@ -10,6 +10,8 @@ export async function handler(event) {
     if (!body.qty || Number(body.qty) < 1) return json(400, { error: 'Quantidade invalida.' });
     const token = `ADOCE-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
     const gross = revenuePayments.has(body.payment) ? Number(body.grossAmount || 0) : 0;
+    const subtotal = revenuePayments.has(body.payment) ? Number(body.subtotalAmount ?? gross) : 0;
+    const discountAmount = revenuePayments.has(body.payment) ? Number(body.discountAmount || 0) : 0;
     const generates = revenuePayments.has(body.payment) && body.status === 'paid';
     const supabase = getAdmin();
     const { data, error } = await supabase.from('beta_sales').insert({
@@ -22,6 +24,12 @@ export async function handler(event) {
       payment_method: body.payment,
       sale_kind: body.kind,
       status: body.status || 'paid',
+      subtotal_amount: subtotal,
+      discount_type: body.discountType || 'none',
+      discount_value: Number(body.discountValue || 0),
+      discount_reason: body.discountReason || null,
+      discount_note: body.discountNote || null,
+      discount_amount: discountAmount,
       gross_amount: gross,
       generates_stamps: generates,
     }).select('id, token').single();

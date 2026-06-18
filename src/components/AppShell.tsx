@@ -24,15 +24,19 @@ export function AppShell({ children, role = 'cliente' }: { children: ReactNode; 
   const navigate = useNavigate();
   const location = useLocation();
   const logoutStaff = useStore(state => state.logoutStaff);
+  const seasonalTheme = useStore(state => state.seasonalTheme);
   const isClient = role === 'cliente';
   const subtitle = isClient ? 'Doces momentos, mais vantagens!' : role === 'vendedor' ? 'Vendedor' : 'Gestão da Brigaderia';
   const navItems = isClient ? clientNav : staffNav;
+  const today = new Date();
+  const themeActive = isClient && seasonalTheme.active && seasonalTheme.kind !== 'padrao' && (!seasonalTheme.startsAt || new Date(seasonalTheme.startsAt) <= today) && (!seasonalTheme.endsAt || new Date(seasonalTheme.endsAt) >= today);
 
   const surface = isClient ? 'client' : 'gestor';
-  return <AdoceBackground surface={surface}><div className={`app-shell role-${role}`}>
+  return <AdoceBackground surface={surface}><div className={`app-shell role-${role}${themeActive ? ` seasonal-${seasonalTheme.kind}` : ''}`}>
     <div className="status-bar" aria-hidden="true"><b>9:41</b><span></span><i>▮▮▮⌁▰</i></div>
     <DecorativeLayer />
     <AdoceBrandHeader subtitle={subtitle} action={<button className="header-action" aria-label={isClient ? 'Perfil' : 'Sair'} onClick={() => { if (isClient) navigate('/cliente/perfil'); else { logoutStaff(); navigate('/equipe'); } }}>{isClient ? <Users /> : <LogOut />}</button>} />
+    {themeActive && <div className="seasonal-banner">{seasonalTheme.message || (seasonalTheme.kind === 'brasil' ? 'Garanta sua fatia antes do jogo' : seasonalTheme.kind === 'sao-joao' ? 'Arraiá de fatias Adoce' : 'Semana doce para compartilhar')}</div>}
     <main>{children}</main>
     <nav className="bottom-nav">{navItems.map(([href, Icon, label]) => {
       const active = location.pathname === href || (href !== '/cliente' && href !== '/admin' && location.pathname.startsWith(href));
