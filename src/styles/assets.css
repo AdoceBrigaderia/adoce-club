@@ -70,6 +70,197 @@
 .reserve-card b { white-space: nowrap; }
 .cake-stamp { content: url('/assets/stamps/stamp-fatia-chocolate-alt.png'); }
 .nav-asset-icon { width: 27px; height: 27px; object-fit: contain; }
+.app-shell main { padding-bottom: 108px; }
+.reservation-created,
+.qr-card {
+  overflow: visible;
+}
+.reservation-created > *,
+.qr-card > * {
+  max-width: 100%;
+}
+.reservation-created-list,
+.reservation-items,
+.reservation-cart,
+.client-reservations,
+.customer-row {
+  width: 100%;
+}
+.reservation-created-list {
+  display: grid;
+  gap: 7px;
+  text-align: left;
+}
+.reservation-created-list span,
+.reservation-items span,
+.client-reservation small,
+.customer-row small {
+  overflow-wrap: anywhere;
+}
+.reservation-footnote {
+  display: block;
+  width: 100%;
+  padding: 0 8px;
+  line-height: 1.3;
+  text-align: center;
+}
+.reservation-builder .cart-picker,
+.reservation-cart,
+.reservations-admin .reservation-row,
+.client-reservations,
+.customers-admin {
+  display: grid;
+  gap: 12px;
+}
+.reservation-cart {
+  padding: 12px;
+  border: 1px solid rgba(233, 63, 137, .28);
+  border-radius: 16px;
+  background: rgba(255, 249, 244, .72);
+}
+.reservation-cart h3 {
+  margin: 0;
+  color: var(--adoce-brown);
+  font: 800 22px/1.05 "Brush Script MT", "Segoe Script", cursive;
+}
+.cart-item {
+  display: grid;
+  grid-template-columns: 1fr 38px 28px 38px;
+  gap: 7px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px dashed rgba(233, 63, 137, .22);
+}
+.cart-item button {
+  min-height: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(233, 63, 137, .32);
+  background: rgba(255, 255, 255, .72);
+  color: var(--adoce-pink);
+}
+.cart-item svg { width: 16px; height: 16px; }
+.reservations-admin .reservation-row {
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(233, 63, 137, .18);
+}
+.reservation-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.reservation-main b {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.reservation-main small,
+.reservation-items span {
+  font-size: 12px;
+  line-height: 1.25;
+}
+.reservation-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.reservation-actions button,
+.cancel-panel button {
+  min-height: 42px;
+  padding: 7px;
+  border-radius: 13px;
+  border: 1px solid rgba(233, 63, 137, .3);
+  background: rgba(255, 249, 244, .82);
+  color: var(--adoce-brown);
+  font-weight: 800;
+}
+.cancel-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 236, 242, .75);
+}
+.cancel-panel textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+.client-reservation,
+.customer-row {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-top: 1px dashed rgba(233, 63, 137, .2);
+}
+.client-reservation.cancelled span {
+  color: #a43c36;
+  font-weight: 800;
+}
+.customer-summary {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 236, 242, .7);
+}
+.customer-summary b {
+  color: var(--adoce-pink);
+  font-size: 34px;
+}
+.customer-row {
+  grid-template-columns: 1fr;
+  text-align: left;
+}
+.family-people {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+.family-people div {
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  padding: 12px 8px;
+  border-radius: 16px;
+  background: rgba(255, 236, 242, .72);
+  border: 1px solid rgba(233, 63, 137, .22);
+}
+.family-people span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(#f65aa0,#df2877);
+  color: white;
+  font-weight: 900;
+}
+.family-people small { text-align: center; }
+.relation-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.relation-grid button {
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(233, 63, 137, .28);
+  background: rgba(255, 249, 244, .82);
+  color: var(--adoce-brown);
+  font-weight: 800;
+}
+.relation-grid button.active {
+  background: var(--adoce-pink);
+  color: white;
+}
 @media (min-width: 650px) {
   .adoce-background { min-height: calc(100dvh - 44px); border-radius: 34px; }
 }

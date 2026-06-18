@@ -1,4 +1,4 @@
-import type { CustomerProfile, Sale } from '../store';
+import type { CustomerProfile, Reward, Sale } from '../store';
 
 const TOKEN_KEY = 'adoce_beta_token';
 const STAFF_TOKEN_KEY = 'adoce_staff_token';
@@ -13,6 +13,8 @@ type Bundle = {
     instagram?: string | null;
     birth_date?: string | null;
     accepts_promotions?: boolean;
+    invite_code?: string | null;
+    referred_by_code?: string | null;
   };
   card: { stamps: number; stamps_required: number };
   events?: { event_type: string; stamps: number; note?: string; created_at: string }[];
@@ -70,8 +72,37 @@ export function bundleToState(bundle: Bundle) {
     lgpdAccepted: true,
     betaAccepted: true,
     acceptsPromotions: bundle.customer.accepts_promotions !== false,
+    inviteCode: bundle.customer.referred_by_code || '',
   };
-  return { customer, stamps: bundle.card.stamps, stampGoal: bundle.card.stamps_required, events: bundle.events || [] };
+  const rewards: Reward[] = (bundle.events || [])
+    .filter(event => event.event_type === 'redeem')
+    .map((event, index) => ({
+      id: `${event.created_at}-${index}`,
+      customer: customer.name,
+      type: '1 fatia grátis',
+      origin: event.note || 'cartela completa',
+      status: 'pendente',
+      generatedAt: new Date(event.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    }));
+  return { customer, stamps: bundle.card.stamps, stampGoal: bundle.card.stamps_required, events: bundle.events || [], rewards };
+}
+
+export type CustomerAdminRow = {
+  id: string;
+  name: string;
+  whatsapp: string;
+  instagram?: string | null;
+  birth_date?: string | null;
+  invite_code?: string | null;
+  referred_by_code?: string | null;
+  purchase_count: number;
+  favorite_flavor: string;
+  last_purchase_at?: string | null;
+};
+
+export async function listCustomers() {
+  const headers = staffToken() ? { authorization: `Bearer ${staffToken()}` } : undefined;
+  return api<{ total: number; customers: CustomerAdminRow[] }>('customers-list', { headers });
 }
 
 export async function registerBetaCustomer(form: CustomerProfile) {

@@ -1,5 +1,19 @@
 import { checkRateLimit, getAdmin, hashPassword, json, loadCustomerBundle, newToken, parseBody, phoneDigits, requestIp, tokenHash } from './_supabase-beta.mjs';
 
+function cleanCode(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase()
+    .slice(0, 20);
+}
+
+function makeInviteCode(name, digits) {
+  const firstName = cleanCode(String(name).split(/\s+/)[0] || 'ADOCE').slice(0, 10) || 'ADOCE';
+  return `${firstName}${digits.slice(-4)}`;
+}
+
 export async function handler(event) {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Metodo nao permitido.' });
   try {
@@ -30,6 +44,8 @@ export async function handler(event) {
       lgpd_accepted_at: new Date().toISOString(),
       beta_accepted_at: new Date().toISOString(),
       accepts_promotions: body.acceptsPromotions !== false,
+      invite_code: makeInviteCode(body.name, digits),
+      referred_by_code: cleanCode(body.inviteCode || body.referralCode),
     }).select('id').single();
     if (error) throw error;
 

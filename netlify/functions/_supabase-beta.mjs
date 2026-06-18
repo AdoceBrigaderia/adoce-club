@@ -104,7 +104,7 @@ export function requestIp(event) {
 
 export async function loadCustomerBundle(supabase, customerId) {
   const [{ data: customer, error: customerError }, { data: card, error: cardError }, { data: events }] = await Promise.all([
-    supabase.from('beta_customers').select('id,name,whatsapp,email,instagram,birth_date,accepts_promotions').eq('id', customerId).single(),
+    supabase.from('beta_customers').select('id,name,whatsapp,email,instagram,birth_date,accepts_promotions,invite_code,referred_by_code').eq('id', customerId).single(),
     supabase.from('beta_loyalty_cards').select('stamps,stamps_required').eq('customer_id', customerId).single(),
     supabase.from('beta_loyalty_events').select('event_type,stamps,note,created_at').eq('customer_id', customerId).order('created_at', { ascending: false }).limit(20),
   ]);

@@ -30,7 +30,9 @@ export async function handler(event) {
       .single();
     if (cardError) throw cardError;
 
-    const nextStamps = mode === 'set' ? stamps % card.stamps_required : (card.stamps + stamps) % card.stamps_required;
+    const total = mode === 'set' ? stamps : card.stamps + stamps;
+    const completed = Math.floor(total / card.stamps_required);
+    const nextStamps = total % card.stamps_required;
     await auth.supabase
       .from('beta_loyalty_cards')
       .update({ stamps: nextStamps, updated_at: new Date().toISOString() })
@@ -41,6 +43,14 @@ export async function handler(event) {
       stamps: mode === 'set' ? nextStamps - card.stamps : stamps,
       note: `Ajuste manual por ${auth.operatorId}: ${reason}`,
     });
+    if (completed > 0) {
+      await auth.supabase.from('beta_loyalty_events').insert({
+        customer_id: customer.id,
+        event_type: 'redeem',
+        stamps: -card.stamps_required * completed,
+        note: `Cartela completa por ajuste manual: ${completed} premio(s) pendente(s)`,
+      });
+    }
     await auth.supabase.from('beta_security_events').insert({ event_key: `loyalty-adjust-ok:${auth.operatorId}:${customer.id}` });
 
     return json(200, { customer, card: { stamps: nextStamps, stamps_required: card.stamps_required } });
