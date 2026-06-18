@@ -1,4 +1,4 @@
-import { getAdmin, json, loadCustomerBundle, newToken, parseBody, phoneDigits, tokenHash, verifyPassword } from './_supabase-beta.mjs';
+import { checkRateLimit, getAdmin, json, loadCustomerBundle, newToken, parseBody, phoneDigits, requestIp, tokenHash, verifyPassword } from './_supabase-beta.mjs';
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Metodo nao permitido.' });
@@ -6,6 +6,8 @@ export async function handler(event) {
     const body = parseBody(event);
     const digits = phoneDigits(body.whatsapp);
     const supabase = getAdmin();
+    const allowed = await checkRateLimit(supabase, `customer-login:${requestIp(event)}:${digits}`, 10, 15);
+    if (!allowed) return json(429, { error: 'Muitas tentativas de login. Aguarde alguns minutos.' });
     const { data: customer, error } = await supabase
       .from('beta_customers')
       .select('id,password_salt,password_hash')

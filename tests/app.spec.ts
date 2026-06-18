@@ -13,18 +13,28 @@ async function mockBetaApi(page:Page){
     const body=route.request().postDataJSON();
     await route.fulfill({json:{customer:{id:'c1',name:body.name,whatsapp:body.whatsapp,email:body.email||'',instagram:body.instagram||'',birth_date:body.birthDate||'',accepts_promotions:body.acceptsPromotions!==false},card:{stamps:0,stamps_required:14},events:[]}});
   });
+  await page.route('**/.netlify/functions/staff-login',async route=>{
+    const body=route.request().postDataJSON();
+    await route.fulfill({json:{token:'staff-token',operatorId:body.userId}});
+  });
   await page.route('**/.netlify/functions/sale-create',async route=>{
+    expect(route.request().headers().authorization).toBe('Bearer staff-token');
     await route.fulfill({json:{id:'sale-cloud',token:`ADOCE-TEST-${Date.now()}`}});
   });
   await page.route('**/.netlify/functions/loyalty-claim',async route=>{
     await route.fulfill({json:{customer:{id:'c1',name:'Cliente Beta',whatsapp:'85999990000',email:'',instagram:'',birth_date:'',accepts_promotions:true},card:{stamps:3,stamps_required:14},events:[{event_type:'purchase',stamps:3,note:'Compra registrada',created_at:new Date().toISOString()}]}});
   });
+  await page.route('**/.netlify/functions/loyalty-adjust',async route=>{
+    const body=route.request().postDataJSON();
+    expect(route.request().headers().authorization).toBe('Bearer staff-token');
+    await route.fulfill({json:{customer:{name:'Cliente Beta',whatsapp:body.whatsapp},card:{stamps:body.mode==='set'?body.stamps:body.stamps,stamps_required:14}}});
+  });
 }
 
 async function reset(page:Page){await page.goto('/cadastro');await page.evaluate(()=>localStorage.clear());await page.reload()}
 async function registerCustomer(page:Page){await page.goto('/cadastro');await page.getByRole('textbox',{name:'Nome'}).fill('Cliente Beta');await page.getByRole('textbox',{name:'WhatsApp'}).fill('85999990000');await page.getByLabel('Crie sua senha').fill('1234');await page.getByRole('checkbox',{name:/Aceito participar/}).check();await page.getByRole('checkbox',{name:/versão beta/}).check();await page.getByRole('button',{name:'Criar meu Adoce Club'}).click();await expect(page).toHaveURL(/\/cliente$/)}
-async function loginAdmin(page:Page){await page.goto('/equipe');await page.getByLabel('PIN temporário').fill('1706');await page.getByRole('button',{name:'Entrar na operação'}).click()}
-async function openCash(page:Page){await loginAdmin(page);await page.goto('/admin/caixa');await page.getByRole('button',{name:'Abrir caixa agora'}).click()}
+async function loginAdmin(page:Page){await page.goto('/equipe');await page.getByLabel('PIN temporário').fill('1706');await page.getByRole('button',{name:'Entrar na operação'}).click();await expect(page).toHaveURL(/\/admin$/)}
+async function openCash(page:Page){await loginAdmin(page);await page.goto('/admin/caixa');await page.getByRole('button',{name:/Abrir caixa agora|Atualizar caixa/}).click()}
 async function choosePayment(page:Page,name:string){await page.getByRole('button',{name,exact:true}).click()}
 
 test.beforeEach(async({page})=>{await mockBetaApi(page);await reset(page);await registerCustomer(page)});
@@ -45,13 +55,15 @@ for(const method of ['Cortesia','Permuta','Fidelidade'])test(`${method} registra
 
 test('Mercado Pago Point usa terminal do login e só gera QR aprovado',async({page})=>{await openCash(page);await page.goto('/admin/vendas');await expect(page.getByText('Terminal:')).toContainText('Maquininha Rubens');await choosePayment(page,'Mercado Pago Point');await page.getByRole('button',{name:/Cliente Presencial/}).click();await expect(page.getByRole('heading',{name:'Aguardando pagamento'})).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0);await page.getByRole('button',{name:'Pagamento aprovado'}).click();await expect(page.getByRole('heading',{name:'Venda registrada!'})).toBeVisible()});
 
-test('login Beth carrega terminal Beth',async({page})=>{await page.goto('/equipe');await page.getByRole('button',{name:'Beth'}).click();await page.getByLabel('PIN temporário').fill('1906');await page.getByRole('button',{name:'Entrar na operação'}).click();await page.goto('/admin/caixa');await page.getByRole('button',{name:'Abrir caixa agora'}).click();await page.goto('/vendedor/nova-venda');await expect(page.getByText('Terminal:')).toContainText('Maquininha Beth')});
+test('login Beth carrega terminal Beth',async({page})=>{await page.goto('/equipe');await page.getByRole('button',{name:'Beth'}).click();await page.getByLabel('PIN temporário').fill('1906');await page.getByRole('button',{name:'Entrar na operação'}).click();await expect(page).toHaveURL(/\/vendedor$/);await page.goto('/admin/caixa');await page.getByRole('button',{name:/Abrir caixa agora|Atualizar caixa/}).click();await page.goto('/vendedor/nova-venda');await expect(page.getByText('Terminal:')).toContainText('Maquininha Beth')});
 
 test('Mercado Pago Link pendente não gera carimbo e pago libera QR',async({page})=>{await openCash(page);await page.goto('/admin/vendas');await choosePayment(page,'Mercado Pago Link');await page.getByRole('button',{name:/Delivery/}).click();await expect(page.getByText('Enquanto pendente, não gera QR nem carimbo.')).toBeVisible();await expect(page.locator('.qr-frame')).toHaveCount(0);await page.getByRole('button',{name:'Pagamento aprovado'}).click();await expect(page.getByRole('heading',{name:'Venda registrada!'})).toBeVisible()});
 
 test('desconto no fechamento reduz total e aparece no relatório',async({page})=>{await openCash(page);await page.goto('/admin/vendas');await page.getByLabel('Desconto').selectOption('percent');await page.getByLabel('Valor do desconto').fill('10');await page.getByLabel('Motivo').selectOption('Promoção');await page.getByLabel('Observação do desconto').fill('Balão promocional');await expect(page.getByText('Desconto: -R$ 4,80')).toBeVisible();await expect(page.getByText('Total: R$ 43,20')).toBeVisible();await page.getByRole('button',{name:/Cliente Presencial/}).click();await expect(page.getByRole('heading',{name:'Venda registrada!'})).toBeVisible();await page.goto('/admin/relatorios');await expect(page.getByText('Descontos concedidos')).toBeVisible();await expect(page.getByText('R$ 4,80')).toBeVisible()});
 
 test('gasto aparece no relatório e fechamento',async({page})=>{await openCash(page);await page.getByLabel('Valor').fill('25');await page.getByLabel('Descrição').fill('Lanche da equipe');await page.getByRole('button',{name:'Salvar gasto'}).click();await expect(page.getByText('Gasto registrado.')).toBeVisible();await page.goto('/admin/relatorios');await expect(page.getByText('Gastos do caixa')).toBeVisible();await expect(page.getByText('R$ 25,00')).toBeVisible()});
+
+test('equipe ajusta carimbos de cartão físico com sessão protegida',async({page})=>{await loginAdmin(page);await page.goto('/admin/carimbos');await expect(page.getByRole('heading',{name:'Ajustar Carimbos'})).toBeVisible();await page.getByLabel('WhatsApp do cliente').fill('85999990000');await page.getByLabel('Quantidade atual da cartela física').fill('7');await page.getByLabel('Motivo').fill('Migração do cartão físico apresentado');await page.getByRole('button',{name:'Salvar ajuste de carimbos'}).click();await expect(page.getByText('Cliente Beta: cartão ficou com 7 de 14 carimbos.')).toBeVisible()});
 
 test('reserva antecipada registra dia, calda e aviso de produção',async({page})=>{await page.goto('/cliente/reserva');await expect(page.locator('.flavor-preview-list').getByText('Trufado de ninho com morangos',{exact:true})).toBeVisible();await page.getByRole('button',{name:'Confirmar reserva'}).click();await expect(page.getByRole('heading',{name:'Reserva criada!'})).toBeVisible();await expect(page.getByText('Pagamento antecipado')).toBeVisible();await expect(page.getByText('Se houver problema de produção')).toBeVisible()});
 

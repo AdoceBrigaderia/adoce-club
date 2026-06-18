@@ -1,4 +1,4 @@
-import { getAdmin, hashPassword, json, loadCustomerBundle, newToken, parseBody, phoneDigits, tokenHash } from './_supabase-beta.mjs';
+import { checkRateLimit, getAdmin, hashPassword, json, loadCustomerBundle, newToken, parseBody, phoneDigits, requestIp, tokenHash } from './_supabase-beta.mjs';
 
 export async function handler(event) {
   if (event.httpMethod !== 'POST') return json(405, { error: 'Metodo nao permitido.' });
@@ -11,6 +11,9 @@ export async function handler(event) {
     if (!body.lgpdAccepted || !body.betaAccepted) return json(400, { error: 'Aceite LGPD e aviso beta para continuar.' });
 
     const supabase = getAdmin();
+    const allowed = await checkRateLimit(supabase, `customer-register:${requestIp(event)}:${digits}`, 6, 30);
+    if (!allowed) return json(429, { error: 'Muitas tentativas de cadastro. Aguarde alguns minutos.' });
+
     const existing = await supabase.from('beta_customers').select('id').eq('whatsapp_digits', digits).maybeSingle();
     if (existing.data) return json(409, { error: 'Este WhatsApp ja possui cadastro. Entre com sua senha.' });
 

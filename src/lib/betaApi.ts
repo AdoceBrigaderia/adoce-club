@@ -1,6 +1,7 @@
 import type { CustomerProfile, Sale } from '../store';
 
 const TOKEN_KEY = 'adoce_beta_token';
+const STAFF_TOKEN_KEY = 'adoce_staff_token';
 
 type Bundle = {
   token?: string;
@@ -21,11 +22,15 @@ function token() {
   return localStorage.getItem(TOKEN_KEY) || '';
 }
 
+function staffToken() {
+  return localStorage.getItem(STAFF_TOKEN_KEY) || '';
+}
+
 async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json');
   const currentToken = token();
-  if (currentToken) headers.set('authorization', `Bearer ${currentToken}`);
+  if (currentToken && !headers.has('authorization')) headers.set('authorization', `Bearer ${currentToken}`);
   const response = await fetch(`/.netlify/functions/${path}`, { ...init, headers });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || 'Nao foi possivel concluir a operacao.');
@@ -38,6 +43,14 @@ export function saveToken(value?: string) {
 
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
+}
+
+export function saveStaffToken(value?: string) {
+  if (value) localStorage.setItem(STAFF_TOKEN_KEY, value);
+}
+
+export function clearStaffToken() {
+  localStorage.removeItem(STAFF_TOKEN_KEY);
 }
 
 export function hasToken() {
@@ -69,6 +82,12 @@ export async function loginBetaCustomer(whatsapp: string, password: string) {
   return bundleToState(await api<Bundle>('customer-login', { method: 'POST', body: JSON.stringify({ whatsapp, password }) }));
 }
 
+export async function loginStaffBeta(userId: string, pin: string) {
+  const response = await api<{ token: string; operatorId: string }>('staff-login', { method: 'POST', body: JSON.stringify({ userId, pin }) });
+  saveStaffToken(response.token);
+  return response;
+}
+
 export async function loadBetaCustomer() {
   return bundleToState(await api<Bundle>('customer-me'));
 }
@@ -78,8 +97,10 @@ export async function updateBetaCustomer(form: CustomerProfile) {
 }
 
 export async function createCloudSale(sale: Sale) {
+  const headers = staffToken() ? { authorization: `Bearer ${staffToken()}` } : undefined;
   return api<{ id: string; token: string }>('sale-create', {
     method: 'POST',
+    headers,
     body: JSON.stringify({
       qty: sale.qty,
       payment: sale.payment,
@@ -102,4 +123,13 @@ export async function createCloudSale(sale: Sale) {
 
 export async function claimCloudSale(tokenValue: string) {
   return bundleToState(await api<Bundle>('loyalty-claim', { method: 'POST', body: JSON.stringify({ token: tokenValue }) }));
+}
+
+export async function adjustCustomerStamps(data: { whatsapp: string; stamps: number; mode: 'add' | 'set'; reason: string; operatorId: string }) {
+  const headers = staffToken() ? { authorization: `Bearer ${staffToken()}` } : undefined;
+  return api<{ customer: { name: string; whatsapp: string }; card: { stamps: number; stamps_required: number } }>('loyalty-adjust', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(data),
+  });
 }

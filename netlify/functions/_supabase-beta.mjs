@@ -45,6 +45,14 @@ export function tokenHash(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex');
 }
 
+export function staffPins() {
+  try {
+    return JSON.parse(process.env.ADOCE_STAFF_PINS || '{}');
+  } catch {
+    return {};
+  }
+}
+
 export function authToken(event) {
   const header = event.headers.authorization || event.headers.Authorization || '';
   return header.startsWith('Bearer ') ? header.slice(7).trim() : '';
@@ -62,6 +70,36 @@ export async function requireCustomer(event) {
     .single();
   if (error || !session) return { error: json(401, { error: 'Sessao expirada. Entre novamente.' }) };
   return { supabase, customerId: session.customer_id };
+}
+
+export async function requireStaff(event) {
+  const token = authToken(event);
+  if (!token) return { error: json(401, { error: 'Sessao da equipe ausente.' }) };
+  const supabase = getAdmin();
+  const { data: session, error } = await supabase
+    .from('beta_staff_sessions')
+    .select('operator_id, expires_at')
+    .eq('token_hash', tokenHash(token))
+    .gt('expires_at', new Date().toISOString())
+    .single();
+  if (error || !session) return { error: json(401, { error: 'Sessao da equipe expirada. Entre novamente.' }) };
+  return { supabase, operatorId: session.operator_id };
+}
+
+export async function checkRateLimit(supabase, key, limit = 20, windowMinutes = 10) {
+  const windowStart = new Date(Date.now() - windowMinutes * 60 * 1000).toISOString();
+  const { count } = await supabase
+    .from('beta_security_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_key', key)
+    .gt('created_at', windowStart);
+  if ((count || 0) >= limit) return false;
+  await supabase.from('beta_security_events').insert({ event_key: key });
+  return true;
+}
+
+export function requestIp(event) {
+  return event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'] || event.headers['x-forwarded-for'] || 'unknown';
 }
 
 export async function loadCustomerBundle(supabase, customerId) {

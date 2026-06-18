@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getAdmin, json, parseBody } from './_supabase-beta.mjs';
+import { checkRateLimit, json, parseBody, requireStaff } from './_supabase-beta.mjs';
 
 const revenuePayments = new Set(['Dinheiro', 'Pix', 'Cartão', 'Mercado Pago Point', 'Mercado Pago Link']);
 
@@ -8,15 +8,18 @@ export async function handler(event) {
   try {
     const body = parseBody(event);
     if (!body.qty || Number(body.qty) < 1) return json(400, { error: 'Quantidade invalida.' });
+    const auth = await requireStaff(event);
+    if (auth.error) return auth.error;
+    const allowed = await checkRateLimit(auth.supabase, `sale-create:${auth.operatorId}`, 120, 60);
+    if (!allowed) return json(429, { error: 'Limite de vendas atingido. Aguarde um pouco.' });
     const token = `ADOCE-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
     const gross = revenuePayments.has(body.payment) ? Number(body.grossAmount || 0) : 0;
     const subtotal = revenuePayments.has(body.payment) ? Number(body.subtotalAmount ?? gross) : 0;
     const discountAmount = revenuePayments.has(body.payment) ? Number(body.discountAmount || 0) : 0;
     const generates = revenuePayments.has(body.payment) && body.status === 'paid';
-    const supabase = getAdmin();
-    const { data, error } = await supabase.from('beta_sales').insert({
+    const { data, error } = await auth.supabase.from('beta_sales').insert({
       token,
-      operator_id: body.operatorId || null,
+      operator_id: auth.operatorId,
       operator_name: body.operatorName || null,
       qty: Number(body.qty),
       flavor: body.flavor || null,
@@ -34,6 +37,7 @@ export async function handler(event) {
       generates_stamps: generates,
     }).select('id, token').single();
     if (error) throw error;
+    await auth.supabase.from('beta_security_events').insert({ event_key: `sale-create-ok:${auth.operatorId}` });
     return json(200, data);
   } catch (error) {
     return json(500, { error: error.message || 'Erro ao registrar venda.' });
