@@ -1,4 +1,4 @@
-import type { CustomerProfile, Reward, Sale } from '../store';
+import type { CustomerProfile, Product, Reward, Sale } from '../store';
 
 const TOKEN_KEY = 'adoce_beta_token';
 const STAFF_TOKEN_KEY = 'adoce_staff_token';
@@ -103,6 +103,36 @@ export type CustomerAdminRow = {
 export async function listCustomers() {
   const headers = staffToken() ? { authorization: `Bearer ${staffToken()}` } : undefined;
   return api<{ total: number; customers: CustomerAdminRow[] }>('customers-list', { headers });
+}
+
+export async function listProductsCloud() {
+  const headers = staffToken() ? { authorization: `Bearer ${staffToken()}` } : undefined;
+  return api<{ products: {
+    id: string;
+    name: string;
+    short_name: string;
+    image_url?: string | null;
+    active: boolean;
+    created_at: string;
+    updated_at: string;
+  }[] }>('products-list', { headers });
+}
+
+export async function saveProductCloud(product: Product) {
+  const headers = staffToken() ? { authorization: `Bearer ${staffToken()}` } : undefined;
+  return api<{ product: {
+    id: string;
+    name: string;
+    short_name: string;
+    image_url?: string | null;
+    active: boolean;
+    created_at: string;
+    updated_at: string;
+  } }>('products-save', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ product }),
+  });
 }
 
 export async function registerBetaCustomer(form: CustomerProfile) {
