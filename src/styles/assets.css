@@ -104,6 +104,37 @@
   line-height: 1.3;
   text-align: center;
 }
+.pix-payment-box {
+  width: 100%;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed rgba(233, 63, 137, .45);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 241, 247, .78));
+}
+.pix-payment-box svg {
+  width: min(190px, 100%);
+  height: auto;
+  padding: 10px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(86, 31, 42, .14);
+}
+.pix-payment-box p,
+.pix-payment-box small {
+  margin: 0;
+  line-height: 1.35;
+  text-align: center;
+}
+.pix-payment-box .token-box {
+  max-height: 118px;
+  overflow: auto;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
 .reservation-builder .cart-picker,
 .reservation-cart,
 .reservations-admin .reservation-row,

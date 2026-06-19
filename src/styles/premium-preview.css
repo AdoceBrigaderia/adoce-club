@@ -35,6 +35,10 @@
 .pp-sale-qr svg{padding:10px;border-radius:16px;background:#fff;box-shadow:0 10px 22px #5c1f3217}
 .pp-sale-qr span{font-weight:950}
 .pp-sale-qr code{max-width:100%;overflow-wrap:anywhere;font-size:12px;color:#e91e70}
+.pp-pix-card{display:grid;place-items:center;gap:9px;margin:14px 0;padding:14px;border-radius:20px;background:#fff;color:#5a1916;text-align:center}
+.pp-pix-card svg{padding:10px;border-radius:16px;background:#fff;box-shadow:0 10px 22px #5c1f3217}
+.pp-pix-card p,.pp-pix-card small{margin:0;line-height:1.35}
+.pp-pix-card code{max-width:100%;max-height:96px;overflow:auto;overflow-wrap:anywhere;font-size:11px;color:#e91e70}
 .pp-payment-pending{gap:8px;margin:12px 0;padding:14px;border-radius:20px;background:#fff6df;color:#5a1916}
 .pp-payment-pending span{font-size:12px;overflow-wrap:anywhere}
 .pp-payment-pending button{min-height:38px}

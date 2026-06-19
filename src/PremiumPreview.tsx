@@ -3,6 +3,7 @@ import { BadgeCheck, Bell, CakeSlice, Check, ChevronRight, Clock3, CreditCard, G
 import { QRCodeSVG } from 'qrcode.react';
 import { createCloudSale, saveProductCloud } from './lib/betaApi';
 import { allPayments, noQrPayments, Payment, Product, Reservation, ReservationStatus, Sale, SaleItem, useStore } from './store';
+import { ADOCE_PAYMENT_WHATSAPP, ADOCE_PIX_CITY, ADOCE_PIX_COPY_PASTE, ADOCE_PIX_RECEIVER, pixInstructions } from './pix';
 import './styles/premium-preview.css';
 
 type Tab = 'Vitrine' | 'Compra' | 'Pedido' | 'Clube' | 'Caixa' | 'Gestor';
@@ -19,6 +20,7 @@ const activeReservationStatuses: ReservationStatus[] = ['requested', 'waiting_pa
 const activeReservation = (reservation: Reservation) => activeReservationStatuses.includes(reservation.status);
 const saleIsStockOut = (sale: Sale) => !['cancelled', 'declined', 'expired'].includes(sale.status);
 const soldByFlavor = (sales: Sale[], flavor: string) => sales.filter(saleIsStockOut).flatMap(sale => sale.items ?? []).filter(item => cleanKey(item.flavor) === cleanKey(flavor)).reduce((sum, item) => sum + item.quantity, 0);
+const pixWhatsappText = (reservation: Reservation) => `Ola, Adoce Brigaderia! Segue o comprovante da reserva ${reservation.id}.`;
 
 function PremiumTabs({ tab, setTab, area = 'all' }: { tab: Tab; setTab: (tab: Tab) => void; area?: PremiumArea }) {
   const tabs: Tab[] = area === 'client' ? ['Vitrine', 'Compra', 'Pedido', 'Clube'] : area === 'staff' ? ['Caixa', 'Gestor'] : ['Vitrine', 'Compra', 'Pedido', 'Clube', 'Caixa', 'Gestor'];
@@ -94,7 +96,7 @@ function PurchaseFlow({ setTab }: { setTab: (tab: Tab) => void }) {
   const s = useStore();
   const products = useProducts();
   const [cart, setCart] = useState<Cart>({});
-  const [payment, setPayment] = useState<Payment>('Mercado Pago Link');
+  const [payment, setPayment] = useState<Payment>('Pix');
   const total = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
   const amount = total * s.settings.price;
   const change = (name: string, delta: number) => setCart(current => {
@@ -106,7 +108,7 @@ function PurchaseFlow({ setTab }: { setTab: (tab: Tab) => void }) {
     if (!total) return;
     const today = new Date().toISOString().slice(0, 10);
     const items = selected.map(item => ({ flavor: item.name, quantity: cart[item.name] }));
-    const payNow = payment === 'Mercado Pago Link';
+    const payNow = payment !== 'Dinheiro';
     s.addReservation({
       customer: s.customer.name || 'Cliente beta',
       quantity: total,
@@ -117,7 +119,8 @@ function PurchaseFlow({ setTab }: { setTab: (tab: Tab) => void }) {
       status: payNow ? 'waiting_payment' : 'requested',
       paymentMethod: payment,
       payNow,
-      paymentLinkUrl: payNow ? `https://mpago.la/mock-reserva-${Date.now()}` : undefined,
+      paymentLinkUrl: payNow && payment === 'Mercado Pago Link' ? `https://mpago.la/mock-reserva-${Date.now()}` : undefined,
+      pixCode: payNow && payment === 'Pix' ? ADOCE_PIX_COPY_PASTE : undefined,
       notes: payNow ? 'Pagamento antecipado escolhido no premium beta.' : 'Pagamento na retirada escolhido no premium beta.',
     });
     setTab('Pedido');
@@ -132,7 +135,7 @@ function PurchaseFlow({ setTab }: { setTab: (tab: Tab) => void }) {
         <SlicePhoto imageUrl={item.imageUrl} compact/><div><b>{item.name}</b><span>Calda será escolhida após pagamento online.</span></div>
         <button onClick={() => change(item.name, -1)} aria-label={`Diminuir ${item.name}`}><Minus/></button><strong>{cart[item.name]}</strong><button onClick={() => change(item.name, 1)} aria-label={`Aumentar ${item.name}`}><Plus/></button>
       </div>) : <p>Toque em um sabor para adicionar.</p>}
-      <div className="pp-payment-choice">{(['Mercado Pago Link', 'Pix', 'Cartão', 'Dinheiro'] as Payment[]).map(p => <button key={p} className={payment === p ? 'active' : ''} onClick={() => setPayment(p)}><CreditCard/>{p}</button>)}</div>
+      <div className="pp-payment-choice">{(['Pix', 'Mercado Pago Link', 'Cartão', 'Dinheiro'] as Payment[]).map(p => <button key={p} className={payment === p ? 'active' : ''} onClick={() => setPayment(p)}><CreditCard/>{p}</button>)}</div>
       <div className="pp-total"><span>{total} fatias</span><b>{money(amount)}</b></div>
       <button className="pp-primary" disabled={!total} onClick={close}>Fechar compra</button>
     </section>
@@ -147,7 +150,7 @@ function OrderTracking() {
     <header className="pp-top compact"><BrandLockup/><Clock3/></header>
     <section className="pp-order-hero"><QrCode/><span>{lastReservation ? `Reserva ${lastReservation.id}` : 'Pedido beta'}</span><h1>Estamos separando suas fatias.</h1><p>Quando estiver pronto, você recebe o aviso para buscar na barraquinha.</p></section>
     <div className="pp-timeline">{steps.map((step, index) => <div key={step} className={index < 2 ? 'done' : index === 2 ? 'active' : ''}><i>{index < 2 ? <Check/> : index + 1}</i><span>{step}</span><small>{index === 1 ? 'agora' : index === 2 ? 'próximo passo' : 'ok'}</small></div>)}</div>
-    <section className="pp-order-card"><h2>Itens reservados</h2>{lastReservation?.items?.length ? lastReservation.items.map(item => <p key={item.flavor}>{item.quantity}x {item.flavor}{item.syrup ? ` · ${item.syrup}` : ''}</p>) : <><p>2x Chocolatudo</p><p>1x Ferrero Rocher</p></>}<button className="pp-primary" onClick={() => window.open(`https://wa.me/${s.company.whatsapp.replace(/\D/g, '')}`, '_blank')}>Falar no WhatsApp</button></section>
+    <section className="pp-order-card"><h2>Itens reservados</h2>{lastReservation?.items?.length ? lastReservation.items.map(item => <p key={item.flavor}>{item.quantity}x {item.flavor}{item.syrup ? ` · ${item.syrup}` : ''}</p>) : <><p>2x Chocolatudo</p><p>1x Ferrero Rocher</p></>}{lastReservation?.pixCode && <div className="pp-pix-card"><QRCodeSVG value={lastReservation.pixCode} size={170}/><p>{pixInstructions}</p><small>{ADOCE_PIX_RECEIVER} · {ADOCE_PIX_CITY}</small><code>{lastReservation.pixCode}</code><button className="pp-primary" onClick={() => navigator.clipboard?.writeText(lastReservation.pixCode!)}>Copiar código Pix</button></div>}<button className="pp-primary" onClick={() => window.open(`https://wa.me/${ADOCE_PAYMENT_WHATSAPP}?text=${encodeURIComponent(lastReservation ? pixWhatsappText(lastReservation) : 'Ola, Adoce Brigaderia!')}`, '_blank')}>Enviar comprovante no WhatsApp</button></section>
   </section>;
 }
 
