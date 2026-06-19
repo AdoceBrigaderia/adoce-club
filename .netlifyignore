@@ -7,4 +7,9 @@ playwright-report
 supabase/.temp
 Documentacao/prints
 Documentacao/Planejamento
+Documentacao
+referencias
+.netlify
+test-results
+playwright-report
 *.log
