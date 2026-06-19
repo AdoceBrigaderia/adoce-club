@@ -17,11 +17,21 @@ export async function handler(event) {
     const subtotal = revenuePayments.has(body.payment) ? Number(body.subtotalAmount ?? gross) : 0;
     const discountAmount = revenuePayments.has(body.payment) ? Number(body.discountAmount || 0) : 0;
     const generates = revenuePayments.has(body.payment) && body.status === 'paid';
+    const items = Array.isArray(body.items)
+      ? body.items
+          .map((item) => ({
+            flavor: String(item.flavor || '').trim(),
+            quantity: Number(item.quantity || 0),
+            syrup: item.syrup ? String(item.syrup).trim() : null,
+          }))
+          .filter((item) => item.flavor && item.quantity > 0)
+      : [];
     const { data, error } = await auth.supabase.from('beta_sales').insert({
       token,
       operator_id: auth.operatorId,
       operator_name: body.operatorName || null,
       qty: Number(body.qty),
+      items,
       flavor: body.flavor || null,
       syrup: body.syrup || null,
       payment_method: body.payment,

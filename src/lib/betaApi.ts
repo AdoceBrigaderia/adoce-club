@@ -144,6 +144,7 @@ export async function createCloudSale(sale: Sale) {
       discountNote: sale.discountNote,
       discountAmount: sale.discountAmount,
       grossAmount: sale.grossAmount,
+      items: sale.items,
       flavor: sale.flavor,
       syrup: sale.syrup,
       operatorId: sale.operatorId,

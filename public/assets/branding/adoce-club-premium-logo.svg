@@ -1,0 +1,29 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pink" x1="114" y1="82" x2="420" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF7AB1"/>
+      <stop offset=".47" stop-color="#F52278"/>
+      <stop offset="1" stop-color="#FF8A3D"/>
+    </linearGradient>
+    <linearGradient id="cream" x1="138" y1="145" x2="363" y2="342" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9EA"/>
+      <stop offset=".55" stop-color="#FFE4BA"/>
+      <stop offset="1" stop-color="#FFC66D"/>
+    </linearGradient>
+    <filter id="shadow" x="42" y="45" width="428" height="428" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#7B1838" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect x="38" y="38" width="436" height="436" rx="128" fill="#FFF6F3"/>
+  <rect x="38" y="38" width="436" height="436" rx="128" fill="url(#pink)" opacity=".1"/>
+  <g filter="url(#shadow)">
+    <path d="M132 262c11-62 61-107 125-107s115 45 126 107H132Z" fill="url(#cream)"/>
+    <path d="M126 259h262v31c0 51-41 92-92 92h-78c-51 0-92-41-92-92v-31Z" fill="url(#pink)"/>
+    <path d="M154 283v42M194 283v64M235 283v75M277 283v75M319 283v64M360 283v42" stroke="#FFF7EE" stroke-width="18" stroke-linecap="round"/>
+    <path d="M161 247c20-43 55-67 96-67s76 24 96 67" stroke="#6A231B" stroke-width="18" stroke-linecap="round"/>
+    <path d="M177 210c10-5 16-13 18-25M224 190c10 5 20 5 30 0M290 190c10 5 20 5 30 0M339 210c-10-5-16-13-18-25" stroke="#6A231B" stroke-width="13" stroke-linecap="round"/>
+    <path d="M257 235c-35-39-91-6-54 38l54 51 54-51c37-44-19-77-54-38Z" fill="#FFF4EF"/>
+    <path d="M257 235c-35-39-91-6-54 38l54 51 54-51c37-44-19-77-54-38Z" stroke="#F52278" stroke-width="14" stroke-linejoin="round"/>
+  </g>
+  <path d="M111 126l11 22 24 5-18 17 3 24-20-12-22 10 5-24-16-18 24-3 9-21ZM405 127l8 17 18 4-14 12 2 19-16-10-17 8 4-19-13-14 18-2 10-15ZM412 348l10 20 22 5-17 15 3 23-19-12-21 9 5-22-15-17 22-2 10-19Z" fill="#FFC24E"/>
+</svg>

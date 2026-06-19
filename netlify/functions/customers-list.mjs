@@ -14,7 +14,7 @@ export async function handler(event) {
         .limit(300),
       auth.supabase
         .from('beta_sales')
-        .select('claimed_by,flavor,created_at')
+        .select('claimed_by,flavor,items,created_at')
         .not('claimed_by', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1000),
@@ -27,7 +27,12 @@ export async function handler(event) {
       const row = byCustomer.get(sale.claimed_by) || { count: 0, flavors: new Map(), last: null };
       row.count += 1;
       if (!row.last) row.last = sale.created_at;
-      if (sale.flavor) row.flavors.set(sale.flavor, (row.flavors.get(sale.flavor) || 0) + 1);
+      const items = Array.isArray(sale.items) && sale.items.length
+        ? sale.items
+        : sale.flavor ? [{ flavor: sale.flavor, quantity: 1 }] : [];
+      for (const item of items) {
+        if (item.flavor) row.flavors.set(item.flavor, (row.flavors.get(item.flavor) || 0) + Number(item.quantity || 1));
+      }
       byCustomer.set(sale.claimed_by, row);
     }
 
