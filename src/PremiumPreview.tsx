@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { BadgeCheck, Bell, CakeSlice, Check, ChevronRight, Clock3, CreditCard, Gift, Heart, MapPin, Minus, Plus, QrCode, Search, ShoppingBag, Sparkles, Truck, Users, WalletCards } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { createCloudSale, saveProductCloud } from './lib/betaApi';
-import { allPayments, noQrPayments, Payment, Product, Sale, SaleItem, useStore } from './store';
+import { allPayments, noQrPayments, Payment, Product, Reservation, ReservationStatus, Sale, SaleItem, useStore } from './store';
 import './styles/premium-preview.css';
 
 type Tab = 'Vitrine' | 'Compra' | 'Pedido' | 'Clube' | 'Caixa' | 'Gestor';
 type Cart = Record<string, number>;
+type PremiumArea = 'all' | 'client' | 'staff';
 
 const originalLogo = '/assets/branding/logo-adoce-original.jpeg';
 const fallbackSlice = '/assets/stamps/stamp-fatia-chocolate-v2.png';
@@ -13,9 +15,13 @@ const fallbackSlice = '/assets/stamps/stamp-fatia-chocolate-v2.png';
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const cleanKey = (value: string) => value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ');
 const productShort = (product: Product, fallback?: string) => product.shortName || fallback || product.name.split(/\s+/)[0] || 'Fatia';
+const activeReservationStatuses: ReservationStatus[] = ['requested', 'waiting_payment', 'paid', 'confirmed', 'separating', 'waiting_pickup', 'credit'];
+const activeReservation = (reservation: Reservation) => activeReservationStatuses.includes(reservation.status);
+const saleIsStockOut = (sale: Sale) => !['cancelled', 'declined', 'expired'].includes(sale.status);
+const soldByFlavor = (sales: Sale[], flavor: string) => sales.filter(saleIsStockOut).flatMap(sale => sale.items ?? []).filter(item => cleanKey(item.flavor) === cleanKey(flavor)).reduce((sum, item) => sum + item.quantity, 0);
 
-function PremiumTabs({ tab, setTab }: { tab: Tab; setTab: (tab: Tab) => void }) {
-  const tabs: Tab[] = ['Vitrine', 'Compra', 'Pedido', 'Clube', 'Caixa', 'Gestor'];
+function PremiumTabs({ tab, setTab, area = 'all' }: { tab: Tab; setTab: (tab: Tab) => void; area?: PremiumArea }) {
+  const tabs: Tab[] = area === 'client' ? ['Vitrine', 'Compra', 'Pedido', 'Clube'] : area === 'staff' ? ['Caixa', 'Gestor'] : ['Vitrine', 'Compra', 'Pedido', 'Clube', 'Caixa', 'Gestor'];
   return <nav className="pp-tabs" aria-label="Ambiente premium">{tabs.map(item => <button key={item} className={tab === item ? 'active' : ''} onClick={() => setTab(item)}>{item}</button>)}</nav>;
 }
 
@@ -37,10 +43,13 @@ function useProducts() {
   const source = store.cashOpen ? store.cashFlavors : todayPlan?.flavors.length ? todayPlan.flavors : store.cashFlavors;
   return source.map(flavor => {
     const product = (store.productCatalog ?? []).find(p => cleanKey(p.name) === cleanKey(flavor.name));
+    const sold = soldByFlavor(store.sales, flavor.name);
     return {
       name: flavor.name,
       shortName: productShort(product || ({ name: flavor.name, shortName: flavor.shortName } as Product), flavor.shortName),
-      quantity: flavor.quantity,
+      quantity: Math.max(0, flavor.quantity - sold),
+      initialQuantity: flavor.quantity,
+      sold,
       imageUrl: product?.imageUrl || flavor.imageUrl,
     };
   });
@@ -88,7 +97,10 @@ function PurchaseFlow({ setTab }: { setTab: (tab: Tab) => void }) {
   const [payment, setPayment] = useState<Payment>('Mercado Pago Link');
   const total = useMemo(() => Object.values(cart).reduce((a, b) => a + b, 0), [cart]);
   const amount = total * s.settings.price;
-  const change = (name: string, delta: number) => setCart(current => ({ ...current, [name]: Math.max(0, (current[name] || 0) + delta) }));
+  const change = (name: string, delta: number) => setCart(current => {
+    const stock = products.find(item => item.name === name)?.quantity ?? 0;
+    return { ...current, [name]: Math.min(stock, Math.max(0, (current[name] || 0) + delta)) };
+  });
   const selected = products.filter(item => cart[item.name] > 0);
   const close = () => {
     if (!total) return;
@@ -157,10 +169,16 @@ function OperatorFlow() {
   const [sale, setSale] = useState<Sale | null>(null);
   const [saving, setSaving] = useState(false);
   const [cloudError, setCloudError] = useState('');
+  const updatePayment = useStore(state => state.updatePayment);
   const total = Object.values(cart).reduce((a, b) => a + b, 0);
   const amount = total * s.settings.price;
-  const change = (name: string, delta: number) => setCart(current => ({ ...current, [name]: Math.max(0, (current[name] || 0) + delta) }));
+  const stockRemaining = products.reduce((sum, product) => sum + product.quantity, 0);
+  const change = (name: string, delta: number) => setCart(current => {
+    const stock = products.find(item => item.name === name)?.quantity ?? 0;
+    return { ...current, [name]: Math.min(stock, Math.max(0, (current[name] || 0) + delta)) };
+  });
   const selected = products.filter(item => cart[item.name] > 0);
+  const qrUrl = sale?.generatesQr ? `${window.location.origin}/cliente/resgatar/${sale.token}` : '';
   const submit = async (kind: 'Presencial' | 'Delivery / Retirada') => {
     if (!total) return;
     setSaving(true);
@@ -180,12 +198,59 @@ function OperatorFlow() {
     setCart({});
     setSaving(false);
   };
+  const setSaleStatus = async (status: Sale['status']) => {
+    if (!sale) return;
+    setSaving(true);
+    setCloudError('');
+    const updated = updatePayment(sale.id, status);
+    if (!updated) {
+      setSaving(false);
+      return;
+    }
+    if (status === 'paid') {
+      try {
+        const cloud = await createCloudSale(updated);
+        s.replaceSaleToken(updated.id, cloud.token);
+        setSale({ ...updated, token: cloud.token });
+      } catch (error) {
+        setCloudError(error instanceof Error ? error.message : 'Venda local aprovada, mas sem sincronizar na nuvem.');
+        setSale(updated);
+      }
+    } else {
+      setSale(updated);
+    }
+    setSaving(false);
+  };
   return <section className="pp-tablet">
-    <aside><PremiumLogo/><h1>{s.cashOpen ? 'Caixa aberto' : 'Caixa beta'}</h1><p>{s.users.find(u => u.id === s.currentUserId)?.name || 'Rubens'} · Festival de fatias</p><div><b>Reservas online</b><span>{s.reservations.filter(r => !['picked_up', 'cancelled'].includes(r.status)).length} para separar</span></div><div><b>Fatias restantes</b><span>{s.available} no estoque</span></div></aside>
-    <main><header><div><span>Venda rápida</span><h2>Toque nos sabores da compra</h2></div><button onClick={() => alert('Reservas ficam na aba Gestor enquanto o premium beta é conectado ao fluxo completo.')}><Truck/> Reservas</button></header>
+    <aside><PremiumLogo/><h1>{s.cashOpen ? 'Caixa aberto' : 'Caixa beta'}</h1><p>{s.users.find(u => u.id === s.currentUserId)?.name || 'Rubens'} · Festival de fatias</p><div><b>Reservas online</b><span>{s.reservations.filter(activeReservation).length} para separar</span></div><div><b>Fatias restantes</b><span>{stockRemaining} no estoque</span></div></aside>
+    <main><header><div><span>Venda rápida</span><h2>Toque nos sabores da compra</h2></div><button onClick={() => document.getElementById('pp-reservas')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}><Truck/> Reservas</button></header>
       <div className="pp-pos-grid">{products.map(item => <button key={item.name} onClick={() => change(item.name, 1)}><SlicePhoto imageUrl={item.imageUrl}/><b>{item.shortName}</b><span>{item.quantity} disp.</span></button>)}</div>
-      <section className="pp-pos-cart"><h3>Venda atual</h3>{selected.length ? selected.map(item => <div className="pp-pos-row" key={item.name}><SlicePhoto imageUrl={item.imageUrl} compact/><span>{item.name}</span><button onClick={() => change(item.name, -1)}><Minus/></button><strong>{cart[item.name]}</strong><button onClick={() => change(item.name, 1)}><Plus/></button><b>{money(cart[item.name] * s.settings.price)}</b></div>) : <p>Toque em um sabor para começar.</p>}<div className="pp-payment-choice">{allPayments.map(p => <button key={p} className={payment === p ? 'active' : ''} onClick={() => setPayment(p)}><WalletCards/>{p}</button>)}</div><div><WalletCards/><strong>{total} fatias · {noQrPayments.includes(payment) ? 'Sem receita' : money(amount)}</strong></div>{sale && <small className="pp-ok">Venda {sale.id} registrada{sale.generatesStamps ? ' com QR de fidelidade' : ''}.</small>}{cloudError && <small className="pp-warn">{cloudError}</small>}<button disabled={!total || saving} onClick={() => submit('Presencial')}>{saving ? 'Registrando...' : 'Fechar venda'}</button></section>
+      <section className="pp-pos-cart"><h3>Venda atual</h3>{selected.length ? selected.map(item => <div className="pp-pos-row" key={item.name}><SlicePhoto imageUrl={item.imageUrl} compact/><span>{item.name}</span><button onClick={() => change(item.name, -1)}><Minus/></button><strong>{cart[item.name]}</strong><button onClick={() => change(item.name, 1)}><Plus/></button><b>{money(cart[item.name] * s.settings.price)}</b></div>) : <p>Toque em um sabor para começar.</p>}<div className="pp-payment-choice">{allPayments.map(p => <button key={p} className={payment === p ? 'active' : ''} onClick={() => setPayment(p)}><WalletCards/>{p}</button>)}</div><div><WalletCards/><strong>{total} fatias · {noQrPayments.includes(payment) ? 'Sem receita' : money(amount)}</strong></div>{sale && <small className="pp-ok">Venda {sale.id} registrada{sale.generatesQr ? ' com QR de fidelidade' : sale.status === 'paid' ? ' sem QR' : ' aguardando pagamento'}.</small>}{sale && sale.status !== 'paid' && !noQrPayments.includes(sale.payment) && <div className="pp-payment-pending"><b>Aguardando confirmação</b><span>{sale.payment}{sale.paymentLinkUrl ? ` · ${sale.paymentLinkUrl}` : ''}</span><button disabled={saving} onClick={() => setSaleStatus('paid')}>Pagamento aprovado</button><button disabled={saving} onClick={() => setSaleStatus('declined')}>Pagamento recusado</button><button disabled={saving} onClick={() => setSaleStatus('cancelled')}>Cancelar cobrança</button></div>}{qrUrl && <div className="pp-sale-qr"><QRCodeSVG value={qrUrl} size={154}/><span>Cliente escaneia para receber carimbos</span><code>{sale?.token}</code></div>}{cloudError && <small className="pp-warn">QR local gerado. Nuvem: {cloudError}</small>}<button disabled={!total || saving} onClick={() => submit('Presencial')}>{saving ? 'Registrando...' : 'Fechar venda'}</button></section>
+      <ReservationsFlow compact/>
     </main>
+  </section>;
+}
+
+function ReservationsFlow({ compact = false }: { compact?: boolean }) {
+  const s = useStore();
+  const active = s.reservations.filter(activeReservation);
+  const [cancelId, setCancelId] = useState('');
+  const [cancelNote, setCancelNote] = useState('');
+  const action = (id: string, status: ReservationStatus, note?: string) => s.updateReservation(id, status, note);
+  const confirmCancel = () => {
+    if (!cancelId) return;
+    action(cancelId, 'cancelled', cancelNote || 'Reserva cancelada pela equipe.');
+    setCancelId('');
+    setCancelNote('');
+  };
+  return <section id="pp-reservas" className={`pp-reservations ${compact ? 'compact' : ''}`}>
+    <header><div><span>Separação</span><h2>Reservas antecipadas</h2></div><strong>{active.length}</strong></header>
+    {active.length ? active.map(reservation => <article key={reservation.id} className="pp-reservation-card">
+      <div><b>{reservation.customer}</b><span>{reservation.quantity} fatia(s) · {reservation.paymentMethod} · {reservation.status}</span></div>
+      <div className="pp-reservation-items">{(reservation.items ?? [{ flavor: reservation.flavor, quantity: reservation.quantity, syrup: reservation.syrup }]).map((item, index) => <small key={`${reservation.id}-${index}`}>{item.quantity}x {item.flavor}{item.syrup ? ` · ${item.syrup}` : ''}</small>)}</div>
+      <div className="pp-reservation-actions"><button onClick={() => action(reservation.id, 'paid')}>Pago</button><button onClick={() => action(reservation.id, 'separating')}>Separar</button><button onClick={() => action(reservation.id, 'waiting_pickup')}>Retirada</button><button onClick={() => action(reservation.id, 'picked_up')}>Finalizar</button><button onClick={() => setCancelId(reservation.id)}>Cancelar</button></div>
+    </article>) : <p>Nenhuma reserva ativa.</p>}
+    {cancelId && <div className="pp-cancel-box"><label>Observação do cancelamento<input value={cancelNote} onChange={event => setCancelNote(event.target.value)} placeholder="Ex.: combinamos troca pelo WhatsApp"/></label><button onClick={confirmCancel}>Confirmar cancelamento</button><button onClick={() => setCancelId('')}>Voltar</button></div>}
   </section>;
 }
 
@@ -236,5 +301,19 @@ function ManagerFlow() {
 
 export function PremiumPreview() {
   const [tab, setTab] = useState<Tab>('Vitrine');
-  return <main className="premium-preview"><PremiumTabs tab={tab} setTab={setTab}/>{tab === 'Vitrine' && <CustomerHome setTab={setTab}/>}{tab === 'Compra' && <PurchaseFlow setTab={setTab}/>}{tab === 'Pedido' && <OrderTracking/>}{tab === 'Clube' && <ClubFlow/>}{tab === 'Caixa' && <OperatorFlow/>}{tab === 'Gestor' && <ManagerFlow/>}</main>;
+  return <PremiumShell area="all" tab={tab} setTab={setTab}/>;
+}
+
+function PremiumShell({ area, tab, setTab }: { area: PremiumArea; tab: Tab; setTab: (tab: Tab) => void }) {
+  return <main className={`premium-preview area-${area}`}><PremiumTabs area={area} tab={tab} setTab={setTab}/>{tab === 'Vitrine' && <CustomerHome setTab={setTab}/>}{tab === 'Compra' && <PurchaseFlow setTab={setTab}/>}{tab === 'Pedido' && <OrderTracking/>}{tab === 'Clube' && <ClubFlow/>}{tab === 'Caixa' && <OperatorFlow/>}{tab === 'Gestor' && <ManagerFlow/>}</main>;
+}
+
+export function PremiumClient() {
+  const [tab, setTab] = useState<Tab>('Vitrine');
+  return <PremiumShell area="client" tab={tab} setTab={setTab}/>;
+}
+
+export function PremiumStaff() {
+  const [tab, setTab] = useState<Tab>('Caixa');
+  return <PremiumShell area="staff" tab={tab} setTab={setTab}/>;
 }

@@ -25,3 +25,49 @@
 @media(min-width:721px) and (max-width:980px){.pp-tablet{grid-template-columns:220px minmax(0,1fr)}.pp-tablet aside{padding:22px}.pp-pos-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pp-dashboard{padding:20px}.pp-dash-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.premium-preview{padding:10px}.pp-phone{width:min(100%,430px);min-height:min(844px,calc(100vh - 78px));border-radius:26px}.pp-tablet{width:min(100%,430px);display:block;border-radius:26px}.pp-tablet aside{border-radius:0;padding:22px}.pp-pos-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.pp-tablet main{padding:18px}.pp-tablet header{align-items:flex-start}.pp-tablet h2{font-size:27px}.pp-tabs{max-width:100%;overflow:auto}.pp-dashboard{width:min(100%,430px);padding:18px;border-radius:26px}.pp-dashboard>header{align-items:flex-start}.pp-dashboard>header button{font-size:12px;padding:11px 13px}.pp-dash-hero{grid-template-columns:1fr;gap:10px}.pp-dash-hero h1{font-size:28px}.pp-dash-grid{grid-template-columns:repeat(2,1fr)}.pp-product-edit{grid-template-columns:46px 1fr}.pp-product-edit button{grid-column:1/3}.pp-product-edit label:nth-of-type(2){grid-column:1/3}.pp-pos-row{grid-template-columns:36px minmax(0,1fr) 30px 22px 30px!important}.pp-pos-row b{grid-column:2/6;justify-self:end}.pp-payment-choice{grid-template-columns:1fr 1fr}}
 @media(max-width:380px){.pp-top{padding-left:16px;padding-right:16px}.pp-location,.pp-coupon,.pp-hero,.pp-loyalty{margin-left:16px;margin-right:16px}.pp-coupon{width:calc(100% - 32px)}.pp-categories,.pp-section-title,.pp-product-row{padding-left:16px;padding-right:16px}.pp-flavor-grid{grid-template-columns:1fr;padding-left:16px;padding-right:16px}.pp-basket{margin-left:16px;margin-right:16px}.pp-pos-grid{grid-template-columns:1fr}.pp-hero{grid-template-columns:1fr}.pp-hero .pp-slice-photo{justify-self:end;margin-top:-40px}.pp-brand b{font-size:18px}.pp-brand span{font-size:11px}}
+
+.premium-preview{overflow-x:hidden}
+.pp-tablet{width:min(1120px,calc(100vw - 36px));grid-template-columns:minmax(224px,260px) minmax(0,1fr)}
+.pp-tablet header button{white-space:nowrap}
+.pp-pos-cart>div.pp-sale-qr,.pp-pos-cart>div.pp-payment-pending{display:grid!important}
+.pp-warn{display:block;margin:8px 0;color:#8a5b00;font-weight:850}
+.pp-sale-qr{place-items:center;gap:8px;margin:14px 0;padding:16px;border:1px dashed #ff8bae;border-radius:22px;background:#fff;color:#5a1916;text-align:center}
+.pp-sale-qr svg{padding:10px;border-radius:16px;background:#fff;box-shadow:0 10px 22px #5c1f3217}
+.pp-sale-qr span{font-weight:950}
+.pp-sale-qr code{max-width:100%;overflow-wrap:anywhere;font-size:12px;color:#e91e70}
+.pp-payment-pending{gap:8px;margin:12px 0;padding:14px;border-radius:20px;background:#fff6df;color:#5a1916}
+.pp-payment-pending span{font-size:12px;overflow-wrap:anywhere}
+.pp-payment-pending button{min-height:38px}
+.pp-reservations{margin-top:20px;padding:18px;border-radius:26px;background:#fff;box-shadow:0 14px 30px #6d263312}
+.pp-reservations>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pp-reservations h2{margin:2px 0 0;font-size:28px}
+.pp-reservations>header strong{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#ff2f82;color:#fff}
+.pp-reservation-card{display:grid;grid-template-columns:minmax(150px,1fr) minmax(180px,1.3fr) minmax(280px,auto);gap:12px;align-items:center;padding:12px 0;border-top:1px solid #ffd0dc}
+.pp-reservation-card b,.pp-reservation-card span{display:block;overflow-wrap:anywhere}
+.pp-reservation-card span,.pp-reservation-items small{font-size:12px;color:#765650}
+.pp-reservation-items{display:grid;gap:4px}
+.pp-reservation-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pp-reservation-actions button,.pp-cancel-box button{border:1px solid #ffc4d4;border-radius:12px;padding:9px 10px;background:#fff;color:#7d243a;font-weight:900}
+.pp-cancel-box{display:grid;gap:10px;margin-top:12px;padding:14px;border-radius:18px;background:#fff1f4}
+.pp-cancel-box label{display:grid;gap:6px;font-weight:900}
+.pp-cancel-box input{min-height:42px;border:1px solid #ffc4d4;border-radius:14px;padding:0 12px;background:#fff}
+
+@media(min-width:721px) and (max-width:980px){
+  .pp-tablet{grid-template-columns:1fr;min-height:auto}
+  .pp-tablet aside{padding:18px;display:grid;grid-template-columns:70px minmax(0,1fr) repeat(2,minmax(130px,1fr));align-items:center;gap:12px}
+  .pp-tablet aside .pp-logo{grid-row:1/3}
+  .pp-tablet aside h1{margin:0;font-size:24px}
+  .pp-tablet aside p{margin:0}
+  .pp-tablet aside div{margin:0;padding:12px}
+  .pp-pos-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pp-reservation-card{grid-template-columns:1fr}
+  .pp-reservation-actions{justify-content:flex-start}
+}
+
+@media(max-width:720px){
+  .pp-tablet{width:min(100%,430px)}
+  .pp-tablet header{align-items:flex-start;flex-direction:column}
+  .pp-reservation-card{grid-template-columns:1fr}
+  .pp-reservation-actions{justify-content:flex-start}
+  .pp-reservations h2{font-size:24px}
+}
