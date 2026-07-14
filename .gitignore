@@ -1,0 +1,10 @@
+node_modules/
+dist/
+launch-dist/
+.env
+*.log
+coverage/
+tsconfig.tsbuildinfo
+
+# Local Netlify folder
+.netlify

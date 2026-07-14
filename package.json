@@ -1,0 +1,34 @@
+{
+  "name": "adoce-fidelidade",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "lint": "tsc -b --pretty false",
+    "generate:assets": "node scripts/generate-assets.mjs",
+    "docs:build": "node scripts/generate-docs.mjs",
+    "prebuild": "npm run docs:build",
+    "launch:build": "node scripts/generate-launch-page-v3.mjs",
+    "launch:verify": "node scripts/verify-launch-v3.cjs"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "latest",
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "qrcode": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/qrcode": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest",
+    "vitest": "latest"
+  }
+}
