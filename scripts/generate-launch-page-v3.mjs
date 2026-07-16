@@ -1,14 +1,37 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = path.join(root, "launch-dist");
 fs.mkdirSync(out, { recursive: true });
-const data = (file, mime) => "data:" + mime + ";base64," + fs.readFileSync(path.join(root, file)).toString("base64");
-const logo = data("public/wallet/brand/logo-transparent.png", "image/png");
-const cake = data("hero-cake-transparent.png", "image/png");
-const texture = data("hero-chocolate-texture.png", "image/png");
+const assetsOut = path.join(out, "assets");
+fs.rmSync(assetsOut, { recursive: true, force: true });
+fs.mkdirSync(assetsOut, { recursive: true });
+for (const file of fs.readdirSync(out)) {
+  if (file.startsWith(".qa-")) fs.rmSync(path.join(out, file), { force: true });
+}
+
+const writeWebp = async (source, target, quality, maxWidth = Infinity) => {
+  const image = await loadImage(path.join(root, source));
+  const scale = Math.min(1, maxWidth / image.width);
+  const width = Math.round(image.width * scale);
+  const height = Math.round(image.height * scale);
+  const canvas = createCanvas(width, height);
+  canvas.getContext("2d").drawImage(image, 0, 0, width, height);
+  fs.writeFileSync(path.join(assetsOut, target), await canvas.encode("webp", quality));
+};
+
+await Promise.all([
+  writeWebp("public/wallet/brand/logo-transparent.png", "logo.webp", 92, 256),
+  writeWebp("hero-cake-transparent.png", "hero-cake.webp", 90),
+  writeWebp("hero-chocolate-texture.png", "chocolate-texture.webp", 82),
+]);
+
+const logo = "/assets/logo.webp";
+const cake = "/assets/hero-cake.webp";
+const texture = "/assets/chocolate-texture.webp";
 
 const html = `<!doctype html>
 <html lang="pt-BR">
@@ -109,6 +132,6 @@ const html = `<!doctype html>
 </html>`;
 
 fs.writeFileSync(path.join(out, "index.html"), html);
-fs.writeFileSync(path.join(out, "_headers"), "/*\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n");
+fs.writeFileSync(path.join(out, "_headers"), "/*\n  X-Frame-Options: DENY\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  Permissions-Policy: camera=(), microphone=(), geolocation=()\n\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n");
 fs.writeFileSync(path.join(out, "_redirects"), "/* /index.html 200\n");
 console.log("Apresentação sensorial do Clube Adoce gerada localmente.");
