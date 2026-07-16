@@ -70,9 +70,16 @@ Com 390 fatias por semana e projeção de 500, a capacidade do Free é suficient
 
 ## Estado atual
 
-- Migração inicial criada localmente e versionável.
+- Projeto Supabase Free criado em São Paulo e conectado à aplicação.
+- Migração inicial aplicada, com 18 tabelas públicas protegidas por RLS.
+- Migração temporária do piloto do festival aplicada e versionada.
 - Cliente Supabase preparado sem segredos no código.
 - Normalização de telefone e início do fluxo OTP implementados e testados.
-- Projeto Supabase Free em São Paulo aguardando criação.
+- Piloto funcional publicado separadamente em `https://clube-adoce-piloto.netlify.app/#festival`.
+- Fluxo real validado: 14 carimbos completam um cartão, liberam um prêmio acumulável e o resgate não interrompe o próximo ciclo.
 - Migração para o Pro planejada para 6 meses e obrigatória em até 12 meses.
-- Aplicação atual continua em modo de demonstração até a conexão com o projeto real.
+- Site institucional oficial permanece separado e não foi substituído pelo piloto.
+
+## Limites conscientes do piloto
+
+O acesso por código compartilhado é temporário e exclusivo para a validação do festival. Ainda não fazem parte desta entrega de emergência: login individual de funcionário, OTP do cliente, Wallet, Cartão em Grupo, Espalhe Doçura, sabores do dia e administração completa. Esses recursos continuam no roadmap oficial e serão liberados por etapas depois da validação operacional.

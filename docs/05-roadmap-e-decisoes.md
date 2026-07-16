@@ -106,6 +106,7 @@ A base precisa nascer preparada para grupos, duas trilhas de fidelidade e prêmi
 
 | Data | Versão | Mudança |
 | --- | --- | --- |
+| 16/07/2026 | 1.0 | Fundação Supabase criada e piloto funcional do festival publicado para cadastro, carimbos, cartão do cliente e resgate. |
 | 14/07/2026 | 0.1 | Consolidação inicial da visão, regras, jornadas, arquitetura e roadmap |
 
 ## Evolução para CRM

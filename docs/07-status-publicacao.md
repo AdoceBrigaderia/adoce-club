@@ -41,3 +41,19 @@ Criar os seguintes registros na zona DNS:
 | CNAME | `www` | `adocebrigaderia.netlify.app` |
 
 Depois da alteração, verificar propagação, emissão automática do certificado, acesso HTTPS e redirecionamento do domínio raiz para `www`.
+
+## Piloto funcional do festival — 16/07/2026
+
+Foi publicado um ambiente separado e temporário para validar a operação real com clientes sem alterar a apresentação oficial:
+
+- endereço da equipe: `https://clube-adoce-piloto.netlify.app/#festival`;
+- site oficial preservado em `https://www.adocebrigaderia.com.br`;
+- acesso da equipe protegido por código temporário com validade de 48 horas;
+- cadastro e busca de clientes;
+- registro de fatias, sendo uma fatia igual a um carimbo;
+- conclusão automática do cartão ao atingir 14 carimbos;
+- prêmio acumulável, sem obrigar resgate imediato;
+- resgate controlado pela equipe;
+- cartão do cliente por link individual, responsivo e atualizado automaticamente.
+
+O piloto usa dados reais no Supabase, mas permanece isolado da futura autenticação definitiva. Depois do festival, o código temporário deve ser revogado e substituído pelo acesso individual de funcionários.
