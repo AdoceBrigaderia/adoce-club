@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@napi-rs/canvas": "latest",
+    "@supabase/supabase-js": "2.110.6",
     "@vitejs/plugin-react": "latest",
     "lucide-react": "latest",
     "qrcode": "latest",
@@ -28,6 +29,7 @@
     "@types/qrcode": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "supabase": "2.109.1",
     "typescript": "latest",
     "vitest": "latest"
   }
