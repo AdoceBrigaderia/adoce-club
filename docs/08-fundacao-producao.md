@@ -57,12 +57,22 @@ Em 16/07/2026, o Supabase informa:
 - plano Pro: a partir de US$ 25 por mês, incluindo um projeto Micro dentro dos créditos de computação e backups diários;
 - o envio de SMS é cobrado separadamente pelo provedor escolhido.
 
-Para operação comercial, a recomendação é o plano Pro com limite de gastos habilitado. Nenhum projeto pago novo será criado sem confirmação explícita do proprietário.
+### Estratégia aprovada de implantação
+
+- Iniciar no plano Free para preservar o caixa durante a implantação.
+- Permanecer no Free por no máximo 12 meses.
+- Meta preferencial: migrar para o Pro em aproximadamente 6 meses.
+- Antecipar a migração se o banco atingir 250 MB, se o tráfego atingir 60% da franquia ou se a indisponibilidade passar a afetar a operação.
+- Manter backup externo recorrente enquanto não houver backups automáticos do plano Pro.
+- Ativar limite de gastos ao migrar para o Pro.
+
+Com 390 fatias por semana e projeção de 500, a capacidade do Free é suficiente para esse período mesmo no cenário conservador em que cada fatia gere uma operação individual.
 
 ## Estado atual
 
 - Migração inicial criada localmente e versionável.
 - Cliente Supabase preparado sem segredos no código.
 - Normalização de telefone e início do fluxo OTP implementados e testados.
-- Projeto Supabase de produção, região e cobrança aguardam confirmação.
+- Projeto Supabase Free em São Paulo aguardando criação.
+- Migração para o Pro planejada para 6 meses e obrigatória em até 12 meses.
 - Aplicação atual continua em modo de demonstração até a conexão com o projeto real.

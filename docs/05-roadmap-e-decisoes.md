@@ -78,6 +78,8 @@ A base precisa nascer preparada para grupos, duas trilhas de fidelidade e prêmi
 - Indicação confirmada na primeira compra premia indicado e indicador.
 - O indicador recebe no segundo cartão exclusivo de indicações.
 - O Clube Adoce também exibirá sabores, status da loja, atendimento e promoções.
+- O backend começará no Supabase Free, com meta de migração ao Pro em 6 meses e limite máximo de 12 meses.
+- O Clube Adoce evoluirá para um CRM de relacionamento com histórico, segmentação, campanhas, tarefas e visão completa do cliente.
 
 ## Recomendações aguardando validação
 
@@ -105,3 +107,17 @@ A base precisa nascer preparada para grupos, duas trilhas de fidelidade e prêmi
 | Data | Versão | Mudança |
 | --- | --- | --- |
 | 14/07/2026 | 0.1 | Consolidação inicial da visão, regras, jornadas, arquitetura e roadmap |
+
+## Evolução para CRM
+
+A arquitetura deve permitir que o Clube Adoce evolua de fidelidade para uma plataforma de relacionamento, incluindo:
+
+- linha do tempo completa de compras, carimbos, prêmios, indicações e contatos;
+- segmentos dinâmicos por frequência, recorrência, cartões concluídos e inatividade;
+- campanhas com consentimento e medição de resultado;
+- tarefas e lembretes de relacionamento para a equipe;
+- registro de preferências e observações com controle de acesso;
+- indicadores de retenção, retorno, valor e engajamento;
+- exportação, correção e anonimização em conformidade com a LGPD.
+
+Essa evolução não deve alterar a fonte de verdade dos carimbos nem permitir que dados de CRM modifiquem o livro imutável de movimentações.
