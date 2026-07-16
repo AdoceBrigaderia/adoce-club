@@ -19,11 +19,13 @@ O produto precisa mostrar e armazenar separadamente:
 
 ## Meu Cartão
 
-- Cada fatia paga e elegível gera **1 carimbo**.
+- Cada fatia paga, seja de sabor **tradicional ou premium**, gera **1 carimbo**.
 - Ao alcançar **14 carimbos**, o ciclo é concluído.
 - A conclusão cria **1 prêmio disponível** e incrementa **cartões completados**.
 - O novo ciclo começa imediatamente; o cliente continua acumulando sem precisar resgatar o prêmio.
 - Um resgate consome exatamente **1 prêmio disponível**.
+- O prêmio dá direito a **1 fatia tradicional**.
+- O cliente pode escolher uma fatia premium mediante o pagamento da **diferença vigente entre a fatia tradicional e a premium** no momento do resgate.
 - A fatia recebida como prêmio não gera carimbo.
 - Carimbos excedentes permanecem válidos.
 
