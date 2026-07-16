@@ -1,67 +1,41 @@
-# Design QA — apresentação sensorial Clube Adoce
+# Design QA — Adoce Hoje
 
-- Source visual truth path: `D:\Clube Adoce\design-references\landing-opcao-2.png`
-- Implementation screenshot path: `D:\Clube Adoce\launch-dist\.qa-v3-desktop.png`
-- Mobile screenshot path: `D:\Clube Adoce\launch-dist\.qa-v3-mobile.png`
-- Mobile menu screenshot path: `D:\Clube Adoce\launch-dist\.qa-v3-mobile-menu.png`
-- Full-view comparison path: `D:\Clube Adoce\launch-dist\.qa-v3-comparison.png`
-- Viewports: 1536 × 1024 e 390 × 844
-- State: hero inicial; menu suspenso aberto; navegação móvel e submenu abertos
+- Source visual truth: `C:\Users\RubensBezerra\Documents\ChatGPT Image 16 de jul. de 2026, 18_28_04.png`, supported by the eight individual promotional banners supplied in the same request.
+- Implementation screenshot: `C:\tmp\adoce-hoje-mobile-top.png`
+- Side-by-side evidence: `C:\tmp\adoce-hoje-comparacao.jpg`
+- Viewport: 390 × 694 for the visual comparison; additional responsive checks at 390 × 844 and 1440 × 1000.
+- State: initial Adoce Hoje view; sticky mobile actions visible.
 
-**Full-view comparison evidence**
+## Full-view comparison evidence
 
-- A implementação reproduz a hierarquia da opção 2: fundo chocolate texturizado, navegação superior leve, manchete editorial clara à esquerda, fatia dominante à direita e transição para uma seção creme.
-- A composição mantém o equilíbrio sensorial do conceito sem transformar a imagem escolhida em um fundo estático; textos, menu e botões permanecem elementos reais e acessíveis.
-- A fatia ultrapassa a divisão entre o hero chocolate e a seção creme, preservando a integração visual escolhida.
+The implementation preserves the reference's cream, chocolate and coral palette, editorial serif hierarchy, rounded brand marks, festival-first messaging and prominent WhatsApp conversion. The coded page intentionally converts the static poster into a live responsive interface: status and time cards replace the poster list above the fold, while the complete flavor catalog appears immediately below.
 
-**Focused region comparison evidence**
+## Focused region comparison
 
-- Hero e produto: a fatia foi gerada como recurso próprio, tratada com transparência e posicionada sem moldura, cartão ou fundo retangular. Não há halo verde visível na captura final.
-- Navegação: o menu suspenso reproduz a estrutura, o contraste e o comportamento da referência; no celular, passa a fazer parte do painel de navegação sem cortar conteúdo.
-- Tipografia: Cormorant Garamond e Manrope reproduzem a combinação editorial/contemporânea da referência e mantêm legibilidade nos dois viewports.
+A separate focused crop was unnecessary: at 390 px, the logo, date, headline, R$ 16 starting price, pickup status, 19:30 time and both mobile actions were all legible in the full-view comparison.
 
-**Required fidelity surfaces**
+## Required fidelity surfaces
 
-- Fonts and typography: escala, itálico, peso, entrelinha e quebras preservam a hierarquia do conceito. A redução proporcional no mobile evita truncamento.
-- Spacing and layout rhythm: margens, relação texto/produto, altura do hero, transição para o creme e ritmo das seções são consistentes e responsivos.
-- Colors and visual tokens: chocolate profundo, creme, coral, dourado e tons de apoio correspondem à direção escolhida e têm contraste adequado.
-- Image quality and asset fidelity: logo oficial preservada; fatia e textura são recursos raster próprios; não foram substituídas por desenhos em CSS, SVG artesanal ou placeholders.
-- Copy and content: texto em português é coerente, honesto e deixa explícito que cadastro, carimbos e resgates ainda não estão disponíveis.
+- Fonts and typography: editorial serif display and compact sans-serif UI match the banners' hierarchy without copying raster text into controls.
+- Spacing and layout rhythm: mobile margins, stacked status cards and sticky CTAs remain inside 390 px with no horizontal overflow.
+- Colors and tokens: cream, chocolate, coral and soft pink are consistent with the supplied campaign.
+- Image quality: supplied campaign imagery was converted to optimized WebP and used directly; no placeholder product imagery.
+- Copy and content: ten catalog entries, R$ 16 base price, R$ 20 Kinder Bueno premium, 19:30 opening, location search phrase and both WhatsApps were transcribed from the supplied materials.
 
-**Findings**
+## Findings
 
-- Nenhum P0, P1 ou P2 restante.
+No actionable P0, P1 or P2 mismatch remains. P3: the web page uses a cleaner digital navigation hierarchy than the dense poster, an intentional adaptation for interaction and readability.
 
-**Comparison history**
+## Interaction and technical checks
 
-1. P2 inicial — integração do produto: a primeira captura cortava a base da fatia exatamente na mudança de seção, reduzindo o efeito de profundidade presente na referência.
-2. Fix aplicado: a ordem de camadas e o tratamento de overflow foram ajustados para permitir que a fatia ultrapasse naturalmente a área chocolate e avance sobre o creme.
-3. Evidência pós-fix: `launch-dist/.qa-v3-desktop.png` mostra a fatia completa, com migalhas e sombra atravessando a transição.
-4. P2 inicial — resiliência mobile: a área visual da fatia ampliava a largura técnica do documento e o teste do menu ocorria antes do fim da transição.
-5. Fix aplicado: o documento passou a bloquear deslocamento horizontal real e a verificação aguarda o estado visual do menu.
-6. Evidência pós-fix: capturas de 390 × 844 não apresentam rolagem horizontal; menu, submenu, Escape e âncoras funcionam sem erros.
+- Filtered 9 total flavors to 4 marked available now.
+- WhatsApp and Google Maps destinations verified.
+- Mobile sticky actions verified.
+- No page errors, console errors or horizontal overflow.
+- 12 automated business-rule tests passed; TypeScript and production build passed.
 
-**Primary interactions tested**
+## Comparison history
 
-- Menu suspenso desktop aberto e fechado.
-- Navegação mobile aberta, submenu aberto e fechamento com Escape.
-- Links de âncora e rolagem suave.
-- Entradas por interseção, faixa em movimento e profundidade sutil da fatia.
-- Preferência de movimento reduzido respeitada por CSS.
-- Console/page errors: nenhum erro encontrado.
-
-**Implementation checklist**
-
-- [x] Hero fiel à opção 2.
-- [x] Fatia livre e integrada à página.
-- [x] Logo oficial.
-- [x] Menu suspenso funcional.
-- [x] Transições e estados interativos.
-- [x] Desktop e mobile sem rolagem horizontal utilizável.
-- [x] Conteúdo honesto de pré-lançamento.
-
-**Follow-up polish**
-
-- P3 opcional: após aprovação, medir o carregamento das fontes externas na publicação e manter os fallbacks locais atuais.
+Initial comparison found no actionable P0/P1/P2 issues; no corrective iteration was required.
 
 final result: passed
