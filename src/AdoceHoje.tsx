@@ -32,6 +32,77 @@ type Channel = {
   next_change_at: string | null;
 };
 
+type ServiceKind = "pickup" | "stall";
+type ServiceWindow = {
+  kind: ServiceKind;
+  start: number;
+  end: number;
+  label: string;
+};
+
+const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
+  0: [],
+  1: [{ kind: "pickup", start: 9, end: 22, label: "Retirada na Fábrica Adoce, das 9h às 22h." }],
+  2: [{ kind: "pickup", start: 9, end: 22, label: "Retirada na Fábrica Adoce, das 9h às 22h." }],
+  3: [{ kind: "pickup", start: 9, end: 22, label: "Retirada na Fábrica Adoce, das 9h às 22h." }],
+  4: [
+    { kind: "pickup", start: 9, end: 18, label: "Retirada na Fábrica Adoce, das 9h às 18h." },
+    { kind: "stall", start: 19.5, end: 23, label: "Barraquinha Adoce, das 19h30 às 23h." },
+  ],
+  5: [
+    { kind: "pickup", start: 9, end: 18, label: "Retirada na Fábrica Adoce, das 9h às 18h." },
+    { kind: "stall", start: 19.5, end: 23, label: "Barraquinha Adoce, das 19h30 às 23h." },
+  ],
+  6: [
+    { kind: "pickup", start: 9, end: 16, label: "Retirada na Fábrica Adoce, das 9h às 16h." },
+    { kind: "stall", start: 17, end: 23, label: "Barraquinha Adoce, das 17h às 23h." },
+  ],
+};
+
+function getFortalezaNow() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Fortaleza",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value || "0";
+  const weekdays: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return {
+    weekday: weekdays[value("weekday")] ?? 0,
+    hour: Number(value("hour")) + Number(value("minute")) / 60,
+  };
+}
+
+function serviceState(kind: ServiceKind) {
+  const now = getFortalezaNow();
+  const today = weeklyServiceWindows[now.weekday].filter(
+    (window) => window.kind === kind,
+  );
+  const active = today.find(
+    (window) => now.hour >= window.start && now.hour < window.end,
+  );
+  return {
+    open: Boolean(active),
+    message:
+      active?.label ||
+      today.map((window) => window.label).join(" ") ||
+      (kind === "stall"
+        ? "A barraquinha não funciona hoje."
+        : "Não há retirada programada hoje."),
+  };
+}
+
 const fallback: Flavor[] = [
   {
     id: "kinder",
@@ -228,16 +299,13 @@ export default function AdoceHoje() {
   );
   const inPerson = channels.find((c) => c.slug === "in_person");
   const online = channels.find((c) => c.slug === "online_orders");
-  const open = inPerson?.status === "open";
+  const stallState = serviceState("stall");
+  const pickupState = serviceState("pickup");
+  const open = inPerson?.status === "paused" ? false : stallState.open;
   const availableCount = flavors.filter((f) => f.available).length;
-  const statusText = (channel?: Channel) =>
-    channel?.status === "open"
-      ? "Aberto agora"
-      : channel?.status === "opening_soon"
-        ? "Abriremos em breve"
-        : channel?.status === "paused"
-          ? "Pausado"
-          : "Fechado agora";
+  const stallStatus = open ? "Aberto agora" : "Fechado agora";
+  const pickupOpen = online?.status === "paused" ? false : pickupState.open;
+  const pickupStatus = pickupOpen ? "Aberto agora" : "Fechado agora";
   return (
     <main className="today-page">
       <header className="today-header">
@@ -287,8 +355,8 @@ export default function AdoceHoje() {
             <div>
               <Clock3 />
               <span>
-                <strong>{statusText(inPerson)}</strong>
-                <small>{inPerson?.message || "Atendimento presencial"}</small>
+                <strong>{stallStatus}</strong>
+                <small>{inPerson?.message || stallState.message}</small>
               </span>
             </div>
           </div>
@@ -426,12 +494,13 @@ export default function AdoceHoje() {
           <p className="today-kicker">Atendimento Adoce</p>
           <h2>{open ? "Estamos te esperando." : "Confira antes de sair."}</h2>
           <p>
-            <strong>Presencial:</strong> {statusText(inPerson)}.{" "}
-            {inPerson?.message || "Os horários serão publicados aqui."}
+            <strong>Barraquinha:</strong> {stallStatus}.{" "}
+            {inPerson?.message || stallState.message}
           </p>
           <p>
-            <strong>Pedidos online:</strong> {statusText(online)}.{" "}
-            {online?.message || "Consulte pelo WhatsApp."}
+            <strong>Retirada:</strong> {pickupStatus}.{" "}
+            {online?.message || pickupState.message} Endereço: Rua Professor
+            Odílio Filho, 227, Passaré.
           </p>
           <a
             className="today-primary"
