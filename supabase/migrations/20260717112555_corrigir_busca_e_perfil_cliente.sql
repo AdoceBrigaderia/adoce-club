@@ -31,7 +31,7 @@ begin
     t.current_progress,
     t.completed_cards,
     count(r.id) filter (where r.status = 'available')::bigint,
-    (array_agg(r.id order by r.created_at)
+    (array_agg(r.id order by r.issued_at)
       filter (where r.status = 'available'))[1]
   from public.profiles p
   join public.account_memberships m
