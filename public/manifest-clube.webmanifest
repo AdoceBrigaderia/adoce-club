@@ -1,0 +1,11 @@
+{
+  "name": "Clube Adoce",
+  "short_name": "Clube Adoce",
+  "description": "Seu cartão fidelidade, prêmios, indicações e novidades da Adoce.",
+  "start_url": "/#entrar",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff7ed",
+  "theme_color": "#1a0c08",
+  "icons": [{ "src": "/site/logo-original.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+}

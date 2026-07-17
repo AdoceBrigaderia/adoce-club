@@ -83,3 +83,28 @@ Com 390 fatias por semana e projeção de 500, a capacidade do Free é suficient
 ## Limites conscientes do piloto
 
 O acesso por código compartilhado é temporário e exclusivo para a validação do festival. Ainda não fazem parte desta entrega de emergência: login individual de funcionário, OTP do cliente, Wallet, Cartão em Grupo, Espalhe Doçura, sabores do dia e administração completa. Esses recursos continuam no roadmap oficial e serão liberados por etapas depois da validação operacional.
+
+## Avanço da autenticação e da operação — 17/07/2026
+
+O acesso definitivo por e-mail foi configurado e validado de ponta a ponta:
+
+- domínio `auth.adocebrigaderia.com.br` verificado no Resend;
+- SMTP próprio integrado ao Supabase;
+- remetente `acesso@auth.adocebrigaderia.com.br`;
+- código de acesso com seis dígitos e validade de dez minutos;
+- modelos de autenticação e segurança personalizados em português;
+- URLs oficiais de redirecionamento autorizadas;
+- Francisco Rubens Pereira Bezerra Filho e Elizabeth Cristina Sampaio Nascimento registrados como proprietários com acesso total e contas individuais;
+- primeiro acesso do proprietário validado com recebimento imediato do e-mail.
+
+A fundação de dados também passou a contemplar:
+
+- campos opcionais de relacionamento e perfil do cliente;
+- catálogo com preço, descrição comercial e várias fotos por sabor;
+- horários regulares e exceções por canal de atendimento;
+- busca segura de clientes pela equipe;
+- painéis conectados para cliente e operação;
+- página pública `Adoce Hoje` conectada ao catálogo e ao status dos canais;
+- nova versão da página oficial com fase atual, prévias das telas, benefícios e chamadas para cadastro e acesso.
+
+O WhatsApp permanece como próxima integração de autenticação. Até a conclusão da configuração Meta, o e-mail é o canal definitivo disponível.

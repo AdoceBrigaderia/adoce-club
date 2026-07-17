@@ -26,6 +26,36 @@ export async function requestPhoneCode(fullName: string, phone: string) {
   return normalizedPhone;
 }
 
+export async function requestEmailCode(email: string, fullName?: string, createUser = true) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+    throw new Error("Informe um e-mail válido.");
+  }
+
+  const { error } = await requireSupabase().auth.signInWithOtp({
+    email: normalizedEmail,
+    options: {
+      shouldCreateUser: createUser,
+      emailRedirectTo: `${window.location.origin}${window.location.pathname}#minha-conta`,
+      data: fullName?.trim() ? { full_name: fullName.trim() } : undefined,
+    },
+  });
+
+  if (error) throw error;
+  return normalizedEmail;
+}
+
+export async function verifyEmailCode(email: string, token: string) {
+  const { data, error } = await requireSupabase().auth.verifyOtp({
+    email: email.trim().toLowerCase(),
+    token: token.replace(/\D/g, ""),
+    type: "email",
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function verifyPhoneCode(phone: string, token: string) {
   const supabase = requireSupabase();
   const { data, error } = await supabase.auth.verifyOtp({
