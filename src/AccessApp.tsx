@@ -4,6 +4,7 @@ import { ArrowRight, Check, Gift, Heart, History, LogOut, Mail, Plus, Search, Sh
 import { requireSupabase } from "./lib/supabase";
 import { requestEmailCode, signOut, verifyEmailCode } from "./services/auth";
 import { matchesCustomerSearch } from "./customer-search";
+import { currentConsent, isCustomerOnboardingComplete, type ConsentEvent } from "./customer-onboarding";
 import "./access-app.css";
 
 type Surface = "client" | "operation";
@@ -99,6 +100,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
           { profile_id: result.user.id, consent_type: "marketing", granted: marketing, document_version: "1.0", source: "web" },
         ]);
         if (consentError) throw consentError;
+        window.dispatchEvent(new Event("adoce-profile-ready"));
       }
       location.hash = surface === "operation" ? "operacao" : "minha-conta";
     } catch (error) {
@@ -143,32 +145,99 @@ function AuthScreen({ surface }: { surface: Surface }) {
 
 function CustomerHome({ session }: { session: Session }) {
   const [snapshot, setSnapshot] = useState<ClubSnapshot | null>(null);
+  const [onboardingRequired, setOnboardingRequired] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [view, setView] = useState<ClubView>("card");
   const [profileName, setProfileName] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [marketingAccepted, setMarketingAccepted] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const loadSnapshot = useCallback(async()=>{
     const supabase = requireSupabase();
-    const [{ data: profile }, { data: memberships }, { data: referral }] = await Promise.all([
+    setError("");
+    const [{ data: profile, error: profileError }, { data: consentRows, error: consentError }] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", session.user.id).single(),
+      supabase.from("consent_events").select("consent_type,granted,created_at").eq("profile_id", session.user.id).order("created_at", { ascending: false }),
+    ]);
+    if (profileError || consentError) throw profileError || consentError;
+
+    const consents = (consentRows || []) as ConsentEvent[];
+    const metadataName = typeof session.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name.trim() : "";
+    const databaseName = profile?.full_name?.trim() || "";
+    const nameForForm = databaseName && databaseName !== "Cliente Adoce" ? databaseName : metadataName;
+    setProfileName(nameForForm);
+    setTermsAccepted(currentConsent(consents, "club_terms"));
+    setPrivacyAccepted(currentConsent(consents, "privacy"));
+    setMarketingAccepted(currentConsent(consents, "marketing"));
+
+    if (!isCustomerOnboardingComplete(databaseName, consents)) {
+      setSnapshot(null);
+      setOnboardingRequired(true);
+      return;
+    }
+
+    setOnboardingRequired(false);
+    const [{ data: memberships, error: membershipError }, { data: referral, error: referralError }] = await Promise.all([
       supabase.from("account_memberships").select("account_id,is_primary").eq("profile_id", session.user.id).eq("active", true),
       supabase.from("referral_codes").select("code").eq("profile_id", session.user.id).maybeSingle(),
     ]);
+    if (membershipError || referralError) throw membershipError || referralError;
     const accountId = memberships?.find(m=>m.is_primary)?.account_id || memberships?.[0]?.account_id;
     if (!accountId) { setError("Sua conta está sendo preparada. Atualize em alguns instantes."); return; }
-    const [{ data: tracks }, { data: rewards }] = await Promise.all([
+    const [{ data: tracks, error: tracksError }, { data: rewards, error: rewardsError }] = await Promise.all([
       supabase.from("loyalty_tracks").select("id,kind,current_progress,completed_cards").eq("account_id", accountId),
       supabase.from("rewards").select("id,status,track_id").eq("status", "available"),
     ]);
+    if (tracksError || rewardsError) throw tracksError || rewardsError;
     const main = tracks?.find(t=>t.kind === "main"); const ref = tracks?.find(t=>t.kind === "referral");
-    const metadataName = typeof session.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name.trim() : "";
-    const databaseName = profile?.full_name?.trim() || "";
-    const resolvedName = databaseName && databaseName !== "Cliente Adoce" ? databaseName : metadataName || databaseName || "Cliente Adoce";
+    const resolvedName = databaseName;
     setProfileName(resolvedName);
     setSnapshot({name:resolvedName,progress:main?.current_progress||0,completed:main?.completed_cards||0,rewards:rewards?.filter(r=>r.track_id===main?.id).length||0,referralProgress:ref?.current_progress||0,referralRewards:rewards?.filter(r=>r.track_id===ref?.id).length||0,referralCode:referral?.code||"—"});
   }, [session.user.id, session.user.user_metadata]);
   useEffect(() => { void loadSnapshot().catch(e=>setError(e instanceof Error?e.message:"Não foi possível abrir sua conta.")); }, [loadSnapshot]);
+  useEffect(() => {
+    const reloadCompletedProfile = () => {
+      void loadSnapshot().catch(e=>setError(e instanceof Error?e.message:"Não foi possível abrir sua conta."));
+    };
+    window.addEventListener("adoce-profile-ready", reloadCompletedProfile);
+    return () => window.removeEventListener("adoce-profile-ready", reloadCompletedProfile);
+  }, [loadSnapshot]);
+  const completeOnboarding = async(event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanName = profileName.trim();
+    if (cleanName.length < 2 || cleanName.toLocaleLowerCase("pt-BR") === "cliente adoce") {
+      setMessage("Informe seu nome para concluir o cadastro.");
+      return;
+    }
+    if (!termsAccepted || !privacyAccepted) {
+      setMessage("Aceite os termos do Clube e a política de privacidade para continuar.");
+      return;
+    }
+
+    setBusy(true); setMessage("");
+    const supabase = requireSupabase();
+    const { error: profileError } = await supabase.from("profiles").update({full_name:cleanName}).eq("id",session.user.id);
+    if (profileError) { setBusy(false); setMessage(profileError.message); return; }
+    const { error: metadataError } = await supabase.auth.updateUser({data:{full_name:cleanName}});
+    if (metadataError) { setBusy(false); setMessage(metadataError.message); return; }
+    const { error: consentError } = await supabase.from("consent_events").insert([
+      { profile_id: session.user.id, consent_type: "club_terms", granted: true, document_version: "1.0", source: "web_onboarding" },
+      { profile_id: session.user.id, consent_type: "privacy", granted: true, document_version: "1.0", source: "web_onboarding" },
+      { profile_id: session.user.id, consent_type: "marketing", granted: marketingAccepted, document_version: "1.0", source: "web_onboarding" },
+    ]);
+    if (consentError) { setBusy(false); setMessage(consentError.message); return; }
+
+    setOnboardingRequired(null);
+    try {
+      await loadSnapshot();
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Não foi possível abrir sua conta.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const saveProfile = async(event: React.FormEvent) => {
     event.preventDefault(); const cleanName=profileName.trim(); if(!cleanName)return;
     setBusy(true); setMessage(""); const supabase=requireSupabase();
@@ -185,7 +254,8 @@ function CustomerHome({ session }: { session: Session }) {
     if(navigator.share)await navigator.share({title:"Clube Adoce",text,url:`${location.origin}/#cadastro`});
     else{await navigator.clipboard.writeText(`${text} ${location.origin}/#cadastro`);setMessage("Convite copiado. Agora é só enviar.");}
   };
-  if (!snapshot) return <main className="access-loading"><Brand label="Clube Adoce"/><p>{error || "Preparando seu Clube Adoce..."}</p></main>;
+  if (onboardingRequired) return <main className="club-onboarding"><header><Brand label="Clube Adoce"/><button onClick={()=>void signOut()}><LogOut/> Sair</button></header><section className="club-onboarding-shell"><div className="club-onboarding-copy"><img src="/site/logo.webp" alt="Adoce Brigaderia"/><span>Último passo</span><h1>Vamos completar seu cadastro.</h1><p>Seu e-mail já foi confirmado. Agora precisamos saber seu nome e registrar suas escolhas antes de liberar o cartão fidelidade.</p><div><ShieldCheck/><strong>Seus dados ficam protegidos</strong><small>Você poderá revisar suas informações no perfil.</small></div></div><form className="club-onboarding-form" onSubmit={completeOnboarding}><h2>Como podemos chamar você?</h2><p>Os campos marcados são necessários para participar do Clube Adoce.</p><label>Nome completo *<input value={profileName} onChange={event=>setProfileName(event.target.value)} autoComplete="name" placeholder="Seu nome completo" required/></label><label>E-mail confirmado<input value={session.user.email||""} readOnly/></label><div className="access-consents"><label><input type="checkbox" checked={termsAccepted} onChange={event=>setTermsAccepted(event.target.checked)}/><span>Aceito os termos do Clube Adoce. *</span></label><label><input type="checkbox" checked={privacyAccepted} onChange={event=>setPrivacyAccepted(event.target.checked)}/><span>Li e aceito a política de privacidade. *</span></label><label><input type="checkbox" checked={marketingAccepted} onChange={event=>setMarketingAccepted(event.target.checked)}/><span>Quero receber sabores, promoções e novidades. <em>Opcional</em></span></label></div><button className="access-primary" disabled={busy}>{busy?"Concluindo...":"Concluir e abrir meu cartão"}<ArrowRight/></button>{message&&<div className="access-message" role="status">{message}</div>}<small><ShieldCheck/> Você só verá o cartão depois que esta etapa for concluída.</small></form></section></main>;
+  if (!snapshot) return <main className="access-loading"><Brand label="Clube Adoce"/><p>{error || (onboardingRequired === null ? "Verificando seu cadastro..." : "Preparando seu Clube Adoce...")}</p></main>;
   const stamps = Array.from({length:14},(_,i)=>i<snapshot.progress);
   return <main className="club-home"><header><Brand label="Clube Adoce"/><button onClick={()=>void signOut()}><LogOut/> Sair</button></header>
     {view==="card"&&<><section className="club-welcome"><div><span>Olá, {snapshot.name.split(" ")[0]}</span><h1>Seu carinho já está virando conquista.</h1><p>Acompanhe seus carimbos, prêmios e indicações em um só lugar.</p></div><div className="club-mini-stat"><Gift/><strong>{snapshot.rewards}</strong><span>prêmio{snapshot.rewards===1?"":"s"} {snapshot.rewards===1?"disponível":"disponíveis"}</span></div></section><section className="club-grid"><article className="club-card-main"><div className="club-card-head"><div><small>Cartão principal</small><h2>{snapshot.progress} de 14 carimbos</h2></div><img src="/site/logo.webp" alt=""/></div><div className="club-stamps">{stamps.map((filled,i)=><span className={filled?"filled":""} key={i}><Heart/></span>)}</div><p>{snapshot.progress===13?"Falta só uma fatia.":snapshot.progress===0?"Sua próxima fatia começa esta história.":`Faltam ${14-snapshot.progress} carimbos para uma nova recompensa.`}</p><div className="club-card-foot"><span><History/> {snapshot.completed} cartões preenchidos</span><span><Gift/> {snapshot.rewards} disponíveis</span></div></article><aside className="club-side"><article><Sparkles/><small>Espalhe Doçura</small><h3>{snapshot.referralProgress} de 14 indicações</h3><p>Seu código pessoal</p><strong className="referral-code">{snapshot.referralCode}</strong><button onClick={()=>{void navigator.clipboard.writeText(snapshot.referralCode);setMessage("Código copiado.")}}>Copiar código</button></article><article><Smartphone/><h3>Levar para a carteira</h3><p>Apple Wallet e Google Wallet serão sugeridos assim que os passes estiverem liberados.</p><span>Próxima etapa</span></article></aside></section></>}
