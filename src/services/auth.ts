@@ -36,7 +36,6 @@ export async function requestEmailCode(email: string, fullName?: string, createU
     email: normalizedEmail,
     options: {
       shouldCreateUser: createUser,
-      emailRedirectTo: `${window.location.origin}${window.location.pathname}#minha-conta`,
       data: fullName?.trim() ? { full_name: fullName.trim() } : undefined,
     },
   });

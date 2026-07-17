@@ -3,10 +3,13 @@ import type { Session } from "@supabase/supabase-js";
 import { ArrowRight, Check, Gift, Heart, History, LogOut, Mail, Plus, Search, ShieldCheck, Smartphone, Sparkles, UserRound, Users } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { requestEmailCode, signOut, verifyEmailCode } from "./services/auth";
+import { matchesCustomerSearch } from "./customer-search";
 import "./access-app.css";
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code";
+type ClubView = "card" | "share" | "profile";
+type OperationView = "attend" | "movements" | "customers" | "team";
 
 type CustomerSnapshot = {
   profile_id: string;
@@ -28,6 +31,21 @@ type ClubSnapshot = {
   referralProgress: number;
   referralRewards: number;
   referralCode: string;
+};
+
+type Movement = {
+  id: string;
+  reason: string;
+  stamps_delta: number;
+  created_at: string;
+  subject_profile_id: string | null;
+};
+
+type StaffMember = {
+  user_id: string;
+  role: string;
+  active: boolean;
+  display_name?: string;
 };
 
 function Brand({ label }: { label: string }) {
@@ -68,12 +86,17 @@ function AuthScreen({ surface }: { surface: Surface }) {
       const result = await verifyEmailCode(email, code);
       if (registering && result.user) {
         const supabase = requireSupabase();
-        await supabase.from("profiles").update({ full_name: name.trim() }).eq("id", result.user.id);
-        await supabase.from("consent_events").insert([
+        const cleanName = name.trim();
+        const { error: metadataError } = await supabase.auth.updateUser({ data: { full_name: cleanName } });
+        if (metadataError) throw metadataError;
+        const { error: profileError } = await supabase.from("profiles").update({ full_name: cleanName }).eq("id", result.user.id);
+        if (profileError) throw profileError;
+        const { error: consentError } = await supabase.from("consent_events").insert([
           { profile_id: result.user.id, consent_type: "club_terms", granted: true, document_version: "1.0", source: "web" },
           { profile_id: result.user.id, consent_type: "privacy", granted: true, document_version: "1.0", source: "web" },
           { profile_id: result.user.id, consent_type: "marketing", granted: marketing, document_version: "1.0", source: "web" },
         ]);
+        if (consentError) throw consentError;
       }
       location.hash = surface === "operation" ? "operacao" : "minha-conta";
     } catch (error) {
@@ -119,7 +142,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
 function CustomerHome({ session }: { session: Session }) {
   const [snapshot, setSnapshot] = useState<ClubSnapshot | null>(null);
   const [error, setError] = useState("");
-  useEffect(() => { void (async()=>{
+  const [view, setView] = useState<ClubView>("card");
+  const [profileName, setProfileName] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const loadSnapshot = useCallback(async()=>{
     const supabase = requireSupabase();
     const [{ data: profile }, { data: memberships }, { data: referral }] = await Promise.all([
       supabase.from("profiles").select("full_name").eq("id", session.user.id).single(),
@@ -133,24 +160,76 @@ function CustomerHome({ session }: { session: Session }) {
       supabase.from("rewards").select("id,status,track_id").eq("status", "available"),
     ]);
     const main = tracks?.find(t=>t.kind === "main"); const ref = tracks?.find(t=>t.kind === "referral");
-    setSnapshot({name:profile?.full_name || "Cliente Adoce",progress:main?.current_progress||0,completed:main?.completed_cards||0,rewards:rewards?.filter(r=>r.track_id===main?.id).length||0,referralProgress:ref?.current_progress||0,referralRewards:rewards?.filter(r=>r.track_id===ref?.id).length||0,referralCode:referral?.code||"—"});
-  })().catch(e=>setError(e instanceof Error?e.message:"Não foi possível abrir sua conta.")); }, [session.user.id]);
+    const metadataName = typeof session.user.user_metadata?.full_name === "string" ? session.user.user_metadata.full_name.trim() : "";
+    const databaseName = profile?.full_name?.trim() || "";
+    const resolvedName = databaseName && databaseName !== "Cliente Adoce" ? databaseName : metadataName || databaseName || "Cliente Adoce";
+    setProfileName(resolvedName);
+    setSnapshot({name:resolvedName,progress:main?.current_progress||0,completed:main?.completed_cards||0,rewards:rewards?.filter(r=>r.track_id===main?.id).length||0,referralProgress:ref?.current_progress||0,referralRewards:rewards?.filter(r=>r.track_id===ref?.id).length||0,referralCode:referral?.code||"—"});
+  }, [session.user.id, session.user.user_metadata]);
+  useEffect(() => { void loadSnapshot().catch(e=>setError(e instanceof Error?e.message:"Não foi possível abrir sua conta.")); }, [loadSnapshot]);
+  const saveProfile = async(event: React.FormEvent) => {
+    event.preventDefault(); const cleanName=profileName.trim(); if(!cleanName)return;
+    setBusy(true); setMessage(""); const supabase=requireSupabase();
+    const [{error:profileError},{error:metadataError}]=await Promise.all([
+      supabase.from("profiles").update({full_name:cleanName}).eq("id",session.user.id),
+      supabase.auth.updateUser({data:{full_name:cleanName}}),
+    ]);
+    setBusy(false);
+    if(profileError||metadataError){setMessage(profileError?.message||metadataError?.message||"Não foi possível salvar seu nome.");return;}
+    setMessage("Perfil atualizado com sucesso."); await loadSnapshot();
+  };
+  const shareClub=async()=>{
+    const text=`Entre para o Clube Adoce com meu código ${snapshot?.referralCode}.`;
+    if(navigator.share)await navigator.share({title:"Clube Adoce",text,url:`${location.origin}/#cadastro`});
+    else{await navigator.clipboard.writeText(`${text} ${location.origin}/#cadastro`);setMessage("Convite copiado. Agora é só enviar.");}
+  };
   if (!snapshot) return <main className="access-loading"><Brand label="Clube Adoce"/><p>{error || "Preparando seu Clube Adoce..."}</p></main>;
   const stamps = Array.from({length:14},(_,i)=>i<snapshot.progress);
-  return <main className="club-home"><header><Brand label="Clube Adoce"/><button onClick={()=>void signOut()}><LogOut/> Sair</button></header><section className="club-welcome"><div><span>Olá, {snapshot.name.split(" ")[0]}</span><h1>Seu carinho já está virando conquista.</h1><p>Acompanhe seus carimbos, prêmios e indicações em um só lugar.</p></div><div className="club-mini-stat"><Gift/><strong>{snapshot.rewards}</strong><span>prêmio{snapshot.rewards===1?"":"s"} disponível{snapshot.rewards===1?"":"is"}</span></div></section><section className="club-grid"><article className="club-card-main"><div className="club-card-head"><div><small>Cartão principal</small><h2>{snapshot.progress} de 14 carimbos</h2></div><img src="/site/logo.webp" alt=""/></div><div className="club-stamps">{stamps.map((filled,i)=><span className={filled?"filled":""} key={i}><Heart/></span>)}</div><p>{snapshot.progress===13?"Falta só uma fatia.":snapshot.progress===0?"Sua próxima fatia começa esta história.":`Faltam ${14-snapshot.progress} carimbos para uma nova recompensa.`}</p><div className="club-card-foot"><span><History/> {snapshot.completed} cartões preenchidos</span><span><Gift/> {snapshot.rewards} disponíveis</span></div></article><aside className="club-side"><article><Sparkles/><small>Espalhe Doçura</small><h3>{snapshot.referralProgress} de 14 indicações</h3><p>Seu código pessoal</p><strong className="referral-code">{snapshot.referralCode}</strong><button onClick={()=>void navigator.clipboard.writeText(snapshot.referralCode)}>Copiar código</button></article><article><Smartphone/><h3>Levar para a carteira</h3><p>Apple Wallet e Google Wallet serão sugeridos assim que os passes estiverem liberados.</p><span>Próxima etapa</span></article></aside></section><nav className="club-bottom"><a className="active"><Heart/> Meu cartão</a><a href="/#adoce-hoje"><Sparkles/> Adoce Hoje</a><a><Users/> Compartilhar</a><a><UserRound/> Perfil</a></nav></main>;
+  return <main className="club-home"><header><Brand label="Clube Adoce"/><button onClick={()=>void signOut()}><LogOut/> Sair</button></header>
+    {view==="card"&&<><section className="club-welcome"><div><span>Olá, {snapshot.name.split(" ")[0]}</span><h1>Seu carinho já está virando conquista.</h1><p>Acompanhe seus carimbos, prêmios e indicações em um só lugar.</p></div><div className="club-mini-stat"><Gift/><strong>{snapshot.rewards}</strong><span>prêmio{snapshot.rewards===1?"":"s"} {snapshot.rewards===1?"disponível":"disponíveis"}</span></div></section><section className="club-grid"><article className="club-card-main"><div className="club-card-head"><div><small>Cartão principal</small><h2>{snapshot.progress} de 14 carimbos</h2></div><img src="/site/logo.webp" alt=""/></div><div className="club-stamps">{stamps.map((filled,i)=><span className={filled?"filled":""} key={i}><Heart/></span>)}</div><p>{snapshot.progress===13?"Falta só uma fatia.":snapshot.progress===0?"Sua próxima fatia começa esta história.":`Faltam ${14-snapshot.progress} carimbos para uma nova recompensa.`}</p><div className="club-card-foot"><span><History/> {snapshot.completed} cartões preenchidos</span><span><Gift/> {snapshot.rewards} disponíveis</span></div></article><aside className="club-side"><article><Sparkles/><small>Espalhe Doçura</small><h3>{snapshot.referralProgress} de 14 indicações</h3><p>Seu código pessoal</p><strong className="referral-code">{snapshot.referralCode}</strong><button onClick={()=>{void navigator.clipboard.writeText(snapshot.referralCode);setMessage("Código copiado.")}}>Copiar código</button></article><article><Smartphone/><h3>Levar para a carteira</h3><p>Apple Wallet e Google Wallet serão sugeridos assim que os passes estiverem liberados.</p><span>Próxima etapa</span></article></aside></section></>}
+    {view==="share"&&<section className="club-panel"><Sparkles/><small>Espalhe Doçura</small><h1>Compartilhe e conquiste junto.</h1><p>Quando a pessoa indicada fizer a primeira compra e informar seu código, vocês dois recebem um carimbo.</p><strong className="referral-code">{snapshot.referralCode}</strong><button className="access-primary" onClick={()=>void shareClub()}><Users/> Compartilhar convite</button></section>}
+    {view==="profile"&&<section className="club-panel"><UserRound/><small>Meu perfil</small><h1>Seus dados no Clube.</h1><form onSubmit={saveProfile}><label>Nome completo<input value={profileName} onChange={event=>setProfileName(event.target.value)} autoComplete="name"/></label><label>E-mail<input value={session.user.email||""} readOnly/></label><button className="access-primary" disabled={busy}>{busy?"Salvando...":"Salvar meu nome"}</button></form></section>}
+    {message&&<div className="operation-toast"><Check/>{message}</div>}
+    <nav className="club-bottom"><button className={view==="card"?"active":""} onClick={()=>setView("card")}><Heart/> Meu cartão</button><a href="/#adoce-hoje"><Sparkles/> Adoce Hoje</a><button className={view==="share"?"active":""} onClick={()=>setView("share")}><Users/> Compartilhar</button><button className={view==="profile"?"active":""} onClick={()=>setView("profile")}><UserRound/> Perfil</button></nav></main>;
 }
 
 function OperationHome({ session }: { session: Session }) {
   const [authorized, setAuthorized] = useState<boolean|null>(null); const [role,setRole]=useState("");
   const [query,setQuery]=useState(""); const [results,setResults]=useState<CustomerSnapshot[]>([]); const [selected,setSelected]=useState<CustomerSnapshot|null>(null); const [qty,setQty]=useState(1); const [message,setMessage]=useState(""); const [busy,setBusy]=useState(false);
-  const search = useCallback(async(term=query)=>{setBusy(true);const {data,error}=await requireSupabase().rpc("staff_search_customers",{search_text:term});setBusy(false);if(error){setMessage(error.message);return;}setResults((data||[]) as CustomerSnapshot[]);},[query]);
-  useEffect(()=>{void (async()=>{const {data}=await requireSupabase().from("staff_members").select("role,active").eq("user_id",session.user.id).maybeSingle();setAuthorized(Boolean(data?.active));setRole(data?.role||"");if(data?.active)await search("");})();},[session.user.id,search]);
-  const refreshSelected=async()=>{await search(query);const {data}=await requireSupabase().rpc("staff_search_customers",{search_text:selected?.email||selected?.phone_e164||selected?.full_name||""});if(data?.[0])setSelected(data[0] as CustomerSnapshot);};
+  const [view,setView]=useState<OperationView>("attend"); const [movements,setMovements]=useState<Movement[]>([]); const [team,setTeam]=useState<StaffMember[]>([]);
+  const search = useCallback(async(term=query,clearMessage=true)=>{
+    setBusy(true); if(clearMessage)setMessage(""); const supabase=requireSupabase();
+    const {data:profiles,error:profilesError}=await supabase.from("profiles").select("id,full_name,phone_e164,email,updated_at").order("updated_at",{ascending:false}).limit(200);
+    if(profilesError){setBusy(false);setMessage(profilesError.message);return;}
+    const matched=(profiles||[]).filter(profile=>matchesCustomerSearch(profile,term)).slice(0,30);
+    if(!matched.length){setResults([]);setBusy(false);return;}
+    const profileIds=matched.map(profile=>profile.id);
+    const {data:memberships,error:membershipsError}=await supabase.from("account_memberships").select("account_id,profile_id,is_primary").in("profile_id",profileIds).eq("active",true);
+    if(membershipsError){setBusy(false);setMessage(membershipsError.message);return;}
+    const accountIds=[...new Set((memberships||[]).map(item=>item.account_id))];
+    const {data:tracks,error:tracksError}=accountIds.length?await supabase.from("loyalty_tracks").select("id,account_id,current_progress,completed_cards,kind").in("account_id",accountIds).eq("kind","main"):{data:[],error:null};
+    if(tracksError){setBusy(false);setMessage(tracksError.message);return;}
+    const trackIds=(tracks||[]).map(track=>track.id);
+    const {data:rewards,error:rewardsError}=trackIds.length?await supabase.from("rewards").select("id,track_id,status,created_at").in("track_id",trackIds).eq("status","available").order("created_at"):{data:[],error:null};
+    if(rewardsError){setBusy(false);setMessage(rewardsError.message);return;}
+    const snapshots=matched.map(profile=>{const membership=(memberships||[]).find(item=>item.profile_id===profile.id&&item.is_primary)||(memberships||[]).find(item=>item.profile_id===profile.id);const track=(tracks||[]).find(item=>item.account_id===membership?.account_id);const available=(rewards||[]).filter(item=>item.track_id===track?.id);return {profile_id:profile.id,account_id:membership?.account_id||"",full_name:profile.full_name,phone_e164:profile.phone_e164,email:profile.email,current_progress:track?.current_progress||0,completed_cards:track?.completed_cards||0,available_rewards:available.length,available_reward_id:available[0]?.id||null};}).filter(item=>item.account_id);
+    setResults(snapshots); setBusy(false);
+  },[query]);
+  useEffect(()=>{void (async()=>{const {data}=await requireSupabase().from("staff_members").select("role,active").eq("user_id",session.user.id).maybeSingle();setAuthorized(Boolean(data?.active));setRole(data?.role||"");if(data?.active)await search("");})();},[session.user.id]);
+  const refreshSelected=async()=>{const key=selected?.email||selected?.phone_e164||selected?.full_name||query;await search(key,false);};
+  useEffect(()=>{const current=selected;if(current){const refreshed=results.find(item=>item.profile_id===current.profile_id);if(refreshed)setSelected(refreshed);}},[results,selected]);
+  const openView=async(next:OperationView)=>{setView(next);setSelected(null);setMessage("");if(next==="customers")await search("");if(next==="movements"){const {data,error}=await requireSupabase().from("ledger_entries").select("id,reason,stamps_delta,created_at,subject_profile_id").order("created_at",{ascending:false}).limit(50);if(error)setMessage(error.message);else setMovements((data||[]) as Movement[]);}if(next==="team"){const supabase=requireSupabase();const {data,error}=await supabase.from("staff_members").select("user_id,role,active").order("created_at");if(error){setMessage(error.message);return;}const ids=(data||[]).map(item=>item.user_id);const {data:profiles}=ids.length?await supabase.from("profiles").select("id,full_name").in("id",ids):{data:[]};setTeam((data||[]).map(item=>({...item,display_name:profiles?.find(profile=>profile.id===item.user_id)?.full_name||"Membro da equipe"})));}};
   const purchase=async()=>{if(!selected)return;setBusy(true);setMessage("");const {error}=await requireSupabase().rpc("staff_record_purchase",{account_id:selected.account_id,participant_profile_id:selected.profile_id,quantity:qty,idempotency_key:crypto.randomUUID(),referral_code:null});setBusy(false);if(error)setMessage(error.message);else{setMessage(`${qty} carimbo(s) registrado(s) com sucesso.`);setQty(1);await refreshSelected();}};
   const redeem=async()=>{if(!selected?.available_reward_id)return;setBusy(true);const {error}=await requireSupabase().rpc("staff_redeem_reward",{reward_id:selected.available_reward_id,premium_upgrade:false,price_difference:0,idempotency_key:crypto.randomUUID()});setBusy(false);if(error)setMessage(error.message);else{setMessage("Prêmio resgatado. O novo cartão continua acumulando normalmente.");await refreshSelected();}};
   if(authorized===null)return <main className="access-loading"><Brand label="Adoce Operação"/><p>Validando seu acesso...</p></main>;
   if(!authorized)return <main className="access-loading"><Brand label="Adoce Operação"/><ShieldCheck/><h1>Acesso reservado à equipe</h1><p>Este e-mail não possui uma função ativa na operação.</p><button onClick={()=>void signOut()}>Sair</button></main>;
-  return <main className="operation-home"><header><Brand label="Adoce Operação"/><div><span>{role === "owner" ? "Proprietário" : role === "manager" ? "Gerente" : "Atendimento"}</span><button onClick={()=>void signOut()}><LogOut/> Sair</button></div></header><div className="operation-shell"><aside><a className="active"><Search/> Atender cliente</a><a><History/> Movimentações</a><a><Users/> Clientes</a><a><ShieldCheck/> Equipe</a></aside><section className="operation-work"><div className="operation-title"><div><span>Atendimento</span><h1>Localizar cliente</h1><p>Busque por nome, telefone ou e-mail.</p></div><div className="operation-role"><Check/> Acesso verificado</div></div><form className="operation-search" onSubmit={e=>{e.preventDefault();void search()}}><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Digite para buscar"/><button disabled={busy}>Buscar</button></form>{!selected?<div className="operation-results">{results.map(customer=><button key={customer.profile_id} onClick={()=>setSelected(customer)}><span className="avatar">{customer.full_name[0]}</span><span><strong>{customer.full_name}</strong><small>{customer.phone_e164||customer.email||"Contato não informado"}</small></span><span><strong>{customer.current_progress}/14</strong><small>{customer.available_rewards} prêmio(s)</small></span><ArrowRight/></button>)}</div>:<div className="operation-customer"><button className="back" onClick={()=>setSelected(null)}>← Voltar à busca</button><div className="customer-top"><span className="avatar">{selected.full_name[0]}</span><div><small>Cliente</small><h2>{selected.full_name}</h2><p>{selected.phone_e164||selected.email}</p></div><div className="customer-progress"><strong>{selected.current_progress}</strong><span>de 14</span></div></div><div className="operation-actions"><article><Plus/><h3>Registrar compra</h3><p>Cada fatia comprada vale um carimbo.</p><div className="stepper"><button onClick={()=>setQty(Math.max(1,qty-1))}>−</button><strong>{qty}</strong><button onClick={()=>setQty(qty+1)}>+</button></div><button className="access-primary" onClick={()=>void purchase()} disabled={busy}>Confirmar {qty} carimbo(s)</button></article><article><Gift/><h3>Resgatar prêmio</h3><p>Fatia tradicional ou premium com pagamento da diferença.</p><strong className="reward-total">{selected.available_rewards} disponível(is)</strong><button className="access-secondary" onClick={()=>void redeem()} disabled={busy||!selected.available_reward_id}>Confirmar fatia tradicional</button></article></div></div>}{message&&<div className="operation-toast"><Check/>{message}</div>}</section></div></main>;
+  const customerList=<div className="operation-results">{results.map(customer=><button key={customer.profile_id} onClick={()=>{setSelected(customer);setView("attend")}}><span className="avatar">{customer.full_name[0]}</span><span><strong>{customer.full_name}</strong><small>{customer.phone_e164||customer.email||"Contato não informado"}</small></span><span><strong>{customer.current_progress}/14</strong><small>{customer.available_rewards} prêmio(s)</small></span><ArrowRight/></button>)}</div>;
+  return <main className="operation-home"><header><Brand label="Adoce Operação"/><div><span>{role === "owner" ? "Proprietário" : role === "manager" ? "Gerente" : "Atendimento"}</span><button onClick={()=>void signOut()}><LogOut/> Sair</button></div></header><div className="operation-shell"><aside><button className={view==="attend"?"active":""} onClick={()=>void openView("attend")}><Search/> Atender cliente</button><button className={view==="movements"?"active":""} onClick={()=>void openView("movements")}><History/> Movimentações</button><button className={view==="customers"?"active":""} onClick={()=>void openView("customers")}><Users/> Clientes</button><button className={view==="team"?"active":""} onClick={()=>void openView("team")}><ShieldCheck/> Equipe</button></aside><section className="operation-work">
+    {view==="attend"&&<><div className="operation-title"><div><span>Atendimento</span><h1>Localizar cliente</h1><p>Digite apenas uma parte do nome, telefone ou e-mail.</p></div><div className="operation-role"><Check/> Acesso verificado</div></div><form className="operation-search" onSubmit={e=>{e.preventDefault();void search()}}><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Ex.: Ana, 8215 ou ana@email.com"/><button disabled={busy}>{busy?"Buscando...":"Buscar"}</button></form>{!selected?customerList:<div className="operation-customer"><button className="back" onClick={()=>setSelected(null)}>← Voltar à busca</button><div className="customer-top"><span className="avatar">{selected.full_name[0]}</span><div><small>Cliente</small><h2>{selected.full_name}</h2><p>{selected.phone_e164||selected.email}</p></div><div className="customer-progress"><strong>{selected.current_progress}</strong><span>de 14</span></div></div><div className="operation-actions"><article><Plus/><h3>Registrar compra</h3><p>Cada fatia comprada vale um carimbo.</p><div className="stepper"><button onClick={()=>setQty(Math.max(1,qty-1))}>−</button><strong>{qty}</strong><button onClick={()=>setQty(qty+1)}>+</button></div><button className="access-primary" onClick={()=>void purchase()} disabled={busy}>Confirmar {qty} carimbo(s)</button></article><article><Gift/><h3>Resgatar prêmio</h3><p>Fatia tradicional ou premium com pagamento da diferença.</p><strong className="reward-total">{selected.available_rewards} disponível(is)</strong><button className="access-secondary" onClick={()=>void redeem()} disabled={busy||!selected.available_reward_id}>Confirmar fatia tradicional</button></article></div></div>}</>}
+    {view==="customers"&&<><div className="operation-title"><div><span>Relacionamento</span><h1>Clientes</h1><p>Lista das contas cadastradas no Clube Adoce.</p></div></div><form className="operation-search" onSubmit={e=>{e.preventDefault();void search()}}><Search/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Filtrar clientes"/><button disabled={busy}>Filtrar</button></form>{customerList}</>}
+    {view==="movements"&&<><div className="operation-title"><div><span>Auditoria</span><h1>Movimentações</h1><p>Compras, indicações e ajustes mais recentes.</p></div></div><div className="operation-simple-list">{movements.length?movements.map(item=><article key={item.id}><History/><span><strong>{item.reason.replaceAll("_"," ")}</strong><small>{new Date(item.created_at).toLocaleString("pt-BR")}</small></span><b className={item.stamps_delta>=0?"positive":"negative"}>{item.stamps_delta>0?"+":""}{item.stamps_delta}</b></article>):<p>Nenhuma movimentação registrada ainda.</p>}</div></>}
+    {view==="team"&&<><div className="operation-title"><div><span>Acessos</span><h1>Equipe</h1><p>Proprietários, gerentes e atendimento autorizados.</p></div></div><div className="operation-simple-list">{team.map(member=><article key={member.user_id}><ShieldCheck/><span><strong>{member.display_name}</strong><small>{member.role==="owner"?"Proprietário":member.role==="manager"?"Gerente":"Atendimento"}</small></span><b>{member.active?"Ativo":"Inativo"}</b></article>)}</div></>}
+    {message&&<div className="operation-toast"><Check/>{message}</div>}</section></div></main>;
 }
 
 export default function AccessApp({ surface }: { surface: Surface }) {
