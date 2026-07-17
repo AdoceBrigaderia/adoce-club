@@ -21,8 +21,11 @@
 .today-availability-seal svg { width: 21px; height: 21px; margin-bottom: .25rem; }
 .today-availability-seal strong { font-size: .76rem; }
 .today-availability-seal.available { color: #fff; background: #47725c; }
+.today-availability-seal.upcoming { color: #fff; background: #d85e66; }
 .today-availability-seal.available svg { fill: currentColor; }
 .today-availability-seal.unavailable { color: #6e5145; background: #f2e7de; }
+.today-flavor-card.unavailable .today-card-image img { filter: grayscale(.45); opacity: .52; }
+.today-flavor-card.unavailable { background: #f6efe9; }
 @media (max-width: 820px) {
   .today-group-order { grid-template-columns: 1fr; }
   .today-group-visual, .today-group-visual img { min-height: 340px; }

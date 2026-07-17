@@ -7,9 +7,9 @@ import {
   MessageCircle,
   ShoppingBag,
   Sparkles,
-  Users,
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
+import GroupOrderArtwork from "./GroupOrderArtwork";
 import "./adoce-hoje.css";
 import "./today-promotions.css";
 
@@ -23,6 +23,8 @@ type Flavor = {
   available: boolean;
   premium: boolean;
   status?: string;
+  illustrative?: boolean;
+  availabilityNote?: string;
 };
 type Channel = {
   slug: string;
@@ -39,6 +41,14 @@ type ServiceWindow = {
   end: number;
   label: string;
 };
+
+const wholeCakes = [
+  { name: "Trufado de morango", image: "/adoce-hoje/torta-trufado-morango.webp" },
+  { name: "Abacaxi com coco", image: "/adoce-hoje/torta-abacaxi-coco.webp" },
+  { name: "Chocolatudo", image: "/adoce-hoje/torta-chocolatudo.webp" },
+  { name: "Ferrero Rocher", image: "/adoce-hoje/torta-ferrero-rocher.webp" },
+  { name: "Oreo", image: "/adoce-hoje/torta-oreo.webp" },
+];
 
 const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
   0: [],
@@ -280,6 +290,8 @@ export default function AdoceHoje() {
               ),
               premium: item.category === "premium",
               status: status?.status,
+              illustrative: Boolean(item.image_path?.includes("ilustrativa")),
+              availabilityNote: status?.note || undefined,
             };
           }),
         );
@@ -379,19 +391,18 @@ export default function AdoceHoje() {
             </a>
           </div>
         </div>
-        <figure className="today-poster">
-          <img
-            src="/adoce-hoje/sabores-hoje.webp"
-            alt="Seleção de fatias Adoce"
-          />
-          <figcaption>Feitas para transformar vontade em felicidade</figcaption>
-        </figure>
+        <div className="today-live-showcase" aria-label="Sabores realmente sinalizados hoje">
+          {flavors.filter((flavor) => flavor.available).slice(0, 4).map((flavor) => (
+            <figure key={flavor.id}>
+              <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
+              <figcaption>{flavor.name}</figcaption>
+            </figure>
+          ))}
+          <p><Heart /> Fotos dos sabores sinalizados hoje</p>
+        </div>
       </section>
       <section className="today-group-order" aria-labelledby="compra-em-grupo">
-        <div className="today-group-visual">
-          <img src="/adoce-hoje/ferrero-rocher.webp" alt="Fatia Adoce para compartilhar" />
-          <span><Users /> Compra em grupo</span>
-        </div>
+        <GroupOrderArtwork />
         <div>
           <p className="today-kicker">Junte a galera</p>
           <h2 id="compra-em-grupo">5 ou mais fatias e a entrega fica por nossa conta.</h2>
@@ -437,21 +448,24 @@ export default function AdoceHoje() {
         </div>
         <div className="today-card-grid">
           {visible.map((flavor) => (
-            <article className="today-flavor-card" key={flavor.id}>
+            <article className={`today-flavor-card ${flavor.available ? "" : "unavailable"}`} key={flavor.id}>
               <div className="today-card-image">
                 <img
                   src={flavor.image}
                   alt={`Fatia ${flavor.name}`}
                   loading="lazy"
                 />
-                <span className={`today-availability-seal ${flavor.available ? "available" : "unavailable"}`}>
+                <span className={`today-availability-seal ${flavor.status === "preorder_only" ? "upcoming" : flavor.available ? "available" : "unavailable"}`}>
                   {flavor.available ? <Heart /> : <Clock3 />}
-                  <strong>{flavor.available ? "Disponível agora" : "Não disponível agora"}</strong>
+                  <strong>{flavor.status === "preorder_only" ? "Hoje às 19h30" : flavor.available ? "Disponível agora" : "Não disponível agora"}</strong>
                 </span>
                 {flavor.premium && (
                   <span className="today-premium">
                     <Sparkles /> Premium
                   </span>
+                )}
+                {flavor.illustrative && (
+                  <span className="today-illustrative">Imagem ilustrativa</span>
                 )}
               </div>
               <div className="today-card-body">
@@ -460,7 +474,9 @@ export default function AdoceHoje() {
                     {flavor.available ? (
                       <>
                         <span className="now" />{" "}
-                        {flavor.status === "last_units"
+                        {flavor.status === "preorder_only"
+                          ? "Festival de hoje à noite"
+                          : flavor.status === "last_units"
                           ? "Últimas unidades"
                           : "Sinalizado hoje"}
                       </>
@@ -485,6 +501,21 @@ export default function AdoceHoje() {
               <a href={orderLink(flavor.name)} target="_blank" rel="noreferrer">
                 <MessageCircle /> Quero esta
               </a>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="today-cakes" id="tortas-inteiras">
+        <div className="today-section-head">
+          <div><p className="today-kicker">Para celebrar por inteiro</p><h2>Tortas inteiras por encomenda</h2></div>
+          <p>Fotos reais dos produtos. O tamanho de referência serve até 35 pessoas por R$ 195,00; outros tamanhos ficam sob consulta.</p>
+        </div>
+        <div className="today-cake-rail">
+          {wholeCakes.map((cake) => (
+            <article key={cake.name}>
+              <img src={cake.image} alt={`Torta inteira ${cake.name}`} loading="lazy" />
+              <div><h3>{cake.name}</h3><p>Por encomenda · serve até 35 pessoas</p><strong>R$ 195,00</strong></div>
+              <a href={orderLink(`Torta inteira ${cake.name}`)} target="_blank" rel="noreferrer">Consultar esta torta</a>
             </article>
           ))}
         </div>

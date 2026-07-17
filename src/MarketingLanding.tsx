@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import "./marketing.css";
 import "./marketing-promotions.css";
+import GroupOrderArtwork from "./GroupOrderArtwork";
 
 function Brand() {
   return (
@@ -282,7 +283,7 @@ export default function MarketingLanding() {
           <p>Um único pedido para o mesmo endereço, perfeito para trabalho, condomínio, família ou amigos. Pagamento antecipado por Pix ou link de cartão.</p>
           <a className="marketing-primary" href="https://wa.me/5585982156026?text=Ol%C3%A1%2C%20Adoce!%20Quero%20organizar%20uma%20compra%20em%20grupo." target="_blank" rel="noreferrer">Organizar meu grupo <ArrowRight /></a>
         </div>
-        <figure><img src="/adoce-hoje/ferrero-rocher.webp" alt="Fatia Ferrero Rocher Adoce" /><figcaption><Users /> Mais fatias, mais gente feliz.</figcaption></figure>
+        <GroupOrderArtwork />
       </section>
       <section className="marketing-today" id="adoce-hoje">
         <div className="marketing-reveal">
