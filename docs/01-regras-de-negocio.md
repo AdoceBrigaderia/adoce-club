@@ -55,14 +55,14 @@ Após usar um prêmio, o progresso continua 3 de 14, cartões completados perman
 
 ## Espalhe Doçura
 
-Cada cliente possui um código pessoal e uma trilha exclusiva de indicações.
+Cada cliente possui um código pessoal, um link de convite e uma trilha exclusiva de indicações. O link é a forma principal de compartilhamento: ele já leva o vínculo da indicação para o cadastro, sem exigir que cliente ou equipe digitem o código durante a venda.
 
 ### Regra de concessão
 
-1. O indicador compartilha seu código ou link.
-2. A pessoa indicada cria uma nova conta.
-3. Na primeira compra elegível, informa ou confirma o código recebido.
-4. A compra é confirmada pelo atendimento.
+1. O indicador compartilha seu link pessoal.
+2. A pessoa indicada aceita o convite e cria uma nova conta.
+3. O sistema reserva a indicação com status **aguardando primeira compra** e mostra um carimbo opaco ao indicador.
+4. A primeira compra é registrada normalmente pelo atendimento; o sistema localiza e confirma automaticamente a indicação pendente.
 5. O novo cliente recebe **1 carimbo bônus no Meu Cartão**.
 6. O indicador recebe **1 carimbo no Espalhe Doçura**.
 
@@ -83,7 +83,7 @@ O bônus é adicional aos carimbos da compra. Exemplo recomendado: duas fatias e
 - Autoindicação é proibida.
 - Cadastros ou compras duplicadas não devem gerar bônus.
 - Cancelamento ou estorno da primeira compra reverte os dois bônus.
-- O atendente vê os dois beneficiados antes de confirmar.
+- O atendimento não precisa digitar código. Quando houver convite pendente válido, os dois bônus aparecem no resultado da primeira compra.
 - Toda concessão e reversão é auditável.
 - Casos suspeitos podem ficar em análise, sem apagar o registro original.
 

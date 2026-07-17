@@ -87,6 +87,8 @@ O app/web apresenta duas experiências distintas:
 - indicações confirmadas, sem expor dados pessoais desnecessários;
 - histórico de bônus e reversões.
 
+Ao compartilhar, o WhatsApp abre com uma mensagem curta e o link pessoal. Depois que a pessoa conclui o cadastro, o indicador vê **“PrimeiroNome aceitou seu convite”** e um carimbo opaco. Na primeira compra, o carimbo se torna confirmado automaticamente para as duas pessoas.
+
 ## Criar e participar de um grupo
 
 ### Criar

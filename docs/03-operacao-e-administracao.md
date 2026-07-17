@@ -25,7 +25,7 @@ O fluxo principal deve concentrar:
 - confirmação da identidade sem expor dados além do necessário;
 - registro de quantidade de itens elegíveis;
 - seleção de prêmio principal ou Espalhe Doçura;
-- aplicação do código na primeira compra;
+- confirmação automática de eventual convite pendente na primeira compra, sem digitação de código;
 - confirmação do saldo anterior e do resultado;
 - comprovante visual da operação.
 
