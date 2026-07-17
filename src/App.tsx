@@ -58,8 +58,10 @@ export default function App(){
   useEffect(() => {
     const handleHashChange = () => {
       refreshRoute(version => version + 1);
+      document.title = location.hash.startsWith("#operacao") ? "Adoce Operação" : location.hash.startsWith("#adoce-hoje") ? "Adoce Hoje · Clube Adoce" : "Clube Adoce";
       window.scrollTo({ top: 0, behavior: "instant" });
     };
+    handleHashChange();
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
