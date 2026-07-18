@@ -38,7 +38,7 @@ import "./referral.css";
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code";
-type ClubView = "card" | "qr" | "share" | "help" | "profile";
+type ClubView = "card" | "qr" | "share" | "help" | "install" | "profile";
 type OperationView = "attend" | "movements" | "customers" | "team";
 
 type CustomerSnapshot = {
@@ -110,6 +110,7 @@ type Movement = {
   stamps_delta: number;
   created_at: string;
   subject_profile_id: string | null;
+  customer_first_name?: string;
 };
 
 type StaffMember = {
@@ -124,18 +125,50 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+type InstallPlatform = "ios" | "android" | "desktop";
+
+function detectInstallContext() {
+  const userAgent = navigator.userAgent;
+  const ios =
+    /iPad|iPhone|iPod/i.test(userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const android = /Android/i.test(userAgent);
+  const iosSafari =
+    ios &&
+    /Safari/i.test(userAgent) &&
+    !/CriOS|FxiOS|EdgiOS|OPiOS/i.test(userAgent);
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+  return {
+    platform: ios ? "ios" : android ? "android" : "desktop",
+    iosSafari,
+    standalone,
+  } as const;
+}
+
 function useInstallApp() {
   const [promptEvent, setPromptEvent] = useState<InstallPromptEvent | null>(
     null,
   );
+  const [context, setContext] = useState<{
+    platform: InstallPlatform;
+    iosSafari: boolean;
+    standalone: boolean;
+  }>(() => detectInstallContext());
   useEffect(() => {
     const rememberPrompt = (event: Event) => {
       event.preventDefault();
       setPromptEvent(event as InstallPromptEvent);
     };
+    const rememberInstallation = () =>
+      setContext((current) => ({ ...current, standalone: true }));
     window.addEventListener("beforeinstallprompt", rememberPrompt);
-    return () =>
+    window.addEventListener("appinstalled", rememberInstallation);
+    return () => {
       window.removeEventListener("beforeinstallprompt", rememberPrompt);
+      window.removeEventListener("appinstalled", rememberInstallation);
+    };
   }, []);
   const install = useCallback(async () => {
     if (!promptEvent) return false;
@@ -144,17 +177,31 @@ function useInstallApp() {
     if (choice.outcome === "accepted") setPromptEvent(null);
     return choice.outcome === "accepted";
   }, [promptEvent]);
-  return { canInstall: Boolean(promptEvent), install };
+  return {
+    canInstall: Boolean(promptEvent),
+    install,
+    platform: context.platform,
+    iosSafari: context.iosSafari,
+    isInstalled: context.standalone,
+  };
 }
 
 function InstallGuide({
   onClose,
   onInstall,
   canInstall,
+  platform,
+  iosSafari,
+  isInstalled,
+  appName,
 }: {
   onClose?: () => void;
   onInstall: () => Promise<boolean>;
   canInstall: boolean;
+  platform: InstallPlatform;
+  iosSafari: boolean;
+  isInstalled: boolean;
+  appName: string;
 }) {
   return (
     <div className="install-guide">
@@ -162,8 +209,8 @@ function InstallGuide({
         <div>
           <Smartphone />
           <span>
-            <strong>Instale como um aplicativo</strong>
-            <small>O Clube fica com ícone próprio na tela do celular.</small>
+            <strong>Instale {appName}</strong>
+            <small>Abra com um toque e use em tela cheia, como um aplicativo.</small>
           </span>
         </div>
         {onClose && (
@@ -172,31 +219,44 @@ function InstallGuide({
           </button>
         )}
       </div>
-      {canInstall && (
+      {isInstalled ? (
+        <div className="install-success">
+          <Check /> Este aplicativo já está instalado neste aparelho.
+        </div>
+      ) : canInstall ? (
         <button className="access-primary" onClick={() => void onInstall()}>
           <Download /> Instalar agora
         </button>
-      )}
+      ) : null}
       <div className="install-platforms">
-        <article>
-          <strong>Android · Google Chrome</strong>
-          <ol>
-            <li>Abra o menu de três pontos.</li>
-            <li>Toque em “Instalar app” ou “Adicionar à tela inicial”.</li>
-            <li>Confirme em “Instalar”.</li>
-          </ol>
-        </article>
-        <article>
-          <strong>iPhone · Safari</strong>
-          <ol>
-            <li>Toque no botão Compartilhar.</li>
-            <li>Escolha “Adicionar à Tela de Início”.</li>
-            <li>Confirme em “Adicionar”.</li>
-          </ol>
-        </article>
+        {(platform === "android" || platform === "desktop") && (
+          <article className={platform === "android" ? "recommended" : ""}>
+            <strong>Android · Google Chrome</strong>
+            <ol>
+              <li>Abra o menu de três pontos.</li>
+              <li>Toque em “Instalar app” ou “Adicionar à tela inicial”.</li>
+              <li>Confirme em “Instalar”.</li>
+            </ol>
+          </article>
+        )}
+        {(platform === "ios" || platform === "desktop") && (
+          <article className={platform === "ios" ? "recommended" : ""}>
+            <strong>iPhone · Safari</strong>
+            {platform === "ios" && !iosSafari && (
+              <p className="install-browser-warning">
+                Primeiro abra esta página no Safari. O iPhone instala o app por ele.
+              </p>
+            )}
+            <ol>
+              <li>Toque em Compartilhar (quadrado com seta para cima).</li>
+              <li>Escolha “Adicionar à Tela de Início”.</li>
+              <li>Confirme em “Adicionar”.</li>
+            </ol>
+          </article>
+        )}
       </div>
       <small>
-        O Clube Adoce e o Adoce Operação podem ser instalados separadamente.
+        Clube Adoce e Adoce Operação têm ícones próprios e podem ser instalados separadamente.
       </small>
     </div>
   );
@@ -514,7 +574,7 @@ function CustomerHome({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [qrImage, setQrImage] = useState("");
   const [qrExpiresAt, setQrExpiresAt] = useState("");
-  const { canInstall, install } = useInstallApp();
+  const installApp = useInstallApp();
   const loadSnapshot = useCallback(async () => {
     const supabase = requireSupabase();
     setError("");
@@ -942,6 +1002,14 @@ function CustomerHome({ session }: { session: Session }) {
                 <button onClick={() => setView("help")}>
                   <CircleHelp /> Aprender a usar o Clube
                 </button>
+                {!installApp.isInstalled && (
+                  <button
+                    className="club-install-shortcut"
+                    onClick={() => setView("install")}
+                  >
+                    <Download /> Instalar Clube Adoce
+                  </button>
+                )}
               </div>
             </div>
             <div className="club-mini-stat">
@@ -1203,7 +1271,26 @@ function CustomerHome({ session }: { session: Session }) {
               </span>
             </article>
           </div>
-          <InstallGuide canInstall={canInstall} onInstall={install} />
+          <InstallGuide
+            {...installApp}
+            appName="o Clube Adoce"
+            onInstall={installApp.install}
+          />
+        </section>
+      )}
+      {view === "install" && (
+        <section className="club-panel club-install-panel">
+          <Download />
+          <small>Atalho no celular</small>
+          <h1>Leve o Clube Adoce com você.</h1>
+          <p>
+            Identificamos seu aparelho e mostramos abaixo o caminho certo para instalar.
+          </p>
+          <InstallGuide
+            {...installApp}
+            appName="o Clube Adoce"
+            onInstall={installApp.install}
+          />
         </section>
       )}
       {view === "profile" && (
@@ -1290,7 +1377,7 @@ function OperationHome({ session }: { session: Session }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerControls = useRef<IScannerControls | null>(null);
   const scanHandled = useRef(false);
-  const { canInstall, install } = useInstallApp();
+  const installApp = useInstallApp();
   const search = useCallback(
     async (term = query) => {
       setBusy(true);
@@ -1474,13 +1561,48 @@ function OperationHome({ session }: { session: Session }) {
     setMessage("");
     if (next === "customers") await search("");
     if (next === "movements") {
-      const { data, error } = await requireSupabase()
+      const supabase = requireSupabase();
+      const { data, error } = await supabase
         .from("ledger_entries")
         .select("id,reason,stamps_delta,created_at,subject_profile_id")
         .order("created_at", { ascending: false })
         .limit(50);
-      if (error) setMessage(error.message);
-      else setMovements((data || []) as Movement[]);
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+      const entries = (data || []) as Movement[];
+      const profileIds = [
+        ...new Set(
+          entries
+            .map((item) => item.subject_profile_id)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+      const { data: profiles, error: profilesError } = profileIds.length
+        ? await supabase
+            .from("profiles")
+            .select("id,full_name")
+            .in("id", profileIds)
+        : { data: [], error: null };
+      if (profilesError) {
+        setMessage(profilesError.message);
+        return;
+      }
+      const names = new Map(
+        (profiles || []).map((profile) => [
+          profile.id,
+          profile.full_name?.trim().split(/\s+/)[0] || "Cliente",
+        ]),
+      );
+      setMovements(
+        entries.map((item) => ({
+          ...item,
+          customer_first_name:
+            (item.subject_profile_id && names.get(item.subject_profile_id)) ||
+            "Cliente",
+        })),
+      );
     }
     if (next === "team") {
       const supabase = requireSupabase();
@@ -1896,7 +2018,17 @@ function OperationHome({ session }: { session: Session }) {
                     <article key={item.id}>
                       <History />
                       <span>
-                        <strong>{item.reason.replaceAll("_", " ")}</strong>
+                        <strong>
+                          {{
+                            purchase: "Compra registrada",
+                            referral_referred: "Bônus para novo cliente",
+                            referral_referrer: "Bônus de indicação",
+                            manual_adjustment: "Ajuste de carimbos",
+                            reversal: "Correção de carimbos",
+                            reward_redeemed: "Prêmio retirado",
+                          }[item.reason] || "Movimentação do cartão"}
+                        </strong>
+                        <em>{item.customer_first_name}</em>
                         <small>
                           {new Date(item.created_at).toLocaleString("pt-BR")}
                         </small>
@@ -1906,8 +2038,9 @@ function OperationHome({ session }: { session: Session }) {
                           item.stamps_delta >= 0 ? "positive" : "negative"
                         }
                       >
-                        {item.stamps_delta > 0 ? "+" : ""}
-                        {item.stamps_delta}
+                        {item.reason === "reward_redeemed"
+                          ? "Prêmio entregue"
+                          : `${item.stamps_delta > 0 ? "+" : ""}${item.stamps_delta} ${Math.abs(item.stamps_delta) === 1 ? "carimbo" : "carimbos"}`}
                       </b>
                     </article>
                   ))
@@ -2001,8 +2134,9 @@ function OperationHome({ session }: { session: Session }) {
             >
               <div className="install-modal">
                 <InstallGuide
-                  canInstall={canInstall}
-                  onInstall={install}
+                  {...installApp}
+                  appName="o Adoce Operação"
+                  onInstall={installApp.install}
                   onClose={() => setInstallGuideOpen(false)}
                 />
               </div>
@@ -2046,6 +2180,24 @@ export default function AccessApp({ surface }: { surface: Surface }) {
         surface === "operation"
           ? "/manifest-operacao.webmanifest"
           : "/manifest-clube.webmanifest";
+    const iconHref =
+      surface === "operation"
+        ? "/pwa/operacao/icon-192.png"
+        : "/pwa/clube/icon-192.png";
+    const appleIconHref =
+      surface === "operation"
+        ? "/pwa/operacao/apple-touch-icon.png"
+        : "/pwa/clube/apple-touch-icon.png";
+    const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    const appleIcon = document.querySelector<HTMLLinkElement>(
+      'link[rel="apple-touch-icon"]',
+    );
+    const appleTitle = document.querySelector<HTMLMetaElement>(
+      'meta[name="apple-mobile-web-app-title"]',
+    );
+    if (icon) icon.href = iconHref;
+    if (appleIcon) appleIcon.href = appleIconHref;
+    if (appleTitle) appleTitle.content = title;
   }, [surface, title]);
   if (session === undefined)
     return (

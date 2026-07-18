@@ -4,9 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1A0C08" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Clube Adoce" />
     <meta name="description" content="Clube Adoce — fidelidade, recompensas e novidades da Adoce Brigaderia" />
-    <link rel="manifest" href="/manifest-clube.webmanifest" />
-    <link rel="apple-touch-icon" href="/site/logo-original.png" />
+    <link id="app-manifest" rel="manifest" />
+    <link rel="icon" href="/pwa/clube/icon-192.png" />
+    <link rel="apple-touch-icon" href="/pwa/clube/apple-touch-icon.png" />
+    <script>
+      (() => {
+        const operation = location.hash.startsWith("#operacao");
+        document.getElementById("app-manifest").href = operation
+          ? "/manifest-operacao.webmanifest"
+          : "/manifest-clube.webmanifest";
+        if (operation) {
+          document.querySelector('link[rel="icon"]').href = "/pwa/operacao/icon-192.png";
+          document.querySelector('link[rel="apple-touch-icon"]').href = "/pwa/operacao/apple-touch-icon.png";
+          document.querySelector('meta[name="apple-mobile-web-app-title"]').content = "Adoce Operação";
+        }
+      })();
+    </script>
     <title>Clube Adoce</title>
   </head>
   <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>

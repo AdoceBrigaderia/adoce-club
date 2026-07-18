@@ -1,11 +1,15 @@
 {
   "name": "Adoce Operação",
   "short_name": "Adoce Operação",
+  "id": "/adoce-operacao",
   "description": "Atendimento e operação segura do Clube Adoce.",
   "start_url": "/#operacao",
   "scope": "/",
   "display": "standalone",
   "background_color": "#fff7ed",
   "theme_color": "#1a0c08",
-  "icons": [{ "src": "/site/logo-original.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }]
+  "icons": [
+    { "src": "/pwa/operacao/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa/operacao/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
 }

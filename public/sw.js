@@ -1,5 +1,16 @@
-const CACHE = "clube-adoce-v1";
-const SHELL = ["/", "/site/logo.webp", "/site/logo-original.png"];
+const CACHE = "clube-adoce-v2";
+const SHELL = [
+  "/",
+  "/site/logo.webp",
+  "/manifest-clube.webmanifest",
+  "/manifest-operacao.webmanifest",
+  "/pwa/clube/icon-192.png",
+  "/pwa/clube/icon-512.png",
+  "/pwa/clube/apple-touch-icon.png",
+  "/pwa/operacao/icon-192.png",
+  "/pwa/operacao/icon-512.png",
+  "/pwa/operacao/apple-touch-icon.png",
+];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
@@ -13,6 +24,7 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(fetch(event.request).then(response => {
     const copy = response.clone();
     caches.open(CACHE).then(cache => cache.put(event.request, copy));
