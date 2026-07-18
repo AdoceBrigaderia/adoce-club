@@ -9,7 +9,7 @@ alter table public.flavors
   drop constraint if exists flavors_ingredients_length;
 
 alter table public.flavors
-  add constraint flavors_name_length check (char_length(name) between 2 and 60),
+  add constraint flavors_name_length check (char_length(name) between 2 and 80),
   add constraint flavors_short_description_length
     check (short_description is null or char_length(short_description) <= 90),
   add constraint flavors_description_length
@@ -28,13 +28,13 @@ alter table public.flavor_images
 -- Preferências explícitas: participar do Clube não autoriza marketing.
 create table if not exists public.notification_preferences (
   profile_id uuid primary key references public.profiles(id) on delete cascade,
-  flavors boolean not null default true,
-  festival boolean not null default true,
-  promotions boolean not null default true,
-  club_news boolean not null default true,
-  rewards boolean not null default true,
+  flavors boolean not null default false,
+  festival boolean not null default false,
+  promotions boolean not null default false,
+  club_news boolean not null default false,
+  rewards boolean not null default false,
   birthday boolean not null default false,
-  email_enabled boolean not null default true,
+  email_enabled boolean not null default false,
   push_enabled boolean not null default false,
   whatsapp_enabled boolean not null default false,
   updated_at timestamptz not null default now()

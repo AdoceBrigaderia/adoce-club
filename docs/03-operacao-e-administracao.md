@@ -1,18 +1,34 @@
 ---
 title: Operação e administração
 description: Atendimento, gestão do conteúdo, clientes, equipe, campanhas e auditoria.
-status: Em validação
+status: Em implementação prioritária
 ---
 
 # Operação e administração
 
+## Prioridade de implantação
+
+Este capítulo entra no início da implantação porque permite que proprietários e gerentes mantenham o Adoce Hoje e a comunicação diária sem depender de uma nova publicação de código a cada mudança.
+
+Ordem aprovada:
+
+1. catálogo, descrição, preço e galeria de produtos;
+2. disponibilidade diária, horários, locais e exceções;
+3. promoções com período de validade, pré-visualização e auditoria;
+4. preferências de comunicação no cadastro e no perfil do cliente;
+5. central de notificações com segmentação, revisão e consentimento;
+6. conclusão dos demais recursos administrativos e indicadores deste capítulo;
+7. Apple Wallet e Google Wallet, mantendo o app/web como alternativa.
+
+O QR Code do cliente e a busca alternativa por nome já fazem parte da operação e devem ser preservados durante estas entregas.
+
 ## Papéis
 
-| Papel | Responsabilidades |
-| --- | --- |
-| Atendente | Identificar, registrar compra, validar indicação e resgatar prêmio |
-| Gerente | Tudo do atendente, ajustes, reversões, conteúdo e análises operacionais |
-| Proprietário | Configurações, regras, usuários, auditoria, campanhas e governança |
+| Papel        | Responsabilidades                                                       |
+| ------------ | ----------------------------------------------------------------------- |
+| Atendente    | Identificar, registrar compra, validar indicação e resgatar prêmio      |
+| Gerente      | Tudo do atendente, ajustes, reversões, conteúdo e análises operacionais |
+| Proprietário | Configurações, regras, usuários, auditoria, campanhas e governança      |
 
 Cada funcionário usa uma conta individual. A área interna nunca pode ser acessada apenas por conhecer uma URL.
 
@@ -56,6 +72,23 @@ O painel deve oferecer edição simples para:
 
 Recomendação: combinar horários automáticos com um controle manual de exceção e registrar quem alterou cada estado.
 
+### Central Adoce
+
+A primeira versão administrativa deve permitir, para proprietários e gerentes:
+
+- cadastrar e editar produtos, categoria e preço;
+- limitar nome a 80 caracteres, chamada curta a 90, descrição a 300 e ingredientes a 400;
+- manter até seis fotos por produto, com uma foto principal;
+- aceitar JPEG, PNG e WebP de até 4 MB e reduzir automaticamente para WebP com dimensão máxima de 1600 px;
+- marcar disponibilidade de hoje como disponível, últimas unidades, esgotado, somente encomenda ou indisponível;
+- configurar horários recorrentes e exceções por data;
+- seguir a agenda automática ou pausar excepcionalmente um canal;
+- criar promoções com início, fim, ativação e pausa;
+- visualizar o resultado publicado no Adoce Hoje;
+- registrar as alterações sensíveis na auditoria.
+
+Na ausência de uma confirmação atual do banco, nenhum produto pode ser apresentado ao cliente como disponível. Encartes feitos para uma data específica não são usados como conteúdo permanente.
+
 ## Indicações
 
 A administração poderá consultar:
@@ -79,6 +112,14 @@ Campanhas devem usar critérios auditáveis, por exemplo:
 - consentimento de marketing válido.
 
 O consentimento para participar do Clube Adoce não autoriza automaticamente mensagens promocionais.
+
+### Preferências e envio seguro
+
+Durante a conclusão do cadastro, o cliente escolhe de forma simples quais assuntos deseja receber: sabores, festival, promoções, novidades do Clube, prêmios e aniversário. As mesmas escolhas ficam editáveis no perfil.
+
+E-mail, notificação do aparelho e WhatsApp são autorizações independentes. A escolha do cliente não substitui a permissão técnica do aparelho nem a configuração do provedor. Comunicações administrativas essenciais sobre acesso e segurança permanecem separadas das mensagens promocionais.
+
+A central administrativa começa com rascunho, agendamento, histórico e cancelamento. Um disparo real somente é liberado depois que o respectivo provedor estiver configurado, o consentimento estiver válido e a campanha tiver passado por revisão.
 
 ## Indicadores iniciais
 

@@ -12,9 +12,14 @@ describe("mídia do catálogo", () => {
   });
 
   it("recusa formato ou tamanho indevido", () => {
-    expect(validateProductImage({ type: "image/gif", size: 1000 })).toContain("JPG");
+    expect(validateProductImage({ type: "image/gif", size: 1000 })).toContain(
+      "JPG",
+    );
     expect(
-      validateProductImage({ type: "image/png", size: PRODUCT_IMAGE_MAX_BYTES + 1 }),
+      validateProductImage({
+        type: "image/png",
+        size: PRODUCT_IMAGE_MAX_BYTES + 1,
+      }),
     ).toContain("4 MB");
   });
 

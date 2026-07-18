@@ -5,12 +5,16 @@ import {
   Heart,
   MapPin,
   MessageCircle,
+  Images,
+  Megaphone,
   ShoppingBag,
   Sparkles,
+  X,
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 import GroupOrderArtwork from "./GroupOrderArtwork";
 import "./adoce-hoje.css";
+import "./adoce-hoje-content.css";
 import "./today-promotions.css";
 
 type Availability = "all" | "available" | "premium";
@@ -25,6 +29,22 @@ type Flavor = {
   status?: string;
   illustrative?: boolean;
   availabilityNote?: string;
+  photos?: FlavorPhoto[];
+};
+type FlavorPhoto = {
+  id: string;
+  flavor_id: string;
+  image_path: string;
+  alt_text: string;
+  image_role: "cover" | "gallery";
+  sort_order: number;
+};
+type Promotion = {
+  id: string;
+  title: string;
+  body: string;
+  starts_at: string;
+  ends_at: string | null;
 };
 type Channel = {
   slug: string;
@@ -59,7 +79,10 @@ type BusinessHourException = {
 };
 
 const wholeCakes = [
-  { name: "Trufado de morango", image: "/adoce-hoje/torta-trufado-morango.webp" },
+  {
+    name: "Trufado de morango",
+    image: "/adoce-hoje/torta-trufado-morango.webp",
+  },
   { name: "Abacaxi com coco", image: "/adoce-hoje/torta-abacaxi-coco.webp" },
   { name: "Chocolatudo", image: "/adoce-hoje/torta-chocolatudo.webp" },
   { name: "Ferrero Rocher", image: "/adoce-hoje/torta-ferrero-rocher.webp" },
@@ -68,20 +91,71 @@ const wholeCakes = [
 
 const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
   0: [],
-  1: [{ kind: "pickup", start: 9, end: 22, label: "Retirada na Fábrica Adoce, das 9h às 22h." }],
-  2: [{ kind: "pickup", start: 9, end: 22, label: "Retirada na Fábrica Adoce, das 9h às 22h." }],
-  3: [{ kind: "pickup", start: 9, end: 22, label: "Retirada na Fábrica Adoce, das 9h às 22h." }],
+  1: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 22,
+      label: "Retirada na Fábrica Adoce, das 9h às 22h.",
+    },
+  ],
+  2: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 22,
+      label: "Retirada na Fábrica Adoce, das 9h às 22h.",
+    },
+  ],
+  3: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 22,
+      label: "Retirada na Fábrica Adoce, das 9h às 22h.",
+    },
+  ],
   4: [
-    { kind: "pickup", start: 9, end: 18, label: "Retirada na Fábrica Adoce, das 9h às 18h." },
-    { kind: "stall", start: 19.5, end: 23, label: "Barraquinha Adoce, das 19h30 às 23h." },
+    {
+      kind: "pickup",
+      start: 9,
+      end: 18,
+      label: "Retirada na Fábrica Adoce, das 9h às 18h.",
+    },
+    {
+      kind: "stall",
+      start: 19.5,
+      end: 23,
+      label: "Barraquinha Adoce, das 19h30 às 23h.",
+    },
   ],
   5: [
-    { kind: "pickup", start: 9, end: 18, label: "Retirada na Fábrica Adoce, das 9h às 18h." },
-    { kind: "stall", start: 19.5, end: 23, label: "Barraquinha Adoce, das 19h30 às 23h." },
+    {
+      kind: "pickup",
+      start: 9,
+      end: 18,
+      label: "Retirada na Fábrica Adoce, das 9h às 18h.",
+    },
+    {
+      kind: "stall",
+      start: 19.5,
+      end: 23,
+      label: "Barraquinha Adoce, das 19h30 às 23h.",
+    },
   ],
   6: [
-    { kind: "pickup", start: 9, end: 16, label: "Retirada na Fábrica Adoce, das 9h às 16h." },
-    { kind: "stall", start: 17, end: 23, label: "Barraquinha Adoce, das 17h às 23h." },
+    {
+      kind: "pickup",
+      start: 9,
+      end: 16,
+      label: "Retirada na Fábrica Adoce, das 9h às 16h.",
+    },
+    {
+      kind: "stall",
+      start: 17,
+      end: 23,
+      label: "Barraquinha Adoce, das 17h às 23h.",
+    },
   ],
 };
 
@@ -135,7 +209,9 @@ function serviceState(
   const databaseWindows: ServiceWindow[] = hours
     .filter(
       (item) =>
-        item.active && item.weekday === now.weekday && item.channel_slug === slug,
+        item.active &&
+        item.weekday === now.weekday &&
+        item.channel_slug === slug,
     )
     .map((item) => ({
       kind,
@@ -151,14 +227,16 @@ function serviceState(
   const today = exception
     ? exception.closed
       ? []
-      : [{
-          kind,
-          start: timeNumber(exception.opens_at),
-          end: timeNumber(exception.closes_at),
-          label:
-            exception.message ||
-            `Funcionamento especial das ${exception.opens_at?.slice(0, 5)} às ${exception.closes_at?.slice(0, 5)}.`,
-        }]
+      : [
+          {
+            kind,
+            start: timeNumber(exception.opens_at),
+            end: timeNumber(exception.closes_at),
+            label:
+              exception.message ||
+              `Funcionamento especial das ${exception.opens_at?.slice(0, 5)} às ${exception.closes_at?.slice(0, 5)}.`,
+          },
+        ]
     : hours.length
       ? databaseWindows
       : fallbackWindows;
@@ -169,7 +247,9 @@ function serviceState(
     open: Boolean(active),
     message:
       active?.label ||
-      (exception?.closed ? exception.message || "Fechado excepcionalmente hoje." : "") ||
+      (exception?.closed
+        ? exception.message || "Fechado excepcionalmente hoje."
+        : "") ||
       today.map((window) => window.label).join(" ") ||
       (kind === "stall"
         ? "A barraquinha não funciona hoje."
@@ -295,10 +375,16 @@ function Brand() {
 
 export default function AdoceHoje() {
   const [filter, setFilter] = useState<Availability>("all");
-  const [flavors, setFlavors] = useState<Flavor[]>(fallback);
+  const [flavors, setFlavors] = useState<Flavor[]>(
+    fallback.map((flavor) => ({ ...flavor, available: false })),
+  );
   const [channels, setChannels] = useState<Channel[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
-  const [hourExceptions, setHourExceptions] = useState<BusinessHourException[]>([]);
+  const [hourExceptions, setHourExceptions] = useState<BusinessHourException[]>(
+    [],
+  );
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null);
   const [updated, setUpdated] = useState(false);
   useEffect(() => {
     document.title = "Adoce Hoje · Clube Adoce";
@@ -317,33 +403,54 @@ export default function AdoceHoje() {
     void (async () => {
       const supabase = requireSupabase();
       const today = getFortalezaNow().date;
-      const [{ data: catalog }, { data: availability }, { data: channelData }, { data: hoursData }, { data: exceptionData }] =
-        await Promise.all([
-          supabase
-            .from("flavors")
-            .select(
-              "id,name,category,short_description,description,image_path,base_price",
-            )
-            .eq("active", true)
-            .order("sort_order"),
-          supabase
-            .from("flavor_availability")
-            .select("flavor_id,status,note")
-            .eq("service_date", today),
-          supabase
-            .from("store_channels")
-            .select("slug,label,status,message,next_change_at")
-            .order("slug"),
-          supabase
-            .from("business_hours")
-            .select("channel_slug,weekday,opens_at,closes_at,active,note")
-            .eq("active", true),
-          supabase
-            .from("business_hour_exceptions")
-            .select("channel_slug,service_date,closed,opens_at,closes_at,message")
-            .eq("service_date", today),
-        ]);
+      const now = new Date().toISOString();
+      const [
+        { data: catalog },
+        { data: availability },
+        { data: channelData },
+        { data: hoursData },
+        { data: exceptionData },
+        { data: imageData },
+        { data: promotionData },
+      ] = await Promise.all([
+        supabase
+          .from("flavors")
+          .select(
+            "id,name,category,short_description,description,image_path,base_price",
+          )
+          .eq("active", true)
+          .order("sort_order"),
+        supabase
+          .from("flavor_availability")
+          .select("flavor_id,status,note")
+          .eq("service_date", today),
+        supabase
+          .from("store_channels")
+          .select("slug,label,status,message,next_change_at")
+          .order("slug"),
+        supabase
+          .from("business_hours")
+          .select("channel_slug,weekday,opens_at,closes_at,active,note")
+          .eq("active", true),
+        supabase
+          .from("business_hour_exceptions")
+          .select("channel_slug,service_date,closed,opens_at,closes_at,message")
+          .eq("service_date", today),
+        supabase
+          .from("flavor_images")
+          .select("id,flavor_id,image_path,alt_text,image_role,sort_order")
+          .eq("active", true)
+          .order("sort_order"),
+        supabase
+          .from("promotions")
+          .select("id,title,body,starts_at,ends_at")
+          .eq("active", true)
+          .lte("starts_at", now)
+          .or(`ends_at.is.null,ends_at.gte.${now}`)
+          .order("starts_at", { ascending: false }),
+      ]);
       if (catalog?.length) {
+        const photos = (imageData || []) as FlavorPhoto[];
         setFlavors(
           catalog.map((item) => {
             const status = availability?.find((a) => a.flavor_id === item.id);
@@ -358,21 +465,24 @@ export default function AdoceHoje() {
               image: item.image_path || "/adoce-hoje/sabores-hoje.webp",
               available: Boolean(
                 status &&
-                  ["available", "last_units", "preorder_only"].includes(
-                    status.status,
-                  ),
+                ["available", "last_units", "preorder_only"].includes(
+                  status.status,
+                ),
               ),
               premium: item.category === "premium",
               status: status?.status,
               illustrative: Boolean(item.image_path?.includes("ilustrativa")),
               availabilityNote: status?.note || undefined,
+              photos: photos.filter((photo) => photo.flavor_id === item.id),
             };
           }),
         );
       }
       if (channelData) setChannels(channelData as Channel[]);
       if (hoursData) setBusinessHours(hoursData as BusinessHour[]);
-      if (exceptionData) setHourExceptions(exceptionData as BusinessHourException[]);
+      if (exceptionData)
+        setHourExceptions(exceptionData as BusinessHourException[]);
+      if (promotionData) setPromotions(promotionData as Promotion[]);
       setUpdated(true);
     })();
   }, []);
@@ -467,30 +577,87 @@ export default function AdoceHoje() {
             </a>
           </div>
         </div>
-        <div className="today-live-showcase" aria-label="Sabores realmente sinalizados hoje">
-          {flavors.filter((flavor) => flavor.available).slice(0, 4).map((flavor) => (
-            <figure key={flavor.id}>
-              <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
-              <figcaption>{flavor.name}</figcaption>
-            </figure>
-          ))}
-          <p><Heart /> Fotos dos sabores sinalizados hoje</p>
+        <div
+          className="today-live-showcase"
+          aria-label="Sabores realmente sinalizados hoje"
+        >
+          {flavors
+            .filter((flavor) => flavor.available)
+            .slice(0, 4)
+            .map((flavor) => (
+              <figure key={flavor.id}>
+                <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
+                <figcaption>{flavor.name}</figcaption>
+              </figure>
+            ))}
+          <p>
+            <Heart /> Fotos dos sabores sinalizados hoje
+          </p>
         </div>
       </section>
       <section className="today-group-order" aria-labelledby="compra-em-grupo">
         <GroupOrderArtwork />
         <div>
           <p className="today-kicker">Junte a galera</p>
-          <h2 id="compra-em-grupo">5 ou mais fatias e a entrega fica por nossa conta.</h2>
-          <p>Trabalho, condomínio, família ou rua: façam um único pedido para o mesmo endereço em Fortaleza e recebam entrega grátis.</p>
+          <h2 id="compra-em-grupo">
+            5 ou mais fatias e a entrega fica por nossa conta.
+          </h2>
+          <p>
+            Trabalho, condomínio, família ou rua: façam um único pedido para o
+            mesmo endereço em Fortaleza e recebam entrega grátis.
+          </p>
           <ul>
-            <li><Check /> Sabores identificados no pacote</li>
-            <li><Check /> Pagamento antecipado por Pix ou link de cartão</li>
-            <li><Check /> Entrega por motorista de aplicativo</li>
+            <li>
+              <Check /> Sabores identificados no pacote
+            </li>
+            <li>
+              <Check /> Pagamento antecipado por Pix ou link de cartão
+            </li>
+            <li>
+              <Check /> Entrega por motorista de aplicativo
+            </li>
           </ul>
-          <a className="today-primary" href={orderLink()} target="_blank" rel="noreferrer"><MessageCircle /> Organizar pedido do grupo</a>
+          <a
+            className="today-primary"
+            href={orderLink()}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <MessageCircle /> Organizar pedido do grupo
+          </a>
         </div>
       </section>
+      {promotions.length > 0 && (
+        <section
+          className="today-active-promotions"
+          aria-labelledby="promocoes-ativas"
+        >
+          <div className="today-section-head">
+            <div>
+              <p className="today-kicker">Novidades Adoce</p>
+              <h2 id="promocoes-ativas">Promoções em destaque</h2>
+            </div>
+            <p>
+              Informações publicadas pela equipe e válidas somente durante o
+              período indicado.
+            </p>
+          </div>
+          <div className="today-promotion-grid">
+            {promotions.map((promotion) => (
+              <article key={promotion.id}>
+                <Megaphone />
+                <div>
+                  <h3>{promotion.title}</h3>
+                  <p>{promotion.body}</p>
+                </div>
+                <a href={orderLink()} target="_blank" rel="noreferrer">
+                  Consultar
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="today-flavors" id="sabores">
         <div className="today-section-head">
           <div>
@@ -524,16 +691,27 @@ export default function AdoceHoje() {
         </div>
         <div className="today-card-grid">
           {visible.map((flavor) => (
-            <article className={`today-flavor-card ${flavor.available ? "" : "unavailable"}`} key={flavor.id}>
+            <article
+              className={`today-flavor-card ${flavor.available ? "" : "unavailable"}`}
+              key={flavor.id}
+            >
               <div className="today-card-image">
                 <img
                   src={flavor.image}
                   alt={`Fatia ${flavor.name}`}
                   loading="lazy"
                 />
-                <span className={`today-availability-seal ${flavor.status === "preorder_only" ? "upcoming" : flavor.available ? "available" : "unavailable"}`}>
+                <span
+                  className={`today-availability-seal ${flavor.status === "preorder_only" ? "upcoming" : flavor.available ? "available" : "unavailable"}`}
+                >
                   {flavor.available ? <Heart /> : <Clock3 />}
-                  <strong>{flavor.status === "preorder_only" ? "Hoje às 19h30" : flavor.available ? "Disponível agora" : "Não disponível agora"}</strong>
+                  <strong>
+                    {flavor.status === "preorder_only"
+                      ? "Hoje às 19h30"
+                      : flavor.available
+                        ? "Disponível agora"
+                        : "Não disponível agora"}
+                  </strong>
                 </span>
                 {flavor.premium && (
                   <span className="today-premium">
@@ -542,6 +720,15 @@ export default function AdoceHoje() {
                 )}
                 {flavor.illustrative && (
                   <span className="today-illustrative">Imagem ilustrativa</span>
+                )}
+                {(flavor.photos?.length || 0) > 1 && (
+                  <button
+                    className="today-gallery-button"
+                    type="button"
+                    onClick={() => setSelectedFlavor(flavor)}
+                  >
+                    <Images /> Ver fotos
+                  </button>
                 )}
               </div>
               <div className="today-card-body">
@@ -553,8 +740,8 @@ export default function AdoceHoje() {
                         {flavor.status === "preorder_only"
                           ? "Festival de hoje à noite"
                           : flavor.status === "last_units"
-                          ? "Últimas unidades"
-                          : "Sinalizado hoje"}
+                            ? "Últimas unidades"
+                            : "Sinalizado hoje"}
                       </>
                     ) : (
                       <>
@@ -577,21 +764,50 @@ export default function AdoceHoje() {
               <a href={orderLink(flavor.name)} target="_blank" rel="noreferrer">
                 <MessageCircle /> Quero esta
               </a>
+              {(flavor.photos?.length || 0) > 1 && (
+                <button
+                  className="today-gallery-link"
+                  type="button"
+                  onClick={() => setSelectedFlavor(flavor)}
+                >
+                  Conhecer o produto
+                </button>
+              )}
             </article>
           ))}
         </div>
       </section>
       <section className="today-cakes" id="tortas-inteiras">
         <div className="today-section-head">
-          <div><p className="today-kicker">Para celebrar por inteiro</p><h2>Tortas inteiras por encomenda</h2></div>
-          <p>Fotos reais dos produtos. O tamanho de referência serve até 35 pessoas por R$ 195,00; outros tamanhos ficam sob consulta.</p>
+          <div>
+            <p className="today-kicker">Para celebrar por inteiro</p>
+            <h2>Tortas inteiras por encomenda</h2>
+          </div>
+          <p>
+            Fotos reais dos produtos. O tamanho de referência serve até 35
+            pessoas por R$ 195,00; outros tamanhos ficam sob consulta.
+          </p>
         </div>
         <div className="today-cake-rail">
           {wholeCakes.map((cake) => (
             <article key={cake.name}>
-              <img src={cake.image} alt={`Torta inteira ${cake.name}`} loading="lazy" />
-              <div><h3>{cake.name}</h3><p>Por encomenda · serve até 35 pessoas</p><strong>R$ 195,00</strong></div>
-              <a href={orderLink(`Torta inteira ${cake.name}`)} target="_blank" rel="noreferrer">Consultar esta torta</a>
+              <img
+                src={cake.image}
+                alt={`Torta inteira ${cake.name}`}
+                loading="lazy"
+              />
+              <div>
+                <h3>{cake.name}</h3>
+                <p>Por encomenda · serve até 35 pessoas</p>
+                <strong>R$ 195,00</strong>
+              </div>
+              <a
+                href={orderLink(`Torta inteira ${cake.name}`)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Consultar esta torta
+              </a>
             </article>
           ))}
         </div>
@@ -648,6 +864,52 @@ export default function AdoceHoje() {
           <MessageCircle /> Consultar
         </a>
       </div>
+      {selectedFlavor && (
+        <div
+          className="today-gallery-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Fotos de ${selectedFlavor.name}`}
+          onClick={() => setSelectedFlavor(null)}
+        >
+          <div onClick={(event) => event.stopPropagation()}>
+            <button
+              className="today-gallery-close"
+              type="button"
+              aria-label="Fechar fotos"
+              onClick={() => setSelectedFlavor(null)}
+            >
+              <X />
+            </button>
+            <p className="today-kicker">Galeria do sabor</p>
+            <h2>{selectedFlavor.name}</h2>
+            <p>{selectedFlavor.note}</p>
+            <div className="today-gallery-photos">
+              {(selectedFlavor.photos || []).map((photo) => (
+                <figure key={photo.id}>
+                  <img
+                    src={photo.image_path}
+                    alt={photo.alt_text || selectedFlavor.name}
+                  />
+                  <figcaption>
+                    {photo.image_role === "cover"
+                      ? "Foto principal"
+                      : "Mais detalhes"}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+            <a
+              className="today-primary"
+              href={orderLink(selectedFlavor.name)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageCircle /> Consultar disponibilidade
+            </a>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

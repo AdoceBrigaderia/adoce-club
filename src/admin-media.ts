@@ -34,7 +34,9 @@ export async function normalizeProductImage(file: File): Promise<Blob> {
   return await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (blob) =>
-        blob ? resolve(blob) : reject(new Error("Não foi possível otimizar a imagem.")),
+        blob
+          ? resolve(blob)
+          : reject(new Error("Não foi possível otimizar a imagem.")),
       "image/webp",
       0.86,
     ),
@@ -42,11 +44,13 @@ export async function normalizeProductImage(file: File): Promise<Blob> {
 }
 
 export function safeMediaFileName(name: string) {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 50) || "imagem";
+  return (
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 50) || "imagem"
+  );
 }
