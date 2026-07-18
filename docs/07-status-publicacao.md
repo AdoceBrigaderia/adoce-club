@@ -1,59 +1,70 @@
 ---
 title: Status da publicação
-description: Registro do projeto oficial na Netlify, domínio e pendências de ativação.
-status: Em andamento
+description: Estado atual dos ambientes públicos, domínios, autenticação e recursos liberados.
+status: Produção em evolução
 ---
 
 # Status da publicação
 
-## Estado em 14/07/2026
+## Estado em 18/07/2026
 
-- Projeto oficial Netlify: **adocebrigaderia**.
-- Endereço temporário ativo: `https://adocebrigaderia.netlify.app`.
-- Página publicada: apresentação honesta do Clube Adoce em construção.
-- Domínio principal associado na Netlify: `www.adocebrigaderia.com.br`.
-- Alias associado: `adocebrigaderia.com.br`.
-- HTTPS do domínio próprio: aguardando configuração e propagação do DNS.
-- Projetos antigos `rococo-cupcake-eb7525` e `adoce-club`: excluídos.
+O Clube Adoce já ultrapassou a fase de página estática. A estrutura institucional, o ambiente do cliente e a operação da equipe estão publicados, com dados reais no Supabase e autenticação definitiva por e-mail.
 
-## Nova apresentação publicada
-
-Em 14/07/2026 foi selecionada a direção visual **Chocolate Depois das Oito** para substituir a apresentação publicada. A nova versão preserva a identidade oficial da Adoce e acrescenta:
-
-- composição sensorial em chocolate, creme e coral;
-- fatia integrada livremente ao fundo, sem moldura ou cartão;
-- menu suspenso funcional no desktop e no celular;
-- transições de entrada, navegação suave, faixa em movimento e profundidade sutil no produto;
-- conteúdo honesto, mantendo explícito que o Clube Adoce ainda está em construção.
-
-A versão foi publicada na Netlify em 14/07/2026, no deploy `6a562275780e54595c005b4a`, e está ativa em `https://adocebrigaderia.netlify.app`. O domínio próprio continua aguardando a conclusão da transição e a configuração dos registros DNS no Registro.br.
-## Plano e créditos
-
-A equipe AdoceClub permanece no plano gratuito. Na consulta feita durante a publicação, o plano indicava 300 créditos mensais e 0 créditos utilizados no ciclo. A recusa inicial do deploy de produção não foi causada por falta de créditos; o deploy de revisão foi promovido corretamente para produção.
-
-## Próxima ação no Registro.br
-
-Criar os seguintes registros na zona DNS:
-
-| Tipo | Nome | Destino |
+| Ambiente | Endereço | Estado atual |
 | --- | --- | --- |
-| A | raiz ou `@` | `75.2.60.5` |
-| CNAME | `www` | `adocebrigaderia.netlify.app` |
+| Site oficial | `https://www.adocebrigaderia.com.br` | Publicado com HTTPS |
+| Clube Adoce — cliente | `https://clube.adocebrigaderia.com.br` | Publicado e em uso controlado |
+| Adoce Operação — equipe | `https://operacao.adocebrigaderia.com.br` | Publicado e em uso controlado |
+| Autenticação por e-mail | `auth.adocebrigaderia.com.br` | Domínio verificado e remetente ativo |
+| Backend e banco de dados | Supabase, região de São Paulo | Produção ativa no plano Free |
 
-Depois da alteração, verificar propagação, emissão automática do certificado, acesso HTTPS e redirecionamento do domínio raiz para `www`.
+O domínio principal e os subdomínios utilizam HTTPS. O DNS permanece administrado no Registro.br, e a aplicação web é entregue pela Netlify.
 
-## Piloto funcional do festival — 16/07/2026
+## Recursos já disponíveis
 
-Foi publicado um ambiente separado e temporário para validar a operação real com clientes sem alterar a apresentação oficial:
-
-- endereço da equipe: `https://clube-adoce-piloto.netlify.app/#festival`;
-- site oficial preservado em `https://www.adocebrigaderia.com.br`;
-- acesso da equipe protegido por código temporário com validade de 48 horas;
-- cadastro e busca de clientes;
-- registro de fatias, sendo uma fatia igual a um carimbo;
+- cadastro e acesso do cliente por código enviado por e-mail;
+- conclusão obrigatória do perfil antes da liberação completa do cartão;
+- cartão fidelidade principal com uma fatia igual a um carimbo;
 - conclusão automática do cartão ao atingir 14 carimbos;
-- prêmio acumulável, sem obrigar resgate imediato;
-- resgate controlado pela equipe;
-- cartão do cliente por link individual, responsivo e atualizado automaticamente.
+- prêmio acumulável, sem obrigar retirada imediata;
+- resgate de fatia tradicional ou premium mediante pagamento da diferença;
+- cartão exclusivo de indicações **Espalhe Doçura**;
+- convite por link pessoal, com vínculo automático da indicação;
+- QR Code do cliente e busca alternativa por parte do nome, telefone ou e-mail;
+- registro de compras e resgates pela equipe;
+- histórico e auditoria das movimentações;
+- perfis de Proprietário, Gerente e Atendimento;
+- página pública **Adoce Hoje** com catálogo, disponibilidade e canais de atendimento;
+- instalação como aplicativo web no Android e no iPhone, respeitando as orientações próprias de cada sistema;
+- administração do Adoce Hoje pela equipe, incluindo produtos, fotos, disponibilidade, horários, canais e promoções.
 
-O piloto usa dados reais no Supabase, mas permanece isolado da futura autenticação definitiva. Depois do festival, o código temporário deve ser revogado e substituído pelo acesso individual de funcionários.
+## Em evolução e ainda não anunciado como concluído
+
+- Apple Wallet e Google Wallet como acesso principal ao cartão;
+- Cartão em Grupo para casais, famílias e grupos de amigos;
+- notificações de sabores, horários e promoções conforme as preferências do cliente;
+- integração de autenticação e comunicação pelo WhatsApp;
+- ampliação das rotinas administrativas e relatórios do CRM;
+- revisão contínua de responsividade, acessibilidade e experiência em diferentes aparelhos.
+
+## Histórico resumido
+
+### 14/07/2026 — apresentação institucional
+
+Foi publicada a primeira apresentação oficial na direção visual **Chocolate Depois das Oito**, com domínio próprio ainda em configuração.
+
+### 16/07/2026 — piloto funcional
+
+O primeiro piloto com dados reais validou cadastro, carimbos, conclusão de cartão, prêmio acumulável e resgate sem interromper o ciclo seguinte.
+
+### 17/07/2026 — autenticação e operação reais
+
+O domínio de envio foi verificado no Resend, o SMTP foi integrado ao Supabase e o acesso definitivo por código de e-mail entrou em funcionamento. Cliente, operação, Adoce Hoje, QR Code e indicações passaram a ser testados em situação real.
+
+### 18/07/2026 — administração do Adoce Hoje
+
+A operação recebeu os recursos para administrar produtos, várias fotos por sabor, disponibilidade, horários, canais e promoções sem depender de uma alteração manual no código a cada atualização cotidiana.
+
+## Regra de publicação
+
+Novos recursos só devem ser apresentados ao público como disponíveis depois de passarem por validação funcional no ambiente de produção. Funcionalidades ainda em construção devem permanecer identificadas como próximas etapas, sem induzir o cliente a acreditar que já estão liberadas.
