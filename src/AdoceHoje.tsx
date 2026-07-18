@@ -41,6 +41,22 @@ type ServiceWindow = {
   end: number;
   label: string;
 };
+type BusinessHour = {
+  channel_slug: string;
+  weekday: number;
+  opens_at: string;
+  closes_at: string;
+  active: boolean;
+  note: string | null;
+};
+type BusinessHourException = {
+  channel_slug: string;
+  service_date: string;
+  closed: boolean;
+  opens_at: string | null;
+  closes_at: string | null;
+  message: string | null;
+};
 
 const wholeCakes = [
   { name: "Trufado de morango", image: "/adoce-hoje/torta-trufado-morango.webp" },
@@ -91,14 +107,61 @@ function getFortalezaNow() {
   return {
     weekday: weekdays[value("weekday")] ?? 0,
     hour: Number(value("hour")) + Number(value("minute")) / 60,
+    date: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Fortaleza",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
   };
 }
 
-function serviceState(kind: ServiceKind) {
+function timeNumber(value: string | null) {
+  if (!value) return 0;
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours + minutes / 60;
+}
+
+function serviceState(
+  kind: ServiceKind,
+  hours: BusinessHour[],
+  exceptions: BusinessHourException[],
+) {
   const now = getFortalezaNow();
-  const today = weeklyServiceWindows[now.weekday].filter(
+  const slug = kind === "stall" ? "in_person" : "store";
+  const exception = exceptions.find(
+    (item) => item.channel_slug === slug && item.service_date === now.date,
+  );
+  const databaseWindows: ServiceWindow[] = hours
+    .filter(
+      (item) =>
+        item.active && item.weekday === now.weekday && item.channel_slug === slug,
+    )
+    .map((item) => ({
+      kind,
+      start: timeNumber(item.opens_at),
+      end: timeNumber(item.closes_at),
+      label:
+        item.note ||
+        `${kind === "stall" ? "Barraquinha Adoce" : "Retirada na Fábrica Adoce"}, das ${item.opens_at.slice(0, 5)} às ${item.closes_at.slice(0, 5)}.`,
+    }));
+  const fallbackWindows = weeklyServiceWindows[now.weekday].filter(
     (window) => window.kind === kind,
   );
+  const today = exception
+    ? exception.closed
+      ? []
+      : [{
+          kind,
+          start: timeNumber(exception.opens_at),
+          end: timeNumber(exception.closes_at),
+          label:
+            exception.message ||
+            `Funcionamento especial das ${exception.opens_at?.slice(0, 5)} às ${exception.closes_at?.slice(0, 5)}.`,
+        }]
+    : hours.length
+      ? databaseWindows
+      : fallbackWindows;
   const active = today.find(
     (window) => now.hour >= window.start && now.hour < window.end,
   );
@@ -106,6 +169,7 @@ function serviceState(kind: ServiceKind) {
     open: Boolean(active),
     message:
       active?.label ||
+      (exception?.closed ? exception.message || "Fechado excepcionalmente hoje." : "") ||
       today.map((window) => window.label).join(" ") ||
       (kind === "stall"
         ? "A barraquinha não funciona hoje."
@@ -233,6 +297,8 @@ export default function AdoceHoje() {
   const [filter, setFilter] = useState<Availability>("all");
   const [flavors, setFlavors] = useState<Flavor[]>(fallback);
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [hourExceptions, setHourExceptions] = useState<BusinessHourException[]>([]);
   const [updated, setUpdated] = useState(false);
   useEffect(() => {
     document.title = "Adoce Hoje · Clube Adoce";
@@ -250,8 +316,8 @@ export default function AdoceHoje() {
     if (!isSupabaseConfigured) return;
     void (async () => {
       const supabase = requireSupabase();
-      const today = new Date().toISOString().slice(0, 10);
-      const [{ data: catalog }, { data: availability }, { data: channelData }] =
+      const today = getFortalezaNow().date;
+      const [{ data: catalog }, { data: availability }, { data: channelData }, { data: hoursData }, { data: exceptionData }] =
         await Promise.all([
           supabase
             .from("flavors")
@@ -268,6 +334,14 @@ export default function AdoceHoje() {
             .from("store_channels")
             .select("slug,label,status,message,next_change_at")
             .order("slug"),
+          supabase
+            .from("business_hours")
+            .select("channel_slug,weekday,opens_at,closes_at,active,note")
+            .eq("active", true),
+          supabase
+            .from("business_hour_exceptions")
+            .select("channel_slug,service_date,closed,opens_at,closes_at,message")
+            .eq("service_date", today),
         ]);
       if (catalog?.length) {
         setFlavors(
@@ -297,6 +371,8 @@ export default function AdoceHoje() {
         );
       }
       if (channelData) setChannels(channelData as Channel[]);
+      if (hoursData) setBusinessHours(hoursData as BusinessHour[]);
+      if (exceptionData) setHourExceptions(exceptionData as BusinessHourException[]);
       setUpdated(true);
     })();
   }, []);
@@ -311,8 +387,8 @@ export default function AdoceHoje() {
   );
   const inPerson = channels.find((c) => c.slug === "in_person");
   const online = channels.find((c) => c.slug === "online_orders");
-  const stallState = serviceState("stall");
-  const pickupState = serviceState("pickup");
+  const stallState = serviceState("stall", businessHours, hourExceptions);
+  const pickupState = serviceState("pickup", businessHours, hourExceptions);
   const open = inPerson?.status === "paused" ? false : stallState.open;
   const availableCount = flavors.filter((f) => f.available).length;
   const stallStatus = open ? "Aberto agora" : "Fechado agora";

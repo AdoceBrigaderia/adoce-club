@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Session } from "@supabase/supabase-js";
 import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import QRCode from "qrcode";
@@ -18,6 +26,7 @@ import {
   QrCode,
   RotateCcw,
   Search,
+  Settings2,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -36,10 +45,111 @@ import {
 import "./access-app.css";
 import "./referral.css";
 
+const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
+
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code";
 type ClubView = "card" | "qr" | "share" | "help" | "install" | "profile";
-type OperationView = "attend" | "movements" | "customers" | "team";
+type OperationView = "attend" | "movements" | "customers" | "team" | "content";
+
+type NotificationPreferences = {
+  flavors: boolean;
+  festival: boolean;
+  promotions: boolean;
+  club_news: boolean;
+  rewards: boolean;
+  birthday: boolean;
+  email_enabled: boolean;
+  push_enabled: boolean;
+  whatsapp_enabled: boolean;
+};
+
+const defaultNotificationPreferences: NotificationPreferences = {
+  flavors: true,
+  festival: true,
+  promotions: true,
+  club_news: true,
+  rewards: true,
+  birthday: false,
+  email_enabled: true,
+  push_enabled: false,
+  whatsapp_enabled: false,
+};
+
+function NotificationPreferencesFields({
+  value,
+  onChange,
+  compact = false,
+}: {
+  value: NotificationPreferences;
+  onChange: (next: NotificationPreferences) => void;
+  compact?: boolean;
+}) {
+  const topics: Array<[keyof NotificationPreferences, string]> = [
+    ["flavors", "Sabores disponíveis no dia"],
+    ["festival", "Festivais e horários especiais"],
+    ["promotions", "Promoções e compra em grupo"],
+    ["club_news", "Novidades do Clube Adoce"],
+    ["rewards", "Prêmios, carimbos e indicações"],
+    ["birthday", "Mimos e ações de aniversário"],
+  ];
+  return (
+    <div className={`notification-preferences ${compact ? "compact" : ""}`}>
+      <strong>O que você gostaria de receber?</strong>
+      <div className="notification-topics">
+        {topics.map(([key, label]) => (
+          <label key={key}>
+            <input
+              type="checkbox"
+              checked={Boolean(value[key])}
+              onChange={(event) =>
+                onChange({ ...value, [key]: event.target.checked })
+              }
+            />
+            <span>{label}</span>
+          </label>
+        ))}
+      </div>
+      <strong>Como prefere receber?</strong>
+      <div className="notification-channels">
+        <label>
+          <input
+            type="checkbox"
+            checked={value.email_enabled}
+            onChange={(event) =>
+              onChange({ ...value, email_enabled: event.target.checked })
+            }
+          />
+          <span>E-mail</span>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={value.push_enabled}
+            onChange={(event) =>
+              onChange({ ...value, push_enabled: event.target.checked })
+            }
+          />
+          <span>Notificação no celular</span>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={value.whatsapp_enabled}
+            onChange={(event) =>
+              onChange({ ...value, whatsapp_enabled: event.target.checked })
+            }
+          />
+          <span>WhatsApp</span>
+        </label>
+      </div>
+      <small>
+        Você pode mudar estas escolhas quando quiser. Avisos essenciais sobre
+        sua conta continuam separados de publicidade.
+      </small>
+    </div>
+  );
+}
 
 type CustomerSnapshot = {
   profile_id: string;
@@ -288,6 +398,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    ...defaultNotificationPreferences,
+  });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -364,6 +477,23 @@ function AuthScreen({ surface }: { surface: Surface }) {
             },
           ]);
         if (consentError) throw consentError;
+        const { error: preferenceError } = await supabase
+          .from("notification_preferences")
+          .upsert({
+            profile_id: result.user.id,
+            ...notificationPreferences,
+            flavors: marketing && notificationPreferences.flavors,
+            festival: marketing && notificationPreferences.festival,
+            promotions: marketing && notificationPreferences.promotions,
+            club_news: marketing && notificationPreferences.club_news,
+            rewards: marketing && notificationPreferences.rewards,
+            birthday: marketing && notificationPreferences.birthday,
+            email_enabled: marketing && notificationPreferences.email_enabled,
+            push_enabled: marketing && notificationPreferences.push_enabled,
+            whatsapp_enabled:
+              marketing && notificationPreferences.whatsapp_enabled,
+          });
+        if (preferenceError) throw preferenceError;
         await acceptRememberedReferral();
         window.dispatchEvent(new Event("adoce-profile-ready"));
       }
@@ -487,6 +617,13 @@ function AuthScreen({ surface }: { surface: Surface }) {
                       Quero receber sabores e novidades. <em>Opcional</em>
                     </span>
                   </label>
+                  {marketing && (
+                    <NotificationPreferencesFields
+                      compact
+                      value={notificationPreferences}
+                      onChange={setNotificationPreferences}
+                    />
+                  )}
                 </div>
               )}
               <button className="access-primary" disabled={busy}>
@@ -570,6 +707,9 @@ function CustomerHome({ session }: { session: Session }) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [marketingAccepted, setMarketingAccepted] = useState(false);
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    ...defaultNotificationPreferences,
+  });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [qrImage, setQrImage] = useState("");
@@ -581,6 +721,7 @@ function CustomerHome({ session }: { session: Session }) {
     const [
       { data: profile, error: profileError },
       { data: consentRows, error: consentError },
+      { data: savedPreferences, error: preferencesError },
     ] = await Promise.all([
       supabase
         .from("profiles")
@@ -592,8 +733,16 @@ function CustomerHome({ session }: { session: Session }) {
         .select("consent_type,granted,created_at")
         .eq("profile_id", session.user.id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("notification_preferences")
+        .select(
+          "flavors,festival,promotions,club_news,rewards,birthday,email_enabled,push_enabled,whatsapp_enabled",
+        )
+        .eq("profile_id", session.user.id)
+        .maybeSingle(),
     ]);
-    if (profileError || consentError) throw profileError || consentError;
+    if (profileError || consentError || preferencesError)
+      throw profileError || consentError || preferencesError;
 
     const consents = (consentRows || []) as ConsentEvent[];
     const metadataName =
@@ -608,7 +757,23 @@ function CustomerHome({ session }: { session: Session }) {
     setProfileName(nameForForm);
     setTermsAccepted(currentConsent(consents, "club_terms"));
     setPrivacyAccepted(currentConsent(consents, "privacy"));
-    setMarketingAccepted(currentConsent(consents, "marketing"));
+    const marketingAllowed = currentConsent(consents, "marketing");
+    setMarketingAccepted(marketingAllowed);
+    if (savedPreferences)
+      setNotificationPreferences(
+        savedPreferences as NotificationPreferences,
+      );
+    else if (!marketingAllowed)
+      setNotificationPreferences({
+        ...defaultNotificationPreferences,
+        flavors: false,
+        festival: false,
+        promotions: false,
+        club_news: false,
+        rewards: false,
+        birthday: false,
+        email_enabled: false,
+      });
 
     if (!isCustomerOnboardingComplete(databaseName, consents)) {
       setSnapshot(null);
@@ -779,6 +944,29 @@ function CustomerHome({ session }: { session: Session }) {
       setMessage(consentError.message);
       return;
     }
+    const { error: preferenceError } = await supabase
+      .from("notification_preferences")
+      .upsert({
+        profile_id: session.user.id,
+        ...notificationPreferences,
+        flavors: marketingAccepted && notificationPreferences.flavors,
+        festival: marketingAccepted && notificationPreferences.festival,
+        promotions: marketingAccepted && notificationPreferences.promotions,
+        club_news: marketingAccepted && notificationPreferences.club_news,
+        rewards: marketingAccepted && notificationPreferences.rewards,
+        birthday: marketingAccepted && notificationPreferences.birthday,
+        email_enabled:
+          marketingAccepted && notificationPreferences.email_enabled,
+        push_enabled:
+          marketingAccepted && notificationPreferences.push_enabled,
+        whatsapp_enabled:
+          marketingAccepted && notificationPreferences.whatsapp_enabled,
+      });
+    if (preferenceError) {
+      setBusy(false);
+      setMessage(preferenceError.message);
+      return;
+    }
 
     setOnboardingRequired(null);
     try {
@@ -800,19 +988,50 @@ function CustomerHome({ session }: { session: Session }) {
     setBusy(true);
     setMessage("");
     const supabase = requireSupabase();
-    const [{ error: profileError }, { error: metadataError }] =
+    const [
+      { error: profileError },
+      { error: metadataError },
+      { error: preferenceError },
+      { error: consentError },
+    ] =
       await Promise.all([
         supabase
           .from("profiles")
           .update({ full_name: cleanName })
           .eq("id", session.user.id),
         supabase.auth.updateUser({ data: { full_name: cleanName } }),
+        supabase.from("notification_preferences").upsert({
+          profile_id: session.user.id,
+          ...notificationPreferences,
+        }),
+        supabase.from("consent_events").insert({
+          profile_id: session.user.id,
+          consent_type: "marketing",
+          granted:
+            [
+              notificationPreferences.flavors,
+              notificationPreferences.festival,
+              notificationPreferences.promotions,
+              notificationPreferences.club_news,
+              notificationPreferences.rewards,
+              notificationPreferences.birthday,
+            ].some(Boolean) &&
+            [
+              notificationPreferences.email_enabled,
+              notificationPreferences.push_enabled,
+              notificationPreferences.whatsapp_enabled,
+            ].some(Boolean),
+          document_version: "1.0",
+          source: "web_profile",
+        }),
       ]);
     setBusy(false);
-    if (profileError || metadataError) {
+    if (profileError || metadataError || preferenceError || consentError) {
       setMessage(
         profileError?.message ||
           metadataError?.message ||
+          preferenceError?.message ||
+          consentError?.message ||
           "Não foi possível salvar seu nome.",
       );
       return;
@@ -936,6 +1155,12 @@ function CustomerHome({ session }: { session: Session }) {
                   <em>Opcional</em>
                 </span>
               </label>
+              {marketingAccepted && (
+                <NotificationPreferencesFields
+                  value={notificationPreferences}
+                  onChange={setNotificationPreferences}
+                />
+              )}
             </div>
             <button className="access-primary" disabled={busy}>
               {busy ? "Concluindo..." : "Concluir e abrir meu cartão"}
@@ -1311,8 +1536,12 @@ function CustomerHome({ session }: { session: Session }) {
               E-mail
               <input value={session.user.email || ""} readOnly />
             </label>
+            <NotificationPreferencesFields
+              value={notificationPreferences}
+              onChange={setNotificationPreferences}
+            />
             <button className="access-primary" disabled={busy}>
-              {busy ? "Salvando..." : "Salvar meu nome"}
+              {busy ? "Salvando..." : "Salvar perfil e preferências"}
             </button>
           </form>
         </section>
@@ -1790,6 +2019,14 @@ function OperationHome({ session }: { session: Session }) {
           >
             <ShieldCheck /> Equipe
           </button>
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "content" ? "active" : ""}
+              onClick={() => void openView("content")}
+            >
+              <Settings2 /> Administrar Adoce
+            </button>
+          )}
         </aside>
         <section className="operation-work">
           {view === "attend" && (
@@ -2078,6 +2315,11 @@ function OperationHome({ session }: { session: Session }) {
                 ))}
               </div>
             </>
+          )}
+          {view === "content" && (
+            <Suspense fallback={<p>Carregando administração...</p>}>
+              <OperationContentAdmin session={session} role={role} />
+            </Suspense>
           )}
           {scannerOpen && (
             <div
