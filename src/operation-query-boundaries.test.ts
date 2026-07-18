@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 
 describe("limites das consultas da operação", () => {
   const source = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
-  const searchBlock = source.slice(source.indexOf("const search = useCallback"), source.indexOf("const openCustomer=useCallback"));
+  const searchBlock = source.slice(
+    source.indexOf("const search = useCallback"),
+    source.indexOf("const openCustomer = useCallback"),
+  );
 
   it("busca somente dados cadastrais do cliente", () => {
     expect(searchBlock).toContain('from("profiles")');
