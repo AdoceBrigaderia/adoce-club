@@ -33,7 +33,7 @@ export async function generateStaffAccessCode(
 
 export function staffAccessMessage(access: StaffAccessCode): string {
   const firstName = access.fullName.trim().split(/\s+/)[0] || "cliente";
-  return `Olá, ${firstName}! A Adoce gerou seu acesso ao Clube. Toque neste link para entrar diretamente: ${access.loginUrl}\n\nSe preferir digitar, acesse https://www.adocebrigaderia.com.br/#entrar, informe o e-mail ${access.email} e use o código ${access.code}. O link e o código são temporários e de uso pessoal.`;
+  return `Olá, ${firstName}! A Adoce gerou seu acesso ao Clube. Toque neste link para abrir a tela segura e entrar diretamente: ${access.loginUrl}\n\nSe preferir digitar, acesse https://www.adocebrigaderia.com.br/#entrar, informe o e-mail ${access.email} e use o código ${access.code}. O link e o código são temporários e de uso pessoal.`;
 }
 
 export function staffAccessWhatsAppUrl(access: StaffAccessCode): string | null {

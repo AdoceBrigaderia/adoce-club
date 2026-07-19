@@ -1,41 +1,48 @@
-# Design QA — Adoce Hoje
+# Design QA — Clube Adoce
 
-- Source visual truth: `C:\Users\RubensBezerra\Documents\ChatGPT Image 16 de jul. de 2026, 18_28_04.png`, supported by the eight individual promotional banners supplied in the same request.
-- Implementation screenshot: `C:\tmp\adoce-hoje-mobile-top.png`
-- Side-by-side evidence: `C:\tmp\adoce-hoje-comparacao.jpg`
-- Viewport: 390 × 694 for the visual comparison; additional responsive checks at 390 × 844 and 1440 × 1000.
-- State: initial Adoce Hoje view; sticky mobile actions visible.
+Data: 2026-07-19
 
-## Full-view comparison evidence
+## Fontes comparadas
 
-The implementation preserves the reference's cream, chocolate and coral palette, editorial serif hierarchy, rounded brand marks, festival-first messaging and prominent WhatsApp conversion. The coded page intentionally converts the static poster into a live responsive interface: status and time cards replace the poster list above the fold, while the complete flavor catalog appears immediately below.
+- As três propostas visuais aprovadas para “Veja o Clube por dentro” e “Compartilhe Doçura”.
+- Implementação local executada em navegador real nos viewports 1440 × 900 e 390 × 844.
+- Identidade existente do projeto: logo, creme, chocolate, coral, fotografia de fatias e combinação de serifada editorial com sans-serif funcional.
 
-## Focused region comparison
+## Resultado da comparação
 
-A separate focused crop was unnecessary: at 390 px, the logo, date, headline, R$ 16 starting price, pickup status, 19:30 time and both mobile actions were all legible in the full-view comparison.
+- A página do Clube incorpora integralmente as artes aprovadas, sem recriação aproximada por CSS ou ilustração substituta.
+- Desktop usa `clube-aprovado-desktop.png`.
+- Mobile usa `clube-aprovado-mobile-claro.png` pelo elemento `picture`, preservando composição, tipografia, cores, imagens, Cartão, QR, Adoce Hoje, Fatia Grátis e Compartilhe Doçura.
+- A nova abertura e os controles ao redor das artes seguem os mesmos tokens visuais da marca e não competem com as peças aprovadas.
+- A landing apresenta primeiro a Adoce Brigaderia e distribui Festival de Fatias, encomendas, eventos, Adoce na Escola, Compra em Grupo e Clube Adoce em destinos distintos.
+- A fatia principal ultrapassa a área escura e termina sobre a área clara no desktop.
 
-## Required fidelity surfaces
+## Responsividade e acessibilidade
 
-- Fonts and typography: editorial serif display and compact sans-serif UI match the banners' hierarchy without copying raster text into controls.
-- Spacing and layout rhythm: mobile margins, stacked status cards and sticky CTAs remain inside 390 px with no horizontal overflow.
-- Colors and tokens: cream, chocolate, coral and soft pink are consistent with the supplied campaign.
-- Image quality: supplied campaign imagery was converted to optimized WebP and used directly; no placeholder product imagery.
-- Copy and content: ten catalog entries, R$ 16 base price, R$ 20 Kinder Bueno premium, 19:30 opening, location search phrase and both WhatsApps were transcribed from the supplied materials.
+- Landing, Clube, Festival de Fatias, catálogo comercial, eventos, Compra em Grupo e Operação foram inspecionados em 390 × 844 sem overflow horizontal.
+- A Operação passou a usar título, busca, resultados e barra inferior adaptáveis; a navegação fica em uma única faixa horizontal utilizável por toque.
+- Menu móvel abre, fecha e navega; botões têm nome acessível; imagens e links visíveis não apresentaram ausência de texto alternativo/nome acessível na verificação executada.
+- Contraste, hierarquia, alvos de toque, quebra de texto e estados ativos foram preservados nos fluxos inspecionados.
 
-## Findings
+## Funcionalidade verificada
 
-No actionable P0, P1 or P2 mismatch remains. P3: the web page uses a cleaner digital navigation hierarchy than the dense poster, an intentional adaptation for interaction and readability.
+- Todos os seis destinos do menu público foram acionados e chegaram às rotas corretas.
+- As cinco categorias do catálogo mudam de estado corretamente.
+- As três telas da demonstração da Operação mudam corretamente e permanecem dentro do viewport.
+- O Festival mostra estado de funcionamento coerente, sem a contradição “Fechado agora / Estamos abertos”.
+- Links externos de Instagram, Facebook e localização possuem URLs válidas e `rel="noreferrer"`.
+- O acesso direto recebe e-mail e código pela URL, tenta validar automaticamente e mantém o código preenchido para recuperação manual quando necessário.
 
-## Interaction and technical checks
+## Regressão automatizada
 
-- Filtered 9 total flavors to 4 marked available now.
-- WhatsApp and Google Maps destinations verified.
-- Mobile sticky actions verified.
-- No page errors, console errors or horizontal overflow.
-- 12 automated business-rule tests passed; TypeScript and production build passed.
+- `npm test`: 16 arquivos e 59 testes aprovados.
+- `npm run lint`: aprovado.
+- `npm run build`: aprovado.
+- `git diff --check`: aprovado.
+- Único aviso não bloqueante: chunk autenticado `AccessApp` com 547 kB antes de gzip; não afeta a correção funcional ou visual desta entrega.
 
-## Comparison history
+## Evidências
 
-Initial comparison found no actionable P0/P1/P2 issues; no corrective iteration was required.
+Capturas de QA foram salvas em `C:/Users/Rubens Bezerra/.codex/visualizations/2026/07/19/019f79ee-1401-7a10-a78b-15390e612869/final-qa-local`.
 
-final result: passed
+Final result: passed

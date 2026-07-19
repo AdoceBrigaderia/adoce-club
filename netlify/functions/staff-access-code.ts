@@ -106,10 +106,12 @@ export default async (request: Request) => {
       },
     });
   const accessCode = linkData?.properties?.email_otp;
-  const loginUrl = linkData?.properties?.action_link;
-  if (linkError || !accessCode || !loginUrl) {
+  if (linkError || !accessCode) {
     return json({ error: "Não foi possível gerar o código de acesso." }, 502);
   }
+  const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
+  const directParams = new URLSearchParams({ email: profile.email, code: accessCode });
+  const loginUrl = `${siteUrl}/#acesso-direto?${directParams.toString()}`;
 
   const { error: auditError } = await adminClient.from("audit_events").insert({
     actor_user_id: userData.user.id,

@@ -6,7 +6,7 @@ const access = {
   fullName: "Ana Paula Rocha",
   email: "ana@example.com",
   phone: "+55 85 99999-9999",
-  loginUrl: "https://projeto.supabase.co/auth/v1/verify?token=seguro",
+  loginUrl: "https://www.adocebrigaderia.com.br/#acesso-direto?email=ana%40example.com&code=123456",
 };
 
 describe("código assistido pela operação", () => {
@@ -17,6 +17,7 @@ describe("código assistido pela operação", () => {
     expect(message).toContain("ana@example.com");
     expect(message).toContain(access.loginUrl);
     expect(message).toContain("entrar diretamente");
+    expect(access.loginUrl).toContain("#acesso-direto?");
   });
 
   it("abre o WhatsApp somente quando existe telefone válido", () => {

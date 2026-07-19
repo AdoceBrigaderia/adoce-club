@@ -33,13 +33,13 @@ const groupOptions = (options: CommercialProductOption[]) => options.reduce<Reco
   {},
 );
 
-function Brand() {
+function Brand({ subtitle = "Encomendas & eventos" }: { subtitle?: string }) {
   return (
     <a className="commercial-brand" href="/#inicio">
       <img src="/site/logo.webp" alt="Adoce Brigaderia" />
       <span>
         <strong>Adoce Brigaderia</strong>
-        <small>Encomendas & eventos</small>
+        <small>{subtitle}</small>
       </span>
     </a>
   );
@@ -94,9 +94,37 @@ function ProductDetails({ product }: { product: CommercialProduct }) {
   );
 }
 
-export default function CommercialCatalog() {
+const experienceCopy: Record<CommercialSegment, { label: string; title: string; text: string }> = {
+  cakes: {
+    label: "Pedidos por encomenda",
+    title: "Tortas e docinhos feitos para o seu momento.",
+    text: "Escolha tamanhos, recheios, docinhos e adicionais. Informe a data e receba a confirmação da equipe.",
+  },
+  sweets: {
+    label: "Docinhos por encomenda",
+    title: "Pequenas doçuras para completar a celebração.",
+    text: "Pacotes tradicionais e especiais com quantidades, sabores e valores administrados pela Adoce.",
+  },
+  events: {
+    label: "Festas e eventos",
+    title: "Experiências Adoce para momentos que ficam.",
+    text: "Tabuleiro de Doces, Festa na Mesa e soluções para servir, encantar e celebrar com organização.",
+  },
+  school: {
+    label: "Adoce na Escola",
+    title: "Uma comemoração gostosa, bonita e organizada na escola.",
+    text: "Pacotes completos para celebrar com as crianças, com antecedência mínima de cinco dias úteis.",
+  },
+  rentals: {
+    label: "Acervo Adoce",
+    title: "Monte uma celebração charmosa do seu jeito.",
+    text: "Kits compactos, peças e estruturas para retirar, montar e devolver com segurança.",
+  },
+};
+
+export default function CommercialCatalog({ initialSegment = "cakes" }: { initialSegment?: CommercialSegment }) {
   const [products, setProducts] = useState<CommercialProduct[]>([]);
-  const [segment, setSegment] = useState<CommercialSegment>("cakes");
+  const [segment, setSegment] = useState<CommercialSegment>(initialSegment);
   const [selected, setSelected] = useState<CommercialProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -132,6 +160,8 @@ export default function CommercialCatalog() {
       setLoading(false);
     })();
   }, []);
+
+  useEffect(() => setSegment(initialSegment), [initialSegment]);
 
   const visibleProducts = useMemo(
     () => products.filter((product) => product.segment === segment),
@@ -201,20 +231,17 @@ export default function CommercialCatalog() {
   return (
     <main className="commercial-page">
       <header className="commercial-header">
-        <Brand />
+        <Brand subtitle={experienceCopy[initialSegment].label} />
         <a href="/#inicio">
           <ArrowLeft /> Voltar ao site
         </a>
       </header>
 
-      <section className="commercial-hero">
+      <section className={`commercial-hero segment-${initialSegment}`}>
         <div>
-          <span>Pedidos por encomenda</span>
-          <h1>Seu momento, feito com a doçura da Adoce.</h1>
-          <p>
-            Tortas, docinhos, festas e experiências para celebrar. Escolha uma opção,
-            informe a data e receba a confirmação da nossa equipe.
-          </p>
+          <span>{experienceCopy[initialSegment].label}</span>
+          <h1>{experienceCopy[initialSegment].title}</h1>
+          <p>{experienceCopy[initialSegment].text}</p>
         </div>
         <div className="commercial-hero-note">
           <CalendarDays />
@@ -437,7 +464,7 @@ export default function CommercialCatalog() {
       </section>
 
       <footer>
-        <Brand />
+        <Brand subtitle={experienceCopy[initialSegment].label} />
         <p>Adoce Brigaderia · Fortaleza, Ceará</p>
       </footer>
     </main>

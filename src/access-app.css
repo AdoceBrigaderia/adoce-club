@@ -2187,3 +2187,69 @@
 .access-whatsapp-confirmation{display:grid;gap:12px}.access-whatsapp-confirmation .access-primary{text-decoration:none}
 .club-group-panel{display:grid;gap:18px}.group-member-list,.group-invite-box{display:grid;gap:12px}.group-member-list article{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(91,45,32,.14);border-radius:16px}.group-member-list article>span{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#f4d7d1;color:#dc5e62;font-weight:800}.group-member-list article p{display:grid;gap:3px;flex:1;margin:0}.group-member-list article small{color:#9a7469}.group-member-list article button{border:0;background:transparent;color:#b64045;font-weight:750}.group-invite-box{padding:18px;border:1px solid rgba(91,45,32,.14);border-radius:18px}.group-invite-box label{display:grid;gap:8px}
 .operation-product-demo label{display:grid;gap:7px;margin:12px 0;color:#6f463b;font-weight:750}.operation-product-demo label input{min-height:48px;border:1px solid rgba(91,45,32,.18);border-radius:12px;padding:0 14px;background:#fffaf4;color:#32140d}.operation-product-demo article>small{display:block;margin-top:14px;line-height:1.55;color:#8b665c}
+
+/* Mobile operation shell: one viewport, no horizontal overflow and one-row navigation. */
+.operation-home {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+.operation-home button,
+.operation-home input,
+.operation-home textarea,
+.operation-home select { max-width: 100%; }
+
+@media (max-width: 620px) {
+  .operation-home > header { min-width: 0; }
+  .operation-home > header .access-brand span { min-width: 0; }
+  .operation-home > header .access-brand strong { font-size: 1rem; }
+  .operation-home > header > div { gap: 5px; }
+  .operation-home > header > div button { width: 42px; min-width: 42px; font-size: 0; padding: 0; justify-content: center; }
+  .operation-home > header > div button svg { margin: 0; }
+  .operation-work { width: 100%; max-width: 100vw; min-width: 0; padding: 28px 14px 98px; }
+  .operation-title { min-width: 0; }
+  .operation-title h1 { max-width: 100%; font-size: clamp(2rem, 10vw, 2.7rem); line-height: .96; overflow-wrap: anywhere; }
+  .operation-title p { max-width: 100%; font-size: .92rem; line-height: 1.52; }
+  .operation-role { font-size: .68rem; }
+  .operation-search-row { width: 100%; min-width: 0; gap: 10px; }
+  .operation-search { width: 100%; min-width: 0; height: 56px; margin: 0; padding-left: 12px; }
+  .operation-search input { width: 0; min-width: 0; padding: 0 8px; font-size: 16px; }
+  .operation-search button { min-width: 68px; height: 42px; padding: 0 10px; font-size: .72rem; }
+  .operation-scan-button { width: 100%; min-height: 54px; font-size: .86rem; }
+  .operation-results { width: 100%; min-width: 0; }
+  .operation-results > button { width: 100%; min-width: 0; grid-template-columns: 44px minmax(0, 1fr) 20px; gap: 10px; padding: 16px 4px; }
+  .operation-results > button > span:not(.avatar) { min-width: 0; }
+  .operation-results strong,
+  .operation-results small { overflow-wrap: anywhere; }
+  .operation-results > button > svg { justify-self: end; }
+  .avatar { width: 44px; height: 44px; }
+  .operation-shell > aside {
+    height: 72px;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    background: rgba(255, 250, 244, .98);
+  }
+  .operation-shell > aside::-webkit-scrollbar { display: none; }
+  .operation-shell > aside button {
+    flex: 0 0 88px;
+    width: 88px;
+    min-width: 88px;
+    height: 71px;
+    padding: 6px 4px;
+    font-size: .57rem;
+    line-height: 1.2;
+  }
+  .operation-shell > aside button svg { flex: none; }
+  .customer-top,
+  .customer-balance,
+  .operation-actions,
+  .customer-access-help { min-width: 0; max-width: 100%; }
+  .customer-access-result { min-width: 0; }
+  .generated-access-code { max-width: 100%; overflow-wrap: anywhere; }
+}

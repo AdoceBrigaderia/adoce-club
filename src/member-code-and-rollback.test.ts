@@ -11,11 +11,13 @@ const rollbackFunction = readFileSync(
 );
 const memberArea = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
 const landing = readFileSync(new URL("./MarketingLanding.tsx", import.meta.url), "utf8");
+const clubExperience = readFileSync(new URL("./ClubExperience.tsx", import.meta.url), "utf8");
 
 describe("terminologia do Clube Adoce", () => {
   it("mantém os textos principais exatamente como definidos", () => {
-    expect(landing).toContain("Faça parte do <em>Clube Adoce</em>");
-    expect(landing).toContain("A cada fatia comprada, você recebe um carimbo. Complete 14");
+    expect(landing).toContain("Doçura para hoje.");
+    expect(clubExperience).toContain("Seu cartão agora é digital — <em>mas a tradição continua.</em>");
+    expect(clubExperience).toContain("A cada fatia, você ganha 1 carimbo. Complete 14 e ganhe uma fatia grátis.");
     expect(memberArea).toContain("Área do Membro");
     expect(memberArea).toContain("Cartão do Membro");
     expect(memberArea).toContain("Código do Membro");

@@ -359,8 +359,8 @@ function Brand() {
     <a className="today-brand" href="/">
       <img src="/site/logo.webp" alt="Adoce Brigaderia" />
       <span>
-        <strong>Clube Adoce</strong>
-        <small>Adoce Hoje</small>
+        <strong>Adoce Brigaderia</strong>
+        <small>Festival de Fatias</small>
       </span>
     </a>
   );

@@ -557,7 +557,7 @@ export function OperationDemo() {
               <div className="operation-search-row">
                 <div className="operation-search">
                   <Search />
-                  <input placeholder="Ex.: Ana ou ADOC 2026 0000 0002" />
+                  <input placeholder="Nome, telefone ou código" />
                   <button>Buscar</button>
                 </div>
                 <button className="operation-scan-button"><Camera /> Ler QR do membro</button>
@@ -625,7 +625,17 @@ export function OperationDemo() {
 }
 
 function AuthScreen({ surface }: { surface: Surface }) {
-  const [stage, setStage] = useState<AuthStage>("identify");
+  const directParams = useMemo(() => {
+    if (!location.hash.startsWith("#acesso-direto?")) return null;
+    const params = new URLSearchParams(location.hash.split("?")[1] || "");
+    const directEmail = params.get("email")?.trim() || "";
+    const directCode = params.get("code")?.replace(/\D/g, "").slice(0, 6) || "";
+    return directEmail && directCode.length === 6
+      ? { email: directEmail, code: directCode }
+      : null;
+  }, []);
+  const directAttempted = useRef(false);
+  const [stage, setStage] = useState<AuthStage>(directParams ? "code" : "identify");
   const registrationRoute = location.hash.startsWith("#cadastro");
   const [registering, setRegistering] = useState(
     () =>
@@ -637,9 +647,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
     surface === "client" &&
     Boolean(rememberReferralInvite() || rememberGroupInvite());
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(directParams?.email || "");
   const [phone, setPhone] = useState("");
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(directParams?.code || "");
   const [whatsAppChallenge, setWhatsAppChallenge] =
     useState<WhatsAppChallenge | null>(null);
   const [terms, setTerms] = useState(false);
@@ -666,6 +676,30 @@ function AuthScreen({ surface }: { surface: Surface }) {
       setMessage("");
     }
   }, [registrationRoute, surface]);
+
+  useEffect(() => {
+    if (surface !== "client" || !directParams || directAttempted.current) return;
+    directAttempted.current = true;
+    setBusy(true);
+    setMessage("Validando o acesso seguro gerado pela Adoce...");
+    void verifyEmailCode(directParams.email, directParams.code)
+      .then(() => {
+        location.hash = "minha-conta";
+      })
+      .catch((error) => {
+        setStage("code");
+        const technicalMessage = error instanceof Error ? error.message : "";
+        const safeMessage = /fetch|network|expired|invalid|token/i.test(
+          technicalMessage,
+        )
+          ? "O link não pôde ser validado automaticamente."
+          : technicalMessage || "O link não pôde ser validado.";
+        setMessage(
+          `${safeMessage} Você ainda pode conferir ou digitar outro código abaixo.`,
+        );
+      })
+      .finally(() => setBusy(false));
+  }, [directParams, surface]);
 
   const submitEmail = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -847,7 +881,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
           <img src="/site/logo.webp" alt="" />
           <h2>
             {stage === "code"
-              ? "Confira seu e-mail"
+              ? directParams ? "Acesso direto ao Clube" : "Confira seu e-mail"
               : stage === "whatsapp"
                 ? "Confirme seu WhatsApp"
               : invited
@@ -858,7 +892,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
           </h2>
           <p>
             {stage === "code"
-              ? `Digite o código de 6 números enviado para ${email}.`
+              ? directParams
+                ? `Estamos validando o código seguro gerado para ${email}.`
+                : `Digite o código de 6 números enviado para ${email}.`
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : "Você receberá um código de acesso. Não usamos senha."}
@@ -2681,7 +2717,7 @@ function OperationHome({ session }: { session: Session }) {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Ex.: Ana, 8215 ou ADOC 2026 0000 0123"
+                    placeholder="Nome, telefone ou código"
                   />
                   <button disabled={busy}>
                     {busy ? "Buscando..." : "Buscar"}
