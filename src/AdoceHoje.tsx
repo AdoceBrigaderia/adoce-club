@@ -30,6 +30,9 @@ type Flavor = {
   illustrative?: boolean;
   availabilityNote?: string;
   photos?: FlavorPhoto[];
+  wholeCakePrice?: number;
+  wholeCakeImage?: string;
+  wholeCakeAvailable?: boolean;
 };
 type FlavorPhoto = {
   id: string;
@@ -77,17 +80,6 @@ type BusinessHourException = {
   closes_at: string | null;
   message: string | null;
 };
-
-const wholeCakes = [
-  {
-    name: "Trufado de morango",
-    image: "/adoce-hoje/torta-trufado-morango.webp",
-  },
-  { name: "Abacaxi com coco", image: "/adoce-hoje/torta-abacaxi-coco.webp" },
-  { name: "Chocolatudo", image: "/adoce-hoje/torta-chocolatudo.webp" },
-  { name: "Ferrero Rocher", image: "/adoce-hoje/torta-ferrero-rocher.webp" },
-  { name: "Oreo", image: "/adoce-hoje/torta-oreo.webp" },
-];
 
 const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
   0: [],
@@ -405,7 +397,7 @@ export default function AdoceHoje() {
       const today = getFortalezaNow().date;
       const now = new Date().toISOString();
       const [
-        { data: catalog },
+        { data: catalog, error: catalogError },
         { data: availability },
         { data: channelData },
         { data: hoursData },
@@ -416,10 +408,10 @@ export default function AdoceHoje() {
         supabase
           .from("flavors")
           .select(
-            "id,name,category,short_description,description,image_path,base_price",
+            "id,name,category,short_description,description,image_path,base_price,whole_cake_price,whole_cake_image_path,whole_cake_available",
           )
           .eq("active", true)
-          .order("sort_order"),
+          .order("name"),
         supabase
           .from("flavor_availability")
           .select("flavor_id,status,note")
@@ -474,6 +466,11 @@ export default function AdoceHoje() {
               illustrative: Boolean(item.image_path?.includes("ilustrativa")),
               availabilityNote: status?.note || undefined,
               photos: photos.filter((photo) => photo.flavor_id === item.id),
+              wholeCakePrice: item.whole_cake_price
+                ? Number(item.whole_cake_price)
+                : undefined,
+              wholeCakeImage: item.whole_cake_image_path || undefined,
+              wholeCakeAvailable: Boolean(item.whole_cake_available),
             };
           }),
         );
@@ -483,7 +480,7 @@ export default function AdoceHoje() {
       if (exceptionData)
         setHourExceptions(exceptionData as BusinessHourException[]);
       if (promotionData) setPromotions(promotionData as Promotion[]);
-      setUpdated(true);
+      setUpdated(!catalogError);
     })();
   }, []);
   const visible = useMemo(
@@ -495,6 +492,24 @@ export default function AdoceHoje() {
       ),
     [flavors, filter],
   );
+  const wholeCakes = useMemo(() => {
+    const configured = flavors
+      .filter(
+        (flavor) =>
+          flavor.wholeCakeAvailable &&
+          flavor.wholeCakeImage &&
+          flavor.wholeCakePrice,
+      )
+      .map((flavor) => ({
+        name: flavor.name,
+        image: flavor.wholeCakeImage!,
+        price: flavor.wholeCakePrice!,
+      }));
+    configured.sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+      );
+    return configured;
+  }, [flavors]);
   const inPerson = channels.find((c) => c.slug === "in_person");
   const online = channels.find((c) => c.slug === "online_orders");
   const stallState = serviceState("stall", businessHours, hourExceptions);
@@ -777,6 +792,7 @@ export default function AdoceHoje() {
           ))}
         </div>
       </section>
+      {wholeCakes.length > 0 && (
       <section className="today-cakes" id="tortas-inteiras">
         <div className="today-section-head">
           <div>
@@ -784,8 +800,8 @@ export default function AdoceHoje() {
             <h2>Tortas inteiras por encomenda</h2>
           </div>
           <p>
-            Fotos reais dos produtos. O tamanho de referência serve até 35
-            pessoas por R$ 195,00; outros tamanhos ficam sob consulta.
+            Fotos reais dos produtos. Consulte abaixo o valor cadastrado para o
+            tamanho G; outros tamanhos ficam sob consulta.
           </p>
         </div>
         <div className="today-cake-rail">
@@ -799,7 +815,12 @@ export default function AdoceHoje() {
               <div>
                 <h3>{cake.name}</h3>
                 <p>Por encomenda · serve até 35 pessoas</p>
-                <strong>R$ 195,00</strong>
+                <strong>
+                  {cake.price.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </strong>
               </div>
               <a
                 href={orderLink(`Torta inteira ${cake.name}`)}
@@ -812,6 +833,7 @@ export default function AdoceHoje() {
           ))}
         </div>
       </section>
+      )}
       <section className="today-event" id="atendimento">
         <div className="today-event-copy">
           <p className="today-kicker">Atendimento Adoce</p>

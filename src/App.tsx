@@ -5,9 +5,10 @@ import { Customer, cycleProgress, earn, formatPhone, maskPhone, redeem, remainin
 import { loadCustomers, saveCustomers } from "./store";
 import PilotApp from "./PilotApp";
 import AdoceHoje from "./AdoceHoje";
-import AccessApp from "./AccessApp";
+import AccessApp, { MemberDemo, OperationDemo } from "./AccessApp";
 import MarketingLanding from "./MarketingLanding";
 import SocialCampaign from "./SocialCampaign";
+import { ProductionRollbackDemo } from "./ProductionRollbackPanel";
 
 type Page = "join" | "card" | "staff" | "admin";
 const moneyless = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -68,12 +69,15 @@ export default function App(){
   const host = location.hostname.toLowerCase();
   if(location.hash.startsWith("#campanha-story"))return <SocialCampaign format="story"/>;
   if(location.hash.startsWith("#campanha-feed"))return <SocialCampaign format="feed"/>;
+  if(import.meta.env.DEV && location.hash.startsWith("#membro-demo"))return <MemberDemo/>;
+  if(import.meta.env.DEV && location.hash.startsWith("#operacao-demo"))return <OperationDemo/>;
+  if(import.meta.env.DEV && location.hash.startsWith("#restauracao-demo"))return <ProductionRollbackDemo/>;
   if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <AccessApp surface="operation"/>;
   if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta")) return <AccessApp surface="client"/>;
   if(location.hash.startsWith("#adoce-hoje"))return <AdoceHoje/>;
   const pilotToken=location.hash.match(/^#cartao\/([a-f0-9-]+)$/i)?.[1];
   if(pilotToken)return <PilotApp token={pilotToken}/>;
   if(location.hash.startsWith("#festival"))return <PilotApp/>;
-  if(location.hash.startsWith("#prototipo"))return <LegacyApp/>;
+  if(import.meta.env.DEV && location.hash.startsWith("#prototipo"))return <LegacyApp/>;
   return <MarketingLanding/>
 }

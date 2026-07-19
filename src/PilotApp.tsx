@@ -59,7 +59,7 @@ function FestivalStaff() {
     const customer = firstRow(data);
     if (customer) {
       setSelected(customer); setName(""); setPhone("");
-      setMessage("Cliente cadastrado. Agora confirme as fatias desta compra.");
+      setMessage("Membro incluído. Agora confirme as fatias desta compra.");
     }
   };
 
@@ -84,7 +84,7 @@ function FestivalStaff() {
       staff_code: code.trim(), target_customer_id: selected.customer_id, operation_key: operationKey(),
     });
     const customer = firstRow(data);
-    if (customer) { setSelected(customer); setMessage("Prêmio retirado. O cartão atual foi preservado."); }
+    if (customer) { setSelected(customer); setMessage("Fatia grátis retirada. O Cartão Clube Adoce foi preservado."); }
   };
 
   const cardUrl = selected ? location.origin + location.pathname + "#cartao/" + selected.public_token : "";
@@ -101,13 +101,13 @@ function FestivalStaff() {
       <div className="pilot-access"><label>Chave temporária da equipe<input type="password" value={code} onChange={e=>setCode(e.target.value)} placeholder="Cole a chave recebida"/></label><button className="secondary" onClick={saveCode}>Ativar neste aparelho</button></div>
       <div className="service-head"><div><h1>Atendimento do festival</h1><p>Cadastre, localize e registre as fatias compradas.</p></div></div>
       <div className="pilot-grid">
-        <form className="pilot-panel" onSubmit={enroll}><h2><UserPlus/> Novo cliente</h2><label>Nome<input value={name} onChange={e=>setName(e.target.value)} required/></label><label>Telefone<input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" required/></label><button className="primary" disabled={busy||!code} type="submit">Cadastrar cliente</button></form>
-        <section className="pilot-panel"><h2><Search/> Cliente existente</h2><label>Nome ou telefone<input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();search();}}}/></label><button className="secondary" disabled={busy||!code} onClick={search}>Buscar</button><div className="pilot-results">{results.map(c=><button key={c.customer_id} onClick={()=>setSelected(c)}><strong>{c.full_name}</strong><span>{c.current_progress}/14 · {c.available_rewards} prêmio(s)</span></button>)}</div></section>
+        <form className="pilot-panel" onSubmit={enroll}><h2><UserPlus/> Novo membro</h2><label>Nome<input value={name} onChange={e=>setName(e.target.value)} required/></label><label>Telefone<input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" required/></label><button className="primary" disabled={busy||!code} type="submit">Quero fazer parte</button></form>
+        <section className="pilot-panel"><h2><Search/> Membro existente</h2><label>Nome ou telefone<input value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();search();}}}/></label><button className="secondary" disabled={busy||!code} onClick={search}>Buscar</button><div className="pilot-results">{results.map(c=><button key={c.customer_id} onClick={()=>setSelected(c)}><strong>{c.full_name}</strong><span>{c.current_progress}/14 · {c.available_rewards} fatia(s) grátis</span></button>)}</div></section>
       </div>
       {selected && <section className="pilot-customer">
-        <div><span>Cliente selecionado</span><h2>{selected.full_name}</h2><p>{selected.current_progress}/14 carimbos · {selected.available_rewards} prêmio(s) disponível(is) · {selected.completed_cards} cartão(ões) concluído(s)</p></div>
+        <div><span>Membro do Clube Adoce</span><h2>{selected.full_name}</h2><p>{selected.current_progress}/14 carimbos · {selected.available_rewards} fatia(s) grátis disponível(is) · {selected.completed_cards} Cartão(ões) Clube Adoce concluído(s)</p></div>
         <div className="pilot-stamps">{Array.from({length:14},(_,i)=><span className={i<selected.current_progress?"filled":""} key={i}><Heart/></span>)}</div>
-        <div className="pilot-actions"><div className="stepper"><button onClick={()=>setQty(Math.max(1,qty-1))}>−</button><strong>{qty}</strong><button onClick={()=>setQty(qty+1)}>+</button></div><button className="primary" disabled={busy} onClick={purchase}><Plus/> Registrar fatias</button><button className="secondary" disabled={busy||selected.available_rewards<1} onClick={redeem}><Gift/> Retirar prêmio</button><button className="secondary" onClick={share}><Share2/> Enviar cartão</button><button className="secondary" onClick={()=>navigator.clipboard.writeText(cardUrl)}><Copy/> Copiar link</button></div>
+        <div className="pilot-actions"><div className="stepper"><button onClick={()=>setQty(Math.max(1,qty-1))}>−</button><strong>{qty}</strong><button onClick={()=>setQty(qty+1)}>+</button></div><button className="primary" disabled={busy} onClick={purchase}><Plus/> Registrar fatias</button><button className="secondary" disabled={busy||selected.available_rewards<1} onClick={redeem}><Gift/> Retirar fatia grátis</button><button className="secondary" onClick={share}><Share2/> Enviar Cartão Clube Adoce</button><button className="secondary" onClick={()=>navigator.clipboard.writeText(cardUrl)}><Copy/> Copiar link</button></div>
       </section>}
       {message && <div className="pilot-message"><Check/>{message}</div>}
     </section>
@@ -137,10 +137,10 @@ function CustomerCard({ token }: { token: string }) {
       <div className="member"><span>Membro</span><strong>{customer.full_name}</strong></div>
       <div className="balance"><strong>{customer.current_progress}</strong><span>de 14<br/>carimbos</span></div>
       <div className="stamps">{stamps.map(i=><span key={i} className={i<customer.current_progress?"filled":""}><Heart/></span>)}</div>
-      <div className={"card-message "+(customer.available_rewards?"reward":"")}>{customer.available_rewards?<Gift/>:<Heart/>}<strong>{customer.available_rewards?customer.available_rewards+" prêmio(s) disponível(is)":14-customer.current_progress+" para a próxima fatia"}</strong></div>
+      <div className={"card-message "+(customer.available_rewards?"reward":"")}>{customer.available_rewards?<Gift/>:<Heart/>}<strong>{customer.available_rewards?"Fatia grátis disponível":14-customer.current_progress+" para a próxima fatia grátis"}</strong></div>
     </section>
-    <section className="pilot-summary"><div><span>Cartões concluídos</span><strong>{customer.completed_cards}</strong></div><div><span>Prêmios disponíveis</span><strong>{customer.available_rewards}</strong></div><div><span>Prêmios aproveitados</span><strong>{customer.redeemed_rewards}</strong></div></section>
-    <p className="pilot-note">Piloto oficial do Clube Adoce. Apresente esta tela no atendimento. O prêmio pode ser retirado no seu tempo.</p>
+    <section className="pilot-summary"><div><span>Cartões concluídos</span><strong>{customer.completed_cards}</strong></div><div><span>Minha Fatia Grátis</span><strong>{customer.available_rewards}</strong></div><div><span>Fatias grátis aproveitadas</span><strong>{customer.redeemed_rewards}</strong></div></section>
+    <p className="pilot-note">Piloto oficial do Clube Adoce. Apresente esta tela no atendimento. Sua fatia grátis pode ser retirada no seu tempo.</p>
   </main>;
 }
 

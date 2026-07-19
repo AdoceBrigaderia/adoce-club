@@ -2,6 +2,7 @@ export type SearchableCustomer = {
   full_name: string;
   phone_e164: string | null;
   email: string | null;
+  member_code: string | null;
 };
 
 export function normalizeSearchValue(value: string): string {
@@ -17,7 +18,11 @@ export function matchesCustomerSearch(customer: SearchableCustomer, query: strin
   if (!normalized) return true;
 
   const digits = query.replace(/\D/g, "");
-  const searchableText = [customer.full_name, customer.email || ""]
+  const searchableText = [
+    customer.full_name,
+    customer.email || "",
+    customer.member_code || "",
+  ]
     .map(normalizeSearchValue)
     .join(" ");
 

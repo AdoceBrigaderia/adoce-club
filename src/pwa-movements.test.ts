@@ -31,7 +31,7 @@ describe("instalação e movimentações amigáveis", () => {
     expect(accessApp).toContain('.from("ledger_entries")');
     expect(accessApp).toContain('.from("profiles")');
     expect(accessApp).toContain("Compra registrada");
-    expect(accessApp).toContain("Prêmio retirado");
+    expect(accessApp).toContain("Fatia grátis retirada");
     expect(accessApp).toContain("customer_first_name");
   });
 });

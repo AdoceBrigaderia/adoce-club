@@ -5,6 +5,7 @@ launch-dist/
 *.log
 coverage/
 tsconfig.tsbuildinfo
+tmp/
 
 # Local Netlify folder
 .netlify

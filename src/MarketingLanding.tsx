@@ -8,7 +8,6 @@ import {
   Heart,
   Menu,
   Share2,
-  ShieldCheck,
   Smartphone,
   Sparkles,
   Users,
@@ -30,30 +29,30 @@ const features = [
   {
     n: "01",
     title: "Carteira digital",
-    text: "Seu cartão começará na Apple Wallet ou Google Wallet. O app/web entra quando a carteira não estiver disponível.",
+    text: "A integração com Apple Wallet e Google Wallet é a única parte do Clube que ainda está em desenvolvimento.",
     icon: Smartphone,
     status: "Chegando em breve",
   },
   {
     n: "02",
     title: "Cartão em Grupo",
-    text: "Casais, famílias e amigos poderão somar carimbos no mesmo cartão, cada pessoa com seu acesso.",
+    text: "Casais, famílias e amigos podem somar carimbos no mesmo Cartão Clube Adoce, cada pessoa com seu acesso.",
     icon: Users,
-    status: "Em desenvolvimento",
+    status: "Disponível",
   },
   {
     n: "03",
     title: "Espalhe Doçura",
-    text: "A indicação confirmada premiará quem chegou no cartão principal e quem indicou em um cartão exclusivo.",
+    text: "A indicação confirmada dá um carimbo a quem chegou ao Clube e a quem fez o convite.",
     icon: Share2,
-    status: "Convites em teste",
+    status: "Disponível",
   },
   {
     n: "04",
-    title: "Prêmios no seu tempo",
-    text: "A recompensa fica guardada. Você continua juntando no próximo cartão até decidir quando retirar.",
+    title: "Minha Fatia Grátis",
+    text: "A fatia grátis fica guardada. Você continua juntando carimbos no próximo cartão até decidir quando retirar.",
     icon: Gift,
-    status: "Disponível nos testes",
+    status: "Disponível",
   },
 ];
 
@@ -91,7 +90,7 @@ export default function MarketingLanding() {
               Adoce Hoje
             </a>
             <a className="marketing-login" href="#entrar">
-              Entrar
+              Entrar no Clube
             </a>
           </nav>
           <button
@@ -108,19 +107,18 @@ export default function MarketingLanding() {
               <i /> Uma nova experiência Adoce
             </span>
             <h1>
-              Seu carinho agora <em>também</em> vira conquista.
+              Faça parte do <em>Clube Adoce</em>
             </h1>
             <p>
-              O Clube Adoce está ganhando vida: recompensas, cartões
-              compartilhados, indicações e as novidades mais gostosas do dia em
-              um só lugar.
+              A cada fatia comprada, você recebe um carimbo. Complete 14
+              carimbos e ganhe uma fatia grátis.
             </p>
             <div>
               <a className="marketing-primary" href="#cadastro">
-                Quero conhecer <ArrowRight />
+                Quero fazer parte <ArrowRight />
               </a>
-              <a className="marketing-text-link" href="#previas">
-                Ver o que está chegando
+              <a className="marketing-text-link" href="#entrar">
+                Entrar no Clube
               </a>
             </div>
           </div>
@@ -150,15 +148,15 @@ export default function MarketingLanding() {
               premium pagando somente a diferença.
             </p>
             <p>
-              O prêmio fica guardado até você decidir retirar, enquanto um novo
-              cartão já começa a receber carimbos.
+              Sua fatia grátis fica guardada até você decidir retirar, enquanto
+              um novo Cartão Clube Adoce já começa a receber carimbos.
             </p>
           </div>
         </div>
         <div className="marketing-marquee">
           <div>
-            juntos é mais doce <Heart /> prêmios no seu tempo <Gift /> sabores
-            do dia <CakeSlice /> juntos é mais doce <Heart /> prêmios no seu
+            juntos é mais doce <Heart /> fatia grátis no seu tempo <Gift /> sabores
+            do dia <CakeSlice /> juntos é mais doce <Heart /> fatia grátis no seu
             tempo <Gift /> sabores do dia <CakeSlice />
           </div>
         </div>
@@ -166,12 +164,12 @@ export default function MarketingLanding() {
       <section className="marketing-progress" id="novidades">
         <div className="marketing-section-head marketing-reveal">
           <div>
-            <span>Construção com transparência</span>
-            <h2>O que já ganhou forma</h2>
+            <span>Clube Adoce</span>
+            <h2>Recursos do Clube</h2>
           </div>
           <p>
-            Você acompanha a evolução de verdade. Só chamaremos de “liberado”
-            quando cada etapa estiver segura e funcionando.
+            Entrada no Clube, acesso, carimbos, indicações e resgate já fazem parte da
+            experiência. A carteira digital está identificada separadamente.
           </p>
         </div>
         <div className="marketing-feature-list">
@@ -207,10 +205,10 @@ export default function MarketingLanding() {
               <img src="/site/logo.webp" alt="" />
               <span>Clube Adoce</span>
             </div>
-            <p>Olá, cliente</p>
-            <h3>Seu carinho já está virando conquista.</h3>
+            <p>Área do Membro</p>
+            <h3>Olá, Rubens!</h3>
             <div className="preview-loyalty">
-              <small>Cartão principal</small>
+              <small>Cartão Clube Adoce · Meus Carimbos</small>
               <strong>
                 8 <span>de 14</span>
               </strong>
@@ -228,52 +226,6 @@ export default function MarketingLanding() {
               <Users />
             </nav>
           </article>
-          <article className="marketing-dashboard marketing-reveal">
-            <div className="dashboard-bar">
-              <img src="/site/logo.webp" alt="" />
-              <span>Adoce Operação</span>
-              <small>Proprietário</small>
-            </div>
-            <div className="dashboard-body">
-              <aside>
-                <SearchIcon />
-                <Users />
-                <Gift />
-                <ShieldCheck />
-              </aside>
-              <section>
-                <small>Atendimento</small>
-                <h3>Localizar cliente</h3>
-                <div className="dashboard-search">
-                  Buscar por nome, telefone ou e-mail
-                </div>
-                <div className="dashboard-row">
-                  <i>R</i>
-                  <span>
-                    <strong>Rubens</strong>
-                    <small>Conta ativa</small>
-                  </span>
-                  <strong>8/14</strong>
-                </div>
-                <div className="dashboard-actions">
-                  <span>
-                    <CakeSlice /> Registrar compra
-                  </span>
-                  <span>
-                    <Gift /> Resgatar prêmio
-                  </span>
-                </div>
-              </section>
-            </div>
-          </article>
-        </div>
-        <div className="marketing-preview-note">
-          <ShieldCheck />
-          <p>
-            <strong>Dois aplicativos, uma experiência conectada.</strong>{" "}
-            Cliente e equipe poderão instalar seus próprios ícones no celular e
-            usar cada área com segurança.
-          </p>
         </div>
       </section>
       <section className="marketing-group-order marketing-reveal">
@@ -309,30 +261,26 @@ export default function MarketingLanding() {
             <Sparkles /> Novidades e promoções <small>Já disponível</small>
           </p>
           <p>
-            <Heart /> Clube e recompensas <small>Acesso antecipado</small>
+            <Heart /> Clube e fatia grátis <small>Já disponível</small>
           </p>
         </div>
       </section>
       <section className="marketing-cta" id="cadastro">
         <div className="marketing-reveal">
-          <span>Estamos quase lá</span>
-          <h2>Quer ser uma das primeiras pessoas a viver o Clube Adoce?</h2>
+          <span>Clube Adoce</span>
+          <h2>Faça parte do Clube Adoce</h2>
           <p>
-            O cadastro por e-mail já está em fase de testes. Entre para conhecer
-            sua área e acompanhe as próximas liberações.
+            A cada fatia comprada, você recebe um carimbo. Complete 14 carimbos
+            e ganhe uma fatia grátis.
           </p>
           <div>
             <a className="marketing-primary" href="#cadastro">
-              Quero me cadastrar <ArrowRight />
+              Quero fazer parte <ArrowRight />
             </a>
             <a className="marketing-secondary" href="#entrar">
-              Já tenho acesso
+              Entrar no Clube
             </a>
           </div>
-          <small>
-            Algumas funções ainda aparecerão como “em preparação” durante os
-            testes.
-          </small>
         </div>
       </section>
       <footer>
@@ -341,8 +289,4 @@ export default function MarketingLanding() {
       </footer>
     </main>
   );
-}
-
-function SearchIcon() {
-  return <span className="marketing-fake-search">⌕</span>;
 }

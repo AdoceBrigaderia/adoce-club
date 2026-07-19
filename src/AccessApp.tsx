@@ -16,12 +16,16 @@ import {
   Camera,
   Check,
   CircleHelp,
+  Copy,
   Download,
   Gift,
   Heart,
   History,
+  ImagePlus,
   LogOut,
   Mail,
+  KeyRound,
+  MessageCircle,
   Plus,
   QrCode,
   RotateCcw,
@@ -35,8 +39,23 @@ import {
   X,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
-import { requestEmailCode, signOut, verifyEmailCode } from "./services/auth";
+import {
+  beginWhatsAppVerification,
+  getWhatsAppVerificationStatus,
+  requestEmailCode,
+  signOut,
+  verifyEmailCode,
+  whatsappVerificationLink,
+  type WhatsAppChallenge,
+} from "./services/auth";
 import { matchesCustomerSearch } from "./customer-search";
+import {
+  generateStaffAccessCode,
+  staffAccessMessage,
+  staffAccessWhatsAppUrl,
+  type StaffAccessCode,
+} from "./staff-access-code";
+import ProductionRollbackPanel from "./ProductionRollbackPanel";
 import {
   currentConsent,
   isCustomerOnboardingComplete,
@@ -46,11 +65,13 @@ import "./access-app.css";
 import "./referral.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
+const metaWhatsAppEnabled =
+  import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 
 type Surface = "client" | "operation";
-type AuthStage = "identify" | "code";
-type ClubView = "card" | "qr" | "share" | "help" | "install" | "profile";
-type OperationView = "attend" | "movements" | "customers" | "team" | "content";
+type AuthStage = "identify" | "code" | "whatsapp";
+type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
+type OperationView = "attend" | "movements" | "customers" | "team" | "content" | "security";
 
 type NotificationPreferences = {
   flavors: boolean;
@@ -90,7 +111,7 @@ function NotificationPreferencesFields({
     ["festival", "Festivais e horários especiais"],
     ["promotions", "Promoções e compra em grupo"],
     ["club_news", "Novidades do Clube Adoce"],
-    ["rewards", "Prêmios, carimbos e indicações"],
+    ["rewards", "Fatia grátis, carimbos e indicações"],
     ["birthday", "Mimos e ações de aniversário"],
   ];
   return (
@@ -157,6 +178,7 @@ type CustomerSnapshot = {
   full_name: string;
   phone_e164: string | null;
   email: string | null;
+  member_code: string;
   current_progress: number;
   completed_cards: number;
   available_rewards: number;
@@ -165,11 +187,12 @@ type CustomerSnapshot = {
 
 type CustomerSearchResult = Pick<
   CustomerSnapshot,
-  "profile_id" | "full_name" | "phone_e164" | "email"
+  "profile_id" | "full_name" | "phone_e164" | "email" | "member_code"
 >;
 
 type ClubSnapshot = {
   name: string;
+  memberCode: string;
   progress: number;
   completed: number;
   rewards: number;
@@ -190,6 +213,20 @@ type ReferralOverview = {
   pending_count: number;
   confirmed_count: number;
   accepted: ReferralInvite[];
+};
+
+type GroupOverview = {
+  account_id?: string;
+  kind?: "individual" | "group";
+  name?: string;
+  is_owner?: boolean;
+  members?: Array<{
+    profile_id: string;
+    full_name: string;
+    member_code: string;
+    role: "owner" | "member";
+    joined_at: string;
+  }>;
 };
 
 const referralStorageKey = "adoce-referral-invite";
@@ -384,17 +421,225 @@ function Brand({ label }: { label: string }) {
   );
 }
 
+const groupStorageKey = "adoce-group-invite";
+function rememberGroupInvite() {
+  const token = new URLSearchParams(location.search).get("grupo")?.trim() || "";
+  if (token) sessionStorage.setItem(groupStorageKey, token);
+  return token || sessionStorage.getItem(groupStorageKey) || "";
+}
+
+function MemberLoyaltyCard({ snapshot }: { snapshot: ClubSnapshot }) {
+  const stamps = Array.from({ length: 14 }, (_, index) => index < snapshot.progress);
+  return (
+    <article className="club-card-main">
+      <div className="club-card-head">
+        <div><small>CLUBE ADOCE</small><h2>Cartão do Membro</h2></div>
+        <img src="/site/logo.webp" alt="" />
+      </div>
+      <div className="club-member-identity">
+        <span>Código do Membro</span><strong>{snapshot.memberCode}</strong><small>{snapshot.name}</small>
+      </div>
+      <div className="club-stamp-title">
+        <h3>Meus Carimbos</h3><strong>{snapshot.progress} de 14 carimbos</strong>
+      </div>
+      <div className="club-stamps">
+        {stamps.map((filled, index) => <span className={filled ? "filled" : ""} key={index}><Heart /></span>)}
+      </div>
+      {snapshot.rewards > 0 ? (
+        <div className="club-reward-ready"><Gift /><span><strong>Fatia grátis disponível</strong><small>Minha Fatia Grátis já pode ser resgatada.</small></span></div>
+      ) : (
+        <p>Você já possui {snapshot.progress} de 14 carimbos. Faltam apenas {14 - snapshot.progress} fatias para ganhar sua próxima fatia grátis.</p>
+      )}
+      <div className="club-card-foot">
+        <span><History /> {snapshot.completed} cartões preenchidos</span>
+        <span><Gift /> {snapshot.rewards} fatia(s) grátis disponível(is)</span>
+      </div>
+    </article>
+  );
+}
+
+export function MemberDemo() {
+  const snapshot: ClubSnapshot = {
+    name: "Rubens Bezerra",
+    memberCode: "ADOC 2026 0000 0123",
+    progress: 8,
+    completed: 0,
+    rewards: 0,
+    referralProgress: 2,
+    referralRewards: 0,
+    referralCode: "ADOCE-DEMO",
+    pendingReferrals: 0,
+    acceptedInvites: [],
+  };
+  return (
+    <main className="club-home">
+      <header>
+        <Brand label="Clube Adoce" />
+        <div className="club-header-actions">
+          <a href="/#adoce-hoje"><CakeSlice /> Adoce Hoje</a>
+          <a href="/#entrar"><LogOut /> Entrar no Clube</a>
+        </div>
+      </header>
+      <section className="club-welcome">
+        <div>
+          <span>Área do Membro · Prévia local</span>
+          <h1>Olá, Rubens!</h1>
+          <p>Você já possui 8 de 14 carimbos. Faltam apenas 6 fatias para ganhar sua próxima fatia grátis.</p>
+        </div>
+        <div className="club-mini-stat"><Gift /><strong>0</strong><span>fatias grátis disponíveis</span></div>
+      </section>
+      <section className="club-grid">
+        <MemberLoyaltyCard snapshot={snapshot} />
+        <aside className="club-side">
+          <article><QrCode /><small>QR Code do Membro</small><h3>Código do Membro</h3><p>{snapshot.memberCode}</p></article>
+          <article><CircleHelp /><h3>Como funciona</h3><p>A cada fatia comprada, você recebe um carimbo no seu Cartão Clube Adoce. Complete 14 carimbos e ganhe uma fatia grátis. O cartão é pessoal e está vinculado ao cadastro do membro.</p></article>
+        </aside>
+      </section>
+    </main>
+  );
+}
+
+export function OperationDemo() {
+  const [demoView, setDemoView] = useState<"attend" | "customers" | "products">(
+    "attend",
+  );
+  const demoMembers = [
+    { name: "Ana Clara", contact: "(85) 9••••-1024", code: "ADOC 2026 0000 0002" },
+    { name: "Bruna Lima", contact: "bruna@exemplo.com", code: "ADOC 2026 0000 0007" },
+    { name: "Carlos Eduardo", contact: "(85) 9••••-7731", code: "ADOC 2026 0000 0011" },
+  ];
+  return (
+    <main className="operation-home">
+      <header>
+        <Brand label="Adoce Operação" />
+        <div>
+          <span>Proprietário · Prévia local</span>
+          <a href="/#adoce-hoje"><CakeSlice /> Adoce Hoje</a>
+        </div>
+      </header>
+      <div className="operation-shell">
+        <aside>
+          <button
+            className={demoView === "attend" ? "active" : ""}
+            onClick={() => setDemoView("attend")}
+          >
+            <Search /> Atender membro
+          </button>
+          <button
+            className={demoView === "customers" ? "active" : ""}
+            onClick={() => setDemoView("customers")}
+          >
+            <Users /> Membros
+          </button>
+          <button
+            className={demoView === "products" ? "active" : ""}
+            onClick={() => setDemoView("products")}
+          >
+            <Settings2 /> Cadastro de produtos
+          </button>
+        </aside>
+        <section className="operation-work">
+          {demoView === "attend" && (
+            <>
+              <div className="operation-title">
+                <div>
+                  <span>Atendimento</span>
+                  <h1>Localizar membro</h1>
+                  <p>
+                    Leia o QR do Cartão Clube Adoce ou digite nome, telefone,
+                    e-mail ou Código do Membro.
+                  </p>
+                </div>
+                <div className="operation-role"><Check /> Acesso verificado</div>
+              </div>
+              <div className="operation-search-row">
+                <div className="operation-search">
+                  <Search />
+                  <input placeholder="Ex.: Ana ou ADOC 2026 0000 0002" />
+                  <button>Buscar</button>
+                </div>
+                <button className="operation-scan-button"><Camera /> Ler QR do membro</button>
+              </div>
+            </>
+          )}
+          {demoView === "customers" && (
+            <>
+              <div className="operation-title">
+                <div>
+                  <span>Relacionamento</span>
+                  <h1>Membros em ordem alfabética</h1>
+                  <p>A lista sempre aparece de A a Z, considerando acentos.</p>
+                </div>
+              </div>
+              <div className="operation-results">
+                {demoMembers.map((member) => (
+                  <button key={member.code}>
+                    <span className="avatar">{member.name[0]}</span>
+                    <span><strong>{member.name}</strong><small>{member.contact}</small></span>
+                    <span><small>{member.code}</small></span>
+                    <ArrowRight />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {demoView === "products" && (
+            <>
+              <div className="operation-title">
+                <div>
+                  <span>Administrar Adoce</span>
+                  <h1>Cadastro de produtos</h1>
+                  <p>
+                    Fatia e torta inteira G têm fotos e valores próprios. Nada
+                    é publicado com preço de reserva.
+                  </p>
+                </div>
+              </div>
+              <div className="operation-actions operation-product-demo">
+                <article>
+                  <CakeSlice />
+                  <h3>Dados da fatia</h3>
+                  <label>Nome do produto<input value="Trufado de morango" readOnly /></label>
+                  <label>Preço da fatia<input value="R$ 16,00" readOnly /></label>
+                  <button className="access-secondary"><ImagePlus /> Foto da fatia</button>
+                </article>
+                <article>
+                  <Gift />
+                  <h3>Torta inteira G</h3>
+                  <label>Preço da torta G<input placeholder="Informe o valor correto" /></label>
+                  <button className="access-secondary"><ImagePlus /> Foto da torta inteira G</button>
+                  <small>
+                    A seção de tortas só aparece ao cliente depois que foto,
+                    preço e disponibilidade forem confirmados aqui.
+                  </small>
+                </article>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
+
 function AuthScreen({ surface }: { surface: Surface }) {
   const [stage, setStage] = useState<AuthStage>("identify");
+  const registrationRoute = location.hash.startsWith("#cadastro");
   const [registering, setRegistering] = useState(
     () =>
-      location.hash.startsWith("#cadastro") ||
-      Boolean(rememberReferralInvite()),
+      registrationRoute ||
+      Boolean(rememberReferralInvite()) ||
+      Boolean(rememberGroupInvite()),
   );
-  const invited = surface === "client" && Boolean(rememberReferralInvite());
+  const invited =
+    surface === "client" &&
+    Boolean(rememberReferralInvite() || rememberGroupInvite());
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  const [whatsAppChallenge, setWhatsAppChallenge] =
+    useState<WhatsAppChallenge | null>(null);
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const [marketing, setMarketing] = useState(false);
@@ -404,11 +649,27 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    if (surface === "client") {
+      setRegistering(
+        registrationRoute ||
+          Boolean(rememberReferralInvite()) ||
+          Boolean(rememberGroupInvite()),
+      );
+      setStage("identify");
+      setMessage("");
+    } else {
+      setRegistering(false);
+      setStage("identify");
+      setMessage("");
+    }
+  }, [registrationRoute, surface]);
+
   const submitEmail = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (registering && (!name.trim() || !terms || !privacy)) {
+    if (registering && (!name.trim() || phone.replace(/\D/g, "").length < 10 || !terms || !privacy)) {
       setMessage(
-        "Informe seu nome e aceite os termos e a política de privacidade.",
+        "Informe seu nome e WhatsApp com DDD, e aceite os termos e a política de privacidade.",
       );
       return;
     }
@@ -494,13 +755,49 @@ function AuthScreen({ surface }: { surface: Surface }) {
               marketing && notificationPreferences.whatsapp_enabled,
           });
         if (preferenceError) throw preferenceError;
+        if (metaWhatsAppEnabled) {
+          const challenge = await beginWhatsAppVerification(phone);
+          setWhatsAppChallenge(challenge);
+          setStage("whatsapp");
+          setMessage(
+            "Envie a mensagem pronta pelo WhatsApp e volte para confirmar.",
+          );
+          return;
+        }
         await acceptRememberedReferral();
         window.dispatchEvent(new Event("adoce-profile-ready"));
+        location.hash = "minha-conta";
+        return;
       }
       location.hash = surface === "operation" ? "operacao" : "minha-conta";
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Código inválido ou expirado.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmWhatsApp = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const status = await getWhatsAppVerificationStatus();
+      if (!status.verified) {
+        setMessage(
+          "Ainda não recebemos a confirmação. Envie a mensagem pelo WhatsApp e tente novamente em alguns segundos.",
+        );
+        return;
+      }
+      await acceptRememberedReferral();
+      window.dispatchEvent(new Event("adoce-profile-ready"));
+      location.hash = "minha-conta";
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível confirmar seu WhatsApp.",
       );
     } finally {
       setBusy(false);
@@ -513,9 +810,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
         <Brand
           label={surface === "operation" ? "Adoce Operação" : "Clube Adoce"}
         />
-        <a href={surface === "operation" ? "/#entrar" : "/#operacao"}>
-          {surface === "operation" ? "Sou cliente" : "Área da equipe"}
-        </a>
+        {surface === "operation" && <a href="/#entrar">Sou membro</a>}
       </header>
       <section className="access-auth-shell">
         <div className="access-auth-copy">
@@ -524,21 +819,21 @@ function AuthScreen({ surface }: { surface: Surface }) {
               ? "Operação segura"
               : invited
                 ? "Você recebeu um convite"
-                : "Seu clube, do seu jeito"}
+                : "Faça parte do Clube Adoce"}
           </span>
           <h1>
             {surface === "operation"
-              ? "Cuidar de cada cliente ficou mais simples."
+                ? "Cuidar de cada membro ficou mais simples."
               : invited
                 ? "Você já começa mais perto da sua fatia premiada."
-                : "Cada fatia aproxima você da próxima conquista."}
+                : "A cada fatia comprada, você recebe um carimbo."}
           </h1>
           <p>
             {surface === "operation"
-              ? "Acesse para localizar clientes, registrar compras e resgatar prêmios com histórico completo."
+              ? "Acesse para localizar membros, registrar compras e resgatar benefícios com histórico completo."
               : invited
-                ? "Aceite o convite, conclua seu cadastro e ganhe 1 carimbo extra quando fizer sua primeira compra."
-                : "Entre com um código enviado por e-mail. Sem senha para esquecer e com seus prêmios sempre à mão."}
+                ? "Aceite o convite, faça parte do Clube e ganhe 1 carimbo extra quando fizer sua primeira compra."
+                : "Complete 14 carimbos e ganhe uma fatia grátis."}
           </p>
           <div className="access-promise">
             <Heart />
@@ -551,15 +846,19 @@ function AuthScreen({ surface }: { surface: Surface }) {
           <h2>
             {stage === "code"
               ? "Confira seu e-mail"
+              : stage === "whatsapp"
+                ? "Confirme seu WhatsApp"
               : invited
                 ? "Aceitar convite e reservar meu carimbo"
                 : registering
-                  ? "Criar meu Clube Adoce"
-                  : "Entrar com segurança"}
+                  ? "Quero fazer parte"
+                  : "Entrar no Clube"}
           </h2>
           <p>
             {stage === "code"
               ? `Digite o código de 6 números enviado para ${email}.`
+              : stage === "whatsapp"
+                ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : "Você receberá um código de acesso. Não usamos senha."}
           </p>
           {stage === "identify" ? (
@@ -589,6 +888,22 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   />
                 </div>
               </label>
+              {registering && (
+                <label>
+                  Seu WhatsApp com DDD
+                  <div className="input-icon">
+                    <Smartphone />
+                    <input
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      inputMode="tel"
+                      autoComplete="tel"
+                      placeholder="(85) 99999-9999"
+                      required
+                    />
+                  </div>
+                </label>
+              )}
               {registering && (
                 <div className="access-consents">
                   <label>
@@ -631,7 +946,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 <ArrowRight />
               </button>
             </form>
-          ) : (
+          ) : stage === "code" ? (
             <form onSubmit={submitCode}>
               <label>
                 Código de acesso
@@ -666,6 +981,39 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 Usar outro e-mail
               </button>
             </form>
+          ) : (
+            <div className="access-whatsapp-confirmation">
+              {whatsAppChallenge && (
+                <a
+                  className="access-primary"
+                  href={whatsappVerificationLink(whatsAppChallenge)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Confirmar meu WhatsApp <ArrowRight />
+                </a>
+              )}
+              <button
+                className="access-primary"
+                type="button"
+                disabled={busy}
+                onClick={() => void confirmWhatsApp()}
+              >
+                {busy ? "Verificando..." : "Já enviei, verificar agora"}
+                <Check />
+              </button>
+              <button
+                className="access-link"
+                type="button"
+                onClick={() => {
+                  setStage("identify");
+                  setWhatsAppChallenge(null);
+                  setMessage("");
+                }}
+              >
+                Corrigir meus dados
+              </button>
+            </div>
           )}
           {message && (
             <div className="access-message" role="status">
@@ -682,8 +1030,8 @@ function AuthScreen({ surface }: { surface: Surface }) {
               }}
             >
               {registering
-                ? "Já faço parte — quero entrar"
-                : "Ainda não tenho conta — quero me cadastrar"}
+                ? "Entrar no Clube"
+                : "Quero fazer parte"}
             </button>
           )}
           <small className="access-privacy">
@@ -704,6 +1052,10 @@ function CustomerHome({ session }: { session: Session }) {
   const [error, setError] = useState("");
   const [view, setView] = useState<ClubView>("card");
   const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileWhatsAppVerified, setProfileWhatsAppVerified] = useState(false);
+  const [profileWhatsAppChallenge, setProfileWhatsAppChallenge] =
+    useState<WhatsAppChallenge | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [marketingAccepted, setMarketingAccepted] = useState(false);
@@ -714,6 +1066,12 @@ function CustomerHome({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [qrImage, setQrImage] = useState("");
   const [qrExpiresAt, setQrExpiresAt] = useState("");
+  const [group, setGroup] = useState<GroupOverview>({});
+  const [groupName, setGroupName] = useState("");
+  const [groupInvite, setGroupInvite] = useState(
+    () => rememberGroupInvite(),
+  );
+  const [groupShareUrl, setGroupShareUrl] = useState("");
   const installApp = useInstallApp();
   const loadSnapshot = useCallback(async () => {
     const supabase = requireSupabase();
@@ -725,7 +1083,7 @@ function CustomerHome({ session }: { session: Session }) {
     ] = await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name,member_code,phone_e164,whatsapp_verified_at")
         .eq("id", session.user.id)
         .single(),
       supabase
@@ -750,6 +1108,8 @@ function CustomerHome({ session }: { session: Session }) {
         ? session.user.user_metadata.full_name.trim()
         : "";
     const databaseName = profile?.full_name?.trim() || "";
+    setProfilePhone(profile?.phone_e164 || "");
+    setProfileWhatsAppVerified(Boolean(profile?.whatsapp_verified_at));
     const nameForForm =
       databaseName && databaseName !== "Cliente Adoce"
         ? databaseName
@@ -782,6 +1142,15 @@ function CustomerHome({ session }: { session: Session }) {
     }
 
     setOnboardingRequired(false);
+    if (metaWhatsAppEnabled && rememberGroupInvite()) {
+      setGroupInvite(rememberGroupInvite());
+      setView("group");
+      const { data: groupData } = await supabase.rpc("customer_group_overview");
+      setGroup((groupData || {}) as GroupOverview);
+      setMessage(
+        "Seu convite de cartão em grupo está pronto. Confirme abaixo para entrar.",
+      );
+    }
     if (rememberReferralInvite()) {
       try {
         await acceptRememberedReferral();
@@ -847,6 +1216,7 @@ function CustomerHome({ session }: { session: Session }) {
     }) as ReferralOverview;
     setSnapshot({
       name: resolvedName,
+      memberCode: profile?.member_code || "—",
       progress: main?.current_progress || 0,
       completed: main?.completed_cards || 0,
       rewards: rewards?.filter((r) => r.track_id === main?.id).length || 0,
@@ -884,7 +1254,7 @@ function CustomerHome({ session }: { session: Session }) {
       cleanName.length < 2 ||
       cleanName.toLocaleLowerCase("pt-BR") === "cliente adoce"
     ) {
-      setMessage("Informe seu nome para concluir o cadastro.");
+      setMessage("Informe seu nome para fazer parte do Clube.");
       return;
     }
     if (!termsAccepted || !privacyAccepted) {
@@ -1051,6 +1421,99 @@ function CustomerHome({ session }: { session: Session }) {
       setMessage("Convite com seu link pessoal copiado. Agora é só enviar.");
     }
   };
+  const startProfileWhatsAppVerification = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      const challenge = await beginWhatsAppVerification(profilePhone);
+      setProfileWhatsAppChallenge(challenge);
+      setMessage("Abra o WhatsApp e envie a mensagem pronta para confirmar.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível iniciar a confirmação.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const confirmProfileWhatsApp = async () => {
+    setBusy(true);
+    try {
+      const status = await getWhatsAppVerificationStatus();
+      if (!status.verified) return setMessage("A confirmação ainda não chegou. Tente novamente em alguns segundos.");
+      setProfileWhatsAppVerified(true);
+      setProfileWhatsAppChallenge(null);
+      setMessage("WhatsApp confirmado com segurança.");
+      await loadSnapshot();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível confirmar o WhatsApp.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const loadGroup = async () => {
+    setBusy(true);
+    const { data, error: groupError } = await requireSupabase().rpc(
+      "customer_group_overview",
+    );
+    setBusy(false);
+    if (groupError) return setMessage(groupError.message);
+    const overview = (data || {}) as GroupOverview;
+    setGroup(overview);
+    setGroupName(overview.kind === "group" ? overview.name || "" : "");
+  };
+  const openGroup = () => {
+    setView("group");
+    void loadGroup();
+  };
+  const createGroupInvite = async () => {
+    setBusy(true);
+    setMessage("");
+    const { data, error: inviteError } = await requireSupabase().rpc(
+      "create_group_invite",
+      { group_name: groupName.trim() || null },
+    );
+    setBusy(false);
+    if (inviteError) return setMessage(inviteError.message);
+    const result = data as { token: string };
+    const url = `${location.origin}/?grupo=${encodeURIComponent(result.token)}#cadastro`;
+    setGroupShareUrl(url);
+    await loadGroup();
+    if (navigator.share)
+      await navigator.share({
+        title: "Convite para meu Cartão Clube Adoce",
+        text: "Quero dividir meu Cartão Clube Adoce com você. Cada pessoa mantém seu próprio acesso e QR.",
+        url,
+      });
+    else {
+      await navigator.clipboard.writeText(url);
+      setMessage("Convite do cartão em grupo copiado.");
+    }
+  };
+  const acceptGroupInvite = async () => {
+    if (!groupInvite.trim()) return setMessage("Informe o código do convite.");
+    setBusy(true);
+    const { error: inviteError } = await requireSupabase().rpc(
+      "accept_group_invite",
+      { invite_token: groupInvite.trim() },
+    );
+    setBusy(false);
+    if (inviteError) return setMessage(inviteError.message);
+    sessionStorage.removeItem(groupStorageKey);
+    setGroupInvite("");
+    setMessage("Você entrou no cartão em grupo. Os próximos carimbos serão compartilhados.");
+    await Promise.all([loadGroup(), loadSnapshot()]);
+  };
+  const removeGroupMember = async (profileId: string) => {
+    if (!window.confirm("Remover este membro do cartão em grupo?")) return;
+    setBusy(true);
+    const { error: removeError } = await requireSupabase().rpc(
+      "remove_group_member",
+      { member_profile_id: profileId },
+    );
+    setBusy(false);
+    if (removeError) return setMessage(removeError.message);
+    setMessage("Membro removido. Ele recebeu um novo cartão individual vazio.");
+    await loadGroup();
+  };
   const openCustomerQr = async () => {
     setView("qr");
     setBusy(true);
@@ -1095,10 +1558,10 @@ function CustomerHome({ session }: { session: Session }) {
           <div className="club-onboarding-copy">
             <img src="/site/logo.webp" alt="Adoce Brigaderia" />
             <span>Último passo</span>
-            <h1>Vamos completar seu cadastro.</h1>
+            <h1>Vamos concluir sua entrada no Clube.</h1>
             <p>
               Seu e-mail já foi confirmado. Agora precisamos saber seu nome e
-              registrar suas escolhas antes de liberar o cartão fidelidade.
+              registrar suas escolhas antes de liberar o Cartão Clube Adoce.
             </p>
             <div>
               <ShieldCheck />
@@ -1163,7 +1626,7 @@ function CustomerHome({ session }: { session: Session }) {
               )}
             </div>
             <button className="access-primary" disabled={busy}>
-              {busy ? "Concluindo..." : "Concluir e abrir meu cartão"}
+              {busy ? "Concluindo..." : "Quero fazer parte"}
               <ArrowRight />
             </button>
             {message && (
@@ -1172,7 +1635,7 @@ function CustomerHome({ session }: { session: Session }) {
               </div>
             )}
             <small>
-              <ShieldCheck /> Você só verá o cartão depois que esta etapa for
+              <ShieldCheck /> Você só verá o Cartão Clube Adoce depois que esta etapa for
               concluída.
             </small>
           </form>
@@ -1186,12 +1649,11 @@ function CustomerHome({ session }: { session: Session }) {
         <p>
           {error ||
             (onboardingRequired === null
-              ? "Verificando seu cadastro..."
+              ? "Verificando seus dados..."
               : "Preparando seu Clube Adoce...")}
         </p>
       </main>
     );
-  const stamps = Array.from({ length: 14 }, (_, i) => i < snapshot.progress);
   return (
     <main className="club-home">
       <header>
@@ -1215,11 +1677,20 @@ function CustomerHome({ session }: { session: Session }) {
         <>
           <section className="club-welcome">
             <div>
-              <span>Olá, {snapshot.name.split(" ")[0]}</span>
-              <h1>Seu carinho já está virando conquista.</h1>
-              <p>
-                Acompanhe seus carimbos, prêmios e indicações em um só lugar.
-              </p>
+              <span>Área do Membro</span>
+              <h1>Olá, {snapshot.name.split(" ")[0]}!</h1>
+              {snapshot.rewards > 0 ? (
+                <p>
+                  Você completou seu cartão! Sua fatia grátis já está disponível
+                  para resgate.
+                </p>
+              ) : (
+                <p>
+                  Você já possui {snapshot.progress} de 14 carimbos. Faltam apenas{" "}
+                  {14 - snapshot.progress} fatias para ganhar sua próxima fatia
+                  grátis.
+                </p>
+              )}
               <div className="club-quick-links">
                 <a href="/#adoce-hoje">
                   <CakeSlice /> Ver sabores de hoje
@@ -1227,6 +1698,11 @@ function CustomerHome({ session }: { session: Session }) {
                 <button onClick={() => setView("help")}>
                   <CircleHelp /> Aprender a usar o Clube
                 </button>
+                {metaWhatsAppEnabled && (
+                  <button onClick={openGroup}>
+                    <Users /> Cartão em grupo
+                  </button>
+                )}
                 {!installApp.isInstalled && (
                   <button
                     className="club-install-shortcut"
@@ -1240,44 +1716,11 @@ function CustomerHome({ session }: { session: Session }) {
             <div className="club-mini-stat">
               <Gift />
               <strong>{snapshot.rewards}</strong>
-              <span>
-                prêmio{snapshot.rewards === 1 ? "" : "s"}{" "}
-                {snapshot.rewards === 1 ? "disponível" : "disponíveis"}
-              </span>
+              <span>Minha Fatia Grátis</span>
             </div>
           </section>
           <section className="club-grid">
-            <article className="club-card-main">
-              <div className="club-card-head">
-                <div>
-                  <small>Cartão principal</small>
-                  <h2>{snapshot.progress} de 14 carimbos</h2>
-                </div>
-                <img src="/site/logo.webp" alt="" />
-              </div>
-              <div className="club-stamps">
-                {stamps.map((filled, i) => (
-                  <span className={filled ? "filled" : ""} key={i}>
-                    <Heart />
-                  </span>
-                ))}
-              </div>
-              <p>
-                {snapshot.progress === 13
-                  ? "Falta só uma fatia."
-                  : snapshot.progress === 0
-                    ? "Sua próxima fatia começa esta história."
-                    : `Faltam ${14 - snapshot.progress} carimbos para uma nova recompensa.`}
-              </p>
-              <div className="club-card-foot">
-                <span>
-                  <History /> {snapshot.completed} cartões preenchidos
-                </span>
-                <span>
-                  <Gift /> {snapshot.rewards} disponíveis
-                </span>
-              </div>
-            </article>
+            <MemberLoyaltyCard snapshot={snapshot} />
             <aside className="club-side">
               <article>
                 <Sparkles />
@@ -1395,15 +1838,85 @@ function CustomerHome({ session }: { session: Session }) {
           </button>
         </section>
       )}
+      {view === "group" && (
+        <section className="club-panel club-group-panel">
+          <Users />
+          <small>Família, amigos ou equipe</small>
+          <h1>Cartão Clube Adoce em grupo</h1>
+          <p>
+            Cada pessoa mantém seu próprio acesso, Código do Membro e QR. Os
+            carimbos e a Fatia Grátis são compartilhados por até 5 membros.
+          </p>
+          {group.kind === "group" && (
+            <div className="group-member-list">
+              <h2>{group.name}</h2>
+              {(group.members || []).map((member) => (
+                <article key={member.profile_id}>
+                  <span>{member.full_name.slice(0, 1).toUpperCase()}</span>
+                  <p>
+                    <strong>{member.full_name}</strong>
+                    <small>{member.member_code} · {member.role === "owner" ? "Proprietário" : "Membro"}</small>
+                  </p>
+                  {group.is_owner && member.role !== "owner" && (
+                    <button onClick={() => void removeGroupMember(member.profile_id)}>
+                      Remover
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+          {(!group.kind || group.is_owner) && (
+            <div className="group-invite-box">
+              <label>
+                Nome do grupo
+                <input
+                  value={groupName}
+                  onChange={(event) => setGroupName(event.target.value)}
+                  placeholder="Ex.: Família Bezerra"
+                />
+              </label>
+              <button className="access-primary" disabled={busy} onClick={() => void createGroupInvite()}>
+                <Users /> Convidar uma pessoa
+              </button>
+              {groupShareUrl && <small>O último convite está pronto para ser compartilhado.</small>}
+            </div>
+          )}
+          {group.kind !== "group" && (
+            <div className="group-invite-box">
+              <label>
+                Recebeu um convite?
+                <input
+                  value={groupInvite}
+                  onChange={(event) => setGroupInvite(event.target.value)}
+                  placeholder="Cole aqui o código do convite"
+                />
+              </label>
+              <button className="access-secondary" disabled={busy} onClick={() => void acceptGroupInvite()}>
+                Entrar no cartão em grupo
+              </button>
+            </div>
+          )}
+          <small>
+            Entrar em um grupo transfere com segurança seus carimbos, recompensas
+            e histórico para o cartão compartilhado. Sair do grupo não reinicia
+            o saldo que pertence ao grupo.
+          </small>
+        </section>
+      )}
       {view === "qr" && (
         <section className="club-panel club-qr">
           <QrCode />
-          <small>Identificação rápida</small>
-          <h1>Mostre este QR no atendimento.</h1>
+          <small>Cartão Clube Adoce</small>
+          <h1>QR Code do Membro</h1>
           <p>
-            A equipe lê o código e abre seu cadastro. Nenhuma compra ou resgate
-            acontece sem confirmação na operação.
+            Este QR Code identifica seu Cartão Clube Adoce. Seu Código do Membro
+            também pode ser usado para localizar você.
           </p>
+          <div className="club-member-code">
+            <span>Código do Membro</span>
+            <strong>{snapshot.memberCode}</strong>
+          </div>
           {busy && !qrImage ? (
             <div className="qr-loading">Gerando seu QR seguro...</div>
           ) : (
@@ -1434,8 +1947,13 @@ function CustomerHome({ session }: { session: Session }) {
       {view === "help" && (
         <section className="club-panel club-help">
           <CircleHelp />
-          <small>Ajuda do Clube</small>
-          <h1>É simples participar.</h1>
+          <small>Cartão Clube Adoce</small>
+          <h1>Como funciona</h1>
+          <p>
+            A cada fatia comprada, você recebe um carimbo no seu Cartão Clube
+            Adoce. Complete 14 carimbos e ganhe uma fatia grátis. O cartão é
+            pessoal e está vinculado ao cadastro do membro.
+          </p>
           <div className="club-help-list">
             <article>
               <Heart />
@@ -1449,10 +1967,10 @@ function CustomerHome({ session }: { session: Session }) {
             <article>
               <QrCode />
               <span>
-                <strong>Como a equipe encontra meu cartão?</strong>
+                <strong>Como meu Cartão Clube Adoce é localizado?</strong>
                 <small>
-                  Abra “Meu QR”, mostre o código no atendimento e a equipe
-                  abrirá seu cadastro.
+                  Abra “Meu QR” e mostre o código. Se precisar, informe também
+                  seu Código do Membro: {snapshot.memberCode}.
                 </small>
                 <button onClick={() => void openCustomerQr()}>
                   Abrir meu QR
@@ -1464,9 +1982,8 @@ function CustomerHome({ session }: { session: Session }) {
               <span>
                 <strong>O que acontece ao completar 14?</strong>
                 <small>
-                  Você ganha uma fatia tradicional ou escolhe uma premium
-                  pagando somente a diferença. O prêmio fica guardado até você
-                  decidir retirar.
+                  Sua Fatia Grátis fica disponível para resgate. Você pode
+                  escolher uma fatia premium pagando somente a diferença.
                 </small>
               </span>
             </article>
@@ -1536,6 +2053,36 @@ function CustomerHome({ session }: { session: Session }) {
               E-mail
               <input value={session.user.email || ""} readOnly />
             </label>
+            <label>
+              WhatsApp com DDD
+              <input
+                value={profilePhone}
+                readOnly={profileWhatsAppVerified}
+                onChange={(event) => setProfilePhone(event.target.value)}
+                inputMode="tel"
+                autoComplete="tel"
+              />
+            </label>
+            {metaWhatsAppEnabled && (profileWhatsAppVerified ? (
+              <div className="access-message"><Check /> WhatsApp confirmado</div>
+            ) : (
+              <div className="access-whatsapp-confirmation">
+                {!profileWhatsAppChallenge ? (
+                  <button type="button" className="access-secondary" onClick={() => void startProfileWhatsAppVerification()}>
+                    Confirmar meu WhatsApp
+                  </button>
+                ) : (
+                  <>
+                    <a className="access-primary" href={whatsappVerificationLink(profileWhatsAppChallenge)} target="_blank" rel="noreferrer">
+                      Enviar confirmação pelo WhatsApp <ArrowRight />
+                    </a>
+                    <button type="button" className="access-secondary" onClick={() => void confirmProfileWhatsApp()}>
+                      Já enviei, verificar agora
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
             <NotificationPreferencesFields
               value={notificationPreferences}
               onChange={setNotificationPreferences}
@@ -1591,6 +2138,8 @@ function OperationHome({ session }: { session: Session }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CustomerSearchResult[]>([]);
   const [selected, setSelected] = useState<CustomerSnapshot | null>(null);
+  const [generatedAccess, setGeneratedAccess] =
+    useState<StaffAccessCode | null>(null);
   const [qty, setQty] = useState(1);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1612,19 +2161,32 @@ function OperationHome({ session }: { session: Session }) {
       setBusy(true);
       setMessage("");
       setSelected(null);
+      setGeneratedAccess(null);
       const supabase = requireSupabase();
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id,full_name,phone_e164,email,updated_at")
-        .order("updated_at", { ascending: false })
+        .select("id,full_name,phone_e164,email,member_code,updated_at")
+        .order("full_name", { ascending: true })
         .limit(200);
       if (profilesError) {
         setBusy(false);
         setMessage(profilesError.message);
         return;
       }
-      const matched = (profiles || [])
+      const matched = [...((profiles || []) as Array<{
+        id: string;
+        full_name: string;
+        phone_e164: string | null;
+        email: string | null;
+        member_code: string | null;
+        updated_at: string;
+      }>)]
         .filter((profile) => matchesCustomerSearch(profile, term))
+        .sort((a, b) =>
+          a.full_name.localeCompare(b.full_name, "pt-BR", {
+            sensitivity: "base",
+          }),
+        )
         .slice(0, 30);
       setResults(
         matched.map((profile) => ({
@@ -1632,6 +2194,7 @@ function OperationHome({ session }: { session: Session }) {
           full_name: profile.full_name,
           phone_e164: profile.phone_e164,
           email: profile.email,
+          member_code: profile.member_code || "—",
         })),
       );
       setBusy(false);
@@ -1641,17 +2204,28 @@ function OperationHome({ session }: { session: Session }) {
   const openCustomer = useCallback(async (customer: CustomerSearchResult) => {
     setBusy(true);
     setMessage("");
+    setGeneratedAccess(null);
     setCorrectionQty(1);
     setCorrectionReason("");
     const supabase = requireSupabase();
-    const { data: memberships, error: membershipsError } = await supabase
-      .from("account_memberships")
-      .select("account_id,is_primary")
-      .eq("profile_id", customer.profile_id)
-      .eq("active", true);
-    if (membershipsError) {
+    const [
+      { data: memberships, error: membershipsError },
+      { data: memberProfile, error: memberProfileError },
+    ] = await Promise.all([
+      supabase
+        .from("account_memberships")
+        .select("account_id,is_primary")
+        .eq("profile_id", customer.profile_id)
+        .eq("active", true),
+      supabase
+        .from("profiles")
+        .select("member_code")
+        .eq("id", customer.profile_id)
+        .single(),
+    ]);
+    if (membershipsError || memberProfileError) {
       setBusy(false);
-      setMessage(membershipsError.message);
+      setMessage((membershipsError || memberProfileError)?.message || "Não foi possível abrir o membro.");
       return;
     }
     const accountId =
@@ -1659,7 +2233,7 @@ function OperationHome({ session }: { session: Session }) {
       memberships?.[0]?.account_id;
     if (!accountId) {
       setBusy(false);
-      setMessage("Este cadastro ainda não possui uma conta fidelidade ativa.");
+      setMessage("Este membro ainda não possui um Cartão Clube Adoce ativo.");
       return;
     }
     const { data: track, error: trackError } = await supabase
@@ -1688,6 +2262,7 @@ function OperationHome({ session }: { session: Session }) {
     }
     setSelected({
       ...customer,
+      member_code: memberProfile?.member_code || customer.member_code,
       account_id: accountId,
       current_progress: track?.current_progress || 0,
       completed_cards: track?.completed_cards || 0,
@@ -1697,6 +2272,37 @@ function OperationHome({ session }: { session: Session }) {
     setView("attend");
     setBusy(false);
   }, []);
+  const issueAccessCode = useCallback(async () => {
+    if (!selected) return;
+    setBusy(true);
+    setMessage("");
+    setGeneratedAccess(null);
+    try {
+      const access = await generateStaffAccessCode(
+        session.access_token,
+        selected.profile_id,
+      );
+      setGeneratedAccess(access);
+      setMessage("Código temporário gerado. Copie ou envie pelo WhatsApp.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível gerar o código de acesso.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [selected, session.access_token]);
+  const copyGeneratedAccess = useCallback(async () => {
+    if (!generatedAccess) return;
+    try {
+      await navigator.clipboard.writeText(staffAccessMessage(generatedAccess));
+      setMessage("Mensagem com o código copiada.");
+    } catch {
+      setMessage("Não foi possível copiar. Selecione o código exibido.");
+    }
+  }, [generatedAccess]);
   const stopScanner = useCallback(() => {
     scannerControls.current?.stop();
     scannerControls.current = null;
@@ -1727,7 +2333,7 @@ function OperationHome({ session }: { session: Session }) {
       if (!customer) {
         setBusy(false);
         setMessage(
-          "QR expirado ou cliente não encontrado. Peça ao cliente para gerar um novo código.",
+          "QR expirado ou membro não encontrado. Peça ao membro para gerar um novo código.",
         );
         return;
       }
@@ -1821,7 +2427,7 @@ function OperationHome({ session }: { session: Session }) {
       const names = new Map(
         (profiles || []).map((profile) => [
           profile.id,
-          profile.full_name?.trim().split(/\s+/)[0] || "Cliente",
+          profile.full_name?.trim().split(/\s+/)[0] || "Membro",
         ]),
       );
       setMovements(
@@ -1829,7 +2435,7 @@ function OperationHome({ session }: { session: Session }) {
           ...item,
           customer_first_name:
             (item.subject_profile_id && names.get(item.subject_profile_id)) ||
-            "Cliente",
+            "Membro",
         })),
       );
     }
@@ -1863,7 +2469,7 @@ function OperationHome({ session }: { session: Session }) {
     const nextProgress = total % 14;
     const newRewards = Math.floor(total / 14);
     const confirmed = window.confirm(
-      `Confirmar ${qty} carimbo(s) para ${selected.full_name}?\n\nAntes: ${selected.current_progress} de 14\nDepois: ${nextProgress} de 14${newRewards ? ` e ${newRewards} novo(s) prêmio(s)` : ""}`,
+      `Confirmar ${qty} carimbo(s) para ${selected.full_name}?\n\nAntes: ${selected.current_progress} de 14\nDepois: ${nextProgress} de 14${newRewards ? ` e ${newRewards} nova(s) fatia(s) grátis` : ""}`,
     );
     if (!confirmed) return;
     setBusy(true);
@@ -1919,8 +2525,9 @@ function OperationHome({ session }: { session: Session }) {
   const redeem = async () => {
     if (!selected?.available_reward_id) return;
     setBusy(true);
-    const { error } = await requireSupabase().rpc("staff_redeem_reward", {
+    const { error } = await requireSupabase().rpc("staff_redeem_group_reward", {
       reward_id: selected.available_reward_id,
+      participant_profile_id: selected.profile_id,
       premium_upgrade: false,
       price_difference: 0,
       idempotency_key: crypto.randomUUID(),
@@ -1929,7 +2536,7 @@ function OperationHome({ session }: { session: Session }) {
     if (error) setMessage(error.message);
     else {
       setMessage(
-        "Prêmio resgatado. O novo cartão continua acumulando normalmente.",
+        "Fatia grátis resgatada. O Cartão Clube Adoce continua acumulando normalmente.",
       );
       await refreshSelected();
     }
@@ -1966,7 +2573,7 @@ function OperationHome({ session }: { session: Session }) {
             </small>
           </span>
           <span>
-            <small>Abrir cadastro</small>
+            <small>Abrir membro</small>
           </span>
           <ArrowRight />
         </button>
@@ -1999,7 +2606,7 @@ function OperationHome({ session }: { session: Session }) {
             className={view === "attend" ? "active" : ""}
             onClick={() => void openView("attend")}
           >
-            <Search /> Atender cliente
+            <Search /> Atender membro
           </button>
           <button
             className={view === "movements" ? "active" : ""}
@@ -2011,7 +2618,7 @@ function OperationHome({ session }: { session: Session }) {
             className={view === "customers" ? "active" : ""}
             onClick={() => void openView("customers")}
           >
-            <Users /> Clientes
+            <Users /> Membros
           </button>
           <button
             className={view === "team" ? "active" : ""}
@@ -2027,6 +2634,14 @@ function OperationHome({ session }: { session: Session }) {
               <Settings2 /> Administrar Adoce
             </button>
           )}
+          {role === "owner" && (
+            <button
+              className={view === "security" ? "active" : ""}
+              onClick={() => void openView("security")}
+            >
+              <RotateCcw /> Restaurar produção
+            </button>
+          )}
         </aside>
         <section className="operation-work">
           {view === "attend" && (
@@ -2034,10 +2649,10 @@ function OperationHome({ session }: { session: Session }) {
               <div className="operation-title">
                 <div>
                   <span>Atendimento</span>
-                  <h1>Localizar cliente</h1>
+                  <h1>Localizar membro</h1>
                   <p>
-                    Leia o QR do cartão ou digite parte do nome, telefone ou
-                    e-mail.
+                    Leia o QR do Cartão Clube Adoce ou digite nome, telefone,
+                    e-mail ou Código do Membro.
                   </p>
                 </div>
                 <div className="operation-role">
@@ -2056,7 +2671,7 @@ function OperationHome({ session }: { session: Session }) {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Ex.: Ana, 8215 ou ana@email.com"
+                    placeholder="Ex.: Ana, 8215 ou ADOC 2026 0000 0123"
                   />
                   <button disabled={busy}>
                     {busy ? "Buscando..." : "Buscar"}
@@ -2066,25 +2681,34 @@ function OperationHome({ session }: { session: Session }) {
                   className="operation-scan-button"
                   onClick={() => void startScanner()}
                 >
-                  <Camera /> Ler QR do cliente
+                  <Camera /> Ler QR do membro
                 </button>
               </div>
               {!selected ? (
                 customerList
               ) : (
                 <div className="operation-customer">
-                  <button className="back" onClick={() => setSelected(null)}>
+                  <button
+                    className="back"
+                    onClick={() => {
+                      setSelected(null);
+                      setGeneratedAccess(null);
+                    }}
+                  >
                     ← Voltar à busca
                   </button>
                   <div className="customer-top">
                     <span className="avatar">{selected.full_name[0]}</span>
                     <div>
-                      <small>Cliente</small>
+                      <small>Membro do Clube Adoce</small>
                       <h2>{selected.full_name}</h2>
                       <p>{selected.phone_e164 || selected.email}</p>
+                      <p className="customer-member-code">
+                        Código do Membro: <strong>{selected.member_code}</strong>
+                      </p>
                     </div>
                     <div className="customer-progress">
-                      <small>Cartão atual</small>
+                      <small>Meus Carimbos</small>
                       <strong>{selected.current_progress}</strong>
                       <span>de 14 carimbos</span>
                     </div>
@@ -2092,7 +2716,7 @@ function OperationHome({ session }: { session: Session }) {
                   <div className="customer-balance" aria-label="Resumo da fidelidade">
                     <span>
                       <strong>{selected.current_progress} de 14</strong>
-                      <small>carimbos no cartão atual</small>
+                      <small>carimbos no Cartão Clube Adoce</small>
                     </span>
                     <span>
                       <strong>{selected.completed_cards}</strong>
@@ -2100,9 +2724,61 @@ function OperationHome({ session }: { session: Session }) {
                     </span>
                     <span>
                       <strong>{selected.available_rewards}</strong>
-                      <small>prêmio(s) disponível(is)</small>
+                      <small>fatia(s) grátis disponível(is)</small>
                     </span>
                   </div>
+                  {role !== "viewer" && (
+                    <section
+                      className="customer-access-help"
+                      data-testid="customer-access-help"
+                    >
+                      <div className="customer-access-copy">
+                        <KeyRound />
+                        <span>
+                          <small>Ajuda para entrar no Clube</small>
+                          <strong>Gerar código de acesso temporário</strong>
+                          <p>
+                            Use quando o membro não conseguir receber o código
+                            por e-mail. A geração fica registrada na auditoria.
+                          </p>
+                        </span>
+                      </div>
+                      {!generatedAccess ? (
+                        <button
+                          className="access-secondary"
+                          onClick={() => void issueAccessCode()}
+                          disabled={busy || !selected.email}
+                        >
+                          <KeyRound />
+                          {selected.email
+                            ? "Gerar código de acesso"
+                            : "Membro sem e-mail"}
+                        </button>
+                      ) : (
+                        <div className="customer-access-result">
+                          <span className="generated-access-code" aria-label="Código gerado">
+                            {generatedAccess.code}
+                          </span>
+                          <button
+                            className="access-secondary"
+                            onClick={() => void copyGeneratedAccess()}
+                          >
+                            <Copy /> Copiar mensagem
+                          </button>
+                          {staffAccessWhatsAppUrl(generatedAccess) && (
+                            <a
+                              className="access-primary"
+                              href={staffAccessWhatsAppUrl(generatedAccess) || undefined}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <MessageCircle /> Enviar pelo WhatsApp
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </section>
+                  )}
                   <div className="operation-actions">
                     <article>
                       <Plus />
@@ -2137,7 +2813,7 @@ function OperationHome({ session }: { session: Session }) {
                     </article>
                     <article>
                       <Gift />
-                      <h3>Resgatar prêmio</h3>
+                      <h3>Resgatar fatia grátis</h3>
                       <p>
                         Fatia tradicional ou premium com pagamento da diferença.
                       </p>
@@ -2218,7 +2894,7 @@ function OperationHome({ session }: { session: Session }) {
               <div className="operation-title">
                 <div>
                   <span>Relacionamento</span>
-                  <h1>Clientes</h1>
+                  <h1>Membros</h1>
                   <p>Lista das contas cadastradas no Clube Adoce.</p>
                 </div>
               </div>
@@ -2233,7 +2909,7 @@ function OperationHome({ session }: { session: Session }) {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Filtrar clientes"
+                  placeholder="Filtrar membros"
                 />
                 <button disabled={busy}>Filtrar</button>
               </form>
@@ -2258,11 +2934,11 @@ function OperationHome({ session }: { session: Session }) {
                         <strong>
                           {{
                             purchase: "Compra registrada",
-                            referral_referred: "Bônus para novo cliente",
+                            referral_referred: "Bônus para novo membro",
                             referral_referrer: "Bônus de indicação",
                             manual_adjustment: "Ajuste de carimbos",
                             reversal: "Correção de carimbos",
-                            reward_redeemed: "Prêmio retirado",
+                            reward_redeemed: "Fatia grátis retirada",
                           }[item.reason] || "Movimentação do cartão"}
                         </strong>
                         <em>{item.customer_first_name}</em>
@@ -2276,7 +2952,7 @@ function OperationHome({ session }: { session: Session }) {
                         }
                       >
                         {item.reason === "reward_redeemed"
-                          ? "Prêmio entregue"
+                          ? "Fatia grátis entregue"
                           : `${item.stamps_delta > 0 ? "+" : ""}${item.stamps_delta} ${Math.abs(item.stamps_delta) === 1 ? "carimbo" : "carimbos"}`}
                       </b>
                     </article>
@@ -2321,6 +2997,9 @@ function OperationHome({ session }: { session: Session }) {
               <OperationContentAdmin session={session} role={role} />
             </Suspense>
           )}
+          {view === "security" && role === "owner" && (
+            <ProductionRollbackPanel accessToken={session.access_token} />
+          )}
           {scannerOpen && (
             <div
               className="operation-modal"
@@ -2337,9 +3016,9 @@ function OperationHome({ session }: { session: Session }) {
                   <X />
                 </button>
                 <QrCode />
-                <h2>Leia o QR do cliente</h2>
+                <h2>Leia o QR do membro</h2>
                 <p>
-                  Centralize o código na câmera. O cadastro abrirá
+                  Centralize o código na câmera. O membro abrirá
                   automaticamente.
                 </p>
                 <div className="scanner-video">

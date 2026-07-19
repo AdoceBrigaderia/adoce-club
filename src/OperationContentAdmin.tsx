@@ -36,6 +36,9 @@ type Flavor = {
   ingredients: string | null;
   base_price: number | null;
   image_path: string | null;
+  whole_cake_price: number | null;
+  whole_cake_image_path: string | null;
+  whole_cake_available: boolean;
   active: boolean;
   sort_order: number;
 };
@@ -108,6 +111,8 @@ const emptyFlavor = {
   description: "",
   ingredients: "",
   base_price: "16.00",
+  whole_cake_price: "",
+  whole_cake_available: false,
   active: true,
 };
 
@@ -196,9 +201,8 @@ export default function OperationContentAdmin({
       supabase
         .from("flavors")
         .select(
-          "id,name,category,short_description,description,ingredients,base_price,image_path,active,sort_order",
+          "id,name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_available,active,sort_order",
         )
-        .order("sort_order")
         .order("name"),
       supabase
         .from("flavor_images")
@@ -250,7 +254,11 @@ export default function OperationContentAdmin({
       campaignResult.error;
     setBusy(false);
     if (error) return setNotice(error.message);
-    setFlavors((flavorResult.data || []) as Flavor[]);
+    setFlavors(
+      [...((flavorResult.data || []) as Flavor[])].sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+      ),
+    );
     setImages((imageResult.data || []) as FlavorImage[]);
     setAvailability((availabilityResult.data || []) as Availability[]);
     setChannels((channelResult.data || []) as Channel[]);
@@ -267,6 +275,10 @@ export default function OperationContentAdmin({
   const saveFlavor = async () => {
     if (draft.name.trim().length < 2)
       return setNotice("Informe o nome do produto.");
+    if (draft.whole_cake_available && !editing?.whole_cake_image_path)
+      return setNotice(
+        "Salve o produto, adicione a foto da torta inteira G em Fotos e depois marque esta opção.",
+      );
     setBusy(true);
     const payload = {
       name: draft.name.trim(),
@@ -275,6 +287,9 @@ export default function OperationContentAdmin({
       description: draft.description.trim() || null,
       ingredients: draft.ingredients.trim() || null,
       base_price: Number(draft.base_price.replace(",", ".")) || null,
+      whole_cake_price:
+        Number(draft.whole_cake_price.replace(",", ".")) || null,
+      whole_cake_available: draft.whole_cake_available,
       active: draft.active,
     };
     const query = editing
@@ -302,16 +317,19 @@ export default function OperationContentAdmin({
       description: flavor.description || "",
       ingredients: flavor.ingredients || "",
       base_price: flavor.base_price?.toFixed(2) || "",
+      whole_cake_price: flavor.whole_cake_price?.toFixed(2) || "",
+      whole_cake_available: flavor.whole_cake_available,
       active: flavor.active,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const uploadImage = async (flavor: Flavor, file: File, role: string) => {
+    const isWholeCake = role === "whole_cake";
     const current = images.filter(
       (item) => item.flavor_id === flavor.id && item.active,
     );
-    if (current.length >= PRODUCT_IMAGE_LIMIT)
+    if (!isWholeCake && current.length >= PRODUCT_IMAGE_LIMIT)
       return setNotice(
         `Cada produto pode ter até ${PRODUCT_IMAGE_LIMIT} fotos.`,
       );
@@ -320,13 +338,23 @@ export default function OperationContentAdmin({
     setBusy(true);
     try {
       const blob = await normalizeProductImage(file);
-      const path = `produtos/${flavor.id}/${Date.now()}-${safeMediaFileName(flavor.name)}.webp`;
+      const path = `produtos/${flavor.id}/${Date.now()}-${isWholeCake ? "torta-g-" : ""}${safeMediaFileName(flavor.name)}.webp`;
       const supabase = requireSupabase();
       const { error: uploadError } = await supabase.storage
         .from("adoce-media")
         .upload(path, blob, { contentType: "image/webp", upsert: false });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from("adoce-media").getPublicUrl(path);
+      if (isWholeCake) {
+        const { error: wholeCakeError } = await supabase
+          .from("flavors")
+          .update({ whole_cake_image_path: data.publicUrl })
+          .eq("id", flavor.id);
+        if (wholeCakeError) throw wholeCakeError;
+        setNotice("Foto da torta inteira G adicionada ao produto.");
+        await load();
+        return;
+      }
       const { error: imageError } = await supabase
         .from("flavor_images")
         .insert({
@@ -661,6 +689,17 @@ export default function OperationContentAdmin({
                   }
                 />
               </label>
+              <label>
+                Preço da torta inteira G
+                <input
+                  inputMode="decimal"
+                  value={draft.whole_cake_price}
+                  placeholder="Ex.: 195,00"
+                  onChange={(e) =>
+                    setDraft({ ...draft, whole_cake_price: e.target.value })
+                  }
+                />
+              </label>
               <label className="wide">
                 Chamada curta <span>{draft.short_description.length}/90</span>
                 <input
@@ -702,6 +741,19 @@ export default function OperationContentAdmin({
                 />{" "}
                 Exibir no catálogo
               </label>
+              <label className="admin-check">
+                <input
+                  type="checkbox"
+                  checked={draft.whole_cake_available}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      whole_cake_available: e.target.checked,
+                    })
+                  }
+                />{" "}
+                Oferecer como torta inteira G
+              </label>
             </div>
             <button
               className="admin-primary"
@@ -732,6 +784,14 @@ export default function OperationContentAdmin({
                   {flavor.short_description ||
                     "Descrição curta ainda não informada."}
                 </p>
+                {flavor.whole_cake_price && (
+                  <p>
+                    Torta G: {flavor.whole_cake_price.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                  </p>
+                )}
                 <div className="product-actions">
                   <button onClick={() => editFlavor(flavor)}>
                     <Pencil /> Editar
@@ -1361,7 +1421,32 @@ export default function OperationContentAdmin({
                   }
                 />
               </label>
+              <label className="admin-secondary">
+                <ImagePlus /> Foto da torta inteira G
+                <input
+                  hidden
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) =>
+                    e.target.files?.[0] &&
+                    void uploadImage(
+                      galleryFlavor,
+                      e.target.files[0],
+                      "whole_cake",
+                    )
+                  }
+                />
+              </label>
             </div>
+            {galleryFlavor.whole_cake_image_path && (
+              <figure className="whole-cake-preview">
+                <img
+                  src={galleryFlavor.whole_cake_image_path}
+                  alt={`Torta inteira G ${galleryFlavor.name}`}
+                />
+                <figcaption>Foto exclusiva da torta inteira G</figcaption>
+              </figure>
+            )}
           </div>
         </div>
       )}
