@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 import GroupOrderArtwork from "./GroupOrderArtwork";
+import { serviceStatusMessage } from "./service-status";
 import "./adoce-hoje.css";
 import "./adoce-hoje-content.css";
 import "./today-promotions.css";
@@ -517,8 +518,22 @@ export default function AdoceHoje() {
   const open = inPerson?.status === "paused" ? false : stallState.open;
   const availableCount = flavors.filter((f) => f.available).length;
   const stallStatus = open ? "Aberto agora" : "Fechado agora";
+  const stallMessage = serviceStatusMessage({
+    open,
+    paused: inPerson?.status === "paused",
+    channelMessage: inPerson?.message,
+    scheduleMessage: stallState.message,
+    pausedMessage: "Atendimento presencial pausado no momento.",
+  });
   const pickupOpen = online?.status === "paused" ? false : pickupState.open;
   const pickupStatus = pickupOpen ? "Aberto agora" : "Fechado agora";
+  const pickupMessage = serviceStatusMessage({
+    open: pickupOpen,
+    paused: online?.status === "paused",
+    channelMessage: online?.message,
+    scheduleMessage: pickupState.message,
+    pausedMessage: "Retiradas pausadas no momento.",
+  });
   return (
     <main className="today-page">
       <header className="today-header">
@@ -569,7 +584,7 @@ export default function AdoceHoje() {
               <Clock3 />
               <span>
                 <strong>{stallStatus}</strong>
-                <small>{inPerson?.message || stallState.message}</small>
+                <small>{stallMessage}</small>
               </span>
             </div>
           </div>
@@ -854,11 +869,11 @@ export default function AdoceHoje() {
           <h2>{open ? "Estamos te esperando." : "Confira antes de sair."}</h2>
           <p>
             <strong>Barraquinha:</strong> {stallStatus}.{" "}
-            {inPerson?.message || stallState.message}
+            {stallMessage}
           </p>
           <p>
             <strong>Retirada:</strong> {pickupStatus}.{" "}
-            {online?.message || pickupState.message} Endereço: Rua Professor
+            {pickupMessage} Endereço: Rua Professor
             Odílio Filho, 227, Passaré.
           </p>
           <a

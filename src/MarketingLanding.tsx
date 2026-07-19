@@ -3,12 +3,15 @@ import {
   ArrowRight,
   CalendarDays,
   CakeSlice,
+  CheckCircle2,
   ChevronDown,
   Clock3,
+  Copy,
   Gift,
   Heart,
   MessageCircle,
   Menu,
+  QrCode,
   Share2,
   Smartphone,
   Sparkles,
@@ -17,6 +20,7 @@ import {
 } from "lucide-react";
 import "./marketing.css";
 import "./marketing-promotions.css";
+import "./marketing-club-preview.css";
 import GroupOrderArtwork from "./GroupOrderArtwork";
 
 function Brand() {
@@ -87,6 +91,9 @@ export default function MarketingLanding() {
             </a>
             <a href="#previas" onClick={() => setMenu(false)}>
               Veja por dentro
+            </a>
+            <a href="#compartilhe-docura" onClick={() => setMenu(false)}>
+              Compartilhe
             </a>
             <a href="#adoce-hoje" onClick={() => setMenu(false)}>
               Adoce Hoje
@@ -204,33 +211,58 @@ export default function MarketingLanding() {
             durante o atendimento mais movimentado.
           </p>
         </div>
-        <div className="marketing-devices">
-          <article className="marketing-phone marketing-reveal">
-            <div className="phone-top">
-              <img src="/site/logo.webp" alt="" />
-              <span>Clube Adoce</span>
+        <div className="marketing-preview-showcase">
+          <article className="marketing-preview-item marketing-reveal">
+            <div className="marketing-preview-copy"><span>01</span><Heart /><h3>Seu Cartão</h3><p>Acompanhe os carimbos e veja quanto falta para a próxima fatia grátis.</p></div>
+            <div className="marketing-mini-phone">
+              <div className="phone-top"><img src="/site/logo.webp" alt="" /><span>Clube Adoce</span></div>
+              <p>Olá, Rubens!</p>
+              <div className="preview-loyalty"><small>Meus carimbos</small><strong>8 <span>de 14</span></strong><div>{Array.from({ length: 14 }, (_, i) => <i className={i < 8 ? "filled" : ""} key={i}><Heart /></i>)}</div></div>
             </div>
-            <p>Área do Membro</p>
-            <h3>Olá, Rubens!</h3>
-            <div className="preview-loyalty">
-              <small>Cartão Clube Adoce · Meus Carimbos</small>
-              <strong>
-                8 <span>de 14</span>
-              </strong>
-              <div>
-                {Array.from({ length: 14 }, (_, i) => (
-                  <i className={i < 8 ? "filled" : ""} key={i}>
-                    <Heart />
-                  </i>
-                ))}
-              </div>
-            </div>
-            <nav>
-              <Heart />
-              <Sparkles />
-              <Users />
-            </nav>
           </article>
+          <article className="marketing-preview-item marketing-reveal">
+            <div className="marketing-preview-copy"><span>02</span><QrCode /><h3>Seu QR</h3><p>Mostre o código na loja para a equipe localizar seu cartão com rapidez.</p></div>
+            <div className="marketing-mini-phone preview-qr-phone">
+              <div className="phone-top"><img src="/site/logo.webp" alt="" /><span>Meu QR Code</span></div>
+              <div className="preview-qr" aria-label="Representação do QR Code do membro"><QrCode /></div>
+              <strong>Rubens Bezerra</strong><small>Cartão Clube Adoce</small>
+              <button>Mostrar à equipe</button>
+            </div>
+          </article>
+          <article className="marketing-preview-item marketing-reveal">
+            <div className="marketing-preview-copy"><span>03</span><CakeSlice /><h3>Adoce Hoje</h3><p>Consulte sabores, horários e disponibilidade antes de escolher sua fatia.</p></div>
+            <div className="marketing-mini-phone preview-today-phone">
+              <div className="phone-top"><img src="/site/logo.webp" alt="" /><span>Adoce Hoje</span></div>
+              <p>Festival de Fatias</p><h4>Sabores de hoje</h4>
+              <div className="preview-flavor"><i /><span><strong>Chocolate intenso</strong><small>Disponível agora</small></span><CheckCircle2 /></div>
+              <div className="preview-flavor"><i /><span><strong>Ninho com morango</strong><small>A partir das 14h</small></span><Clock3 /></div>
+              <div className="preview-flavor"><i /><span><strong>Doce de leite</strong><small>Últimas fatias</small></span><Sparkles /></div>
+            </div>
+          </article>
+          <article className="marketing-preview-item marketing-reveal">
+            <div className="marketing-preview-copy"><span>04</span><Gift /><h3>Fatia Grátis</h3><p>Seu prêmio fica guardado até você escolher o melhor momento para saborear.</p></div>
+            <div className="marketing-mini-phone preview-reward-phone">
+              <div className="phone-top"><img src="/site/logo.webp" alt="" /><span>Meus prêmios</span></div>
+              <Gift />
+              <span>Prêmio disponível</span><h4>1 fatia grátis</h4>
+              <p>Use quando quiser. Seu novo cartão continua recebendo carimbos.</p>
+              <button>Quero retirar</button>
+            </div>
+          </article>
+        </div>
+        <div className="marketing-preview-note"><Smartphone /><p>As telas acima representam a experiência real do Clube no celular. O conteúdo se adapta ao saldo, aos sabores e aos benefícios de cada membro.</p></div>
+      </section>
+      <section className="marketing-share-sweetness" id="compartilhe-docura">
+        <div className="marketing-share-copy marketing-reveal">
+          <span>Exclusivo do Clube</span>
+          <h2>Compartilhe <em>Doçura.</em></h2>
+          <p>Convide alguém especial com seu link pessoal. Quando o convite for confirmado, vocês dois recebem 1 carimbo.</p>
+          <a className="marketing-primary" href="#entrar">Entrar e compartilhar <ArrowRight /></a>
+        </div>
+        <div className="marketing-share-card marketing-reveal">
+          <div><Share2 /><span><small>Seu convite pessoal</small><strong>adocebrigaderia.com.br/convite/rubens</strong></span></div>
+          <button aria-label="Copiar convite"><Copy /> Copiar</button>
+          <div className="marketing-share-people"><span>R</span><Heart /><span>E</span><p><strong>Doçura compartilhada</strong><small>1 carimbo para cada um</small></p></div>
         </div>
       </section>
       <section className="marketing-group-order marketing-reveal">
