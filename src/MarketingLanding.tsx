@@ -29,7 +29,7 @@ const paths = [
     href: "/#encomendas",
     action: "Conhecer encomendas",
     icon: Gift,
-    image: "/adoce-hoje/torta-chocolatudo.webp",
+    image: "/adoce-hoje/docinhos-tradicionais.webp",
     className: "orders",
   },
   {
@@ -38,7 +38,7 @@ const paths = [
     href: "/#eventos",
     action: "Planejar uma celebração",
     icon: Sparkles,
-    image: "/wallet/photos/fatia-hero.jpg",
+    image: "/adoce-hoje/festas-eventos.webp",
     className: "events",
   },
   {
@@ -47,7 +47,7 @@ const paths = [
     href: "/#adoce-na-escola",
     action: "Conhecer os pacotes",
     icon: School,
-    image: "/adoce-hoje/red-velvet.webp",
+    image: "/adoce-hoje/adoce-na-escola.webp",
     className: "school",
   },
   {

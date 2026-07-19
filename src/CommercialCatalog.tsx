@@ -32,6 +32,14 @@ const groupOptions = (options: CommercialProductOption[]) => options.reduce<Reco
   (groups, option) => ({ ...groups, [option.group_key]: [...(groups[option.group_key] || []), option] }),
   {},
 );
+const catalogProductImage = (product: CommercialProduct) => {
+  if (product.image_url && !product.image_url.includes("instagram.com/")) return product.image_url;
+  if (product.slug === "docinhos-tradicionais") return "/adoce-hoje/docinhos-tradicionais.webp";
+  if (product.slug === "docinhos-especiais") return "/adoce-hoje/docinhos-premium.webp";
+  if (product.slug.startsWith("tabuleiro-")) return "/adoce-hoje/tabuleiro-doces.webp";
+  if (product.segment === "school") return "/adoce-hoje/adoce-na-escola.webp";
+  return null;
+};
 
 function Brand({ subtitle = "Encomendas & eventos" }: { subtitle?: string }) {
   return (
@@ -276,7 +284,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
           <div className="commercial-product-list">
             {visibleProducts.map((product) => (
               <article key={product.id}>
-                {product.image_url ? <img className="commercial-product-image" src={product.image_url} alt={product.name} /> : null}
+                {catalogProductImage(product) ? <img className="commercial-product-image" src={catalogProductImage(product) || ""} alt={product.name} /> : null}
                 <div className="commercial-product-main">
                   <span>{segmentLabels[product.segment]}</span>
                   <h3>{product.name}</h3>
