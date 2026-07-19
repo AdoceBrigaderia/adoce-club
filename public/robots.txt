@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /documentacao
+
+Sitemap: https://www.adocebrigaderia.com.br/sitemap.xml

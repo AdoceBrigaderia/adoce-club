@@ -834,6 +834,20 @@ export default function AdoceHoje() {
         </div>
       </section>
       )}
+      <section className="today-orders-bridge">
+        <ShoppingBag />
+        <div>
+          <p className="today-kicker">Pedidos por encomenda</p>
+          <h2>Procurando tortas, docinhos ou uma experiência para seu evento?</h2>
+          <p>
+            O Festival de Fatias continua aqui. Para produtos inteiros, festas,
+            Adoce na Escola e aluguel de acervo, consulte o cardápio de encomendas.
+          </p>
+        </div>
+        <a className="today-primary" href="/#encomendas">
+          Ver encomendas e eventos
+        </a>
+      </section>
       <section className="today-event" id="atendimento">
         <div className="today-event-copy">
           <p className="today-kicker">Atendimento Adoce</p>

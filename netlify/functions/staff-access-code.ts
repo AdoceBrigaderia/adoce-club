@@ -101,9 +101,13 @@ export default async (request: Request) => {
     await adminClient.auth.admin.generateLink({
       type: "magiclink",
       email: profile.email,
+      options: {
+        redirectTo: `${(env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "")}/#minha-conta`,
+      },
     });
   const accessCode = linkData?.properties?.email_otp;
-  if (linkError || !accessCode) {
+  const loginUrl = linkData?.properties?.action_link;
+  if (linkError || !accessCode || !loginUrl) {
     return json({ error: "Não foi possível gerar o código de acesso." }, 502);
   }
 
@@ -115,6 +119,7 @@ export default async (request: Request) => {
     payload: {
       phone_suffix: profile.phone_e164?.replace(/\D/g, "").slice(-4) || null,
       delivery_options: profile.phone_e164 ? ["copy", "whatsapp"] : ["copy"],
+      direct_login_link: true,
     },
   });
   if (auditError) {
@@ -129,6 +134,7 @@ export default async (request: Request) => {
     fullName: profile.full_name,
     email: profile.email,
     phone: profile.phone_e164,
+    loginUrl,
   });
 };
 

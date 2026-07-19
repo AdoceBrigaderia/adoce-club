@@ -1,14 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { ArrowLeft, Camera, Check, ChevronRight, Gift, Heart, History, LayoutDashboard, LogOut, Plus, Search, Settings, ShieldCheck, Smartphone, UserPlus, Users } from "lucide-react";
 import { Customer, cycleProgress, earn, formatPhone, maskPhone, redeem, remainingFor, rewardsFor } from "./domain";
 import { loadCustomers, saveCustomers } from "./store";
-import PilotApp from "./PilotApp";
-import AdoceHoje from "./AdoceHoje";
-import AccessApp, { MemberDemo, OperationDemo } from "./AccessApp";
 import MarketingLanding from "./MarketingLanding";
-import SocialCampaign from "./SocialCampaign";
-import { ProductionRollbackDemo } from "./ProductionRollbackPanel";
+
+const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
+const LegalPage = lazy(() => import("./LegalPage"));
+const PilotApp = lazy(() => import("./PilotApp"));
+const AdoceHoje = lazy(() => import("./AdoceHoje"));
+const AccessApp = lazy(() => import("./AccessApp"));
+const MemberDemo = lazy(() =>
+  import("./AccessApp").then((module) => ({ default: module.MemberDemo })),
+);
+const OperationDemo = lazy(() =>
+  import("./AccessApp").then((module) => ({ default: module.OperationDemo })),
+);
+const SocialCampaign = lazy(() => import("./SocialCampaign"));
+const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
+const ProductionRollbackDemo = lazy(() =>
+  import("./ProductionRollbackPanel").then((module) => ({ default: module.ProductionRollbackDemo })),
+);
+
+const loading = <main className="access-loading"><p>Abrindo a experiência Adoce...</p></main>;
 
 type Page = "join" | "card" | "staff" | "admin";
 const moneyless = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -59,7 +73,17 @@ export default function App(){
   useEffect(() => {
     const handleHashChange = () => {
       refreshRoute(version => version + 1);
-      document.title = location.hash.startsWith("#operacao") ? "Adoce Operação" : location.hash.startsWith("#adoce-hoje") ? "Adoce Hoje · Clube Adoce" : "Clube Adoce";
+      document.title = location.hash.startsWith("#operacao")
+        ? "Adoce Operação"
+        : location.hash.startsWith("#adoce-hoje")
+          ? "Adoce Hoje · Adoce Brigaderia"
+          : location.hash.startsWith("#encomendas")
+            ? "Encomendas e eventos · Adoce Brigaderia"
+            : location.hash.startsWith("#privacidade")
+              ? "Política de Privacidade · Adoce Brigaderia"
+              : location.hash.startsWith("#termos")
+                ? "Termos do Clube Adoce"
+                : "Adoce Brigaderia | Fatias artesanais e Clube Adoce em Fortaleza";
       window.scrollTo({ top: 0, behavior: "instant" });
     };
     handleHashChange();
@@ -67,17 +91,24 @@ export default function App(){
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
   const host = location.hostname.toLowerCase();
-  if(location.hash.startsWith("#campanha-story"))return <SocialCampaign format="story"/>;
-  if(location.hash.startsWith("#campanha-feed"))return <SocialCampaign format="feed"/>;
-  if(import.meta.env.DEV && location.hash.startsWith("#membro-demo"))return <MemberDemo/>;
-  if(import.meta.env.DEV && location.hash.startsWith("#operacao-demo"))return <OperationDemo/>;
-  if(import.meta.env.DEV && location.hash.startsWith("#restauracao-demo"))return <ProductionRollbackDemo/>;
-  if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <AccessApp surface="operation"/>;
-  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta")) return <AccessApp surface="client"/>;
-  if(location.hash.startsWith("#adoce-hoje"))return <AdoceHoje/>;
+  if(location.hash.startsWith("#campanha-story"))return <Suspense fallback={loading}><SocialCampaign format="story"/></Suspense>;
+  if(location.hash.startsWith("#campanha-feed"))return <Suspense fallback={loading}><SocialCampaign format="feed"/></Suspense>;
+  if(location.hash.startsWith("#lancamento-story"))return <Suspense fallback={loading}><LaunchCampaign format="story"/></Suspense>;
+  if(location.hash.startsWith("#lancamento-facebook"))return <Suspense fallback={loading}><LaunchCampaign format="facebook"/></Suspense>;
+  if(location.hash.startsWith("#lancamento-carrossel-"))return <Suspense fallback={loading}><LaunchCampaign format="carousel" slide={Number(location.hash.split("-").at(-1)) || 1}/></Suspense>;
+  if(location.hash.startsWith("#lancamento-feed"))return <Suspense fallback={loading}><LaunchCampaign format="feed"/></Suspense>;
+  if(import.meta.env.DEV && location.hash.startsWith("#membro-demo"))return <Suspense fallback={loading}><MemberDemo/></Suspense>;
+  if(import.meta.env.DEV && location.hash.startsWith("#operacao-demo"))return <Suspense fallback={loading}><OperationDemo/></Suspense>;
+  if(import.meta.env.DEV && location.hash.startsWith("#restauracao-demo"))return <Suspense fallback={loading}><ProductionRollbackDemo/></Suspense>;
+  if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation"/></Suspense>;
+  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta")) return <Suspense fallback={loading}><AccessApp surface="client"/></Suspense>;
+  if(location.hash.startsWith("#adoce-hoje"))return <Suspense fallback={loading}><AdoceHoje/></Suspense>;
+  if(location.hash.startsWith("#encomendas"))return <Suspense fallback={loading}><CommercialCatalog/></Suspense>;
+  if(location.hash.startsWith("#termos"))return <Suspense fallback={loading}><LegalPage kind="terms"/></Suspense>;
+  if(location.hash.startsWith("#privacidade"))return <Suspense fallback={loading}><LegalPage kind="privacy"/></Suspense>;
   const pilotToken=location.hash.match(/^#cartao\/([a-f0-9-]+)$/i)?.[1];
-  if(pilotToken)return <PilotApp token={pilotToken}/>;
-  if(location.hash.startsWith("#festival"))return <PilotApp/>;
+  if(pilotToken)return <Suspense fallback={loading}><PilotApp token={pilotToken}/></Suspense>;
+  if(location.hash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
   if(import.meta.env.DEV && location.hash.startsWith("#prototipo"))return <LegacyApp/>;
   return <MarketingLanding/>
 }

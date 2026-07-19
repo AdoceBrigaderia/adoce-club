@@ -13,6 +13,7 @@ import QRCode from "qrcode";
 import {
   ArrowRight,
   CakeSlice,
+  CalendarDays,
   Camera,
   Check,
   CircleHelp,
@@ -65,13 +66,14 @@ import "./access-app.css";
 import "./referral.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
+const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "attend" | "movements" | "customers" | "team" | "content" | "security";
+type OperationView = "attend" | "movements" | "customers" | "orders" | "team" | "content" | "security";
 
 type NotificationPreferences = {
   flavors: boolean;
@@ -912,7 +914,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                       checked={terms}
                       onChange={(e) => setTerms(e.target.checked)}
                     />
-                    <span>Aceito os termos do Clube Adoce.</span>
+                    <span>Aceito os <a href="/#termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a>.</span>
                   </label>
                   <label>
                     <input
@@ -920,7 +922,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                       checked={privacy}
                       onChange={(e) => setPrivacy(e.target.checked)}
                     />
-                    <span>Li e aceito a política de privacidade.</span>
+                    <span>Li e aceito a <a href="/#privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
                   </label>
                   <label>
                     <input
@@ -1595,7 +1597,7 @@ function CustomerHome({ session }: { session: Session }) {
                   checked={termsAccepted}
                   onChange={(event) => setTermsAccepted(event.target.checked)}
                 />
-                <span>Aceito os termos do Clube Adoce. *</span>
+                <span>Aceito os <a href="/#termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a>. *</span>
               </label>
               <label>
                 <input
@@ -1603,7 +1605,7 @@ function CustomerHome({ session }: { session: Session }) {
                   checked={privacyAccepted}
                   onChange={(event) => setPrivacyAccepted(event.target.checked)}
                 />
-                <span>Li e aceito a política de privacidade. *</span>
+                <span>Li e aceito a <a href="/#privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>. *</span>
               </label>
               <label>
                 <input
@@ -2620,6 +2622,14 @@ function OperationHome({ session }: { session: Session }) {
           >
             <Users /> Membros
           </button>
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "orders" ? "active" : ""}
+              onClick={() => void openView("orders")}
+            >
+              <CalendarDays /> Pedidos & Agenda
+            </button>
+          )}
           <button
             className={view === "team" ? "active" : ""}
             onClick={() => void openView("team")}
@@ -2739,7 +2749,8 @@ function OperationHome({ session }: { session: Session }) {
                           <strong>Gerar código de acesso temporário</strong>
                           <p>
                             Use quando o membro não conseguir receber o código
-                            por e-mail. A geração fica registrada na auditoria.
+                            por e-mail. O link abre o Clube já autenticado e a
+                            geração fica registrada na auditoria.
                           </p>
                         </span>
                       </div>
@@ -2765,6 +2776,14 @@ function OperationHome({ session }: { session: Session }) {
                           >
                             <Copy /> Copiar mensagem
                           </button>
+                          <a
+                            className="access-secondary"
+                            href={generatedAccess.loginUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ArrowRight /> Testar link direto
+                          </a>
                           {staffAccessWhatsAppUrl(generatedAccess) && (
                             <a
                               className="access-primary"
@@ -2995,6 +3014,11 @@ function OperationHome({ session }: { session: Session }) {
           {view === "content" && (
             <Suspense fallback={<p>Carregando administração...</p>}>
               <OperationContentAdmin session={session} role={role} />
+            </Suspense>
+          )}
+          {view === "orders" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando agenda e CRM...</p>}>
+              <OperationCommercialAdmin session={session} role={role} />
             </Suspense>
           )}
           {view === "security" && role === "owner" && (

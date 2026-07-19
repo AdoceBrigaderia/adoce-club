@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
+  CalendarDays,
   CakeSlice,
   ChevronDown,
   Clock3,
   Gift,
   Heart,
+  MessageCircle,
   Menu,
   Share2,
   Smartphone,
@@ -88,6 +90,9 @@ export default function MarketingLanding() {
             </a>
             <a href="#adoce-hoje" onClick={() => setMenu(false)}>
               Adoce Hoje
+            </a>
+            <a href="/#encomendas" onClick={() => setMenu(false)}>
+              Encomendas
             </a>
             <a className="marketing-login" href="#entrar">
               Entrar no Clube
@@ -237,6 +242,25 @@ export default function MarketingLanding() {
         </div>
         <GroupOrderArtwork />
       </section>
+      <section className="marketing-orders" id="encomendas">
+        <div className="marketing-reveal">
+          <span>Além das fatias</span>
+          <h2>Encomendas e eventos com a assinatura Adoce.</h2>
+          <p>
+            Tortas inteiras, docinhos, Tabuleiro de Doces, Adoce na Escola,
+            kits de festa e aluguel de acervo — cada linha em seu lugar, com
+            valores e agenda administrados pela nossa equipe.
+          </p>
+          <a className="marketing-primary" href="/#encomendas">
+            Conhecer opções e solicitar data <ArrowRight />
+          </a>
+        </div>
+        <div className="marketing-orders-steps marketing-reveal">
+          <p><CakeSlice /><span><strong>Escolha</strong><small>Veja produtos, pacotes e condições.</small></span></p>
+          <p><CalendarDays /><span><strong>Solicite a data</strong><small>A agenda verifica conflitos antes do atendimento.</small></span></p>
+          <p><MessageCircle /><span><strong>Confirme com a equipe</strong><small>A pré-reserva dura 48 horas e a data é garantida com o sinal.</small></span></p>
+        </div>
+      </section>
       <section className="marketing-today" id="adoce-hoje">
         <div className="marketing-reveal">
           <span>Adoce Hoje</span>
@@ -265,6 +289,29 @@ export default function MarketingLanding() {
           </p>
         </div>
       </section>
+      <section className="marketing-about" id="sobre">
+        <div className="marketing-reveal">
+          <span>Sobre a Adoce</span>
+          <h2>Uma história feita de reinvenção, cuidado e coragem.</h2>
+        </div>
+        <div className="marketing-reveal">
+          <p>
+            A Adoce nasceu em 2023, da força de uma mãe atípica que encontrou
+            na confeitaria artesanal uma forma de transformar cuidado em sabor.
+            Rubens e Elizabeth seguem construindo essa história ao lado de cada
+            cliente, com produção feita à mão e atenção aos detalhes.
+          </p>
+          <p>
+            Nossa fábrica fica no Passaré, em Fortaleza, e recebe retiradas de
+            encomendas e pedidos online com horário combinado.
+          </p>
+          <div>
+            <a href="https://www.instagram.com/_adocebrigaderia_/" target="_blank" rel="noreferrer">Instagram</a>
+            <a href="https://www.facebook.com/adocebrigaderia" target="_blank" rel="noreferrer">Facebook</a>
+            <a href="https://maps.app.goo.gl/PWLL5zE9fqVpmunj8" target="_blank" rel="noreferrer">Como chegar à fábrica</a>
+          </div>
+        </div>
+      </section>
       <section className="marketing-cta" id="cadastro">
         <div className="marketing-reveal">
           <span>Clube Adoce</span>
@@ -285,6 +332,11 @@ export default function MarketingLanding() {
       </section>
       <footer>
         <Brand />
+        <div className="marketing-footer-links">
+          <a href="/#termos">Termos</a>
+          <a href="/#privacidade">Privacidade</a>
+          <a href="/#encomendas">Encomendas</a>
+        </div>
         <p>© 2026 Adoce Brigaderia · Fortaleza, Ceará</p>
       </footer>
     </main>

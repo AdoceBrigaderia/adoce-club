@@ -280,6 +280,7 @@
   border: 1px solid var(--access-line);
   background: white;
   color: var(--access-chocolate);
+  text-decoration: none;
 }
 .access-link,
 .access-switch {
@@ -947,6 +948,7 @@
   max-width: 100%;
   overflow-x: clip;
 }
+.access-consents a{color:var(--access-coral-dark);font-weight:800;text-decoration:underline;text-underline-offset:2px}
 .customer-access-help {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
