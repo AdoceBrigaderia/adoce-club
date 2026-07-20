@@ -13,8 +13,8 @@ O Clube Adoce já ultrapassou a fase de página estática. A estrutura instituci
 | Ambiente | Endereço | Estado atual |
 | --- | --- | --- |
 | Site oficial | `https://www.adocebrigaderia.com.br` | Publicado com HTTPS |
-| Clube Adoce — cliente | `https://clube.adocebrigaderia.com.br` | Publicado e em uso controlado |
-| Adoce Operação — equipe | `https://operacao.adocebrigaderia.com.br` | Publicado e em uso controlado |
+| Clube Adoce — cliente | `https://www.adocebrigaderia.com.br/#entrar` | Publicado; `clube.adocebrigaderia.com.br` aguarda registro DNS |
+| Adoce Operação — equipe | `https://www.adocebrigaderia.com.br/#operacao` | Publicado; `operacao.adocebrigaderia.com.br` aguarda registro DNS |
 | Autenticação por e-mail | `auth.adocebrigaderia.com.br` | Domínio verificado e remetente ativo |
 | Backend e banco de dados | Supabase, região de São Paulo | Produção ativa no plano Free |
 
@@ -73,9 +73,13 @@ Novos recursos só devem ser apresentados ao público como disponíveis depois d
 
 Foi implementada a migração do acesso do cliente para celular e senha após a primeira confirmação por e-mail, com opção de manter a sessão e preparação para passkeys. Também foram criados controles protegidos para desativação, reativação, solicitação de exclusão e revisão de duplicidade, sempre com motivo, auditoria e estado da notificação ao cliente. Em 20/07/2026, as migrações foram aplicadas no projeto de produção, os 21 perfis existentes foram preservados e a chave segura do servidor foi configurada na Netlify. A entrega ainda depende da validação final dos fluxos nos domínios oficiais.
 
-### 20/07/2026 — revisão comercial e imagens em validação
+### 20/07/2026 — revisão comercial e imagens publicadas
 
 As páginas comerciais foram reorganizadas para apresentar fotos reais sem deformação, usar uma única imagem principal nas categorias de serviço e separar corretamente Festas e Eventos, Adoce na Escola e Aluguel de Decoração. A Festa na Mesa foi direcionada para Adoce na Escola. A operação recebeu controles para trocar fotos, textos, itens incluídos, regras, pacotes e valores. Compra em Grupo, Clube Adoce e o exemplo do Adoce Hoje também receberam imagens coerentes com cada proposta. A estrutura de mídias e os vínculos corretos das fotografias foram aplicados ao banco em 20/07/2026; resta a validação final após a publicação do frontend.
+
+### 20/07/2026 — publicação e conferência final da vitrine
+
+A revisão comercial foi publicada no domínio principal e conferida em telas de computador e celular. Foram validados: imagens completas dos docinhos, foto única nos serviços, separação entre Eventos e Escola, Compra em Grupo com pedido real, exemplo ilustrativo do Adoce Hoje, login do cliente por celular e senha, linguagem própria da operação e funções protegidas no servidor. A inspeção não encontrou erros no navegador. A verificação de DNS confirmou que os subdomínios `clube` e `operacao` ainda precisam ser criados; até lá, as rotas oficiais permanecem disponíveis no domínio principal.
 
 ### 19/07/2026 — catálogo, agenda e CRM
 
