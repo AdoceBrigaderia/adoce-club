@@ -1,7 +1,7 @@
 ---
 title: Apresentação comercial, imagens e validação
 description: Padrão das páginas de venda, responsabilidade de cada categoria, edição pela operação e conferência obrigatória antes da publicação.
-status: Implementado no código, em validação para publicação
+status: Banco atualizado, aguardando validação final nos domínios oficiais
 ---
 
 # Apresentação comercial, imagens e validação

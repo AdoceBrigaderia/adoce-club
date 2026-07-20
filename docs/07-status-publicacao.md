@@ -71,11 +71,11 @@ Novos recursos só devem ser apresentados ao público como disponíveis depois d
 
 ### 20/07/2026 — reforço de identidade e segurança em validação
 
-Foi implementada no código a migração do acesso do cliente para celular e senha após a primeira confirmação por e-mail, com opção de manter a sessão e preparação para passkeys. Também foram criados controles protegidos para desativação, reativação, solicitação de exclusão e revisão de duplicidade, sempre com motivo, auditoria e estado da notificação ao cliente. Esta entrega ainda depende de migração controlada do banco, configuração dos segredos e validação com contas de teste antes de ser publicada.
+Foi implementada a migração do acesso do cliente para celular e senha após a primeira confirmação por e-mail, com opção de manter a sessão e preparação para passkeys. Também foram criados controles protegidos para desativação, reativação, solicitação de exclusão e revisão de duplicidade, sempre com motivo, auditoria e estado da notificação ao cliente. Em 20/07/2026, as migrações foram aplicadas no projeto de produção, os 21 perfis existentes foram preservados e a chave segura do servidor foi configurada na Netlify. A entrega ainda depende da validação final dos fluxos nos domínios oficiais.
 
 ### 20/07/2026 — revisão comercial e imagens em validação
 
-As páginas comerciais foram reorganizadas para apresentar fotos reais sem deformação, usar uma única imagem principal nas categorias de serviço e separar corretamente Festas e Eventos, Adoce na Escola e Aluguel de Decoração. A Festa na Mesa foi direcionada para Adoce na Escola. A operação recebeu controles para trocar fotos, textos, itens incluídos, regras, pacotes e valores. Compra em Grupo, Clube Adoce e o exemplo do Adoce Hoje também receberam imagens coerentes com cada proposta. A publicação depende da conclusão da validação visual e técnica registrada no documento de apresentação comercial e mídias.
+As páginas comerciais foram reorganizadas para apresentar fotos reais sem deformação, usar uma única imagem principal nas categorias de serviço e separar corretamente Festas e Eventos, Adoce na Escola e Aluguel de Decoração. A Festa na Mesa foi direcionada para Adoce na Escola. A operação recebeu controles para trocar fotos, textos, itens incluídos, regras, pacotes e valores. Compra em Grupo, Clube Adoce e o exemplo do Adoce Hoje também receberam imagens coerentes com cada proposta. A estrutura de mídias e os vínculos corretos das fotografias foram aplicados ao banco em 20/07/2026; resta a validação final após a publicação do frontend.
 
 ### 19/07/2026 — catálogo, agenda e CRM
 

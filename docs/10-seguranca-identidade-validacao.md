@@ -1,7 +1,7 @@
 ---
 title: Identidade, segurança de acesso e validação
 description: Login do cliente, prevenção de duplicidade, tratamento de contas e critérios obrigatórios de publicação.
-status: Implementado no código, aguardando migração e validação em produção
+status: Migração aplicada, aguardando validação final nos domínios oficiais
 ---
 
 # Identidade, segurança de acesso e validação
@@ -88,4 +88,4 @@ Uma mudança só pode ser declarada pronta quando houver evidência de:
 
 ## Estado desta entrega
 
-A estrutura de banco, serviços protegidos no servidor, login com telefone e senha, opção de manter a sessão, preparação para passkeys e controles administrativos foram implementados no código em 20/07/2026. A migração do banco, as variáveis secretas, a configuração do provedor e os testes com cadastros reais controlados ainda são etapas obrigatórias antes da publicação.
+A estrutura de banco, serviços protegidos no servidor, login com telefone e senha, opção de manter a sessão, preparação para passkeys e controles administrativos foram implementados no código em 20/07/2026. As migrações foram aplicadas no projeto de produção e a chave segura do servidor foi configurada na Netlify sem exposição ao cliente. Os 21 perfis existentes foram preservados como ativos. Ainda é obrigatória a validação final dos fluxos nos domínios oficiais; notificações administrativas permanecem registradas como pendentes quando o provedor de e-mail da função não estiver configurado.

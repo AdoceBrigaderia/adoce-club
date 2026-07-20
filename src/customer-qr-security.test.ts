@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 describe("seguranca do QR do cliente", () => {
   const app = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
   const migration = readFileSync(
-    new URL("../supabase/migrations/20260717215732_secure_customer_qr_and_staff_scanner.sql", import.meta.url),
+    new URL("../supabase/migrations/20260717222446_secure_customer_qr_and_staff_scanner.sql", import.meta.url),
     "utf8",
   );
 
