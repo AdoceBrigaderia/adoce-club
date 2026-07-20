@@ -1,4 +1,4 @@
-import { requireSupabase } from "../lib/supabase";
+import { requireSupabase, setRememberLogin } from "../lib/supabase";
 
 export function normalizeBrazilPhone(value: string): string {
   const digits = value.replace(/\D/g, "");
@@ -26,7 +26,7 @@ export async function requestPhoneCode(fullName: string, phone: string) {
   return normalizedPhone;
 }
 
-export async function requestEmailCode(email: string, fullName?: string, createUser = true) {
+export async function requestEmailCode(email: string, fullName?: string, createUser = false) {
   const normalizedEmail = email.trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
     throw new Error("Informe um e-mail válido.");
@@ -53,6 +53,50 @@ export async function verifyEmailCode(email: string, token: string) {
 
   if (error) throw error;
   return data;
+}
+
+export async function signInWithPhonePassword(
+  phone: string,
+  password: string,
+  remember = true,
+) {
+  setRememberLogin(remember);
+  const { data, error } = await requireSupabase().auth.signInWithPassword({
+    phone: normalizeBrazilPhone(phone),
+    password,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function upgradeCustomerSecurity(
+  accessToken: string,
+  phone: string,
+  password: string,
+) {
+  const response = await fetch("/api/customer-security-upgrade", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ phone, password }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    upgraded?: boolean;
+    error?: string;
+  };
+  if (!response.ok || !payload.upgraded) {
+    throw new Error(payload.error || "Não foi possível criar seu acesso seguro.");
+  }
+  return payload;
+}
+
+export async function registerCustomerPasskey() {
+  const client = requireSupabase();
+  const result = await client.auth.registerPasskey();
+  if (result.error) throw result.error;
+  return result.data;
 }
 
 export type WhatsAppChallenge = {

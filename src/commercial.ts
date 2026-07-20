@@ -59,7 +59,7 @@ export const segmentLabels: Record<CommercialSegment, string> = {
   sweets: "Docinhos",
   events: "Eventos",
   school: "Adoce na Escola",
-  rentals: "Acervo",
+  rentals: "Aluguel de decoração",
 };
 
 export function money(value: number | null) {

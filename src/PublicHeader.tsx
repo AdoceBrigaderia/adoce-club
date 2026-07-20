@@ -6,6 +6,7 @@ const publicLinks = [
   ["Encomendas", "/#encomendas"],
   ["Festas e eventos", "/#eventos"],
   ["Adoce na Escola", "/#adoce-na-escola"],
+  ["Decoração", "/#aluguel-decoracao"],
   ["Clube Adoce", "/#clube"],
 ] as const;
 

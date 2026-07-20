@@ -8,6 +8,7 @@ import {
   CircleDollarSign,
   Clock3,
   Edit3,
+  ImagePlus,
   MessageCircle,
   NotebookPen,
   PackagePlus,
@@ -17,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
+import { normalizeProductImage, safeMediaFileName } from "./admin-media";
 import {
   CommercialProduct,
   CommercialProductOption,
@@ -27,6 +29,7 @@ import {
 } from "./commercial";
 import "./operation-commercial.css";
 import "./operation-product-options.css";
+import "./operation-media-editor.css";
 
 type AdminTab = "agenda" | "requests" | "catalog" | "crm";
 type RequestStatus =
@@ -92,6 +95,13 @@ type CrmTask = {
   status: string;
 };
 
+type CommercialSegmentMedia = {
+  id: string;
+  segment: CommercialSegment;
+  image_url: string;
+  alt_text: string;
+};
+
 const statuses: Record<RequestStatus, string> = {
   prebooked: "Pré-reserva",
   quoted: "Orçamento enviado",
@@ -155,6 +165,7 @@ export default function OperationCommercialAdmin({
   const [tab, setTab] = useState<AdminTab>("agenda");
   const [products, setProducts] = useState<CommercialProduct[]>([]);
   const [productOptions, setProductOptions] = useState<CommercialProductOption[]>([]);
+  const [segmentMedia, setSegmentMedia] = useState<CommercialSegmentMedia[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [notes, setNotes] = useState<CrmNote[]>([]);
@@ -188,9 +199,10 @@ export default function OperationCommercialAdmin({
     setBusy(true);
     setNotice("");
     const supabase = requireSupabase();
-    const [productResult, optionResult, requestResult, blockResult, noteResult, taskResult] = await Promise.all([
+    const [productResult, optionResult, mediaResult, requestResult, blockResult, noteResult, taskResult] = await Promise.all([
       supabase.from("commercial_products").select("*").order("sort_order"),
       supabase.from("commercial_product_options").select("*").order("sort_order"),
+      supabase.from("commercial_segment_media").select("*").order("segment"),
       supabase
         .from("service_requests")
         .select("*,commercial_products(name,segment,resource_key)")
@@ -205,6 +217,7 @@ export default function OperationCommercialAdmin({
     else {
       setProducts((productResult.data || []) as CommercialProduct[]);
       setProductOptions((optionResult.data || []) as CommercialProductOption[]);
+      if (!mediaResult.error) setSegmentMedia((mediaResult.data || []) as CommercialSegmentMedia[]);
       setRequests((requestResult.data || []) as unknown as ServiceRequest[]);
       setBlocks((blockResult.data || []) as CalendarBlock[]);
       setNotes((noteResult.data || []) as CrmNote[]);
@@ -335,6 +348,7 @@ export default function OperationCommercialAdmin({
         lead_business_days: selectedProduct.lead_business_days,
         requires_schedule: selectedProduct.requires_schedule,
         resource_key: selectedProduct.resource_key,
+        details: selectedProduct.details,
         image_url: selectedProduct.image_url?.trim() || null,
         sort_order: selectedProduct.sort_order,
         published: selectedProduct.published,
@@ -351,6 +365,57 @@ export default function OperationCommercialAdmin({
       setNotice(selectedProduct.id ? "Produto atualizado no catálogo." : "Novo produto criado no catálogo.");
       setSelectedProduct(null);
       await load();
+    }
+  };
+
+  const uploadProductPhoto = async (file: File) => {
+    if (!selectedProduct) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const blob = await normalizeProductImage(file);
+      const productKey = selectedProduct.id || selectedProduct.slug || slugify(selectedProduct.name) || "novo-produto";
+      const path = `commercial/products/${productKey}/${Date.now()}-${safeMediaFileName(file.name)}.webp`;
+      const supabase = requireSupabase();
+      const { error: uploadError } = await supabase.storage
+        .from("adoce-media")
+        .upload(path, blob, { contentType: "image/webp", upsert: false });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("adoce-media").getPublicUrl(path);
+      setSelectedProduct({ ...selectedProduct, image_url: data.publicUrl });
+      setNotice("Foto preparada. Salve o produto para publicar a alteração.");
+    } catch (uploadError) {
+      setNotice(uploadError instanceof Error ? uploadError.message : "Não foi possível enviar a foto.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadSegmentCover = async (segment: CommercialSegment, file: File) => {
+    setBusy(true);
+    setNotice("");
+    try {
+      const blob = await normalizeProductImage(file);
+      const path = `commercial/segments/${segment}/${Date.now()}-${safeMediaFileName(file.name)}.webp`;
+      const supabase = requireSupabase();
+      const { error: uploadError } = await supabase.storage
+        .from("adoce-media")
+        .upload(path, blob, { contentType: "image/webp", upsert: false });
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from("adoce-media").getPublicUrl(path);
+      const { error: mediaError } = await supabase.from("commercial_segment_media").upsert({
+        segment,
+        image_url: data.publicUrl,
+        alt_text: `Foto real da categoria ${segmentLabels[segment]}`,
+        updated_by: session.user.id,
+      }, { onConflict: "segment" });
+      if (mediaError) throw mediaError;
+      setNotice("Foto principal da categoria atualizada.");
+      await load();
+    } catch (uploadError) {
+      setNotice(uploadError instanceof Error ? uploadError.message : "Não foi possível atualizar a foto principal.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -534,6 +599,37 @@ export default function OperationCommercialAdmin({
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
+          <section className="operation-segment-media">
+            <div>
+              <small>Fotos principais das páginas</small>
+              <h2>Uma imagem real por categoria</h2>
+              <p>Eventos, Adoce na Escola e Aluguel de decoração mostram esta foto uma única vez; os produtos e valores aparecem logo abaixo.</p>
+            </div>
+            <div className="operation-segment-media-grid">
+              {(Object.keys(segmentLabels) as CommercialSegment[]).map((segment) => {
+                const media = segmentMedia.find((item) => item.segment === segment);
+                return (
+                  <article key={segment}>
+                    {media ? <img src={media.image_url} alt={media.alt_text} /> : <ImagePlus />}
+                    <span><strong>{segmentLabels[segment]}</strong><small>{media ? "Foto publicada" : "Sem foto"}</small></span>
+                    <label>
+                      <ImagePlus /> Trocar foto
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={busy}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void uploadSegmentCover(segment, file);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
           <div className="operation-product-list">
             <button className="operation-new-product" onClick={() => setSelectedProduct(newProduct())}>
               <Plus /><span><small>Cadastro</small><strong>Novo produto</strong></span><ArrowRight />
@@ -555,7 +651,98 @@ export default function OperationCommercialAdmin({
               <label>Chamada curta<input value={selectedProduct.short_description} onChange={(event) => setSelectedProduct({ ...selectedProduct, short_description: event.target.value })} /></label>
               <label>Descrição<textarea value={selectedProduct.description} onChange={(event) => setSelectedProduct({ ...selectedProduct, description: event.target.value })} /></label>
               <div><label>Preço<input type="number" min="0" step="0.01" value={selectedProduct.base_price ?? ""} onChange={(event) => setSelectedProduct({ ...selectedProduct, base_price: event.target.value === "" ? null : Number(event.target.value) })} /></label><label>Complemento do preço<input value={selectedProduct.price_suffix} onChange={(event) => setSelectedProduct({ ...selectedProduct, price_suffix: event.target.value })} placeholder="ex.: por pessoa" /></label><label>Quantidade mínima<input type="number" min="1" value={selectedProduct.minimum_quantity} onChange={(event) => setSelectedProduct({ ...selectedProduct, minimum_quantity: Number(event.target.value) })} /></label><label>Antecedência útil<input type="number" min="0" value={selectedProduct.lead_business_days} onChange={(event) => setSelectedProduct({ ...selectedProduct, lead_business_days: Number(event.target.value) })} /></label></div>
-              <label>URL da foto <small>(opcional)</small><input type="url" value={selectedProduct.image_url || ""} onChange={(event) => setSelectedProduct({ ...selectedProduct, image_url: event.target.value })} placeholder="https://..." /></label>
+              {selectedProduct.segment === "school" ? <label>Valor por criança adicional<input type="number" min="0" step="0.01" value={selectedProduct.details.additional_price ?? ""} onChange={(event) => setSelectedProduct({
+                ...selectedProduct,
+                details: {
+                  ...selectedProduct.details,
+                  additional_price: event.target.value === "" ? undefined : Number(event.target.value),
+                },
+              })} /></label> : null}
+              <div className="operation-product-detail-fields">
+                <label>
+                  O que está incluído <small>(um item por linha)</small>
+                  <textarea
+                    value={(selectedProduct.details.includes || []).join("\n")}
+                    onChange={(event) => setSelectedProduct({
+                      ...selectedProduct,
+                      details: {
+                        ...selectedProduct.details,
+                        includes: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
+                      },
+                    })}
+                  />
+                </label>
+                <label>
+                  Regras e observações <small>(uma regra por linha)</small>
+                  <textarea
+                    value={(selectedProduct.details.rules || []).join("\n")}
+                    onChange={(event) => setSelectedProduct({
+                      ...selectedProduct,
+                      details: {
+                        ...selectedProduct.details,
+                        rules: event.target.value.split("\n").map((item) => item.trim()).filter(Boolean),
+                      },
+                    })}
+                  />
+                </label>
+              </div>
+              <section className="operation-product-packages">
+                <div><strong>Pacotes e faixas de preço</strong><small>Use para docinhos ou produtos vendidos em quantidades.</small></div>
+                {(selectedProduct.details.packages || []).map((item, index) => (
+                  <div className="operation-product-package-row" key={index}>
+                    <label>Unidades<input type="number" min="1" value={item.quantity} onChange={(event) => {
+                      const packages = [...(selectedProduct.details.packages || [])];
+                      packages[index] = { ...item, quantity: Number(event.target.value) };
+                      setSelectedProduct({ ...selectedProduct, details: { ...selectedProduct.details, packages } });
+                    }} /></label>
+                    <label>Preço<input type="number" min="0" step="0.01" value={item.price} onChange={(event) => {
+                      const packages = [...(selectedProduct.details.packages || [])];
+                      packages[index] = { ...item, price: Number(event.target.value) };
+                      setSelectedProduct({ ...selectedProduct, details: { ...selectedProduct.details, packages } });
+                    }} /></label>
+                    <label>Sabores<input type="number" min="1" value={item.flavors || 1} onChange={(event) => {
+                      const packages = [...(selectedProduct.details.packages || [])];
+                      packages[index] = { ...item, flavors: Number(event.target.value) };
+                      setSelectedProduct({ ...selectedProduct, details: { ...selectedProduct.details, packages } });
+                    }} /></label>
+                    <button type="button" onClick={() => setSelectedProduct({
+                      ...selectedProduct,
+                      details: {
+                        ...selectedProduct.details,
+                        packages: (selectedProduct.details.packages || []).filter((_, packageIndex) => packageIndex !== index),
+                      },
+                    })}>Remover</button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => setSelectedProduct({
+                  ...selectedProduct,
+                  details: {
+                    ...selectedProduct.details,
+                    packages: [...(selectedProduct.details.packages || []), { quantity: 25, price: 0, flavors: 1 }],
+                  },
+                })}><Plus /> Adicionar pacote</button>
+              </section>
+              <div className="operation-product-photo-editor">
+                {selectedProduct.image_url ? <img src={selectedProduct.image_url} alt={`Foto de ${selectedProduct.name}`} /> : <ImagePlus />}
+                <div>
+                  <strong>Foto deste produto</strong>
+                  <small>JPG, PNG ou WebP. O sistema reduz e otimiza sem deformar.</small>
+                  <label>
+                    <ImagePlus /> {selectedProduct.image_url ? "Substituir foto" : "Adicionar foto"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={busy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void uploadProductPhoto(file);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  {selectedProduct.image_url ? <button type="button" onClick={() => setSelectedProduct({ ...selectedProduct, image_url: null })}>Remover da apresentação</button> : null}
+                </div>
+              </div>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.published} onChange={(event) => setSelectedProduct({ ...selectedProduct, published: event.target.checked })} /> Publicado para clientes</label>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.active} onChange={(event) => setSelectedProduct({ ...selectedProduct, active: event.target.checked })} /> Produto ativo</label>
               <button disabled={busy || !selectedProduct.name.trim()}><Check /> {selectedProduct.id ? "Salvar produto" : "Criar produto"}</button>

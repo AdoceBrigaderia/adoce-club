@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Heart, MessageCircle } from "lucide-react";
 import PublicHeader from "./PublicHeader";
 import "./public-site.css";
+import "./public-commercial-polish.css";
 
 export default function ClubExperience() {
   return (
@@ -17,7 +18,7 @@ export default function ClubExperience() {
             <a className="public-secondary" href="/#entrar">Entrar no Clube</a>
           </div>
         </div>
-        <img src="/site/hero-cake.webp" alt="Fatia de chocolate da Adoce" />
+        <img className="club-intro-product" src="/site/clube-aprovado-mobile-claro.png" alt="Exemplo do cartão digital, QR e recompensas do Clube Adoce" />
       </section>
 
       <section className="approved-club-visual" aria-labelledby="club-inside-title">

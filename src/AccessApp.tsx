@@ -43,13 +43,22 @@ import { requireSupabase } from "./lib/supabase";
 import {
   beginWhatsAppVerification,
   getWhatsAppVerificationStatus,
+  registerCustomerPasskey,
   requestEmailCode,
+  signInWithPhonePassword,
   signOut,
+  upgradeCustomerSecurity,
   verifyEmailCode,
   whatsappVerificationLink,
   type WhatsAppChallenge,
 } from "./services/auth";
 import { matchesCustomerSearch } from "./customer-search";
+import {
+  applyCustomerAccountAction,
+  customerAccountReasons,
+  type CustomerAccountAction,
+  type CustomerAccountReason,
+} from "./customer-account-actions";
 import {
   generateStaffAccessCode,
   staffAccessMessage,
@@ -69,6 +78,8 @@ const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
+const passkeysEnabled = import.meta.env.VITE_ENABLE_PASSKEYS === "true";
+const passwordRecoveryStorageKey = "adoce-password-recovery";
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
@@ -181,6 +192,7 @@ type CustomerSnapshot = {
   phone_e164: string | null;
   email: string | null;
   member_code: string;
+  account_status: string;
   current_progress: number;
   completed_cards: number;
   available_rewards: number;
@@ -189,7 +201,7 @@ type CustomerSnapshot = {
 
 type CustomerSearchResult = Pick<
   CustomerSnapshot,
-  "profile_id" | "full_name" | "phone_e164" | "email" | "member_code"
+  "profile_id" | "full_name" | "phone_e164" | "email" | "member_code" | "account_status"
 >;
 
 type ClubSnapshot = {
@@ -649,6 +661,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState(directParams?.email || "");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberLogin, setRememberLogin] = useState(true);
+  const [loginMode, setLoginMode] = useState<"password" | "email">(
+    surface === "client" ? "password" : "email",
+  );
   const [code, setCode] = useState(directParams?.code || "");
   const [whatsAppChallenge, setWhatsAppChallenge] =
     useState<WhatsAppChallenge | null>(null);
@@ -680,6 +697,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
   useEffect(() => {
     if (surface !== "client" || !directParams || directAttempted.current) return;
     directAttempted.current = true;
+    sessionStorage.setItem(passwordRecoveryStorageKey, "true");
     setBusy(true);
     setMessage("Validando o acesso seguro gerado pela Adoce...");
     void verifyEmailCode(directParams.email, directParams.code)
@@ -715,8 +733,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
       await requestEmailCode(
         email,
         registering ? name : undefined,
-        registering || surface === "client",
+        registering,
       );
+      if (surface === "client" && !registering) {
+        sessionStorage.setItem(passwordRecoveryStorageKey, "true");
+      }
       setStage("code");
       setMessage("Código enviado. Ele vale por 10 minutos.");
     } catch (error) {
@@ -724,6 +745,22 @@ function AuthScreen({ surface }: { surface: Surface }) {
         error instanceof Error
           ? error.message
           : "Não foi possível enviar o código.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      await signInWithPhonePassword(phone, password, rememberLogin);
+      location.hash = "minha-conta";
+    } catch {
+      setMessage(
+        "Celular ou senha incorretos. Se você ainda não criou sua senha, use o primeiro acesso por e-mail.",
       );
     } finally {
       setBusy(false);
@@ -888,7 +925,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 ? "Aceitar convite e reservar meu carimbo"
                 : registering
                   ? "Quero fazer parte"
-                  : "Entrar no Clube"}
+                  : loginMode === "password" && surface === "client"
+                    ? "Entrar com celular"
+                    : "Entrar no Clube"}
           </h2>
           <p>
             {stage === "code"
@@ -897,9 +936,64 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 : `Digite o código de 6 números enviado para ${email}.`
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
-              : "Você receberá um código de acesso. Não usamos senha."}
+              : loginMode === "password" && surface === "client" && !registering
+                ? "Use seu celular com DDD e a senha criada no primeiro acesso."
+                : "O código por e-mail será usado no primeiro acesso ou na recuperação da conta."}
           </p>
           {stage === "identify" ? (
+            surface === "client" && !registering && loginMode === "password" ? (
+              <form onSubmit={submitPassword}>
+                <label>
+                  Celular com DDD
+                  <div className="input-icon">
+                    <Smartphone />
+                    <input
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      inputMode="tel"
+                      autoComplete="username"
+                      placeholder="(85) 99999-9999"
+                      required
+                    />
+                  </div>
+                </label>
+                <label>
+                  Sua senha
+                  <div className="input-icon">
+                    <KeyRound />
+                    <input
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                    />
+                  </div>
+                </label>
+                <label className="access-remember-login">
+                  <input
+                    type="checkbox"
+                    checked={rememberLogin}
+                    onChange={(event) => setRememberLogin(event.target.checked)}
+                  />
+                  <span>Continuar conectado neste aparelho</span>
+                </label>
+                <button className="access-primary" disabled={busy}>
+                  {busy ? "Entrando..." : "Entrar no Clube"}
+                  <ArrowRight />
+                </button>
+                <button
+                  className="access-link"
+                  type="button"
+                  onClick={() => {
+                    setLoginMode("email");
+                    setMessage("");
+                  }}
+                >
+                  Primeiro acesso, criar senha ou recuperar conta
+                </button>
+              </form>
+            ) : (
             <form onSubmit={submitEmail}>
               {registering && (
                 <label>
@@ -980,10 +1074,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 </div>
               )}
               <button className="access-primary" disabled={busy}>
-                {busy ? "Enviando..." : "Receber código"}
+                {busy ? "Enviando..." : registering ? "Validar meu primeiro acesso" : "Receber código de segurança"}
                 <ArrowRight />
               </button>
             </form>
+            )
           ) : stage === "code" ? (
             <form onSubmit={submitCode}>
               <label>
@@ -1063,13 +1158,20 @@ function AuthScreen({ surface }: { surface: Surface }) {
               className="access-switch"
               type="button"
               onClick={() => {
-                setRegistering(!registering);
+                if (!registering && loginMode === "email") {
+                  setLoginMode("password");
+                } else {
+                  setRegistering(!registering);
+                  setLoginMode("email");
+                }
                 setMessage("");
               }}
             >
               {registering
                 ? "Entrar no Clube"
-                : "Quero fazer parte"}
+                : loginMode === "email"
+                  ? "Entrar com celular e senha"
+                  : "Quero fazer parte"}
             </button>
           )}
           <small className="access-privacy">
@@ -1092,6 +1194,13 @@ function CustomerHome({ session }: { session: Session }) {
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileWhatsAppVerified, setProfileWhatsAppVerified] = useState(false);
+  const [securityUpgradeRequired, setSecurityUpgradeRequired] = useState<boolean | null>(null);
+  const [passwordRecoveryRequested, setPasswordRecoveryRequested] = useState(
+    () => sessionStorage.getItem(passwordRecoveryStorageKey) === "true",
+  );
+  const [accountStatus, setAccountStatus] = useState("active");
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [securityPasswordConfirm, setSecurityPasswordConfirm] = useState("");
   const [profileWhatsAppChallenge, setProfileWhatsAppChallenge] =
     useState<WhatsAppChallenge | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -1121,7 +1230,7 @@ function CustomerHome({ session }: { session: Session }) {
     ] = await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name,member_code,phone_e164,whatsapp_verified_at")
+        .select("full_name,member_code,phone_e164,whatsapp_verified_at,auth_upgraded_at,account_status")
         .eq("id", session.user.id)
         .single(),
       supabase
@@ -1148,6 +1257,8 @@ function CustomerHome({ session }: { session: Session }) {
     const databaseName = profile?.full_name?.trim() || "";
     setProfilePhone(profile?.phone_e164 || "");
     setProfileWhatsAppVerified(Boolean(profile?.whatsapp_verified_at));
+    setSecurityUpgradeRequired(!profile?.auth_upgraded_at);
+    setAccountStatus(profile?.account_status || "active");
     const nameForForm =
       databaseName && databaseName !== "Cliente Adoce"
         ? databaseName
@@ -1487,6 +1598,62 @@ function CustomerHome({ session }: { session: Session }) {
       setBusy(false);
     }
   };
+  const completeSecurityUpgrade = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (securityPassword !== securityPasswordConfirm) {
+      setMessage("As duas senhas precisam ser iguais.");
+      return;
+    }
+    if (
+      securityPassword.length < 10 ||
+      !/[a-z]/.test(securityPassword) ||
+      !/[A-Z]/.test(securityPassword) ||
+      !/\d/.test(securityPassword)
+    ) {
+      setMessage("Use no mínimo 10 caracteres, com maiúscula, minúscula e número.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      if (securityUpgradeRequired) {
+        await upgradeCustomerSecurity(session.access_token, profilePhone, securityPassword);
+        await requireSupabase().auth.refreshSession();
+      } else {
+        const { error: passwordError } = await requireSupabase().auth.updateUser({
+          password: securityPassword,
+        });
+        if (passwordError) throw passwordError;
+      }
+      setSecurityUpgradeRequired(false);
+      setPasswordRecoveryRequested(false);
+      sessionStorage.removeItem(passwordRecoveryStorageKey);
+      setSecurityPassword("");
+      setSecurityPasswordConfirm("");
+      setMessage(
+        securityUpgradeRequired
+          ? "Acesso seguro criado. Nos próximos acessos, use seu celular e sua senha."
+          : "Senha atualizada com segurança. Nos próximos acessos, use a nova senha.",
+      );
+      await loadSnapshot();
+    } catch (upgradeError) {
+      setMessage(upgradeError instanceof Error ? upgradeError.message : "Não foi possível criar seu acesso seguro.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const activatePasskey = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await registerCustomerPasskey();
+      setMessage("Biometria ativada neste aparelho. A senha continua disponível como alternativa.");
+    } catch (passkeyError) {
+      setMessage(passkeyError instanceof Error ? passkeyError.message : "Este aparelho não permitiu ativar a biometria.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const loadGroup = async () => {
     setBusy(true);
     const { data, error: groupError } = await requireSupabase().rpc(
@@ -1676,6 +1843,92 @@ function CustomerHome({ session }: { session: Session }) {
               <ShieldCheck /> Você só verá o Cartão Clube Adoce depois que esta etapa for
               concluída.
             </small>
+          </form>
+        </section>
+      </main>
+    );
+  if (accountStatus !== "active")
+    return (
+      <main className="club-onboarding">
+        <header><Brand label="Clube Adoce" /><button onClick={() => void signOut()}><LogOut /> Sair</button></header>
+        <section className="club-onboarding-shell">
+          <div className="club-onboarding-copy">
+            <ShieldCheck />
+            <span>Acesso protegido</span>
+            <h1>Este cadastro precisa de atendimento.</h1>
+            <p>O acesso está temporariamente indisponível. Fale com a Adoce para revisar ou corrigir seu cadastro.</p>
+          </div>
+        </section>
+      </main>
+    );
+  if (securityUpgradeRequired || passwordRecoveryRequested)
+    return (
+      <main className="club-onboarding">
+        <header><Brand label="Clube Adoce" /><button onClick={() => void signOut()}><LogOut /> Sair</button></header>
+        <section className="club-onboarding-shell">
+          <div className="club-onboarding-copy">
+            <KeyRound />
+            <span>Proteção do seu cadastro</span>
+            <h1>{securityUpgradeRequired ? "Crie seu acesso definitivo." : "Crie uma nova senha."}</h1>
+            <p>
+              {securityUpgradeRequired
+                ? "Depois desta etapa, o código por e-mail fica reservado para recuperação. Seu acesso normal será pelo celular e senha."
+                : "Seu e-mail já foi confirmado. Agora escolha uma nova senha para voltar a entrar pelo celular."}
+            </p>
+            <div><ShieldCheck /><strong>Um celular, um cadastro</strong><small>Isso protege seus carimbos e impede indicações duplicadas.</small></div>
+          </div>
+          <form className="club-onboarding-form" onSubmit={completeSecurityUpgrade}>
+            <h2>Celular e senha</h2>
+            <label>
+              Celular com DDD
+              <input
+                value={profilePhone}
+                onChange={(event) => setProfilePhone(event.target.value)}
+                inputMode="tel"
+                autoComplete="tel"
+                readOnly={profileWhatsAppVerified}
+                required
+              />
+            </label>
+            {profileWhatsAppVerified ? (
+              <div className="access-message"><Check /> WhatsApp confirmado</div>
+            ) : metaWhatsAppEnabled ? (
+              <div className="access-whatsapp-confirmation">
+                {!profileWhatsAppChallenge ? (
+                  <button type="button" className="access-secondary" onClick={() => void startProfileWhatsAppVerification()} disabled={busy}>
+                    Confirmar meu WhatsApp
+                  </button>
+                ) : (
+                  <>
+                    <a className="access-primary" href={whatsappVerificationLink(profileWhatsAppChallenge)} target="_blank" rel="noreferrer">
+                      Enviar confirmação pelo WhatsApp <ArrowRight />
+                    </a>
+                    <button type="button" className="access-secondary" onClick={() => void confirmProfileWhatsApp()} disabled={busy}>
+                      Já enviei, verificar agora
+                    </button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="access-message">A confirmação do WhatsApp precisa ser habilitada pela Adoce.</div>
+            )}
+            <label>
+              Nova senha
+              <input value={securityPassword} onChange={(event) => setSecurityPassword(event.target.value)} type="password" autoComplete="new-password" minLength={10} required />
+              <small>Mínimo de 10 caracteres, com maiúscula, minúscula e número.</small>
+            </label>
+            <label>
+              Confirmar senha
+              <input value={securityPasswordConfirm} onChange={(event) => setSecurityPasswordConfirm(event.target.value)} type="password" autoComplete="new-password" minLength={10} required />
+            </label>
+            <button className="access-primary" disabled={busy || !profileWhatsAppVerified}>
+              {busy
+                ? "Protegendo cadastro..."
+                : securityUpgradeRequired
+                  ? "Criar meu acesso seguro"
+                  : "Salvar nova senha"} <ArrowRight />
+            </button>
+            {message && <div className="access-message" role="status">{message}</div>}
           </form>
         </section>
       </main>
@@ -2121,6 +2374,11 @@ function CustomerHome({ session }: { session: Session }) {
                 )}
               </div>
             ))}
+            {passkeysEnabled && securityUpgradeRequired === false && (
+              <button type="button" className="access-secondary" onClick={() => void activatePasskey()} disabled={busy}>
+                <Smartphone /> Ativar biometria neste aparelho
+              </button>
+            )}
             <NotificationPreferencesFields
               value={notificationPreferences}
               onChange={setNotificationPreferences}
@@ -2183,6 +2441,9 @@ function OperationHome({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [correctionQty, setCorrectionQty] = useState(1);
   const [correctionReason, setCorrectionReason] = useState("");
+  const [accountAction, setAccountAction] = useState<CustomerAccountAction>("deactivate");
+  const [accountReason, setAccountReason] = useState<CustomerAccountReason>("customer_request");
+  const [accountReasonNote, setAccountReasonNote] = useState("");
   const [view, setView] = useState<OperationView>("attend");
   const [movements, setMovements] = useState<Movement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
@@ -2203,7 +2464,7 @@ function OperationHome({ session }: { session: Session }) {
       const supabase = requireSupabase();
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("id,full_name,phone_e164,email,member_code,updated_at")
+        .select("id,full_name,phone_e164,email,member_code,account_status,updated_at")
         .order("full_name", { ascending: true })
         .limit(200);
       if (profilesError) {
@@ -2217,6 +2478,7 @@ function OperationHome({ session }: { session: Session }) {
         phone_e164: string | null;
         email: string | null;
         member_code: string | null;
+        account_status: string;
         updated_at: string;
       }>)]
         .filter((profile) => matchesCustomerSearch(profile, term))
@@ -2233,6 +2495,7 @@ function OperationHome({ session }: { session: Session }) {
           phone_e164: profile.phone_e164,
           email: profile.email,
           member_code: profile.member_code || "—",
+          account_status: profile.account_status || "active",
         })),
       );
       setBusy(false);
@@ -2341,6 +2604,37 @@ function OperationHome({ session }: { session: Session }) {
       setMessage("Não foi possível copiar. Selecione o código exibido.");
     }
   }, [generatedAccess]);
+  const changeCustomerAccount = useCallback(async () => {
+    if (!selected) return;
+    const actionLabel: Record<CustomerAccountAction, string> = {
+      deactivate: "desativar este cadastro",
+      reactivate: "reativar este cadastro",
+      request_deletion: "registrar a solicitação de exclusão",
+      mark_duplicate: "marcar este cadastro como duplicado e desativá-lo",
+      cancel_deletion: "cancelar a exclusão e reativar o cadastro",
+    };
+    if (!window.confirm(`Confirmar: ${actionLabel[accountAction]}?\n\nO motivo e a ação ficarão registrados na auditoria.`)) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await applyCustomerAccountAction(session.access_token, {
+        profileId: selected.profile_id,
+        action: accountAction,
+        reasonCode: accountReason,
+        reasonNote: accountReasonNote,
+      });
+      const successMessage =
+        result.notificationStatus === "sent"
+          ? "Cadastro atualizado e cliente avisado por e-mail."
+          : "Cadastro atualizado. A notificação ficou pendente para envio.";
+      await search(query);
+      setMessage(successMessage);
+    } catch (actionError) {
+      setMessage(actionError instanceof Error ? actionError.message : "Não foi possível atualizar o cadastro.");
+    } finally {
+      setBusy(false);
+    }
+  }, [accountAction, accountReason, accountReasonNote, query, search, selected, session.access_token]);
   const stopScanner = useCallback(() => {
     scannerControls.current?.stop();
     scannerControls.current = null;
@@ -2752,6 +3046,9 @@ function OperationHome({ session }: { session: Session }) {
                       <p className="customer-member-code">
                         Código do Membro: <strong>{selected.member_code}</strong>
                       </p>
+                      <p className={`customer-account-status status-${selected.account_status}`}>
+                        {selected.account_status === "active" ? "Cadastro ativo" : selected.account_status === "pending_deletion" ? "Exclusão solicitada" : "Cadastro desativado"}
+                      </p>
                     </div>
                     <div className="customer-progress">
                       <small>Meus Carimbos</small>
@@ -2832,6 +3129,41 @@ function OperationHome({ session }: { session: Session }) {
                           )}
                         </div>
                       )}
+                    </section>
+                  )}
+                  {["owner", "manager"].includes(role) && (
+                    <section className="customer-account-admin">
+                      <div>
+                        <ShieldCheck />
+                        <span>
+                          <small>Segurança e privacidade</small>
+                          <strong>Desativar, reativar ou solicitar exclusão</strong>
+                          <p>A exclusão não apaga carimbos e histórico imediatamente. Primeiro ela bloqueia o acesso, registra o motivo e notifica o cliente.</p>
+                        </span>
+                      </div>
+                      <label>
+                        Ação
+                        <select value={accountAction} onChange={(event) => setAccountAction(event.target.value as CustomerAccountAction)}>
+                          <option value="deactivate">Desativar acesso</option>
+                          <option value="request_deletion">Solicitação de exclusão</option>
+                          <option value="mark_duplicate">Marcar como cadastro duplicado</option>
+                          <option value="reactivate">Reativar acesso</option>
+                          <option value="cancel_deletion">Cancelar exclusão e reativar</option>
+                        </select>
+                      </label>
+                      <label>
+                        Motivo
+                        <select value={accountReason} onChange={(event) => setAccountReason(event.target.value as CustomerAccountReason)}>
+                          {customerAccountReasons.map((reason) => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
+                        </select>
+                      </label>
+                      <label>
+                        Observação interna
+                        <textarea value={accountReasonNote} onChange={(event) => setAccountReasonNote(event.target.value)} placeholder="Explique o necessário sem incluir dados sensíveis desnecessários." />
+                      </label>
+                      <button className="access-secondary" onClick={() => void changeCustomerAccount()} disabled={busy || (accountReason === "other" && accountReasonNote.trim().length < 5)}>
+                        <ShieldCheck /> Revisar e confirmar ação
+                      </button>
                     </section>
                   )}
                   <div className="operation-actions">

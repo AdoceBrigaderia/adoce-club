@@ -1,0 +1,177 @@
+.commercial-proof-strip {
+  min-height: 74px;
+  padding: 16px max(24px, calc((100vw - 1180px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: #f7ded5;
+  border-bottom: 1px solid var(--c-line);
+  color: #68443a;
+}
+
+.commercial-hero.segment-events h1,
+.commercial-hero.segment-school h1,
+.commercial-hero.segment-rentals h1 {
+  font-size: clamp(3.4rem, 5.4vw, 5.7rem);
+}
+
+.commercial-proof-strip span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.commercial-proof-strip,
+.commercial-segments {
+  scrollbar-width: none;
+}
+
+.commercial-proof-strip::-webkit-scrollbar,
+.commercial-segments::-webkit-scrollbar {
+  display: none;
+}
+
+.commercial-proof-strip svg {
+  width: 18px;
+  color: var(--c-coral);
+}
+
+.commercial-segment-showcase {
+  margin: 48px 0 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  border-radius: 26px;
+  background: #f4e4d9;
+}
+
+.commercial-segment-showcase img {
+  width: 100%;
+  height: 100%;
+  max-height: 760px;
+  object-fit: contain;
+  object-position: center;
+  background: #ead8cb;
+}
+
+.commercial-segment-showcase figcaption {
+  padding: clamp(28px, 4vw, 54px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: var(--c-chocolate);
+  color: white;
+}
+
+.commercial-segment-showcase figcaption strong {
+  font: 600 clamp(1.8rem, 3vw, 3rem) / 1 Georgia, serif;
+}
+
+.commercial-segment-showcase figcaption span {
+  margin-top: 15px;
+  color: #dbc7bd;
+  font-size: .78rem;
+  line-height: 1.6;
+}
+
+.showcase-events img { max-height: 800px; }
+.showcase-school img,
+.showcase-rentals img { max-height: 660px; }
+
+.commercial-product-list > article.with-image {
+  grid-template-columns: minmax(270px, .82fr) minmax(220px, .62fr) minmax(300px, 1fr) auto;
+  align-items: center;
+}
+
+.commercial-product-description {
+  display: block;
+  margin-top: 9px;
+  color: #6f5045;
+  font-size: .72rem;
+  line-height: 1.55;
+}
+
+.commercial-additional-price {
+  margin: 0 0 13px;
+  color: #6f5045;
+  font-size: .72rem;
+}
+
+.commercial-additional-price strong { color: var(--c-coral); }
+
+.commercial-product-list > article:not(.with-image) .commercial-product-main {
+  padding-left: 8px;
+}
+
+.commercial-product-list > article > button,
+.commercial-submit {
+  transition: background .2s ease, transform .2s ease;
+}
+
+.commercial-product-list > article > button:hover,
+.commercial-submit:hover {
+  background: #d95850;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1100px) {
+  .commercial-product-list > article.with-image {
+    grid-template-columns: minmax(250px, .75fr) 1fr;
+  }
+
+  .commercial-product-list > article.with-image .commercial-product-details {
+    grid-column: 2;
+  }
+
+  .commercial-product-list > article.with-image > button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .commercial-proof-strip {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .commercial-proof-strip span { white-space: nowrap; }
+
+  .commercial-segment-showcase { grid-template-columns: 1fr; }
+
+  .commercial-segment-showcase figcaption { min-height: 190px; }
+}
+
+@media (max-width: 620px) {
+  .commercial-hero.segment-events h1,
+  .commercial-hero.segment-school h1,
+  .commercial-hero.segment-rentals h1 {
+    font-size: clamp(2.65rem, 13vw, 3.55rem);
+  }
+
+  .commercial-proof-strip { padding-inline: 18px; }
+
+  .commercial-segment-showcase {
+    margin-top: 32px;
+    border-radius: 20px;
+  }
+
+  .commercial-segment-showcase img {
+    max-height: none;
+    height: auto;
+  }
+
+  .commercial-segment-showcase figcaption { min-height: 150px; }
+
+  .commercial-product-list > article.with-image { grid-template-columns: 1fr; }
+
+  .commercial-product-list > article.with-image .commercial-product-details,
+  .commercial-product-list > article.with-image > button { grid-column: auto; }
+
+  .commercial-product-list > article.with-image > button { width: 100%; }
+}

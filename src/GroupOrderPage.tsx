@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, CakeSlice, Check, MessageCircle, Users } from "lucide-react";
 import PublicHeader from "./PublicHeader";
 import "./public-site.css";
+import "./public-commercial-polish.css";
 
 const whatsapp = "https://wa.me/5585982156026?text=Ol%C3%A1%2C%20Adoce!%20Quero%20organizar%20uma%20compra%20em%20grupo.";
 
@@ -16,7 +17,10 @@ export default function GroupOrderPage() {
           <p>Reúna cinco fatias ou mais em um único pedido para o mesmo endereço em Fortaleza.</p>
           <a className="public-primary" href={whatsapp} target="_blank" rel="noreferrer">Organizar no WhatsApp <ArrowRight /></a>
         </div>
-        <img src="/site/hero-cake.webp" alt="Fatia de chocolate da Adoce" />
+        <figure className="group-order-proof">
+          <img src="/site/compra-em-grupo-real.jpeg" alt="Vários pedidos Adoce separados para uma compra realizada em grupo" />
+          <figcaption>Pedido real preparado em grupo pela Adoce.</figcaption>
+        </figure>
       </section>
       <section className="group-order-rules">
         <article><Users /><h2>Monte o grupo</h2><p>Amigos, família, condomínio ou equipe de trabalho escolhem juntos.</p></article>

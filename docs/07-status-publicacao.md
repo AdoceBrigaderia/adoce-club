@@ -69,6 +69,14 @@ A operação recebeu os recursos para administrar produtos, várias fotos por sa
 
 Novos recursos só devem ser apresentados ao público como disponíveis depois de passarem por validação funcional no ambiente de produção. Funcionalidades ainda em construção devem permanecer identificadas como próximas etapas, sem induzir o cliente a acreditar que já estão liberadas.
 
+### 20/07/2026 — reforço de identidade e segurança em validação
+
+Foi implementada no código a migração do acesso do cliente para celular e senha após a primeira confirmação por e-mail, com opção de manter a sessão e preparação para passkeys. Também foram criados controles protegidos para desativação, reativação, solicitação de exclusão e revisão de duplicidade, sempre com motivo, auditoria e estado da notificação ao cliente. Esta entrega ainda depende de migração controlada do banco, configuração dos segredos e validação com contas de teste antes de ser publicada.
+
+### 20/07/2026 — revisão comercial e imagens em validação
+
+As páginas comerciais foram reorganizadas para apresentar fotos reais sem deformação, usar uma única imagem principal nas categorias de serviço e separar corretamente Festas e Eventos, Adoce na Escola e Aluguel de Decoração. A Festa na Mesa foi direcionada para Adoce na Escola. A operação recebeu controles para trocar fotos, textos, itens incluídos, regras, pacotes e valores. Compra em Grupo, Clube Adoce e o exemplo do Adoce Hoje também receberam imagens coerentes com cada proposta. A publicação depende da conclusão da validação visual e técnica registrada no documento de apresentação comercial e mídias.
+
 ### 19/07/2026 — catálogo, agenda e CRM
 
 Foi publicada a base de produção para pedidos por encomenda, produtos e preços administráveis, recheios e adicionais com acréscimos, pré-reservas de 48 horas, conflitos de agenda, bloqueios manuais, histórico de solicitações, notas e tarefas de relacionamento. A página pública separa o Festival de Fatias das encomendas e eventos. O acesso assistido da operação passou a gerar link direto de autenticação, mantendo o código como alternativa. Também foi exportado o kit visual completo para o anúncio oficial do site em Instagram, Facebook e WhatsApp.

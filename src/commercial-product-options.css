@@ -1,9 +1,14 @@
 .commercial-product-image {
-  grid-column: 1 / -1;
   width: 100%;
-  height: min(34vw, 340px);
-  object-fit: cover;
-  border-radius: 16px;
+  height: auto;
+  max-height: 430px;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  object-position: center;
+  align-self: stretch;
+  border-radius: 20px;
+  background: #f3e5da;
+  box-shadow: inset 0 0 0 1px rgba(70, 30, 19, .08);
 }
 .commercial-option-groups {
   display: grid;
@@ -29,5 +34,9 @@
   line-height: 1.55;
 }
 @media (max-width: 620px) {
-  .commercial-product-image { height: 240px; }
+  .commercial-product-image {
+    height: auto;
+    max-height: 520px;
+    aspect-ratio: auto;
+  }
 }

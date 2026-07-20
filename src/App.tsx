@@ -85,6 +85,10 @@ export default function App(){
               ? "Festas e eventos · Adoce Brigaderia"
               : location.hash.startsWith("#adoce-na-escola")
                 ? "Adoce na Escola · Adoce Brigaderia"
+                : location.hash.startsWith("#aluguel-decoracao")
+                  ? "Aluguel de decoração · Adoce Brigaderia"
+                : location.hash.startsWith("#compra-em-grupo")
+                  ? "Compra em Grupo · Adoce Brigaderia"
                 : location.hash.startsWith("#clube")
                   ? "Clube Adoce · Adoce Brigaderia"
             : location.hash.startsWith("#privacidade")
@@ -114,6 +118,7 @@ export default function App(){
   if(location.hash.startsWith("#encomendas"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="cakes"/></Suspense>;
   if(location.hash.startsWith("#eventos"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="events"/></Suspense>;
   if(location.hash.startsWith("#adoce-na-escola"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="school"/></Suspense>;
+  if(location.hash.startsWith("#aluguel-decoracao"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="rentals"/></Suspense>;
   if(location.hash.startsWith("#compra-em-grupo"))return <Suspense fallback={loading}><GroupOrderPage/></Suspense>;
   if(location.hash.startsWith("#clube"))return <Suspense fallback={loading}><ClubExperience/></Suspense>;
   if(location.hash.startsWith("#termos"))return <Suspense fallback={loading}><LegalPage kind="terms"/></Suspense>;

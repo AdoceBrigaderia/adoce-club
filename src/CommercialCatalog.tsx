@@ -6,6 +6,7 @@ import {
   CakeSlice,
   Check,
   Clock3,
+  Heart,
   MapPin,
   MessageCircle,
   PackageCheck,
@@ -26,8 +27,24 @@ import {
 } from "./commercial";
 import "./commercial-catalog.css";
 import "./commercial-product-options.css";
+import "./commercial-editorial.css";
 
 const segments = Object.keys(segmentLabels) as CommercialSegment[];
+type SegmentMedia = {
+  segment: CommercialSegment;
+  image_url: string;
+  alt_text: string;
+};
+
+const segmentFallbackMedia: Record<CommercialSegment, SegmentMedia> = {
+  cakes: { segment: "cakes", image_url: "/site/hero-cake.webp", alt_text: "Fatia artesanal de chocolate da Adoce" },
+  sweets: { segment: "sweets", image_url: "/adoce-hoje/docinhos-tradicionais.webp", alt_text: "Docinhos artesanais tradicionais da Adoce" },
+  events: { segment: "events", image_url: "/adoce-hoje/tabuleiro-doces.webp", alt_text: "Atendimento real com o Tabuleiro de Doces da Adoce" },
+  school: { segment: "school", image_url: "/adoce-hoje/adoce-na-escola.webp", alt_text: "Comemoração real organizada pela Adoce em uma escola" },
+  rentals: { segment: "rentals", image_url: "/adoce-hoje/festas-eventos.webp", alt_text: "Decoração real montada com peças disponíveis para locação" },
+};
+
+const singleImageSegments = new Set<CommercialSegment>(["events", "school", "rentals"]);
 const groupOptions = (options: CommercialProductOption[]) => options.reduce<Record<string, CommercialProductOption[]>>(
   (groups, option) => ({ ...groups, [option.group_key]: [...(groups[option.group_key] || []), option] }),
   {},
@@ -36,8 +53,6 @@ const catalogProductImage = (product: CommercialProduct) => {
   if (product.image_url && !product.image_url.includes("instagram.com/")) return product.image_url;
   if (product.slug === "docinhos-tradicionais") return "/adoce-hoje/docinhos-tradicionais.webp";
   if (product.slug === "docinhos-especiais") return "/adoce-hoje/docinhos-premium.webp";
-  if (product.slug.startsWith("tabuleiro-")) return "/adoce-hoje/tabuleiro-doces.webp";
-  if (product.segment === "school") return "/adoce-hoje/adoce-na-escola.webp";
   return null;
 };
 
@@ -66,6 +81,11 @@ function ProductDetails({ product }: { product: CommercialProduct }) {
             </span>
           ))}
         </div>
+      ) : null}
+      {product.details.additional_price ? (
+        <p className="commercial-additional-price">
+          Criança adicional: <strong>{money(product.details.additional_price)}</strong>
+        </p>
       ) : null}
       {product.details.includes?.length ? (
         <ul>
@@ -116,7 +136,7 @@ const experienceCopy: Record<CommercialSegment, { label: string; title: string; 
   events: {
     label: "Festas e eventos",
     title: "Experiências Adoce para momentos que ficam.",
-    text: "Tabuleiro de Doces, Festa na Mesa e soluções para servir, encantar e celebrar com organização.",
+    text: "Tabuleiro de Doces e experiências para servir, encantar e celebrar com organização.",
   },
   school: {
     label: "Adoce na Escola",
@@ -124,14 +144,23 @@ const experienceCopy: Record<CommercialSegment, { label: string; title: string; 
     text: "Pacotes completos para celebrar com as crianças, com antecedência mínima de cinco dias úteis.",
   },
   rentals: {
-    label: "Acervo Adoce",
-    title: "Monte uma celebração charmosa do seu jeito.",
-    text: "Kits compactos, peças e estruturas para retirar, montar e devolver com segurança.",
+    label: "Aluguel de decoração",
+    title: "Uma comemoração bonita, com peças escolhidas para o seu momento.",
+    text: "Painéis, cilindros, boleiras e kits para retirar, montar do seu jeito e devolver com segurança.",
   },
+};
+
+const catalogIntroCopy: Record<CommercialSegment, string> = {
+  cakes: "Escolha o tamanho e descubra tudo o que pode deixar sua torta com a cara da celebração.",
+  sweets: "Veja os docinhos por inteiro, compare os pacotes e escolha os sabores que vão completar a mesa.",
+  events: "A experiência é a mesma; escolha a quantidade que combina com o número de convidados.",
+  school: "A foto mostra uma comemoração real. Compare os pacotes e escolha o nível de experiência para a turma.",
+  rentals: "A foto mostra uma montagem real. Compare os kits e veja quais peças fazem sentido para a sua festa.",
 };
 
 export default function CommercialCatalog({ initialSegment = "cakes" }: { initialSegment?: CommercialSegment }) {
   const [products, setProducts] = useState<CommercialProduct[]>([]);
+  const [segmentMedia, setSegmentMedia] = useState<SegmentMedia[]>([]);
   const [segment, setSegment] = useState<CommercialSegment>(initialSegment);
   const [selected, setSelected] = useState<CommercialProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -153,17 +182,20 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
 
   useEffect(() => {
     void (async () => {
-      const [productResult, optionResult] = await Promise.all([
+      const [productResult, optionResult, mediaResult] = await Promise.all([
         requireSupabase().from("commercial_products").select("*").eq("active", true).eq("published", true).order("sort_order"),
         requireSupabase().from("commercial_product_options").select("*").eq("active", true).order("sort_order"),
+        requireSupabase().from("commercial_segment_media").select("segment,image_url,alt_text"),
       ]);
       if (productResult.error || optionResult.error) setNotice("Não foi possível carregar o cardápio agora.");
       else {
         const options = (optionResult.data || []) as CommercialProductOption[];
         setProducts(((productResult.data || []) as CommercialProduct[]).map((product) => ({
           ...product,
+          segment: product.slug === "festa-na-mesa" ? "school" : product.segment,
           options: options.filter((option) => option.product_id === product.id),
         })));
+        if (!mediaResult.error) setSegmentMedia((mediaResult.data || []) as SegmentMedia[]);
       }
       setLoading(false);
     })();
@@ -175,6 +207,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     () => products.filter((product) => product.segment === segment),
     [products, segment],
   );
+  const activeMedia = segmentMedia.find((item) => item.segment === segment) || segmentFallbackMedia[segment];
 
   const openRequest = (product: CommercialProduct) => {
     setSelected(product);
@@ -239,17 +272,17 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
   return (
     <main className="commercial-page">
       <header className="commercial-header">
-        <Brand subtitle={experienceCopy[initialSegment].label} />
+        <Brand subtitle={experienceCopy[segment].label} />
         <a href="/#inicio">
           <ArrowLeft /> Voltar ao site
         </a>
       </header>
 
-      <section className={`commercial-hero segment-${initialSegment}`}>
+      <section className={`commercial-hero segment-${segment}`}>
         <div>
-          <span>{experienceCopy[initialSegment].label}</span>
-          <h1>{experienceCopy[initialSegment].title}</h1>
-          <p>{experienceCopy[initialSegment].text}</p>
+          <span>{experienceCopy[segment].label}</span>
+          <h1>{experienceCopy[segment].title}</h1>
+          <p>{experienceCopy[segment].text}</p>
         </div>
         <div className="commercial-hero-note">
           <CalendarDays />
@@ -257,6 +290,12 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
           <p>A solicitação entra como pré-reserva por 48 horas. A data é confirmada com o sinal.</p>
         </div>
       </section>
+
+      <div className="commercial-proof-strip" aria-label="Diferenciais da Adoce">
+        <span><Sparkles /> Produção artesanal</span>
+        <span><Heart /> Cuidado em cada detalhe</span>
+        <span><MessageCircle /> Atendimento próximo pelo WhatsApp</span>
+      </div>
 
       <nav className="commercial-segments" aria-label="Categorias de encomendas">
         {segments.map((item) => (
@@ -275,20 +314,32 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
           <span>{segmentLabels[segment]}</span>
           <h2>{segment === "cakes" ? "Tortas inteiras" : segmentLabels[segment]}</h2>
           <p>
-            Valores e regras ficam conectados ao cadastro administrativo da Adoce.
+            {catalogIntroCopy[segment]}
           </p>
         </div>
+        {singleImageSegments.has(segment) ? (
+          <figure className={`commercial-segment-showcase showcase-${segment}`}>
+            <img src={activeMedia.image_url} alt={activeMedia.alt_text} />
+            <figcaption>
+              <strong>Experiência real Adoce</strong>
+              <span>A apresentação pode variar conforme tema, local, escolhas e disponibilidade.</span>
+            </figcaption>
+          </figure>
+        ) : null}
         {loading ? (
           <p>Carregando opções...</p>
         ) : visibleProducts.length ? (
           <div className="commercial-product-list">
-            {visibleProducts.map((product) => (
-              <article key={product.id}>
-                {catalogProductImage(product) ? <img className="commercial-product-image" src={catalogProductImage(product) || ""} alt={product.name} /> : null}
+            {visibleProducts.map((product) => {
+              const productImage = singleImageSegments.has(product.segment) ? null : catalogProductImage(product);
+              return (
+              <article className={productImage ? "with-image" : ""} key={product.id}>
+                {productImage ? <img className="commercial-product-image" src={productImage} alt={product.name} /> : null}
                 <div className="commercial-product-main">
                   <span>{segmentLabels[product.segment]}</span>
                   <h3>{product.name}</h3>
                   <p>{product.short_description}</p>
+                  {product.description && product.description !== product.short_description ? <small className="commercial-product-description">{product.description}</small> : null}
                   <strong>
                     {product.price_suffix === "a partir de" ? "A partir de " : ""}
                     {money(product.base_price)}
@@ -299,10 +350,10 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
                 </div>
                 <ProductDetails product={product} />
                 <button onClick={() => openRequest(product)}>
-                  Solicitar esta opção <ArrowRight />
+                  Quero esta opção <ArrowRight />
                 </button>
               </article>
-            ))}
+            )})}
           </div>
         ) : (
           <p>Nenhuma opção publicada nesta categoria.</p>
@@ -472,7 +523,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
       </section>
 
       <footer>
-        <Brand subtitle={experienceCopy[initialSegment].label} />
+        <Brand subtitle={experienceCopy[segment].label} />
         <p>Adoce Brigaderia · Fortaleza, Ceará</p>
       </footer>
     </main>

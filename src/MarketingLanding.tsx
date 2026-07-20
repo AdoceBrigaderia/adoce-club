@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import PublicHeader from "./PublicHeader";
 import "./public-site.css";
+import "./public-commercial-polish.css";
 
 const paths = [
   {
@@ -34,7 +35,7 @@ const paths = [
   },
   {
     title: "Festas e eventos",
-    text: "Tabuleiro de Doces, Festa na Mesa, kits, acervo e experiências para celebrar.",
+    text: "Tabuleiro de Doces e experiências conduzidas pela Adoce para servir e encantar.",
     href: "/#eventos",
     action: "Planejar uma celebração",
     icon: Sparkles,
@@ -56,7 +57,7 @@ const paths = [
     href: "/#compra-em-grupo",
     action: "Organizar meu grupo",
     icon: Users,
-    image: "/adoce-hoje/brigadeiro-castanha.webp",
+    image: "/site/compra-em-grupo-real.jpeg",
     className: "group",
   },
   {
@@ -65,8 +66,17 @@ const paths = [
     href: "/#clube",
     action: "Ver o Clube por dentro",
     icon: Heart,
-    image: "/site/hero-cake.webp",
+    image: "/site/clube-aprovado-mobile-claro.png",
     className: "club",
+  },
+  {
+    title: "Aluguel de decoração",
+    text: "Painéis, cilindros, boleiras e kits para montar uma comemoração bonita do seu jeito.",
+    href: "/#aluguel-decoracao",
+    action: "Conhecer as opções",
+    icon: Gift,
+    image: "/adoce-hoje/festas-eventos.webp",
+    className: "rentals",
   },
 ] as const;
 
@@ -119,8 +129,16 @@ export default function MarketingLanding() {
       </section>
 
       <section className="festival-feature">
-        <div className="festival-photo">
-          <img src="/adoce-hoje/sabores-hoje.webp" alt="Seleção de fatias artesanais da Adoce" />
+        <div className="festival-photo today-page-preview">
+          <div className="today-page-preview-bar">
+            <span />
+            <strong>Adoce Hoje</strong>
+            <small>Exemplo da página</small>
+          </div>
+          <figure>
+            <img src="/adoce-hoje/sabores-hoje.webp" alt="Exemplo visual do cardápio Adoce Hoje" />
+            <figcaption>Imagem ilustrativa. Sabores, fotos, valores e disponibilidade são atualizados no dia.</figcaption>
+          </figure>
         </div>
         <div className="festival-copy">
           <p className="public-kicker">Festival de Fatias</p>
@@ -142,7 +160,7 @@ export default function MarketingLanding() {
         </div>
         <div>
           <p>A Adoce nasceu em 2023, da força de uma mãe atípica que encontrou na confeitaria artesanal uma forma de transformar cuidado em sabor. Rubens e Elizabeth seguem construindo essa história ao lado de cada cliente.</p>
-          <p>Nossa fábrica fica no Passaré, em Fortaleza, com produção feita à mão e retiradas em horário combinado.</p>
+          <p>Cada torta, docinho e experiência passa pelas mãos de quem produz e atende. Nossa fábrica fica no Passaré, em Fortaleza, e o cuidado aparece no sabor, na apresentação e na forma de receber cada pessoa.</p>
           <div className="story-links">
             <a href="https://www.instagram.com/_adocebrigaderia_/" target="_blank" rel="noreferrer">Instagram</a>
             <a href="https://www.facebook.com/adocebrigaderia" target="_blank" rel="noreferrer">Facebook</a>
@@ -158,6 +176,8 @@ export default function MarketingLanding() {
           <a href="/#adoce-hoje">Quero uma fatia hoje <ArrowRight /></a>
           <a href="/#encomendas">Quero fazer uma encomenda <ArrowRight /></a>
           <a href="/#eventos">Quero planejar um evento <ArrowRight /></a>
+          <a href="/#aluguel-decoracao">Quero alugar uma decoração <ArrowRight /></a>
+          <a href="/#compra-em-grupo">Quero organizar uma compra em grupo <ArrowRight /></a>
           <a href="/#clube">Quero conhecer o Clube <ArrowRight /></a>
         </div>
       </section>
