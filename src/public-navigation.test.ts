@@ -39,6 +39,14 @@ describe("navegação pública por operação", () => {
     expect(orderPolicy).toContain("Domingos");
     expect(orderPolicy).toContain("/site/politica-de-pedidos.jpeg");
   });
+
+  it("mostra uma prévia real da página Adoce Hoje, identificada como ilustrativa", () => {
+    expect(landing).toContain("/site/adoce-hoje-exemplo-desktop.png");
+    expect(landing).toContain("/site/adoce-hoje-exemplo-mobile.png");
+    expect(landing).toContain("Imagem ilustrativa");
+    expect(landing).toContain("Captura real da página");
+    expect(landing).not.toContain("/adoce-hoje/sabores-hoje.webp");
+  });
 });
 
 describe("operação móvel", () => {

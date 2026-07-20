@@ -130,15 +130,22 @@ export default function MarketingLanding() {
 
       <section className="festival-feature">
         <div className="festival-photo today-page-preview">
-          <div className="today-page-preview-bar">
-            <span />
-            <strong>Adoce Hoje</strong>
-            <small>Exemplo da página</small>
+          <div className="today-page-preview-stage">
+            <span className="today-page-preview-label">Imagem ilustrativa</span>
+            <figure className="today-page-preview-desktop">
+              <div className="today-page-preview-bar">
+                <span />
+                <strong>adocebrigaderia.com.br/#adoce-hoje</strong>
+                <small>Captura real da página</small>
+              </div>
+              <img src="/site/adoce-hoje-exemplo-desktop.png" alt="Exemplo real da página Adoce Hoje no computador" />
+            </figure>
+            <figure className="today-page-preview-mobile">
+              <span aria-hidden="true" />
+              <img src="/site/adoce-hoje-exemplo-mobile.png" alt="Exemplo real da página Adoce Hoje no celular" />
+            </figure>
+            <p>Prévia ilustrativa da página. Sabores, fotos, valores, horários e disponibilidade mudam ao longo do dia.</p>
           </div>
-          <figure>
-            <img src="/adoce-hoje/sabores-hoje.webp" alt="Exemplo visual do cardápio Adoce Hoje" />
-            <figcaption>Imagem ilustrativa. Sabores, fotos, valores e disponibilidade são atualizados no dia.</figcaption>
-          </figure>
         </div>
         <div className="festival-copy">
           <p className="public-kicker">Festival de Fatias</p>
