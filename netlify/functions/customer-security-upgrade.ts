@@ -89,10 +89,6 @@ export default async (request: Request) => {
   if (!profile.active || profile.account_status !== "active") {
     return json({ error: "Este cadastro não está ativo. Fale com a Adoce." }, 403);
   }
-  if (!profile.whatsapp_verified_at || profile.phone_e164 !== phone) {
-    return json({ error: "Confirme este WhatsApp antes de criar a senha." }, 409);
-  }
-
   const { data: collision } = await adminClient
     .from("profiles")
     .select("id")
@@ -102,6 +98,15 @@ export default async (request: Request) => {
     .maybeSingle();
   if (collision) {
     return json({ error: "Este celular já está ligado a outro cadastro. A Adoce precisa unificar as contas." }, 409);
+  }
+
+  const now = new Date().toISOString();
+  const { error: profilePhoneError } = await adminClient
+    .from("profiles")
+    .update({ phone_e164: phone, updated_at: now })
+    .eq("id", userData.user.id);
+  if (profilePhoneError) {
+    return json({ error: "Não foi possível reservar este celular para o cadastro." }, 409);
   }
 
   const { error: authError } = await adminClient.auth.admin.updateUserById(userData.user.id, {
@@ -115,7 +120,6 @@ export default async (request: Request) => {
   });
   if (authError) return json({ error: authError.message }, 409);
 
-  const now = new Date().toISOString();
   const { error: updateError } = await adminClient
     .from("profiles")
     .update({ auth_upgraded_at: now, updated_at: now })

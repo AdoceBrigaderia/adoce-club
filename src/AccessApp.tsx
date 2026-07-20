@@ -1922,7 +1922,9 @@ function CustomerHome({ session }: { session: Session }) {
                 )}
               </div>
             ) : (
-              <div className="access-message">A confirmação do WhatsApp precisa ser habilitada pela Adoce.</div>
+              <div className="access-message">
+                Seu e-mail já foi confirmado. A confirmação do WhatsApp poderá ser feita depois, sem bloquear este acesso.
+              </div>
             )}
             <label>
               Nova senha
@@ -1933,7 +1935,7 @@ function CustomerHome({ session }: { session: Session }) {
               Confirmar senha
               <input value={securityPasswordConfirm} onChange={(event) => setSecurityPasswordConfirm(event.target.value)} type="password" autoComplete="new-password" minLength={10} required />
             </label>
-            <button className="access-primary" disabled={busy || !profileWhatsAppVerified}>
+            <button className="access-primary" disabled={busy}>
               {busy
                 ? "Protegendo cadastro..."
                 : securityUpgradeRequired
