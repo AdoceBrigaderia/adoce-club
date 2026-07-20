@@ -680,6 +680,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
 
   useEffect(() => {
     if (surface === "client") {
+      setLoginMode("password");
       setRegistering(
         registrationRoute ||
           Boolean(rememberReferralInvite()) ||
@@ -688,6 +689,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
       setStage("identify");
       setMessage("");
     } else {
+      setLoginMode("email");
       setRegistering(false);
       setStage("identify");
       setMessage("");
