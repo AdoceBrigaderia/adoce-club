@@ -927,7 +927,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   ? "Quero fazer parte"
                   : loginMode === "password" && surface === "client"
                     ? "Entrar com celular"
-                    : "Entrar no Clube"}
+                    : surface === "operation"
+                      ? "Entrar na operação"
+                      : "Entrar no Clube"}
           </h2>
           <p>
             {stage === "code"
@@ -938,7 +940,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : loginMode === "password" && surface === "client" && !registering
                 ? "Use seu celular com DDD e a senha criada no primeiro acesso."
-                : "O código por e-mail será usado no primeiro acesso ou na recuperação da conta."}
+                : surface === "operation"
+                  ? "Use o e-mail autorizado da equipe para receber seu código de acesso."
+                  : "O código por e-mail será usado no primeiro acesso ou na recuperação da conta."}
           </p>
           {stage === "identify" ? (
             surface === "client" && !registering && loginMode === "password" ? (
@@ -1074,7 +1078,13 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 </div>
               )}
               <button className="access-primary" disabled={busy}>
-                {busy ? "Enviando..." : registering ? "Validar meu primeiro acesso" : "Receber código de segurança"}
+                {busy
+                  ? "Enviando..."
+                  : registering
+                    ? "Validar meu primeiro acesso"
+                    : surface === "operation"
+                      ? "Receber código de acesso"
+                      : "Receber código de segurança"}
                 <ArrowRight />
               </button>
             </form>
@@ -1099,7 +1109,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 className="access-primary"
                 disabled={busy || code.length !== 6}
               >
-                {busy ? "Confirmando..." : "Entrar no Clube"}
+                {busy ? "Confirmando..." : surface === "operation" ? "Entrar na operação" : "Entrar no Clube"}
                 <ArrowRight />
               </button>
               <button
