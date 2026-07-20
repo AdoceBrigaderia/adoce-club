@@ -10,6 +10,7 @@ import {
   Edit3,
   ImagePlus,
   MessageCircle,
+  MessageSquareWarning,
   NotebookPen,
   PackagePlus,
   Plus,
@@ -31,7 +32,7 @@ import "./operation-commercial.css";
 import "./operation-product-options.css";
 import "./operation-media-editor.css";
 
-type AdminTab = "agenda" | "requests" | "catalog" | "crm";
+type AdminTab = "agenda" | "requests" | "catalog" | "crm" | "feedback";
 type RequestStatus =
   | "prebooked"
   | "quoted"
@@ -102,6 +103,20 @@ type CommercialSegmentMedia = {
   alt_text: string;
 };
 
+type SiteFeedback = {
+  id: string;
+  protocol: string;
+  category: "problem" | "complaint" | "suggestion" | "compliment";
+  customer_name: string;
+  customer_email: string | null;
+  customer_phone: string | null;
+  page_url: string | null;
+  message: string;
+  status: "new" | "reviewing" | "resolved" | "closed";
+  internal_notes: string;
+  created_at: string;
+};
+
 const statuses: Record<RequestStatus, string> = {
   prebooked: "Pré-reserva",
   quoted: "Orçamento enviado",
@@ -170,6 +185,8 @@ export default function OperationCommercialAdmin({
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [notes, setNotes] = useState<CrmNote[]>([]);
   const [tasks, setTasks] = useState<CrmTask[]>([]);
+  const [feedback, setFeedback] = useState<SiteFeedback[]>([]);
+  const [selectedFeedback, setSelectedFeedback] = useState<SiteFeedback | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<CommercialProduct | null>(null);
   const [optionForm, setOptionForm] = useState({ group: "recheio", label: "", adjustment: 0 });
@@ -199,7 +216,7 @@ export default function OperationCommercialAdmin({
     setBusy(true);
     setNotice("");
     const supabase = requireSupabase();
-    const [productResult, optionResult, mediaResult, requestResult, blockResult, noteResult, taskResult] = await Promise.all([
+    const [productResult, optionResult, mediaResult, requestResult, blockResult, noteResult, taskResult, feedbackResult] = await Promise.all([
       supabase.from("commercial_products").select("*").order("sort_order"),
       supabase.from("commercial_product_options").select("*").order("sort_order"),
       supabase.from("commercial_segment_media").select("*").order("segment"),
@@ -211,8 +228,9 @@ export default function OperationCommercialAdmin({
       supabase.from("calendar_blocks").select("*").order("starts_at").limit(200),
       supabase.from("crm_notes").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("crm_tasks").select("*").order("due_at", { ascending: true }).limit(200),
+      supabase.from("site_feedback").select("*").order("created_at", { ascending: false }).limit(300),
     ]);
-    const error = productResult.error || optionResult.error || requestResult.error || blockResult.error || noteResult.error || taskResult.error;
+    const error = productResult.error || optionResult.error || requestResult.error || blockResult.error || noteResult.error || taskResult.error || feedbackResult.error;
     if (error) setNotice(error.message);
     else {
       setProducts((productResult.data || []) as CommercialProduct[]);
@@ -222,6 +240,7 @@ export default function OperationCommercialAdmin({
       setBlocks((blockResult.data || []) as CalendarBlock[]);
       setNotes((noteResult.data || []) as CrmNote[]);
       setTasks((taskResult.data || []) as CrmTask[]);
+      setFeedback((feedbackResult.data || []) as SiteFeedback[]);
     }
     setBusy(false);
   }, []);
@@ -498,6 +517,26 @@ export default function OperationCommercialAdmin({
     else await load();
   };
 
+  const saveFeedback = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedFeedback) return;
+    setBusy(true);
+    const { error } = await requireSupabase()
+      .from("site_feedback")
+      .update({
+        status: selectedFeedback.status,
+        internal_notes: selectedFeedback.internal_notes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", selectedFeedback.id);
+    setBusy(false);
+    if (error) setNotice(error.message);
+    else {
+      setNotice(`${selectedFeedback.protocol} atualizado.`);
+      await load();
+    }
+  };
+
   return (
     <div className="operation-commercial">
       <div className="operation-title">
@@ -523,6 +562,7 @@ export default function OperationCommercialAdmin({
         <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}><PackagePlus /> Pedidos</button>
         <button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><Edit3 /> Catálogo</button>
         <button className={tab === "crm" ? "active" : ""} onClick={() => setTab("crm")}><Users /> CRM</button>
+        <button className={tab === "feedback" ? "active" : ""} onClick={() => setTab("feedback")}><MessageSquareWarning /> Reclamações</button>
       </nav>
 
       {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
@@ -796,6 +836,43 @@ export default function OperationCommercialAdmin({
               <form onSubmit={addCrmTask}><label>Lembrete<input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Ex.: confirmar sinal" /></label><label>Quando<input type="datetime-local" value={taskDue} onChange={(event) => setTaskDue(event.target.value)} /></label><button><Clock3 /> Criar lembrete</button></form>
             </> : null}
           </div>
+        </div>
+      ) : null}
+
+      {tab === "feedback" ? (
+        <div className="operation-commercial-grid feedback-operation">
+          <section>
+            <div className="operation-commercial-head">
+              <div><small>Voz do cliente</small><h2>Reclamações e sugestões</h2></div>
+            </div>
+            <div className="operation-request-list feedback-list">
+              {feedback.map((item) => (
+                <button key={item.id} onClick={() => setSelectedFeedback({ ...item })}>
+                  <span><strong>{item.customer_name}</strong><small>{item.protocol} · {dateTime(item.created_at)}</small></span>
+                  <span><em>{item.category === "problem" ? "Problema no site" : item.category === "complaint" ? "Reclamação" : item.category === "suggestion" ? "Sugestão" : "Elogio"}</em><small>{item.message}</small></span>
+                  <b className={`status-${item.status}`}>{item.status === "new" ? "Nova" : item.status === "reviewing" ? "Em análise" : item.status === "resolved" ? "Resolvida" : "Encerrada"}</b>
+                  <ArrowRight />
+                </button>
+              ))}
+              {!feedback.length ? <div className="operation-empty"><MessageSquareWarning /><p>Nenhuma manifestação recebida.</p></div> : null}
+            </div>
+          </section>
+          {selectedFeedback ? (
+            <form className="operation-crm-summary feedback-treatment" onSubmit={saveFeedback}>
+              <small>{selectedFeedback.protocol}</small>
+              <h2>{selectedFeedback.customer_name}</h2>
+              <p>{selectedFeedback.customer_phone || "sem celular"} · {selectedFeedback.customer_email || "sem e-mail"}</p>
+              <blockquote>{selectedFeedback.message}</blockquote>
+              {selectedFeedback.page_url ? <a href={selectedFeedback.page_url} target="_blank" rel="noreferrer">Abrir página informada</a> : null}
+              <label>Status
+                <select value={selectedFeedback.status} onChange={(event) => setSelectedFeedback({ ...selectedFeedback, status: event.target.value as SiteFeedback["status"] })}>
+                  <option value="new">Nova</option><option value="reviewing">Em análise</option><option value="resolved">Resolvida</option><option value="closed">Encerrada</option>
+                </select>
+              </label>
+              <label>Notas internas<textarea value={selectedFeedback.internal_notes} onChange={(event) => setSelectedFeedback({ ...selectedFeedback, internal_notes: event.target.value })} placeholder="Registre o que foi verificado e a solução adotada." /></label>
+              <button disabled={busy}><Check /> Salvar tratamento</button>
+            </form>
+          ) : <div className="operation-empty"><MessageSquareWarning /><p>Escolha uma manifestação para analisar.</p></div>}
         </div>
       ) : null}
 

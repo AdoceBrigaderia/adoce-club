@@ -760,10 +760,8 @@ function AuthScreen({ surface }: { surface: Surface }) {
     try {
       await signInWithPhonePassword(phone, password, rememberLogin);
       location.hash = "minha-conta";
-    } catch {
-      setMessage(
-        "Celular ou senha incorretos. Se você ainda não criou sua senha, use o primeiro acesso por e-mail.",
-      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível entrar agora.");
     } finally {
       setBusy(false);
     }
@@ -1190,6 +1188,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
             <ShieldCheck /> Seus dados são protegidos e usados conforme suas
             escolhas.
           </small>
+          {surface === "client" && <a className="access-feedback-link" href="/#fale-com-a-adoce">Encontrou um problema? Envie uma reclamação ou sugestão</a>}
         </div>
       </section>
     </main>

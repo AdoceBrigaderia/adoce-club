@@ -61,9 +61,21 @@ export async function signInWithPhonePassword(
   remember = true,
 ) {
   setRememberLogin(remember);
-  const { data, error } = await requireSupabase().auth.signInWithPassword({
-    phone: normalizeBrazilPhone(phone),
-    password,
+  const response = await fetch("/api/customer-phone-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: normalizeBrazilPhone(phone), password }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    error?: string;
+  };
+  if (!response.ok || !payload.access_token || !payload.refresh_token)
+    throw new Error(payload.error || "Não foi possível entrar agora.");
+  const { data, error } = await requireSupabase().auth.setSession({
+    access_token: payload.access_token,
+    refresh_token: payload.refresh_token,
   });
   if (error) throw error;
   return data;

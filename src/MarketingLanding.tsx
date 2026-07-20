@@ -202,7 +202,7 @@ export default function MarketingLanding() {
       <footer className="public-footer">
         <a className="public-brand" href="/#inicio"><img src="/site/logo.webp" alt="" /><strong>Adoce Brigaderia</strong></a>
         <p>© 2026 Adoce Brigaderia · Fortaleza, Ceará</p>
-        <div><a href="/#politica-de-pedidos">Política de pedidos</a><a href="/#termos">Termos</a><a href="/#privacidade">Privacidade</a></div>
+        <div><a href="/#fale-com-a-adoce">Reclamações e sugestões</a><a href="/#politica-de-pedidos">Política de pedidos</a><a href="/#termos">Termos</a><a href="/#privacidade">Privacidade</a></div>
       </footer>
     </main>
   );

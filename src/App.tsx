@@ -10,6 +10,7 @@ const ClubExperience = lazy(() => import("./ClubExperience"));
 const GroupOrderPage = lazy(() => import("./GroupOrderPage"));
 const LegalPage = lazy(() => import("./LegalPage"));
 const OrderPolicyPage = lazy(() => import("./OrderPolicyPage"));
+const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const AccessApp = lazy(() => import("./AccessApp"));
@@ -96,8 +97,10 @@ export default function App(){
                   ? "Clube Adoce · Adoce Brigaderia"
             : location.hash.startsWith("#privacidade")
               ? "Política de Privacidade · Adoce Brigaderia"
-              : location.hash.startsWith("#termos")
-                ? "Termos do Clube Adoce"
+                : location.hash.startsWith("#termos")
+                  ? "Termos do Clube Adoce"
+                : location.hash.startsWith("#fale-com-a-adoce")
+                  ? "Fale com a Adoce"
                 : "Adoce Brigaderia | Fatias artesanais e Clube Adoce em Fortaleza";
       window.scrollTo({ top: 0, behavior: "instant" });
     };
@@ -124,6 +127,7 @@ export default function App(){
   if(location.hash.startsWith("#aluguel-decoracao"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="rentals"/></Suspense>;
   if(location.hash.startsWith("#compra-em-grupo"))return <Suspense fallback={loading}><GroupOrderPage/></Suspense>;
   if(location.hash.startsWith("#politica-de-pedidos"))return <Suspense fallback={loading}><OrderPolicyPage/></Suspense>;
+  if(location.hash.startsWith("#fale-com-a-adoce"))return <Suspense fallback={loading}><FeedbackPage/></Suspense>;
   if(location.hash.startsWith("#clube"))return <Suspense fallback={loading}><ClubExperience/></Suspense>;
   if(location.hash.startsWith("#termos"))return <Suspense fallback={loading}><LegalPage kind="terms"/></Suspense>;
   if(location.hash.startsWith("#privacidade"))return <Suspense fallback={loading}><LegalPage kind="privacy"/></Suspense>;
