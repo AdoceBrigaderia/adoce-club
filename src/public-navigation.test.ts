@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const header = readFileSync(new URL("./PublicHeader.tsx", import.meta.url), "utf8");
 const landing = readFileSync(new URL("./MarketingLanding.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
+const orderPolicy = readFileSync(new URL("./OrderPolicyPage.tsx", import.meta.url), "utf8");
 const operationCss = readFileSync(new URL("./access-app.css", import.meta.url), "utf8");
 const accessFunction = readFileSync(new URL("../netlify/functions/staff-access-code.ts", import.meta.url), "utf8");
 
@@ -28,6 +29,15 @@ describe("navegação pública por operação", () => {
   it("identifica a marca geral como Adoce Brigaderia", () => {
     expect(header).toContain("Adoce Brigaderia");
     expect(header).not.toContain("<strong>Clube Adoce</strong>");
+  });
+
+  it("publica a política de pedidos com regras legíveis e acesso pela home", () => {
+    expect(landing).toContain("/#politica-de-pedidos");
+    expect(app).toContain('startsWith("#politica-de-pedidos")');
+    expect(orderPolicy).toContain("Segunda a quarta-feira");
+    expect(orderPolicy).toContain("Quinta a sábado");
+    expect(orderPolicy).toContain("Domingos");
+    expect(orderPolicy).toContain("/site/politica-de-pedidos.jpeg");
   });
 });
 

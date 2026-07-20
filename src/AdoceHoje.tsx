@@ -863,6 +863,17 @@ export default function AdoceHoje() {
           Ver encomendas e eventos
         </a>
       </section>
+      <section className="today-policy-callout">
+        <Clock3 />
+        <div>
+          <p className="today-kicker">Antes de encomendar</p>
+          <h2>Nossa produção artesanal segue uma política de pedidos.</h2>
+          <p>Veja quais produtos podem ser encomendados em cada dia da semana.</p>
+        </div>
+        <a className="today-secondary" href="/#politica-de-pedidos">
+          Conferir política de pedidos
+        </a>
+      </section>
       <section className="today-event" id="atendimento">
         <div className="today-event-copy">
           <p className="today-kicker">Atendimento Adoce</p>

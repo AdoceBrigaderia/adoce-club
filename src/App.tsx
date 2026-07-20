@@ -9,6 +9,7 @@ const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
 const ClubExperience = lazy(() => import("./ClubExperience"));
 const GroupOrderPage = lazy(() => import("./GroupOrderPage"));
 const LegalPage = lazy(() => import("./LegalPage"));
+const OrderPolicyPage = lazy(() => import("./OrderPolicyPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const AccessApp = lazy(() => import("./AccessApp"));
@@ -89,6 +90,8 @@ export default function App(){
                   ? "Aluguel de decoração · Adoce Brigaderia"
                 : location.hash.startsWith("#compra-em-grupo")
                   ? "Compra em Grupo · Adoce Brigaderia"
+                : location.hash.startsWith("#politica-de-pedidos")
+                  ? "Política de pedidos · Adoce Brigaderia"
                 : location.hash.startsWith("#clube")
                   ? "Clube Adoce · Adoce Brigaderia"
             : location.hash.startsWith("#privacidade")
@@ -120,6 +123,7 @@ export default function App(){
   if(location.hash.startsWith("#adoce-na-escola"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="school"/></Suspense>;
   if(location.hash.startsWith("#aluguel-decoracao"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="rentals"/></Suspense>;
   if(location.hash.startsWith("#compra-em-grupo"))return <Suspense fallback={loading}><GroupOrderPage/></Suspense>;
+  if(location.hash.startsWith("#politica-de-pedidos"))return <Suspense fallback={loading}><OrderPolicyPage/></Suspense>;
   if(location.hash.startsWith("#clube"))return <Suspense fallback={loading}><ClubExperience/></Suspense>;
   if(location.hash.startsWith("#termos"))return <Suspense fallback={loading}><LegalPage kind="terms"/></Suspense>;
   if(location.hash.startsWith("#privacidade"))return <Suspense fallback={loading}><LegalPage kind="privacy"/></Suspense>;

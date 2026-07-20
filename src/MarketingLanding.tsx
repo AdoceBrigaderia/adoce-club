@@ -182,10 +182,20 @@ export default function MarketingLanding() {
         </div>
       </section>
 
+      <section className="order-policy-callout">
+        <CalendarDays />
+        <div>
+          <p className="public-kicker">Planeje com tranquilidade</p>
+          <h2>Confira nossa política de pedidos antes de encomendar.</h2>
+          <p>Os produtos aceitos mudam conforme o dia da semana para respeitar o tempo da nossa produção artesanal.</p>
+        </div>
+        <a href="/#politica-de-pedidos">Ver política de pedidos <ArrowRight /></a>
+      </section>
+
       <footer className="public-footer">
         <a className="public-brand" href="/#inicio"><img src="/site/logo.webp" alt="" /><strong>Adoce Brigaderia</strong></a>
         <p>© 2026 Adoce Brigaderia · Fortaleza, Ceará</p>
-        <div><a href="/#termos">Termos</a><a href="/#privacidade">Privacidade</a></div>
+        <div><a href="/#politica-de-pedidos">Política de pedidos</a><a href="/#termos">Termos</a><a href="/#privacidade">Privacidade</a></div>
       </footer>
     </main>
   );

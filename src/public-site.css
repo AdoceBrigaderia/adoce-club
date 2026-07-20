@@ -92,6 +92,12 @@
 .public-footer p { margin: 0; color: #cbb5ac; font-size: .75rem; }
 .public-footer > div { display: flex; gap: 18px; }
 .public-footer > div a { color: white; font-size: .72rem; }
+.order-policy-callout { padding: clamp(55px, 7vw, 90px) clamp(20px, 6vw, 90px); display: grid; grid-template-columns: 72px minmax(0,1fr) auto; gap: 28px; align-items: center; background: #fffaf4; border-top: 1px solid var(--public-line); }
+.order-policy-callout > svg { width: 48px; height: 48px; color: var(--public-coral); stroke-width: 1.4; }
+.order-policy-callout h2 { max-width: 820px; margin: 8px 0 10px; font-size: clamp(2.2rem, 4vw, 4.2rem); line-height: .95; font-weight: 500; letter-spacing: -.045em; }
+.order-policy-callout div > p:last-child { max-width: 720px; margin: 0; color: var(--public-muted); line-height: 1.65; }
+.order-policy-callout > a { min-height: 50px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; color: var(--public-chocolate); text-decoration: none; border-bottom: 2px solid var(--public-coral); font-size: .76rem; font-weight: 850; white-space: nowrap; }
+.order-policy-callout > a svg { width: 18px; }
 
 .club-experience { background: var(--public-cream); }
 .club-intro { min-height: 680px; padding: 80px clamp(20px, 6vw, 90px) 110px; display: grid; grid-template-columns: minmax(0,.8fr) minmax(420px,1.2fr); position: relative; overflow: hidden; }
@@ -177,6 +183,9 @@
   .group-order-hero > img { width: 120%; margin: 30px 0 -12% -10%; }
   .group-order-rules { grid-template-columns: 1fr; }
   .group-order-rules article { border-right: 1px solid var(--public-line); border-bottom: 1px solid var(--public-line); }
+  .order-policy-callout { grid-template-columns: 48px 1fr; }
+  .order-policy-callout > svg { width: 36px; height: 36px; }
+  .order-policy-callout > a { grid-column: 2; justify-self: start; }
 }
 
 @media (max-width: 520px) {
@@ -194,6 +203,9 @@
   .final-chooser > div { grid-template-columns: 1fr; }
   .final-chooser a:nth-child(odd) { margin-right: 0; }
   .public-footer { align-items: flex-start; flex-direction: column; }
+  .public-footer > div { flex-wrap: wrap; }
+  .order-policy-callout { grid-template-columns: 1fr; }
+  .order-policy-callout > a { grid-column: 1; width: 100%; justify-content: space-between; }
   .approved-club-visual { padding-inline: 0; }
   .approved-club-heading { padding-inline: 18px; text-align: left; }
   .approved-club-heading h2 { font-size: 3.4rem; }
