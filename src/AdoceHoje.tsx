@@ -3,17 +3,20 @@ import {
   Check,
   Clock3,
   Heart,
+  House,
   MapPin,
   MessageCircle,
   Images,
   Megaphone,
   ShoppingBag,
   Sparkles,
+  Store,
   X,
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 import GroupOrderArtwork from "./GroupOrderArtwork";
 import { serviceStatusMessage } from "./service-status";
+import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
 import "./adoce-hoje.css";
 import "./adoce-hoje-content.css";
 import "./today-promotions.css";
@@ -30,6 +33,8 @@ type Flavor = {
   status?: string;
   illustrative?: boolean;
   availabilityNote?: string;
+  quantityAvailable?: number | null;
+  quantityReserved?: number;
   photos?: FlavorPhoto[];
   wholeCakePrice?: number;
   wholeCakeImage?: string;
@@ -58,14 +63,14 @@ type Channel = {
   next_change_at: string | null;
 };
 
-type ServiceKind = "pickup" | "stall";
+export type ServiceKind = "pickup" | "stall";
 type ServiceWindow = {
   kind: ServiceKind;
   start: number;
   end: number;
   label: string;
 };
-type BusinessHour = {
+export type BusinessHour = {
   channel_slug: string;
   weekday: number;
   opens_at: string;
@@ -73,7 +78,7 @@ type BusinessHour = {
   active: boolean;
   note: string | null;
 };
-type BusinessHourException = {
+export type BusinessHourException = {
   channel_slug: string;
   service_date: string;
   closed: boolean;
@@ -89,7 +94,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 22,
-      label: "Retirada na Fábrica Adoce, das 9h às 22h.",
+      label: "Retirada no portão da Adoce, das 9h às 22h.",
     },
   ],
   2: [
@@ -97,7 +102,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 22,
-      label: "Retirada na Fábrica Adoce, das 9h às 22h.",
+      label: "Retirada no portão da Adoce, das 9h às 22h.",
     },
   ],
   3: [
@@ -105,7 +110,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 22,
-      label: "Retirada na Fábrica Adoce, das 9h às 22h.",
+      label: "Retirada no portão da Adoce, das 9h às 22h.",
     },
   ],
   4: [
@@ -113,7 +118,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 18,
-      label: "Retirada na Fábrica Adoce, das 9h às 18h.",
+      label: "Retirada no portão da Adoce, das 9h às 18h.",
     },
     {
       kind: "stall",
@@ -127,7 +132,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 18,
-      label: "Retirada na Fábrica Adoce, das 9h às 18h.",
+      label: "Retirada no portão da Adoce, das 9h às 18h.",
     },
     {
       kind: "stall",
@@ -141,7 +146,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 16,
-      label: "Retirada na Fábrica Adoce, das 9h às 16h.",
+      label: "Retirada no portão da Adoce, das 9h às 16h.",
     },
     {
       kind: "stall",
@@ -189,13 +194,24 @@ function timeNumber(value: string | null) {
   return hours + minutes / 60;
 }
 
-function serviceState(
+function dateAfter(date: string, days: number) {
+  const result = new Date(`${date}T12:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
+}
+
+function scrollToTodaySection(id: "sabores" | "atendimento") {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+export function serviceState(
   kind: ServiceKind,
   hours: BusinessHour[],
   exceptions: BusinessHourException[],
+  currentTime = getFortalezaNow(),
 ) {
-  const now = getFortalezaNow();
-  const slug = kind === "stall" ? "in_person" : "store";
+  const now = currentTime;
+  const slug = kind === "stall" ? "in_person" : "online_orders";
   const exception = exceptions.find(
     (item) => item.channel_slug === slug && item.service_date === now.date,
   );
@@ -212,10 +228,13 @@ function serviceState(
       end: timeNumber(item.closes_at),
       label:
         item.note ||
-        `${kind === "stall" ? "Barraquinha Adoce" : "Retirada na Fábrica Adoce"}, das ${item.opens_at.slice(0, 5)} às ${item.closes_at.slice(0, 5)}.`,
+        `${kind === "stall" ? "Barraquinha Adoce" : "Retirada no portão da Adoce"}, das ${item.opens_at.slice(0, 5)} às ${item.closes_at.slice(0, 5)}.`,
     }));
   const fallbackWindows = weeklyServiceWindows[now.weekday].filter(
     (window) => window.kind === kind,
+  );
+  const hasChannelSchedule = hours.some(
+    (item) => item.active && item.channel_slug === slug,
   );
   const today = exception
     ? exception.closed
@@ -230,7 +249,7 @@ function serviceState(
               `Funcionamento especial das ${exception.opens_at?.slice(0, 5)} às ${exception.closes_at?.slice(0, 5)}.`,
           },
         ]
-    : hours.length
+    : hasChannelSchedule
       ? databaseWindows
       : fallbackWindows;
   const active = today.find(
@@ -377,6 +396,8 @@ export default function AdoceHoje() {
     [],
   );
   const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null);
   const [updated, setUpdated] = useState(false);
   useEffect(() => {
@@ -396,6 +417,7 @@ export default function AdoceHoje() {
     void (async () => {
       const supabase = requireSupabase();
       const today = getFortalezaNow().date;
+      const scheduleEnd = dateAfter(today, 6);
       const now = new Date().toISOString();
       const [
         { data: catalog, error: catalogError },
@@ -405,6 +427,7 @@ export default function AdoceHoje() {
         { data: exceptionData },
         { data: imageData },
         { data: promotionData },
+        { data: weeklyMenuData },
       ] = await Promise.all([
         supabase
           .from("flavors")
@@ -415,7 +438,7 @@ export default function AdoceHoje() {
           .order("name"),
         supabase
           .from("flavor_availability")
-          .select("flavor_id,status,note")
+          .select("flavor_id,status,note,quantity_available,quantity_reserved")
           .eq("service_date", today),
         supabase
           .from("store_channels")
@@ -428,7 +451,8 @@ export default function AdoceHoje() {
         supabase
           .from("business_hour_exceptions")
           .select("channel_slug,service_date,closed,opens_at,closes_at,message")
-          .eq("service_date", today),
+          .gte("service_date", today)
+          .lte("service_date", scheduleEnd),
         supabase
           .from("flavor_images")
           .select("id,flavor_id,image_path,alt_text,image_role,sort_order")
@@ -441,6 +465,15 @@ export default function AdoceHoje() {
           .lte("starts_at", now)
           .or(`ends_at.is.null,ends_at.gte.${now}`)
           .order("starts_at", { ascending: false }),
+        supabase
+          .from("weekly_service_menu")
+          .select(
+            "id,service_date,channel_slug,flavor_id,quantity_planned,quantity_reserved,status,note",
+          )
+          .gte("service_date", today)
+          .lte("service_date", scheduleEnd)
+          .neq("status", "hidden")
+          .order("service_date"),
       ]);
       if (catalog?.length) {
         const photos = (imageData || []) as FlavorPhoto[];
@@ -466,6 +499,8 @@ export default function AdoceHoje() {
               status: status?.status,
               illustrative: Boolean(item.image_path?.includes("ilustrativa")),
               availabilityNote: status?.note || undefined,
+              quantityAvailable: status?.quantity_available,
+              quantityReserved: status?.quantity_reserved || 0,
               photos: photos.filter((photo) => photo.flavor_id === item.id),
               wholeCakePrice: item.whole_cake_price
                 ? Number(item.whole_cake_price)
@@ -481,6 +516,7 @@ export default function AdoceHoje() {
       if (exceptionData)
         setHourExceptions(exceptionData as BusinessHourException[]);
       if (promotionData) setPromotions(promotionData as Promotion[]);
+      if (weeklyMenuData) setWeeklyMenu(weeklyMenuData as WeeklyMenuItem[]);
       setUpdated(!catalogError);
     })();
   }, []);
@@ -534,13 +570,14 @@ export default function AdoceHoje() {
     scheduleMessage: pickupState.message,
     pausedMessage: "Retiradas pausadas no momento.",
   });
+  const anyServiceOpen = pickupOpen || open;
   return (
     <main className="today-page">
       <header className="today-header">
         <Brand />
         <nav>
-          <a href="#sabores">Sabores</a>
-          <a href="#atendimento">Atendimento</a>
+          <button type="button" onClick={() => scrollToTodaySection("sabores")}>Sabores</button>
+          <button type="button" onClick={() => scrollToTodaySection("atendimento")}>Atendimento</button>
           <a
             className="today-order-small"
             href={orderLink()}
@@ -554,7 +591,7 @@ export default function AdoceHoje() {
       <section className="today-hero">
         <div className="today-hero-copy">
           <div className="today-live">
-            <span className={open ? "" : "closed"} /> Informações atualizadas
+            <span /> Informações atualizadas
           </div>
           <p className="today-kicker">{dateLabel}</p>
           <h1>
@@ -564,30 +601,6 @@ export default function AdoceHoje() {
             Sabores, disponibilidade e atendimento reunidos em um só lugar —
             sempre com uma informação honesta antes de você sair de casa.
           </p>
-          <div className="today-status-grid">
-            <div>
-              <ShoppingBag />
-              <span>
-                <strong>
-                  {availableCount
-                    ? `${availableCount} sabores sinalizados`
-                    : "Consulte a disponibilidade"}
-                </strong>
-                <small>
-                  {updated
-                    ? "Catálogo conectado ao Clube Adoce"
-                    : "Carregando informações"}
-                </small>
-              </span>
-            </div>
-            <div>
-              <Clock3 />
-              <span>
-                <strong>{stallStatus}</strong>
-                <small>{stallMessage}</small>
-              </span>
-            </div>
-          </div>
           <div className="today-hero-actions">
             <a
               className="today-primary"
@@ -597,51 +610,133 @@ export default function AdoceHoje() {
             >
               <MessageCircle /> Falar com a Adoce
             </a>
-            <a
+            <button
+              type="button"
               className="today-secondary"
-              href={maps}
-              target="_blank"
-              rel="noreferrer"
+              onClick={() => scrollToTodaySection("sabores")}
             >
-              <MapPin /> Como chegar
-            </a>
+              <ShoppingBag /> Ver sabores de hoje
+            </button>
           </div>
         </div>
-        <div
-          className="today-live-showcase"
-          aria-label="Sabores realmente sinalizados hoje"
-        >
-          {flavors
-            .filter((flavor) => flavor.available)
-            .slice(0, 4)
-            .map((flavor) => (
-              <figure key={flavor.id}>
-                <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
-                <figcaption>{flavor.name}</figcaption>
-              </figure>
-            ))}
-          <p>
-            <Heart /> Fotos dos sabores sinalizados hoje
-          </p>
+        <div className="today-service-experience" id="atendimento">
+          <div className="today-service-grid" aria-label="Canais de atendimento de hoje">
+            <article className={`today-service-card ${pickupOpen ? "is-open" : "is-closed"}`}>
+              <img
+                src="/site/adoce-hoje-retirada-ilustracao.webp"
+                alt="Ilustração de um pedido on-line sendo retirado no portão da casa da Adoce"
+              />
+              <div className="today-service-card-body">
+                <p className="today-service-kind"><House /> Pedido on-line</p>
+                <h2>Pedidos para retirada</h2>
+                <p className="today-service-description">
+                  Peça pelo WhatsApp e, depois da confirmação, receba seu pacote no portão. O local de produção não é aberto à visitação.
+                </p>
+                <div className="today-channel-status" role="status">
+                  <span aria-hidden="true" />
+                  <div>
+                    <strong>{pickupOpen ? "Retirada aberta agora" : "Retirada fechada agora"}</strong>
+                    <small>{pickupMessage}</small>
+                  </div>
+                </div>
+                {!pickupOpen ? (
+                  <p className="today-next-step">
+                    Você ainda pode chamar a Adoce e consultar o próximo horário disponível.
+                  </p>
+                ) : null}
+                <a href={orderLink()} target="_blank" rel="noreferrer">
+                  <MessageCircle /> {pickupOpen ? "Pedir para retirar" : "Consultar próximo horário"}
+                </a>
+              </div>
+            </article>
+
+            <article className={`today-service-card ${open ? "is-open" : "is-closed"}`}>
+              <img
+                src="/site/adoce-hoje-barraquinha-ilustracao.webp"
+                alt="Ilustração da barraquinha de rua da Adoce iluminada e com fatias expostas"
+              />
+              <div className="today-service-card-body">
+                <p className="today-service-kind"><Store /> Atendimento presencial</p>
+                <h2>Barraquinha de rua</h2>
+                <p className="today-service-description">
+                  O Festival de Fatias presencial acontece somente nos dias e horários informados{" "}
+                  <button className="today-inline-link" type="button" onClick={() => setScheduleOpen(true)}>
+                    aqui
+                  </button>.
+                </p>
+                <div className="today-channel-status" role="status">
+                  <span aria-hidden="true" />
+                  <div>
+                    <strong>{open ? "Barraquinha aberta agora" : "Barraquinha fechada agora"}</strong>
+                    <small>{stallMessage}</small>
+                  </div>
+                </div>
+                {!open ? (
+                  <p className="today-next-step">
+                    A barraquinha está fechada, mas os pedidos para retirada funcionam separadamente.
+                  </p>
+                ) : null}
+                <a
+                  href={open ? maps : orderLink()}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {open ? <MapPin /> : <MessageCircle />}
+                  {open ? "Como chegar à barraquinha" : "Consultar retirada"}
+                </a>
+              </div>
+            </article>
+          </div>
+
+          <div className="today-live-showcase" aria-label="Sabores realmente sinalizados hoje">
+            <header>
+              <span><Heart /> Uma pausa doce para hoje</span>
+              <strong>
+                {availableCount
+                  ? availableCount === 1
+                    ? "Tem um sabor esperando por você"
+                    : `Tem ${availableCount} sabores esperando por você`
+                  : "Quer saber o que saiu hoje?"}
+              </strong>
+              <small>
+                {updated
+                  ? anyServiceOpen
+                    ? "Escolha o seu favorito e chame a gente para reservar."
+                    : "Gostou de algum? Chame a gente para confirmar e combinar a retirada."
+                  : "Só um instante: estamos preparando as delícias de hoje."}
+              </small>
+            </header>
+            <div className="today-live-flavor-grid">
+              {flavors
+                .filter((flavor) => flavor.available)
+                .slice(0, 4)
+                .map((flavor) => (
+                  <figure key={flavor.id}>
+                    <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
+                    <figcaption>{flavor.name}</figcaption>
+                  </figure>
+                ))}
+            </div>
+          </div>
         </div>
       </section>
-      <section className="today-group-order" aria-labelledby="compra-em-grupo">
+      <section className="today-group-order" aria-labelledby="pede-junto-adoce">
         <GroupOrderArtwork />
         <div>
-          <p className="today-kicker">Junte a galera</p>
-          <h2 id="compra-em-grupo">
-            5 ou mais fatias e a entrega fica por nossa conta.
+          <p className="today-kicker">Pede Junto Adoce</p>
+          <h2 id="pede-junto-adoce">
+            Cada um escolhe e paga a sua. Com 5, a entrega é grátis.
           </h2>
           <p>
-            Trabalho, condomínio, família ou rua: façam um único pedido para o
-            mesmo endereço em Fortaleza e recebam entrega grátis.
+            No trabalho, condomínio, faculdade ou clínica: compartilhe a sala,
+            chegue a cinco fatias e continue adicionando quantas quiser.
           </p>
           <ul>
             <li>
               <Check /> Sabores identificados no pacote
             </li>
             <li>
-              <Check /> Pagamento antecipado por Pix ou link de cartão
+              <Check /> Cada pessoa recebe o próprio link de pagamento
             </li>
             <li>
               <Check /> Entrega por motorista de aplicativo
@@ -649,11 +744,9 @@ export default function AdoceHoje() {
           </ul>
           <a
             className="today-primary"
-            href={orderLink()}
-            target="_blank"
-            rel="noreferrer"
+            href="/#pede-junto"
           >
-            <MessageCircle /> Organizar pedido do grupo
+            <MessageCircle /> Abrir meu Pede Junto
           </a>
         </div>
       </section>
@@ -668,7 +761,7 @@ export default function AdoceHoje() {
               <h2 id="promocoes-ativas">Promoções em destaque</h2>
             </div>
             <p>
-              Informações publicadas pela equipe e válidas somente durante o
+              Informações atualizadas pela Adoce e válidas somente durante o
               período indicado.
             </p>
           </div>
@@ -779,6 +872,11 @@ export default function AdoceHoje() {
                       </>
                     )}
                   </div>
+                  {flavor.available && flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
+                    <div className="today-stock-count">
+                      {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} fatia(s) livre(s) agora
+                    </div>
+                  ) : null}
                   <h3>{flavor.name}</h3>
                   <p>{flavor.note}</p>
                 </div>
@@ -874,26 +972,32 @@ export default function AdoceHoje() {
           Conferir política de pedidos
         </a>
       </section>
-      <section className="today-event" id="atendimento">
+      <section className="today-event" id="localizacao">
         <div className="today-event-copy">
           <p className="today-kicker">Atendimento Adoce</p>
-          <h2>{open ? "Estamos te esperando." : "Confira antes de sair."}</h2>
+          <h2>
+            {anyServiceOpen
+              ? "Escolha o atendimento que funciona agora."
+              : "Consulte o próximo horário."}
+          </h2>
           <p>
             <strong>Barraquinha:</strong> {stallStatus}.{" "}
             {stallMessage}
           </p>
           <p>
-            <strong>Retirada:</strong> {pickupStatus}.{" "}
-            {pickupMessage} Endereço: Rua Professor
-            Odílio Filho, 227, Passaré.
+            <strong>Retirada no portão:</strong> {pickupStatus}.{" "}
+            {pickupMessage} O local de produção não é aberto à visitação.
+            Endereço para retirada confirmada: Rua Professor Odílio Filho,
+            227, Passaré.
           </p>
           <a
             className="today-primary"
-            href={maps}
+            href={anyServiceOpen ? maps : orderLink()}
             target="_blank"
             rel="noreferrer"
           >
-            <MapPin /> Abrir localização
+            {anyServiceOpen ? <MapPin /> : <MessageCircle />}
+            {anyServiceOpen ? "Abrir localização" : "Consultar atendimento"}
           </a>
         </div>
         <div className="today-contact">
@@ -926,6 +1030,19 @@ export default function AdoceHoje() {
           <MessageCircle /> Consultar
         </a>
       </div>
+      <WeeklyScheduleDialog
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        today={getFortalezaNow().date}
+        hours={businessHours}
+        exceptions={hourExceptions}
+        menuItems={weeklyMenu}
+        flavors={flavors.map((flavor) => ({
+          id: flavor.id,
+          name: flavor.name,
+          image: flavor.image,
+        }))}
+      />
       {selectedFlavor && (
         <div
           className="today-gallery-modal"

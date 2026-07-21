@@ -159,3 +159,257 @@
   }
 }
 .today-orders-bridge{max-width:1180px;margin:85px auto;padding:34px;border:1px solid var(--today-line,#eadbce);border-radius:18px;background:#fff7ed;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:22px;align-items:center}.today-orders-bridge>svg{width:34px;height:34px;color:var(--today-coral,#f06a5f)}.today-orders-bridge h2{font:600 clamp(2rem,4vw,3.4rem)/1 Georgia,serif;margin:7px 0 12px;color:#2b130d}.today-orders-bridge>div>p:last-child{color:#7f6256;line-height:1.65;max-width:680px}.today-orders-bridge>a{white-space:nowrap}@media(max-width:760px){.today-orders-bridge{margin:60px 18px;padding:25px 20px;grid-template-columns:auto 1fr}.today-orders-bridge>a{grid-column:1/-1}.today-orders-bridge h2{font-size:2.45rem}}
+.today-stock-count{display:inline-flex;align-items:center;border-radius:999px;background:#fff0e5;color:#9b4f42;padding:5px 9px;margin:7px 0 2px;font-size:.63rem;font-weight:800}
+
+/* Atendimento on-line e barraquinha são canais independentes. */
+.today-hero {
+  max-width: 1580px;
+  grid-template-columns: minmax(330px, 0.72fr) minmax(650px, 1.28fr);
+  align-items: start;
+}
+.today-hero-copy {
+  padding-top: clamp(8px, 2vw, 30px);
+}
+.today-hero h1 {
+  font-size: clamp(3rem, 5.4vw, 5.8rem);
+}
+.today-service-experience {
+  display: grid;
+  gap: 16px;
+}
+.today-service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.today-service-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(94, 42, 26, 0.13);
+  border-radius: 26px;
+  background: #fffdf9;
+  box-shadow: 0 20px 50px rgba(75, 30, 16, 0.09);
+}
+.today-service-card > img {
+  width: 100%;
+  aspect-ratio: 3/1.72;
+  display: block;
+  object-fit: cover;
+}
+.today-service-card:first-child > img {
+  object-position: center 48%;
+}
+.today-service-card:last-child > img {
+  object-position: center 45%;
+}
+.today-service-card-body {
+  display: flex;
+  min-height: 315px;
+  flex-direction: column;
+  padding: 18px;
+}
+.today-service-kind {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 7px;
+  color: #b44f50;
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+.today-service-kind svg {
+  width: 16px;
+  height: 16px;
+}
+.today-service-card h2 {
+  margin: 0;
+  font: 700 clamp(1.4rem, 2vw, 1.85rem)/1.05 Georgia, serif;
+  letter-spacing: -0.025em;
+}
+.today-service-description {
+  min-height: 58px;
+  margin: 10px 0 13px;
+  color: #805346;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.today-channel-status {
+  display: grid;
+  grid-template-columns: 11px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border-radius: 15px;
+  background: #f8eee7;
+}
+.today-channel-status > span {
+  width: 10px;
+  height: 10px;
+  margin-top: 4px;
+  border-radius: 50%;
+}
+.today-service-card.is-open .today-channel-status {
+  background: #edf8f2;
+}
+.today-service-card.is-open .today-channel-status > span {
+  background: #2fa36b;
+  box-shadow: 0 0 0 4px rgba(47, 163, 107, 0.12);
+}
+.today-service-card.is-closed .today-channel-status > span {
+  background: #dd665f;
+  box-shadow: 0 0 0 4px rgba(221, 102, 95, 0.12);
+}
+.today-channel-status div {
+  display: grid;
+  gap: 3px;
+}
+.today-channel-status strong {
+  font-size: 0.86rem;
+}
+.today-channel-status small {
+  color: #805f55;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+.today-next-step {
+  margin: 10px 2px 0;
+  color: #7a4a3e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.today-service-card-body > a {
+  min-height: 43px;
+  margin-top: auto;
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 12px;
+  background: var(--today-chocolate);
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+.today-service-card-body > a svg {
+  width: 17px;
+  flex: 0 0 auto;
+}
+.today-live-showcase {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.7fr) minmax(0, 1.3fr);
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(94, 42, 26, 0.12);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.76);
+}
+.today-live-showcase > header {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px;
+}
+.today-live-showcase > header span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #b44f50;
+  font-size: 0.65rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.today-live-showcase > header span svg {
+  width: 15px;
+  fill: var(--today-coral);
+  color: var(--today-coral);
+}
+.today-live-showcase > header strong {
+  margin-top: 8px;
+  font: 700 1.15rem/1.15 Georgia, serif;
+}
+.today-live-showcase > header small {
+  margin-top: 6px;
+  color: #805f55;
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+.today-live-flavor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.today-live-showcase .today-live-flavor-grid figure {
+  min-height: 0;
+  aspect-ratio: 1/1;
+  border-radius: 15px;
+  box-shadow: none;
+}
+.today-live-showcase .today-live-flavor-grid figcaption {
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  padding: 6px;
+  font-size: 0.58rem;
+}
+
+@media (max-width: 1120px) {
+  .today-hero {
+    max-width: 860px;
+    grid-template-columns: 1fr;
+  }
+  .today-hero-copy {
+    max-width: 780px;
+  }
+}
+
+@media (max-width: 700px) {
+  .today-service-grid {
+    grid-template-columns: 1fr;
+  }
+  .today-service-card-body {
+    min-height: 0;
+  }
+  .today-service-description {
+    min-height: 0;
+  }
+  .today-service-card-body > a {
+    margin-top: 16px;
+  }
+  .today-live-showcase {
+    grid-template-columns: 1fr;
+  }
+  .today-live-showcase > header {
+    padding: 4px 4px 8px;
+  }
+  .today-live-flavor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Os atalhos da página rolam dentro do Adoce Hoje sem alterar a rota por hash. */
+.today-header nav > button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: 650 0.9rem Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.today-hero-actions > button {
+  cursor: pointer;
+  font: inherit;
+}
+
+@media (max-width: 920px) {
+  .today-header nav > button {
+    display: none;
+  }
+}

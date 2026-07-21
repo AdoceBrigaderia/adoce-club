@@ -1,0 +1,43 @@
+.clipboard-image-input { min-width: 0; display: grid; gap: 8px; }
+.clipboard-image-button {
+  min-height: 42px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #d9bdae;
+  border-radius: 9px;
+  color: #5b2b1e;
+  background: #fff3e9;
+  box-shadow: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: .67rem;
+  font-weight: 850;
+}
+.clipboard-image-button svg { width: 16px; height: 16px; }
+.clipboard-image-button:disabled { cursor: wait; opacity: .58; }
+.clipboard-image-spinner { animation: clipboard-image-spin .8s linear infinite; }
+.clipboard-image-paste-area {
+  min-width: 210px;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  border: 2px dashed #ef6a61;
+  border-radius: 10px;
+  outline: none;
+  color: #4a2118;
+  background: #fff8f2;
+  cursor: text;
+}
+.clipboard-image-paste-area:focus { border-style: solid; box-shadow: 0 0 0 3px rgba(239, 106, 97, .15); }
+.clipboard-image-paste-area strong { font-size: .72rem; }
+.clipboard-image-paste-area span { color: #806055; font-size: .63rem; line-height: 1.4; }
+@keyframes clipboard-image-spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) {
+  .clipboard-image-button { min-height: 48px; font-size: .76rem; }
+  .clipboard-image-paste-area { min-width: 0; }
+  .clipboard-image-paste-area strong { font-size: .8rem; }
+  .clipboard-image-paste-area span { font-size: .72rem; }
+}

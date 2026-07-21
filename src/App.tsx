@@ -89,8 +89,8 @@ export default function App(){
                 ? "Adoce na Escola · Adoce Brigaderia"
                 : location.hash.startsWith("#aluguel-decoracao")
                   ? "Aluguel de decoração · Adoce Brigaderia"
-                : location.hash.startsWith("#compra-em-grupo")
-                  ? "Compra em Grupo · Adoce Brigaderia"
+                : location.hash.startsWith("#pede-junto") || location.hash.startsWith("#compra-em-grupo")
+                  ? "Pede Junto Adoce · Adoce Brigaderia"
                 : location.hash.startsWith("#politica-de-pedidos")
                   ? "Política de pedidos · Adoce Brigaderia"
                 : location.hash.startsWith("#clube")
@@ -125,7 +125,7 @@ export default function App(){
   if(location.hash.startsWith("#eventos"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="events"/></Suspense>;
   if(location.hash.startsWith("#adoce-na-escola"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="school"/></Suspense>;
   if(location.hash.startsWith("#aluguel-decoracao"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="rentals"/></Suspense>;
-  if(location.hash.startsWith("#compra-em-grupo"))return <Suspense fallback={loading}><GroupOrderPage/></Suspense>;
+  if(location.hash.startsWith("#pede-junto") || location.hash.startsWith("#compra-em-grupo"))return <Suspense fallback={loading}><GroupOrderPage/></Suspense>;
   if(location.hash.startsWith("#politica-de-pedidos"))return <Suspense fallback={loading}><OrderPolicyPage/></Suspense>;
   if(location.hash.startsWith("#fale-com-a-adoce"))return <Suspense fallback={loading}><FeedbackPage/></Suspense>;
   if(location.hash.startsWith("#clube"))return <Suspense fallback={loading}><ClubExperience/></Suspense>;

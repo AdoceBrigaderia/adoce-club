@@ -2,6 +2,7 @@ export type CustomerAccountAction =
   | "deactivate"
   | "reactivate"
   | "request_deletion"
+  | "delete_account"
   | "mark_duplicate"
   | "cancel_deletion";
 

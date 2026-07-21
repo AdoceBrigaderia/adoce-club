@@ -41,6 +41,8 @@ Recheios e outras personalizações podem receber preço adicional pelo cadastro
 
 O cliente escolhe um produto, informa contato, quantidade, data, horário, local, preferências e observações. A solicitação recebe um número rastreável e entra como **pré-reserva por 48 horas**.
 
+O formulário informa antecipadamente a primeira data disponível conforme o prazo do produto. Se o cliente escolher uma data anterior, a interface explica em linguagem amigável quantos dias úteis são necessários, mostra a primeira data possível e oferece um botão para aplicá-la. Nome, WhatsApp, e-mail, quantidade, horário e consentimento também exibem mensagens próprias junto ao campo, sem depender apenas do destaque vermelho do navegador. Essa experiência é compartilhada por Tortas, Docinhos, Eventos, Adoce na Escola e Aluguel de Decoração.
+
 Regras:
 
 - a preferência é de quem confirmar primeiro com o sinal de 50%;

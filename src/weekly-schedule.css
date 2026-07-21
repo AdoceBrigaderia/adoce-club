@@ -1,0 +1,135 @@
+body.schedule-dialog-open { overflow: hidden; }
+.weekly-schedule-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(37, 15, 9, .72);
+  backdrop-filter: blur(7px);
+}
+.weekly-schedule-dialog {
+  position: relative;
+  width: min(1180px, 100%);
+  max-height: min(900px, calc(100vh - 56px));
+  overflow: auto;
+  border: 1px solid #ead6c8;
+  border-radius: 30px;
+  background: #fffaf5;
+  color: #38150d;
+  box-shadow: 0 30px 100px rgba(30, 10, 5, .32);
+  padding: 34px;
+}
+.weekly-schedule-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f7e9df;
+  color: #4b2117;
+  cursor: pointer;
+}
+.weekly-schedule-close svg { width: 22px; }
+.weekly-schedule-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 56px 24px 4px;
+}
+.weekly-schedule-heading > svg { color: #f3655e; margin-top: 7px; }
+.weekly-schedule-heading h2 {
+  margin: 0;
+  font: 700 clamp(2rem, 4vw, 3.4rem)/1.02 Georgia, serif;
+  letter-spacing: -.04em;
+}
+.weekly-schedule-heading p { margin: 9px 0 0; color: #8c6253; font-size: 1.05rem; }
+.weekly-day-rail {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 18px;
+  scrollbar-width: thin;
+}
+.weekly-day-rail button {
+  min-width: 120px;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 15px;
+  border: 1px solid #edd9cc;
+  border-radius: 16px;
+  background: #fff;
+  color: #4f271d;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.weekly-day-rail button.active { border: 2px solid #f3655e; padding: 14px; background: #fff5f1; }
+.weekly-day-rail svg { width: 20px; color: #ef6d65; }
+.weekly-day-rail span { font-weight: 900; text-transform: capitalize; }
+.weekly-day-rail small { color: #967064; font-size: .7rem; }
+.weekly-schedule-content { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .7fr); gap: 18px; }
+.weekly-stall-day,
+.weekly-online-invite {
+  border: 1px solid #ecd7ca;
+  border-radius: 22px;
+  background: #fff;
+  padding: 20px;
+}
+.weekly-selected-date { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
+.weekly-selected-date > div { display: flex; gap: 10px; align-items: center; }
+.weekly-selected-date svg { color: #f3655e; }
+.weekly-selected-date strong { display: block; text-transform: capitalize; font: 700 1.35rem Georgia, serif; }
+.weekly-selected-date small { color: #e36059; }
+.weekly-hour { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 12px; background: #fff2ea; font-weight: 800; white-space: nowrap; }
+.weekly-hour svg { width: 18px; }
+.weekly-flavor-list { display: grid; gap: 8px; }
+.weekly-flavor-list > article { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px; border-radius: 14px; background: #fff9f5; }
+.weekly-flavor-list img { width: 76px; aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
+.weekly-flavor-list strong { display: block; }
+.weekly-flavor-list small { color: #8f675b; }
+.weekly-flavor-list .sold-out { opacity: .68; }
+.weekly-quantity { display: grid; grid-template-columns: 34px 28px 34px; align-items: center; text-align: center; }
+.weekly-quantity button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #ead4c7; border-radius: 9px; background: #fff; color: #4d2117; cursor: pointer; }
+.weekly-quantity button:disabled { opacity: .35; cursor: not-allowed; }
+.weekly-quantity svg { width: 16px; }
+.weekly-menu-pending { min-height: 210px; display: grid; place-items: center; align-content: center; text-align: center; padding: 20px; border: 1px dashed #edcfc0; border-radius: 16px; background: #fffaf6; }
+.weekly-menu-pending svg { color: #f3655e; }
+.weekly-menu-pending strong { margin-top: 8px; font: 700 1.25rem Georgia, serif; }
+.weekly-menu-pending p { max-width: 430px; margin: 7px auto 0; color: #8c6253; }
+.weekly-online-invite { display: grid; align-content: center; justify-items: start; background: #fff5f1; }
+.weekly-online-invite > svg { color: #f3655e; }
+.weekly-online-invite h3 { margin: 14px 0 8px; font: 700 1.65rem/1.08 Georgia, serif; }
+.weekly-online-invite p { margin: 0 0 20px; color: #825c50; line-height: 1.55; }
+.weekly-online-invite a,
+.weekly-reservation-bar a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 13px; background: #f3655e; color: white; padding: 13px 16px; text-decoration: none; font-weight: 900; }
+.weekly-online-invite a svg,
+.weekly-reservation-bar a svg { width: 19px; }
+.weekly-reservation-bar { position: sticky; bottom: -34px; display: flex; justify-content: space-between; align-items: center; gap: 18px; margin: 18px -34px -34px; padding: 17px 34px; border-top: 1px solid #e8d0c3; background: rgba(255, 250, 245, .96); backdrop-filter: blur(12px); }
+.weekly-reservation-bar strong,
+.weekly-reservation-bar small { display: block; }
+.weekly-reservation-bar small { margin-top: 3px; color: #8c6253; }
+.weekly-reservation-bar a { background: #3b160e; }
+.today-inline-link { border: 0; padding: 0; background: transparent; color: #b53f3a; font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+@media (max-width: 800px) {
+  .weekly-schedule-backdrop { padding: 0; align-items: end; }
+  .weekly-schedule-dialog { width: 100%; max-height: 94vh; border-radius: 24px 24px 0 0; padding: 22px 16px 18px; }
+  .weekly-schedule-heading { padding-right: 46px; }
+  .weekly-schedule-heading h2 { font-size: 2rem; }
+  .weekly-day-rail { grid-template-columns: repeat(7, 112px); margin-inline: -16px; padding-inline: 16px; }
+  .weekly-schedule-content { grid-template-columns: 1fr; }
+  .weekly-selected-date { align-items: flex-start; flex-direction: column; }
+  .weekly-flavor-list > article { grid-template-columns: 62px minmax(0, 1fr); }
+  .weekly-flavor-list img { width: 62px; }
+  .weekly-quantity { grid-column: 2; justify-self: start; }
+  .weekly-reservation-bar { bottom: -18px; margin: 16px -16px -18px; padding: 14px 16px; align-items: stretch; flex-direction: column; }
+  .weekly-reservation-bar a { width: 100%; box-sizing: border-box; }
+}

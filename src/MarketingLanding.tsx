@@ -52,12 +52,12 @@ const paths = [
     className: "school",
   },
   {
-    title: "Compra em Grupo",
-    text: "Junte cinco fatias ou mais para o mesmo endereço e organize tudo pelo WhatsApp.",
-    href: "/#compra-em-grupo",
-    action: "Organizar meu grupo",
+    title: "Pede Junto Adoce",
+    text: "Cada pessoa escolhe e paga a sua. Com cinco fatias no mesmo endereço, a entrega é grátis — e o grupo pode continuar crescendo.",
+    href: "/#pede-junto",
+    action: "Abrir meu Pede Junto",
     icon: Users,
-    image: "/site/compra-em-grupo-real.jpeg",
+    image: "/site/pede-junto-pacotes.webp",
     className: "group",
   },
   {
@@ -184,7 +184,7 @@ export default function MarketingLanding() {
           <a href="/#encomendas">Quero fazer uma encomenda <ArrowRight /></a>
           <a href="/#eventos">Quero planejar um evento <ArrowRight /></a>
           <a href="/#aluguel-decoracao">Quero alugar uma decoração <ArrowRight /></a>
-          <a href="/#compra-em-grupo">Quero organizar uma compra em grupo <ArrowRight /></a>
+          <a href="/#pede-junto">Quero abrir um Pede Junto <ArrowRight /></a>
           <a href="/#clube">Quero conhecer o Clube <ArrowRight /></a>
         </div>
       </section>

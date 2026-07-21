@@ -18,11 +18,14 @@ import {
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import {
-  normalizeProductImage,
   PRODUCT_IMAGE_LIMIT,
-  safeMediaFileName,
+  uploadEditedProductImage,
   validateProductImage,
+  type EditedProductImage,
 } from "./admin-media";
+import ImageEditor, { PRODUCT_IMAGE_PRESET } from "./ImageEditor";
+import ClipboardImageInput from "./ClipboardImageInput";
+import WeeklyMenuAdmin from "./WeeklyMenuAdmin";
 import "./content-admin.css";
 
 type AdminTab =
@@ -38,6 +41,7 @@ type Flavor = {
   image_path: string | null;
   whole_cake_price: number | null;
   whole_cake_image_path: string | null;
+  whole_cake_original_image_path: string | null;
   whole_cake_available: boolean;
   active: boolean;
   sort_order: number;
@@ -46,11 +50,17 @@ type FlavorImage = {
   id: string;
   flavor_id: string;
   image_path: string;
+  original_image_path: string | null;
   alt_text: string;
   caption: string | null;
   image_role: string;
   sort_order: number;
   active: boolean;
+};
+type PendingFlavorImage = {
+  flavor: Flavor;
+  file: File;
+  role: "cover" | "gallery" | "whole_cake";
 };
 type AvailabilityStatus =
   "available" | "last_units" | "sold_out" | "preorder_only" | "unavailable";
@@ -59,6 +69,8 @@ type Availability = {
   flavor_id: string;
   status: AvailabilityStatus;
   note: string | null;
+  quantity_available: number | null;
+  quantity_reserved: number;
 };
 type Channel = {
   slug: string;
@@ -67,7 +79,7 @@ type Channel = {
   message: string | null;
   next_change_at: string | null;
 };
-type BusinessHour = {
+export type BusinessHour = {
   id: string;
   channel_slug: string;
   weekday: number;
@@ -125,6 +137,31 @@ const availabilityLabels: Record<AvailabilityStatus, string> = {
 };
 const week = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+const scheduleChannelHints: Record<string, string> = {
+  online_orders: "Pedidos de fatias feitos on-line para retirada no portão.",
+  in_person: "Atendimento presencial na barraquinha de rua.",
+  preorders: "Encomendas de tortas, docinhos, escola e eventos.",
+  store: "Canal antigo, sem atendimento ao público no endereço de produção.",
+};
+
+const scheduleChannelLabels: Record<string, string> = {
+  online_orders: "Pedidos online — retirada no portão",
+  in_person: "Barraquinha de rua",
+  preorders: "Encomendas futuras — não controla a retirada",
+  store: "Canal antigo — não utilizar",
+};
+
+export function filterBusinessHours(
+  hours: BusinessHour[],
+  channelSlug: string,
+  weekday: number,
+) {
+  return hours.filter(
+    (hour) =>
+      hour.channel_slug === channelSlug && hour.weekday === weekday,
+  );
+}
+
 function todayInFortaleza() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Fortaleza",
@@ -152,10 +189,11 @@ export default function OperationContentAdmin({
   const [editing, setEditing] = useState<Flavor | null>(null);
   const [draft, setDraft] = useState({ ...emptyFlavor });
   const [galleryFlavor, setGalleryFlavor] = useState<Flavor | null>(null);
+  const [pendingImage, setPendingImage] = useState<PendingFlavorImage | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [hourDraft, setHourDraft] = useState({
-    channel_slug: "store",
+    channel_slug: "online_orders",
     weekday: 1,
     opens_at: "09:00",
     closes_at: "18:00",
@@ -201,19 +239,19 @@ export default function OperationContentAdmin({
       supabase
         .from("flavors")
         .select(
-          "id,name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_available,active,sort_order",
+          "id,name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
         )
         .order("name"),
       supabase
         .from("flavor_images")
         .select(
-          "id,flavor_id,image_path,alt_text,caption,image_role,sort_order,active",
+          "id,flavor_id,image_path,original_image_path,alt_text,caption,image_role,sort_order,active",
         )
         .eq("active", true)
         .order("sort_order"),
       supabase
         .from("flavor_availability")
-        .select("id,flavor_id,status,note")
+        .select("id,flavor_id,status,note,quantity_available,quantity_reserved")
         .eq("service_date", today),
       supabase
         .from("store_channels")
@@ -324,7 +362,7 @@ export default function OperationContentAdmin({
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const uploadImage = async (flavor: Flavor, file: File, role: string) => {
+  const chooseImage = (flavor: Flavor, file: File, role: PendingFlavorImage["role"]) => {
     const isWholeCake = role === "whole_cake";
     const current = images.filter(
       (item) => item.flavor_id === flavor.id && item.active,
@@ -335,22 +373,35 @@ export default function OperationContentAdmin({
       );
     const validation = validateProductImage(file);
     if (validation) return setNotice(validation);
+    setPendingImage({ flavor, file, role });
+  };
+
+  const applyFlavorImage = async (edited: EditedProductImage) => {
+    if (!pendingImage) return;
+    const { flavor, file, role } = pendingImage;
+    const isWholeCake = role === "whole_cake";
+    const current = images.filter(
+      (item) => item.flavor_id === flavor.id && item.active,
+    );
     setBusy(true);
     try {
-      const blob = await normalizeProductImage(file);
-      const path = `produtos/${flavor.id}/${Date.now()}-${isWholeCake ? "torta-g-" : ""}${safeMediaFileName(flavor.name)}.webp`;
       const supabase = requireSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from("adoce-media")
-        .upload(path, blob, { contentType: "image/webp", upsert: false });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("adoce-media").getPublicUrl(path);
+      const uploaded = await uploadEditedProductImage(
+        supabase,
+        `produtos/${flavor.id}`,
+        `${isWholeCake ? "torta-g-" : ""}${file.name}`,
+        edited,
+      );
       if (isWholeCake) {
         const { error: wholeCakeError } = await supabase
           .from("flavors")
-          .update({ whole_cake_image_path: data.publicUrl })
+          .update({
+            whole_cake_image_path: uploaded.imageUrl,
+            whole_cake_original_image_path: uploaded.originalImageUrl,
+          })
           .eq("id", flavor.id);
         if (wholeCakeError) throw wholeCakeError;
+        setPendingImage(null);
         setNotice("Foto da torta inteira G adicionada ao produto.");
         await load();
         return;
@@ -359,7 +410,8 @@ export default function OperationContentAdmin({
         .from("flavor_images")
         .insert({
           flavor_id: flavor.id,
-          image_path: data.publicUrl,
+          image_path: uploaded.imageUrl,
+          original_image_path: uploaded.originalImageUrl,
           alt_text: `${flavor.name} — foto ${role === "cover" ? "principal" : "da galeria"}`,
           image_role: role,
           sort_order: current.length,
@@ -368,18 +420,17 @@ export default function OperationContentAdmin({
       if (role === "cover") {
         const { error: coverError } = await supabase
           .from("flavors")
-          .update({ image_path: data.publicUrl })
+          .update({ image_path: uploaded.imageUrl })
           .eq("id", flavor.id);
         if (coverError) throw coverError;
       }
-      setNotice("Foto otimizada e adicionada ao produto.");
+      setPendingImage(null);
+      setNotice("Foto editada, otimizada e adicionada ao produto.");
       await load();
     } catch (error) {
-      setNotice(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível enviar a foto.",
-      );
+      const message = error instanceof Error ? error.message : "Não foi possível enviar a foto.";
+      setNotice(message);
+      throw new Error(message);
     } finally {
       setBusy(false);
     }
@@ -417,6 +468,39 @@ export default function OperationContentAdmin({
     await load();
   };
 
+  const setTodayQuantity = async (flavor: Flavor, rawValue: string) => {
+    const current = availability.find((item) => item.flavor_id === flavor.id);
+    const quantity = rawValue.trim() === "" ? null : Math.max(0, Number(rawValue));
+    if (quantity !== null && (!Number.isInteger(quantity) || quantity > 9999)) {
+      setNotice("Informe uma quantidade inteira entre 0 e 9.999.");
+      return;
+    }
+    setBusy(true);
+    const reserved = Math.min(current?.quantity_reserved || 0, quantity ?? 9999);
+    const { error } = await requireSupabase()
+      .from("flavor_availability")
+      .upsert(
+        {
+          flavor_id: flavor.id,
+          service_date: todayInFortaleza(),
+          status: current?.status || (quantity && quantity > 0 ? "available" : "unavailable"),
+          quantity_available: quantity,
+          quantity_reserved: quantity === null ? current?.quantity_reserved || 0 : reserved,
+          updated_by: session.user.id,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "flavor_id,service_date" },
+      );
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    setNotice(
+      quantity === null
+        ? `${flavor.name}: controle numérico desativado.`
+        : `${flavor.name}: ${quantity} fatia(s) cadastrada(s).`,
+    );
+    await load();
+  };
+
   const saveChannel = async (channel: Channel) => {
     const { error } = await requireSupabase()
       .from("store_channels")
@@ -434,11 +518,19 @@ export default function OperationContentAdmin({
   };
 
   const addHour = async () => {
+    if (hourDraft.opens_at >= hourDraft.closes_at) {
+      return setNotice("O horário de encerramento precisa ser depois do horário de início.");
+    }
     const { error } = await requireSupabase()
       .from("business_hours")
-      .insert({ ...hourDraft, note: hourDraft.note.trim() || null });
+      .upsert(
+        { ...hourDraft, note: hourDraft.note.trim() || null, active: true },
+        { onConflict: "channel_slug,weekday,opens_at" },
+      );
     if (error) return setNotice(error.message);
-    setNotice("Horário adicionado.");
+    setNotice(
+      `${channels.find((channel) => channel.slug === hourDraft.channel_slug)?.label || hourDraft.channel_slug}: horário de ${week[hourDraft.weekday]} salvo.`,
+    );
     await load();
   };
 
@@ -828,6 +920,9 @@ export default function OperationContentAdmin({
                 const current =
                   availability.find((item) => item.flavor_id === flavor.id)
                     ?.status || "unavailable";
+                const inventory = availability.find(
+                  (item) => item.flavor_id === flavor.id,
+                );
                 return (
                   <article key={flavor.id}>
                     <span className={`availability-dot ${current}`} />
@@ -853,6 +948,33 @@ export default function OperationContentAdmin({
                         ),
                       )}
                     </select>
+                    <label className="availability-quantity">
+                      <span>Fatias hoje</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="9999"
+                        step="1"
+                        defaultValue={inventory?.quantity_available ?? ""}
+                        placeholder="Sem controle"
+                        onBlur={(event) =>
+                          void setTodayQuantity(flavor, event.currentTarget.value)
+                        }
+                        disabled={busy}
+                        aria-label={`Quantidade disponível de ${flavor.name}`}
+                      />
+                      {inventory?.quantity_available !== null &&
+                      inventory?.quantity_available !== undefined ? (
+                        <small>
+                          {Math.max(
+                            inventory.quantity_available -
+                              (inventory.quantity_reserved || 0),
+                            0,
+                          )}{" "}
+                          livre(s) · {inventory.quantity_reserved || 0} reservada(s)
+                        </small>
+                      ) : null}
+                    </label>
                   </article>
                 );
               })}
@@ -920,11 +1042,16 @@ export default function OperationContentAdmin({
               </article>
             ))}
           </div>
+          <WeeklyMenuAdmin session={session} flavors={flavors} />
           <section className="admin-panel">
             <div className="panel-heading">
               <div>
                 <small>Agenda automática</small>
                 <h2>Horários recorrentes</h2>
+                <p>
+                  Escolha o tipo de atendimento e o dia. A lista mostrará somente
+                  os horários dessa seleção.
+                </p>
               </div>
             </div>
             <div className="hour-form">
@@ -934,9 +1061,9 @@ export default function OperationContentAdmin({
                   setHourDraft({ ...hourDraft, channel_slug: e.target.value })
                 }
               >
-                {channels.map((c) => (
+                {channels.filter((channel) => channel.slug !== "store").map((c) => (
                   <option key={c.slug} value={c.slug}>
-                    {c.label}
+                    {scheduleChannelLabels[c.slug] || c.label}
                   </option>
                 ))}
               </select>
@@ -970,11 +1097,24 @@ export default function OperationContentAdmin({
                 }
               />
               <button className="admin-primary" onClick={() => void addHour()}>
-                <Plus /> Adicionar
+                <Plus /> Salvar horário
               </button>
             </div>
+            <div className="hour-scope-summary" aria-live="polite">
+              <strong>
+                {scheduleChannelLabels[hourDraft.channel_slug] ||
+                  channels.find((channel) => channel.slug === hourDraft.channel_slug)
+                    ?.label || hourDraft.channel_slug} · {week[hourDraft.weekday]}
+              </strong>
+              <small>{scheduleChannelHints[hourDraft.channel_slug]}</small>
+            </div>
             <div className="hour-list">
-              {hours.map((hour) => (
+              {filterBusinessHours(
+                hours,
+                hourDraft.channel_slug,
+                hourDraft.weekday,
+              )
+                .map((hour) => (
                 <article key={hour.id}>
                   <Clock3 />
                   <span>
@@ -995,7 +1135,17 @@ export default function OperationContentAdmin({
                     <Trash2 />
                   </button>
                 </article>
-              ))}
+                ))}
+              {filterBusinessHours(
+                hours,
+                hourDraft.channel_slug,
+                hourDraft.weekday,
+              ).length === 0 ? (
+                <p className="hour-empty-state">
+                  Nenhum horário cadastrado para esta combinação. Nesse dia, esse
+                  atendimento aparecerá como fechado.
+                </p>
+              ) : null}
             </div>
           </section>
           <section className="admin-panel">
@@ -1019,9 +1169,9 @@ export default function OperationContentAdmin({
                   })
                 }
               >
-                {channels.map((c) => (
+                {channels.filter((channel) => channel.slug !== "store").map((c) => (
                   <option key={c.slug} value={c.slug}>
-                    {c.label}
+                    {scheduleChannelLabels[c.slug] || c.label}
                   </option>
                 ))}
               </select>
@@ -1376,8 +1526,8 @@ export default function OperationContentAdmin({
             <small>Galeria do produto</small>
             <h2>{galleryFlavor.name}</h2>
             <p>
-              Até {PRODUCT_IMAGE_LIMIT} fotos. O sistema reduz automaticamente
-              para WebP e no máximo 1600 px.
+              Até {PRODUCT_IMAGE_LIMIT} fotos. Antes de salvar, você escolhe o
+              corte, o enquadramento e melhora a luz sem deformar a imagem.
             </p>
             <div className="gallery-grid">
               {gallery.map((image) => (
@@ -1393,50 +1543,57 @@ export default function OperationContentAdmin({
               ))}
             </div>
             <div className="upload-row">
-              <label className="admin-primary">
-                <ImagePlus /> Foto principal
-                <input
-                  hidden
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) =>
-                    e.target.files?.[0] &&
-                    void uploadImage(galleryFlavor, e.target.files[0], "cover")
-                  }
-                />
-              </label>
-              <label className="admin-secondary">
-                <Plus /> Adicionar à galeria
-                <input
-                  hidden
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) =>
-                    e.target.files?.[0] &&
-                    void uploadImage(
-                      galleryFlavor,
-                      e.target.files[0],
-                      "gallery",
-                    )
-                  }
-                />
-              </label>
-              <label className="admin-secondary">
-                <ImagePlus /> Foto da torta inteira G
-                <input
-                  hidden
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) =>
-                    e.target.files?.[0] &&
-                    void uploadImage(
-                      galleryFlavor,
-                      e.target.files[0],
-                      "whole_cake",
-                    )
-                  }
-                />
-              </label>
+              <div className="image-source-group">
+                <strong>Foto principal</strong>
+                <label className="admin-primary">
+                  <ImagePlus /> Escolher foto
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) chooseImage(galleryFlavor, file, "cover");
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <ClipboardImageInput onError={setNotice} onImage={(file) => chooseImage(galleryFlavor, file, "cover")} />
+              </div>
+              <div className="image-source-group">
+                <strong>Foto da galeria</strong>
+                <label className="admin-secondary">
+                  <Plus /> Escolher foto
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) chooseImage(galleryFlavor, file, "gallery");
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <ClipboardImageInput onError={setNotice} onImage={(file) => chooseImage(galleryFlavor, file, "gallery")} />
+              </div>
+              <div className="image-source-group">
+                <strong>Torta inteira G</strong>
+                <label className="admin-secondary">
+                  <ImagePlus /> Escolher foto
+                  <input
+                    hidden
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) chooseImage(galleryFlavor, file, "whole_cake");
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                <ClipboardImageInput onError={setNotice} onImage={(file) => chooseImage(galleryFlavor, file, "whole_cake")} />
+              </div>
             </div>
             {galleryFlavor.whole_cake_image_path && (
               <figure className="whole-cake-preview">
@@ -1449,6 +1606,15 @@ export default function OperationContentAdmin({
             )}
           </div>
         </div>
+      )}
+      {pendingImage && (
+        <ImageEditor
+          file={pendingImage.file}
+          title={`${pendingImage.role === "whole_cake" ? "Torta inteira G" : pendingImage.role === "cover" ? "Foto principal" : "Foto da galeria"} — ${pendingImage.flavor.name}`}
+          preset={PRODUCT_IMAGE_PRESET}
+          onCancel={() => setPendingImage(null)}
+          onApply={applyFlavorImage}
+        />
       )}
       {notice && (
         <div className="operation-toast">

@@ -20,7 +20,7 @@ describe("mídia do catálogo", () => {
         type: "image/png",
         size: PRODUCT_IMAGE_MAX_BYTES + 1,
       }),
-    ).toContain("4 MB");
+    ).toContain("6 MB");
   });
 
   it("gera nomes seguros para o armazenamento", () => {

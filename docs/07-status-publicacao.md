@@ -6,6 +6,10 @@ status: Produção em evolução
 
 # Status da publicação
 
+### 20/07/2026 — Pede Junto Adoce publicado
+
+O produto anterior de pedido coletivo foi substituído pelo Pede Junto Adoce em todo o site. A experiência permite sala compartilhada sem limite coletivo de fatias, entrega grátis liberada na quinta unidade, continuidade do grupo após a meta, escolha separada por participante e pagamento individual. A operação recebeu controle de estoque, reservas, participantes, links do Mercado Pago e evolução do pedido. O banco e o frontend foram publicados, e o fluxo real foi validado com dez fatias em computador, tablet e celular. O grupo e o estoque criados exclusivamente para o teste foram removidos após a conferência.
+
 ## Estado em 18/07/2026
 
 O Clube Adoce já ultrapassou a fase de página estática. A estrutura institucional, o ambiente do cliente e a operação da equipe estão publicados, com dados reais no Supabase e autenticação definitiva por e-mail.
@@ -75,11 +79,11 @@ Foi implementada a migração do acesso do cliente para celular e senha após a 
 
 ### 20/07/2026 — revisão comercial e imagens publicadas
 
-As páginas comerciais foram reorganizadas para apresentar fotos reais sem deformação, usar uma única imagem principal nas categorias de serviço e separar corretamente Festas e Eventos, Adoce na Escola e Aluguel de Decoração. A Festa na Mesa foi direcionada para Adoce na Escola. A operação recebeu controles para trocar fotos, textos, itens incluídos, regras, pacotes e valores. Compra em Grupo, Clube Adoce e o exemplo do Adoce Hoje também receberam imagens coerentes com cada proposta. A estrutura de mídias e os vínculos corretos das fotografias foram aplicados ao banco em 20/07/2026; resta a validação final após a publicação do frontend.
+As páginas comerciais foram reorganizadas para apresentar fotos reais sem deformação, usar uma única imagem principal nas categorias de serviço e separar corretamente Festas e Eventos, Adoce na Escola e Aluguel de Decoração. A Festa na Mesa foi direcionada para Mini Festas, dentro de Festas e Eventos. A operação recebeu controles para trocar fotos, textos, itens incluídos, regras, pacotes e valores. Pede Junto Adoce, Clube Adoce e o exemplo do Adoce Hoje também receberam imagens coerentes com cada proposta. A estrutura de mídias e os vínculos corretos das fotografias foram aplicados ao banco em 20/07/2026; resta a validação final após a publicação do frontend.
 
 ### 20/07/2026 — publicação e conferência final da vitrine
 
-A revisão comercial foi publicada no domínio principal e conferida em telas de computador e celular. Foram validados: imagens completas dos docinhos, foto única nos serviços, separação entre Eventos e Escola, Compra em Grupo com pedido real, exemplo ilustrativo do Adoce Hoje, login do cliente por celular e senha, linguagem própria da operação e funções protegidas no servidor. A inspeção não encontrou erros no navegador. A verificação de DNS confirmou que os subdomínios `clube` e `operacao` ainda precisam ser criados; até lá, as rotas oficiais permanecem disponíveis no domínio principal.
+A revisão comercial foi publicada no domínio principal e conferida em telas de computador e celular. Foram validados: imagens completas dos docinhos, foto única nos serviços, separação entre Eventos e Escola, apresentação anterior do pedido coletivo, exemplo ilustrativo do Adoce Hoje, login do cliente por celular e senha, linguagem própria da operação e funções protegidas no servidor. A inspeção não encontrou erros no navegador. A verificação de DNS confirmou que os subdomínios `clube` e `operacao` ainda precisam ser criados; até lá, as rotas oficiais permanecem disponíveis no domínio principal.
 
 ### 19/07/2026 — catálogo, agenda e CRM
 

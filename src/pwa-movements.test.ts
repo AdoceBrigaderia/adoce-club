@@ -24,7 +24,11 @@ describe("instalação e movimentações amigáveis", () => {
     expect(accessApp).toContain('type InstallPlatform = "ios" | "android" | "desktop"');
     expect(accessApp).toContain("Adicionar à Tela de Início");
     expect(accessApp).toContain("Instalar app");
-    expect(accessApp).toContain("Primeiro abra esta página no Safari");
+    expect(accessApp).toContain("Você não está usando o Safari");
+    expect(accessApp).toContain("Editar Ações");
+    expect(accessApp).toContain("Abrir como App da Web");
+    expect(accessApp).toContain("Copiar endereço do Clube");
+    expect(accessApp).toContain("support.apple.com/pt-br/guide/iphone");
   });
 
   it("busca somente os perfis relacionados e apresenta movimentos em português", () => {

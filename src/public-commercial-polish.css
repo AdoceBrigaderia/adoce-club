@@ -200,9 +200,19 @@
   .group-order-proof img { transform: none; }
 
   .club-intro > .club-intro-product {
-    width: 96%;
-    right: -18%;
-    bottom: -2%;
+    position: relative;
+    inset: auto;
+    width: min(100%, 680px);
+    max-height: none;
+    margin: 38px auto 0;
+    display: block;
+    transform: none;
+  }
+
+  .club-intro {
+    min-height: 0;
+    padding-bottom: 70px;
+    overflow: visible;
   }
 }
 
@@ -238,4 +248,36 @@
   }
 
   .group-order-proof img { border-radius: 18px 18px 0 0; }
+
+  .club-intro {
+    min-height: 0;
+    padding: 88px 18px 58px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: visible;
+  }
+
+  .club-intro > .public-back {
+    top: 24px;
+    left: 18px;
+  }
+
+  .club-intro h1 {
+    font-size: clamp(3rem, 13vw, 4.15rem);
+    line-height: .91;
+  }
+
+  .club-intro > div > p:not(.public-kicker) {
+    margin: 22px 0;
+    font-size: .95rem;
+  }
+
+  .club-intro > .club-intro-product {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-height: none;
+    margin: 34px auto 0;
+    transform: none;
+  }
 }

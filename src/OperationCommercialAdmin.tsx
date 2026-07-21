@@ -19,11 +19,25 @@ import {
   Users,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
-import { normalizeProductImage, safeMediaFileName } from "./admin-media";
 import {
+  uploadEditedProductImage,
+  type EditedProductImage,
+} from "./admin-media";
+import ImageEditor, {
+  CATEGORY_IMAGE_PRESET,
+  PRODUCT_IMAGE_PRESET,
+  type ImageEditorPreset,
+} from "./ImageEditor";
+import ClipboardImageInput from "./ClipboardImageInput";
+import CommercialMediaAdmin from "./CommercialMediaAdmin";
+import { normalizeInstagramUrl, type CommercialMediaItem } from "./commercial-media";
+import OperationPedeJunto from "./OperationPedeJunto";
+import {
+  CommercialEventSubcategory,
   CommercialProduct,
   CommercialProductOption,
   CommercialSegment,
+  eventSubcategoryLabels,
   money,
   normalizeBrazilianPhone,
   segmentLabels,
@@ -32,7 +46,7 @@ import "./operation-commercial.css";
 import "./operation-product-options.css";
 import "./operation-media-editor.css";
 
-type AdminTab = "agenda" | "requests" | "catalog" | "crm" | "feedback";
+type AdminTab = "agenda" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
 type RequestStatus =
   | "prebooked"
   | "quoted"
@@ -100,7 +114,17 @@ type CommercialSegmentMedia = {
   id: string;
   segment: CommercialSegment;
   image_url: string;
+  original_image_url: string | null;
   alt_text: string;
+};
+
+type PendingCommercialImage = {
+  file: File;
+  title: string;
+  preset: ImageEditorPreset;
+  kind: "gallery" | "product" | "segment";
+  segment?: CommercialSegment;
+  productId?: string;
 };
 
 type SiteFeedback = {
@@ -152,6 +176,7 @@ const newProduct = (): CommercialProduct => ({
   id: "",
   slug: "",
   segment: "cakes",
+  subcategory: null,
   name: "",
   short_description: "",
   description: "",
@@ -163,6 +188,7 @@ const newProduct = (): CommercialProduct => ({
   resource_key: null,
   details: {},
   image_url: null,
+  original_image_url: null,
   allergens: [],
   show_allergens: false,
   published: false,
@@ -173,14 +199,18 @@ const newProduct = (): CommercialProduct => ({
 export default function OperationCommercialAdmin({
   session,
   role,
+  initialTab = "agenda",
 }: {
   session: Session;
   role: string;
+  initialTab?: AdminTab;
 }) {
-  const [tab, setTab] = useState<AdminTab>("agenda");
+  const [tab, setTab] = useState<AdminTab>(initialTab);
   const [products, setProducts] = useState<CommercialProduct[]>([]);
   const [productOptions, setProductOptions] = useState<CommercialProductOption[]>([]);
   const [segmentMedia, setSegmentMedia] = useState<CommercialSegmentMedia[]>([]);
+  const [galleryMedia, setGalleryMedia] = useState<CommercialMediaItem[]>([]);
+  const [pendingImage, setPendingImage] = useState<PendingCommercialImage | null>(null);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [notes, setNotes] = useState<CrmNote[]>([]);
@@ -216,10 +246,11 @@ export default function OperationCommercialAdmin({
     setBusy(true);
     setNotice("");
     const supabase = requireSupabase();
-    const [productResult, optionResult, mediaResult, requestResult, blockResult, noteResult, taskResult, feedbackResult] = await Promise.all([
+    const [productResult, optionResult, mediaResult, galleryResult, requestResult, blockResult, noteResult, taskResult, feedbackResult] = await Promise.all([
       supabase.from("commercial_products").select("*").order("sort_order"),
       supabase.from("commercial_product_options").select("*").order("sort_order"),
       supabase.from("commercial_segment_media").select("*").order("segment"),
+      supabase.from("commercial_media_items").select("*").order("sort_order"),
       supabase
         .from("service_requests")
         .select("*,commercial_products(name,segment,resource_key)")
@@ -236,6 +267,7 @@ export default function OperationCommercialAdmin({
       setProducts((productResult.data || []) as CommercialProduct[]);
       setProductOptions((optionResult.data || []) as CommercialProductOption[]);
       if (!mediaResult.error) setSegmentMedia((mediaResult.data || []) as CommercialSegmentMedia[]);
+      if (!galleryResult.error) setGalleryMedia((galleryResult.data || []) as CommercialMediaItem[]);
       setRequests((requestResult.data || []) as unknown as ServiceRequest[]);
       setBlocks((blockResult.data || []) as CalendarBlock[]);
       setNotes((noteResult.data || []) as CrmNote[]);
@@ -358,6 +390,9 @@ export default function OperationCommercialAdmin({
     const payload = {
         slug: selectedProduct.slug.trim() || slugify(selectedProduct.name),
         segment: selectedProduct.segment,
+        subcategory: selectedProduct.segment === "events"
+          ? selectedProduct.subcategory || "trays"
+          : null,
         name: selectedProduct.name.trim(),
         short_description: selectedProduct.short_description.trim(),
         description: selectedProduct.description.trim(),
@@ -369,6 +404,7 @@ export default function OperationCommercialAdmin({
         resource_key: selectedProduct.resource_key,
         details: selectedProduct.details,
         image_url: selectedProduct.image_url?.trim() || null,
+        original_image_url: selectedProduct.original_image_url?.trim() || null,
         sort_order: selectedProduct.sort_order,
         published: selectedProduct.published,
         active: selectedProduct.active,
@@ -387,55 +423,114 @@ export default function OperationCommercialAdmin({
     }
   };
 
-  const uploadProductPhoto = async (file: File) => {
-    if (!selectedProduct) return;
+  const applyCommercialImage = async (edited: EditedProductImage) => {
+    if (!pendingImage) return;
     setBusy(true);
     setNotice("");
     try {
-      const blob = await normalizeProductImage(file);
-      const productKey = selectedProduct.id || selectedProduct.slug || slugify(selectedProduct.name) || "novo-produto";
-      const path = `commercial/products/${productKey}/${Date.now()}-${safeMediaFileName(file.name)}.webp`;
       const supabase = requireSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from("adoce-media")
-        .upload(path, blob, { contentType: "image/webp", upsert: false });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("adoce-media").getPublicUrl(path);
-      setSelectedProduct({ ...selectedProduct, image_url: data.publicUrl });
-      setNotice("Foto preparada. Salve o produto para publicar a alteração.");
+      if (pendingImage.kind === "gallery") {
+        const ownerKey = pendingImage.productId || pendingImage.segment;
+        if (!ownerKey) throw new Error("A galeria da foto não foi identificada.");
+        const uploaded = await uploadEditedProductImage(supabase, `commercial/galleries/${ownerKey}`, pendingImage.file.name, edited);
+        const ownerItems = galleryMedia.filter((item) => pendingImage.productId
+          ? item.product_id === pendingImage.productId
+          : item.segment === pendingImage.segment);
+        const { error: galleryError } = await supabase.from("commercial_media_items").insert({
+          segment: pendingImage.segment || null,
+          product_id: pendingImage.productId || null,
+          media_type: "image",
+          image_url: uploaded.imageUrl,
+          original_image_url: uploaded.originalImageUrl,
+          alt_text: pendingImage.productId ? `Foto real de ${selectedProduct?.name || "produto Adoce"}` : `Foto real de ${segmentLabels[pendingImage.segment!]}`,
+          sort_order: ownerItems.length ? Math.max(...ownerItems.map((item) => item.sort_order)) + 10 : 10,
+          created_by: session.user.id,
+          updated_by: session.user.id,
+        });
+        if (galleryError) throw galleryError;
+        setPendingImage(null);
+        setNotice("Foto adicionada à galeria.");
+        await load();
+        return;
+      }
+      if (pendingImage.kind === "product") {
+        if (!selectedProduct) throw new Error("Abra novamente o produto antes de editar a foto.");
+        const productKey = selectedProduct.id || selectedProduct.slug || slugify(selectedProduct.name) || "novo-produto";
+        const uploaded = await uploadEditedProductImage(supabase, `commercial/products/${productKey}`, pendingImage.file.name, edited);
+        setSelectedProduct((current) => current ? {
+          ...current,
+          image_url: uploaded.imageUrl,
+          original_image_url: uploaded.originalImageUrl,
+        } : current);
+        setPendingImage(null);
+        setNotice("Foto editada e preparada. Salve o produto para publicar a alteração.");
+        return;
+      }
+
+      const segment = pendingImage.segment;
+      if (!segment) throw new Error("A categoria da foto não foi identificada.");
+      const uploaded = await uploadEditedProductImage(supabase, `commercial/segments/${segment}`, pendingImage.file.name, edited);
+      const { error: mediaError } = await supabase.from("commercial_segment_media").upsert({
+        segment,
+        image_url: uploaded.imageUrl,
+        original_image_url: uploaded.originalImageUrl,
+        alt_text: `Foto real da categoria ${segmentLabels[segment]}`,
+        updated_by: session.user.id,
+      }, { onConflict: "segment" });
+      if (mediaError) throw mediaError;
+      setPendingImage(null);
+      setNotice("Foto principal da categoria atualizada.");
+      await load();
     } catch (uploadError) {
-      setNotice(uploadError instanceof Error ? uploadError.message : "Não foi possível enviar a foto.");
+      const message = uploadError instanceof Error ? uploadError.message : "Não foi possível salvar a foto editada.";
+      setNotice(message);
+      throw new Error(message);
     } finally {
       setBusy(false);
     }
   };
 
-  const uploadSegmentCover = async (segment: CommercialSegment, file: File) => {
+  const galleryFor = (owner: { segment?: CommercialSegment; productId?: string }) => galleryMedia
+    .filter((item) => item.active && (owner.productId ? item.product_id === owner.productId : item.segment === owner.segment))
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const addInstagramMedia = async (owner: { segment?: CommercialSegment; productId?: string }, url: string, caption: string) => {
+    const normalized = normalizeInstagramUrl(url);
+    if (!normalized) { setNotice("Cole um link público válido de Reel ou publicação do Instagram."); return; }
     setBusy(true);
-    setNotice("");
-    try {
-      const blob = await normalizeProductImage(file);
-      const path = `commercial/segments/${segment}/${Date.now()}-${safeMediaFileName(file.name)}.webp`;
-      const supabase = requireSupabase();
-      const { error: uploadError } = await supabase.storage
-        .from("adoce-media")
-        .upload(path, blob, { contentType: "image/webp", upsert: false });
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from("adoce-media").getPublicUrl(path);
-      const { error: mediaError } = await supabase.from("commercial_segment_media").upsert({
-        segment,
-        image_url: data.publicUrl,
-        alt_text: `Foto real da categoria ${segmentLabels[segment]}`,
-        updated_by: session.user.id,
-      }, { onConflict: "segment" });
-      if (mediaError) throw mediaError;
-      setNotice("Foto principal da categoria atualizada.");
-      await load();
-    } catch (uploadError) {
-      setNotice(uploadError instanceof Error ? uploadError.message : "Não foi possível atualizar a foto principal.");
-    } finally {
-      setBusy(false);
-    }
+    const items = galleryFor(owner);
+    const { error } = await requireSupabase().from("commercial_media_items").insert({
+      segment: owner.segment || null, product_id: owner.productId || null, media_type: "instagram",
+      external_url: normalized, caption: caption.trim(), alt_text: caption.trim() || "Vídeo real da Adoce no Instagram",
+      sort_order: items.length ? Math.max(...items.map((item) => item.sort_order)) + 10 : 10,
+      created_by: session.user.id, updated_by: session.user.id,
+    });
+    setBusy(false);
+    if (error) setNotice(error.message); else { setNotice("Reel adicionado sem ocupar o armazenamento de vídeos."); await load(); }
+  };
+
+  const moveGalleryMedia = async (owner: { segment?: CommercialSegment; productId?: string }, item: CommercialMediaItem, direction: -1 | 1) => {
+    const items = galleryFor(owner); const index = items.findIndex((entry) => entry.id === item.id); const other = items[index + direction];
+    if (!other) return;
+    setBusy(true); const supabase = requireSupabase(); const temporary = -Math.abs(Date.now());
+    const first = await supabase.from("commercial_media_items").update({ sort_order: temporary, updated_by: session.user.id }).eq("id", item.id);
+    const second = first.error ? first : await supabase.from("commercial_media_items").update({ sort_order: item.sort_order, updated_by: session.user.id }).eq("id", other.id);
+    const third = second.error ? second : await supabase.from("commercial_media_items").update({ sort_order: other.sort_order, updated_by: session.user.id }).eq("id", item.id);
+    setBusy(false); if (third.error) setNotice(third.error.message); else await load();
+  };
+
+  const setGalleryCover = async (owner: { segment?: CommercialSegment; productId?: string }, item: CommercialMediaItem) => {
+    const items = galleryFor(owner); if (items[0]?.id === item.id) return;
+    setBusy(true);
+    const { error } = await requireSupabase().from("commercial_media_items").update({ sort_order: Math.min(...items.map((entry) => entry.sort_order)) - 10, updated_by: session.user.id }).eq("id", item.id);
+    setBusy(false); if (error) setNotice(error.message); else { setNotice("Capa da galeria atualizada."); await load(); }
+  };
+
+  const removeGalleryMedia = async (item: CommercialMediaItem) => {
+    if (!window.confirm("Remover esta mídia da apresentação pública?")) return;
+    setBusy(true);
+    const { error } = await requireSupabase().from("commercial_media_items").update({ active: false, updated_by: session.user.id }).eq("id", item.id);
+    setBusy(false); if (error) setNotice(error.message); else { setNotice("Mídia removida da apresentação."); await load(); }
   };
 
   const addProductOption = async (event: FormEvent) => {
@@ -560,6 +655,7 @@ export default function OperationCommercialAdmin({
       <nav className="operation-commercial-tabs">
         <button className={tab === "agenda" ? "active" : ""} onClick={() => setTab("agenda")}><CalendarDays /> Agenda</button>
         <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}><PackagePlus /> Pedidos</button>
+        <button className={tab === "pede_junto" ? "active" : ""} onClick={() => setTab("pede_junto")}><Users /> Pede Junto</button>
         <button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><Edit3 /> Catálogo</button>
         <button className={tab === "crm" ? "active" : ""} onClick={() => setTab("crm")}><Users /> CRM</button>
         <button className={tab === "feedback" ? "active" : ""} onClick={() => setTab("feedback")}><MessageSquareWarning /> Reclamações</button>
@@ -642,29 +738,59 @@ export default function OperationCommercialAdmin({
           <section className="operation-segment-media">
             <div>
               <small>Fotos principais das páginas</small>
-              <h2>Uma imagem real por categoria</h2>
+              <h2>Galerias reais por categoria</h2>
               <p>Eventos, Adoce na Escola e Aluguel de decoração mostram esta foto uma única vez; os produtos e valores aparecem logo abaixo.</p>
             </div>
             <div className="operation-segment-media-grid">
-              {(Object.keys(segmentLabels) as CommercialSegment[]).map((segment) => {
+              {(Object.keys(segmentLabels) as CommercialSegment[]).filter((segment) => segment !== "sweets").map((segment) => {
                 const media = segmentMedia.find((item) => item.segment === segment);
                 return (
                   <article key={segment}>
                     {media ? <img src={media.image_url} alt={media.alt_text} /> : <ImagePlus />}
                     <span><strong>{segmentLabels[segment]}</strong><small>{media ? "Foto publicada" : "Sem foto"}</small></span>
-                    <label>
-                      <ImagePlus /> Trocar foto
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
+                    <div className="operation-image-actions">
+                      <label>
+                        <ImagePlus /> Escolher foto
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={busy}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) setPendingImage({
+                              file,
+                              kind: "gallery",
+                              segment,
+                              title: `Foto principal de ${segmentLabels[segment]}`,
+                              preset: CATEGORY_IMAGE_PRESET,
+                            });
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                      <ClipboardImageInput
                         disabled={busy}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          if (file) void uploadSegmentCover(segment, file);
-                          event.currentTarget.value = "";
-                        }}
+                        onError={setNotice}
+                        onImage={(file) => setPendingImage({
+                          file,
+                          kind: "gallery",
+                          segment,
+                          title: `Foto principal de ${segmentLabels[segment]}`,
+                          preset: CATEGORY_IMAGE_PRESET,
+                        })}
                       />
-                    </label>
+                    </div>
+                    <CommercialMediaAdmin
+                      title={`Galeria de ${segmentLabels[segment]}`}
+                      items={galleryFor({ segment })}
+                      busy={busy}
+                      onError={setNotice}
+                      onImage={(file) => setPendingImage({ file, kind: "gallery", segment, title: `Foto de ${segmentLabels[segment]}`, preset: CATEGORY_IMAGE_PRESET })}
+                      onAddReel={(url, caption) => addInstagramMedia({ segment }, url, caption)}
+                      onMove={(item, direction) => void moveGalleryMedia({ segment }, item, direction)}
+                      onCover={(item) => void setGalleryCover({ segment }, item)}
+                      onRemove={(item) => void removeGalleryMedia(item)}
+                    />
                   </article>
                 );
               })}
@@ -676,7 +802,15 @@ export default function OperationCommercialAdmin({
             </button>
             {products.map((product) => (
               <button key={product.id} onClick={() => setSelectedProduct({ ...product })}>
-                <span><small>{segmentLabels[product.segment]}</small><strong>{product.name}</strong></span>
+                <span>
+                  <small>
+                    {segmentLabels[product.segment]}
+                    {product.segment === "events" && product.subcategory
+                      ? ` · ${eventSubcategoryLabels[product.subcategory]}`
+                      : ""}
+                  </small>
+                  <strong>{product.name}</strong>
+                </span>
                 <b>{money(product.base_price)}</b><em>{product.published ? "Publicado" : "Rascunho"}</em><Edit3 />
               </button>
             ))}
@@ -685,7 +819,43 @@ export default function OperationCommercialAdmin({
             <div className="operation-product-editor">
             <form className="operation-product-form" onSubmit={saveProduct}>
               <small>{selectedProduct.id ? "Editar produto" : "Novo produto"}</small><h2>{selectedProduct.name || "Cadastrar opção"}</h2>
-              <div><label>Categoria<select value={selectedProduct.segment} onChange={(event) => setSelectedProduct({ ...selectedProduct, segment: event.target.value as CommercialSegment })}>{(Object.keys(segmentLabels) as CommercialSegment[]).map((item) => <option key={item} value={item}>{segmentLabels[item]}</option>)}</select></label><label>Ordem<input type="number" value={selectedProduct.sort_order} onChange={(event) => setSelectedProduct({ ...selectedProduct, sort_order: Number(event.target.value) })} /></label></div>
+              <div>
+                <label>
+                  Categoria
+                  <select
+                    value={selectedProduct.segment}
+                    onChange={(event) => {
+                      const nextSegment = event.target.value as CommercialSegment;
+                      setSelectedProduct({
+                        ...selectedProduct,
+                        segment: nextSegment,
+                        subcategory: nextSegment === "events"
+                          ? selectedProduct.subcategory || "trays"
+                          : null,
+                      });
+                    }}
+                  >
+                    {(Object.keys(segmentLabels) as CommercialSegment[]).map((item) => <option key={item} value={item}>{segmentLabels[item]}</option>)}
+                  </select>
+                </label>
+                {selectedProduct.segment === "events" ? (
+                  <label>
+                    Tipo de evento
+                    <select
+                      value={selectedProduct.subcategory || "trays"}
+                      onChange={(event) => setSelectedProduct({
+                        ...selectedProduct,
+                        subcategory: event.target.value as CommercialEventSubcategory,
+                      })}
+                    >
+                      {(Object.keys(eventSubcategoryLabels) as CommercialEventSubcategory[]).map((item) => (
+                        <option key={item} value={item}>{eventSubcategoryLabels[item]}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label>Ordem<input type="number" value={selectedProduct.sort_order} onChange={(event) => setSelectedProduct({ ...selectedProduct, sort_order: Number(event.target.value) })} /></label>
+              </div>
               <label>Nome<input value={selectedProduct.name} onChange={(event) => setSelectedProduct({ ...selectedProduct, name: event.target.value })} /></label>
               <label>Identificador <small>(gerado pelo nome se ficar vazio)</small><input value={selectedProduct.slug} onChange={(event) => setSelectedProduct({ ...selectedProduct, slug: slugify(event.target.value) })} placeholder="ex.: torta-de-morango" /></label>
               <label>Chamada curta<input value={selectedProduct.short_description} onChange={(event) => setSelectedProduct({ ...selectedProduct, short_description: event.target.value })} /></label>
@@ -766,25 +936,55 @@ export default function OperationCommercialAdmin({
                 {selectedProduct.image_url ? <img src={selectedProduct.image_url} alt={`Foto de ${selectedProduct.name}`} /> : <ImagePlus />}
                 <div>
                   <strong>Foto deste produto</strong>
-                  <small>JPG, PNG ou WebP. O sistema reduz e otimiza sem deformar.</small>
-                  <label>
-                    <ImagePlus /> {selectedProduct.image_url ? "Substituir foto" : "Adicionar foto"}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
+                  <small>Edite o corte, o enquadramento e a luz sem deformar a foto real.</small>
+                  <div className="operation-image-actions">
+                    <label>
+                      <ImagePlus /> {selectedProduct.image_url ? "Escolher outra foto" : "Escolher foto"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        disabled={busy}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) setPendingImage({
+                            file,
+                            kind: "gallery",
+                            productId: selectedProduct.id,
+                            title: `Foto de ${selectedProduct.name || "novo produto"}`,
+                            preset: PRODUCT_IMAGE_PRESET,
+                          });
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    <ClipboardImageInput
                       disabled={busy}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) void uploadProductPhoto(file);
-                        event.currentTarget.value = "";
-                      }}
+                      onError={setNotice}
+                      onImage={(file) => setPendingImage({
+                        file,
+                        kind: "gallery",
+                        productId: selectedProduct.id,
+                        title: `Foto de ${selectedProduct.name || "novo produto"}`,
+                        preset: PRODUCT_IMAGE_PRESET,
+                      })}
                     />
-                  </label>
+                  </div>
                   {selectedProduct.image_url ? <button type="button" onClick={() => setSelectedProduct({ ...selectedProduct, image_url: null })}>Remover da apresentação</button> : null}
                 </div>
               </div>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.published} onChange={(event) => setSelectedProduct({ ...selectedProduct, published: event.target.checked })} /> Publicado para clientes</label>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.active} onChange={(event) => setSelectedProduct({ ...selectedProduct, active: event.target.checked })} /> Produto ativo</label>
+              {selectedProduct.id ? <CommercialMediaAdmin
+                title={`Galeria de ${selectedProduct.name}`}
+                items={galleryFor({ productId: selectedProduct.id })}
+                busy={busy}
+                onError={setNotice}
+                onImage={(file) => setPendingImage({ file, kind: "gallery", productId: selectedProduct.id, title: `Foto de ${selectedProduct.name}`, preset: PRODUCT_IMAGE_PRESET })}
+                onAddReel={(url, caption) => addInstagramMedia({ productId: selectedProduct.id }, url, caption)}
+                onMove={(item, direction) => void moveGalleryMedia({ productId: selectedProduct.id }, item, direction)}
+                onCover={(item) => void setGalleryCover({ productId: selectedProduct.id }, item)}
+                onRemove={(item) => void removeGalleryMedia(item)}
+              /> : <p>Salve o produto antes de adicionar fotos ou Reels à galeria.</p>}
               <button disabled={busy || !selectedProduct.name.trim()}><Check /> {selectedProduct.id ? "Salvar produto" : "Criar produto"}</button>
             </form>
             {selectedProduct.id ? <section className="operation-product-options">
@@ -838,6 +1038,8 @@ export default function OperationCommercialAdmin({
           </div>
         </div>
       ) : null}
+
+      {tab === "pede_junto" ? <OperationPedeJunto /> : null}
 
       {tab === "feedback" ? (
         <div className="operation-commercial-grid feedback-operation">
@@ -894,6 +1096,15 @@ export default function OperationCommercialAdmin({
           </div>
           <a href={`https://wa.me/${selectedRequest.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Adoce Brigaderia.`)}`} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente</a>
         </div>
+      ) : null}
+      {pendingImage ? (
+        <ImageEditor
+          file={pendingImage.file}
+          title={pendingImage.title}
+          preset={pendingImage.preset}
+          onCancel={() => setPendingImage(null)}
+          onApply={applyCommercialImage}
+        />
       ) : null}
     </div>
   );

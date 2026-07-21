@@ -5,10 +5,13 @@ export type CommercialSegment =
   | "school"
   | "rentals";
 
+export type CommercialEventSubcategory = "trays" | "mini_parties";
+
 export type CommercialProduct = {
   id: string;
   slug: string;
   segment: CommercialSegment;
+  subcategory: CommercialEventSubcategory | null;
   name: string;
   short_description: string;
   description: string;
@@ -26,6 +29,7 @@ export type CommercialProduct = {
     additional_price?: number;
   };
   image_url: string | null;
+  original_image_url: string | null;
   allergens: string[];
   show_allergens: boolean;
   published: boolean;
@@ -62,6 +66,11 @@ export const segmentLabels: Record<CommercialSegment, string> = {
   rentals: "Aluguel de decoração",
 };
 
+export const eventSubcategoryLabels: Record<CommercialEventSubcategory, string> = {
+  trays: "Tabuleiro",
+  mini_parties: "Mini Festas",
+};
+
 export function money(value: number | null) {
   if (value === null) return "Valor sob consulta";
   return new Intl.NumberFormat("pt-BR", {
@@ -80,6 +89,51 @@ export function businessDateAfter(start: Date, days: number) {
     if (weekday !== 0 && weekday !== 6) remaining -= 1;
   }
   return result.toISOString().slice(0, 10);
+}
+
+export function formatCommercialDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${value}T12:00:00`));
+}
+
+export function leadTimeMessage(businessDays: number, minimumDate: string) {
+  const days = businessDays === 1 ? "1 dia útil" : `${businessDays} dias úteis`;
+  return `Para prepararmos tudo com carinho, precisamos de ${days} de antecedência. A primeira data disponível para esta opção é ${formatCommercialDate(minimumDate)}.`;
+}
+
+export type CommercialRequestField = "name" | "phone" | "email" | "quantity" | "date" | "time" | "privacy";
+
+export type CommercialRequestDraft = {
+  name: string;
+  phone: string;
+  email: string;
+  quantity: number;
+  date: string;
+  time: string;
+  privacy: boolean;
+};
+
+export function validateCommercialRequest(
+  draft: CommercialRequestDraft,
+  minimumQuantity: number,
+  minimumDate: string,
+  leadBusinessDays: number,
+) {
+  const errors: Partial<Record<CommercialRequestField, string>> = {};
+  if (draft.name.trim().length < 2) errors.name = "Conte como podemos chamar você.";
+  const phone = normalizeBrazilianPhone(draft.phone);
+  if (phone.length < 12 || phone.length > 13) errors.phone = "Informe um WhatsApp válido com DDD para falarmos sobre a encomenda.";
+  if (draft.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) errors.email = "Confira o e-mail ou deixe este campo vazio.";
+  if (!Number.isFinite(draft.quantity) || draft.quantity < minimumQuantity) errors.quantity = `Esta opção começa com ${minimumQuantity} unidade(s).`;
+  if (!draft.date) errors.date = "Escolha a data em que deseja receber sua encomenda.";
+  else if (draft.date < minimumDate) errors.date = leadTimeMessage(leadBusinessDays, minimumDate);
+  if (!draft.time) errors.time = "Escolha o horário desejado.";
+  if (!draft.privacy) errors.privacy = "Confirme a Política de Privacidade para enviarmos sua solicitação.";
+  return errors;
 }
 
 export function normalizeBrazilianPhone(value: string) {

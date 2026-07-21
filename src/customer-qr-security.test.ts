@@ -43,5 +43,7 @@ describe("seguranca do QR do cliente", () => {
     expect(app).toContain("Android · Google Chrome");
     expect(app).toContain("iPhone · Safari");
     expect(app).toContain("Adicionar à Tela de Início");
+    expect(app).toContain("Editar Ações");
+    expect(app).toContain("Abrir como App da Web");
   });
 });

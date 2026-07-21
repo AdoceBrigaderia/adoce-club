@@ -1,0 +1,120 @@
+.public-contact-dock {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 90;
+  display: flex;
+  gap: 7px;
+  padding: 7px;
+  border: 1px solid rgba(86, 46, 35, .18);
+  border-radius: 999px;
+  background: rgba(255, 248, 241, .94);
+  box-shadow: 0 16px 42px rgba(54, 21, 13, .2);
+  backdrop-filter: blur(14px);
+}
+
+.public-contact-dock a {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff8f1;
+  background: #35150e;
+  text-decoration: none;
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.public-contact-dock a:nth-child(2) {
+  background: linear-gradient(135deg, #833ab4, #e1306c 55%, #f77737);
+}
+
+.public-contact-dock a.whatsapp {
+  background: #178d52;
+}
+
+.public-contact-dock a:hover,
+.public-contact-dock a:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(54, 21, 13, .2);
+}
+
+.public-contact-dock a:focus-visible {
+  outline: 3px solid rgba(239, 111, 104, .45);
+  outline-offset: 3px;
+}
+
+.public-contact-dock svg {
+  width: 21px;
+  height: 21px;
+}
+
+.public-contact-dock small {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff8f1;
+  border-radius: 50%;
+  background: #35150e;
+  color: #fff;
+  font: 800 9px/1 "Segoe UI", sans-serif;
+}
+
+.public-contact-dock a::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 50%;
+  bottom: calc(100% + 11px);
+  transform: translateX(50%) translateY(4px);
+  width: max-content;
+  max-width: 180px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #2a110c;
+  color: #fff8f1;
+  font: 700 11px/1.2 "Segoe UI", sans-serif;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.public-contact-dock a:hover::after,
+.public-contact-dock a:focus-visible::after {
+  opacity: 1;
+  transform: translateX(50%) translateY(0);
+}
+
+@media (max-width: 560px) {
+  .public-contact-dock {
+    right: max(9px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    gap: 5px;
+    padding: 6px;
+  }
+
+  .public-contact-dock a {
+    width: 42px;
+    height: 42px;
+  }
+
+  .public-contact-dock a::after {
+    display: none;
+  }
+
+  body:has(.today-page) .public-contact-dock {
+    position: static;
+    width: max-content;
+    margin: -82px auto 106px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-contact-dock a {
+    transition: none;
+  }
+}

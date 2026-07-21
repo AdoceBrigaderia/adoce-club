@@ -1,8 +1,8 @@
 {
   "title": "Clube Adoce — Documentação do Produto",
   "subtitle": "Uma experiência digital que começa na carteira e continua todos os dias.",
-  "version": "1.7",
-  "updatedAt": "20/07/2026",
+  "version": "2.4",
+  "updatedAt": "21/07/2026",
   "files": [
     "00-visao-do-produto.md",
     "01-regras-de-negocio.md",
@@ -15,6 +15,8 @@
     "08-fundacao-producao.md",
     "09-catalogo-agenda-crm.md",
     "10-seguranca-identidade-validacao.md",
-    "11-apresentacao-comercial-e-midias.md"
+    "11-apresentacao-comercial-e-midias.md",
+    "12-pede-junto-adoce.md",
+    "13-metodo-economico-de-publicacao.md"
   ]
 }

@@ -1,0 +1,2 @@
+-- Esta versão já foi aplicada diretamente no projeto remoto e corresponde
+-- à implantação de feedback de clientes preservada em 20260720132544.

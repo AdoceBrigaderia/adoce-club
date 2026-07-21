@@ -47,12 +47,17 @@ As ações disponíveis para proprietário e gerente são:
 - desativar acesso;
 - reativar acesso;
 - registrar solicitação de exclusão;
+- excluir o cadastro imediatamente, removendo o acesso e anonimizando os dados pessoais vinculados;
 - cancelar solicitação de exclusão;
 - marcar cadastro duplicado para revisão.
 
 Toda ação exige um motivo entre cadastro duplicado, solicitação do cliente, cadastro criado por engano ou teste, revisão de segurança, violação dos termos, obrigação legal ou administrativa e outro motivo com observação obrigatória.
 
 A ação registra operador, cliente, estado anterior, estado resultante, motivo, observação, data, tentativa de notificação e resultado do envio. O operador não pode aplicar a ação ao próprio cadastro nessa tela.
+
+Na exclusão definitiva, a conta de autenticação recebe exclusão segura, o perfil deixa de aparecer na busca de membros e os dados pessoais do cadastro são anonimizados. Carimbos, pedidos e auditoria indispensáveis permanecem apenas como histórico operacional, sem permitir novo acesso. Cadastros que estavam em `pending_deletion` podem ser finalizados diretamente pela operação.
+
+Proprietários e gerentes podem corrigir o nome do cliente na própria ficha. A alteração também atualiza a identidade de acesso e fica registrada na auditoria. Novos cadastros não aceitam nomes genéricos como “Cliente”, “Cliente Adoce”, “Teste”, “Sem nome” ou “Não informado”. A área de membros exibe o total de clientes e a separação entre ativos, desativados e aguardando exclusão; contas da equipe e perfis anonimizados não entram nessa contagem.
 
 ## Exclusão, retenção e histórico
 

@@ -9,6 +9,9 @@ const requiredConsents = [
 describe("conclusão do cadastro do cliente", () => {
   it("rejeita o nome provisório criado automaticamente", () => {
     expect(isRealCustomerName("Cliente Adoce")).toBe(false);
+    expect(isRealCustomerName("Cliente")).toBe(false);
+    expect(isRealCustomerName("Teste")).toBe(false);
+    expect(isRealCustomerName("Sem nome")).toBe(false);
     expect(isCustomerOnboardingComplete("Cliente Adoce", requiredConsents)).toBe(false);
   });
 
@@ -27,6 +30,7 @@ describe("conclusão do cadastro do cliente", () => {
   });
 
   it("libera somente um cadastro nominal com termos e privacidade aceitos", () => {
+    expect(isRealCustomerName("Ana")).toBe(true);
     expect(isCustomerOnboardingComplete("Marcos Bezerra", requiredConsents)).toBe(true);
   });
 });

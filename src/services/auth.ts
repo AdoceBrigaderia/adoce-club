@@ -81,6 +81,25 @@ export async function signInWithPhonePassword(
   return data;
 }
 
+export async function signInWithEmailPassword(
+  email: string,
+  password: string,
+  remember = true,
+) {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+    throw new Error("Informe um e-mail válido.");
+  }
+
+  setRememberLogin(remember);
+  const { data, error } = await requireSupabase().auth.signInWithPassword({
+    email: normalizedEmail,
+    password,
+  });
+  if (error) throw new Error("E-mail ou senha incorretos.");
+  return data;
+}
+
 export async function upgradeCustomerSecurity(
   accessToken: string,
   phone: string,

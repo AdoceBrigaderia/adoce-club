@@ -13,7 +13,7 @@ const destinations = [
   "#encomendas",
   "#eventos",
   "#adoce-na-escola",
-  "#compra-em-grupo",
+  "#pede-junto",
   "#clube",
   "#entrar",
 ];

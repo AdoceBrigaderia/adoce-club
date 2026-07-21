@@ -1,0 +1,2 @@
+-- Esta versão já foi aplicada diretamente no projeto remoto e corresponde
+-- à implantação da validação privada do Plano Diretor preservada em 20260720143000.

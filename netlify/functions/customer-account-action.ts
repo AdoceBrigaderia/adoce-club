@@ -25,7 +25,7 @@ const allowedOrigin = (request: Request) => {
   ].filter(Boolean)).has(origin);
 };
 
-const actions = new Set(["deactivate", "reactivate", "request_deletion", "mark_duplicate", "cancel_deletion"]);
+const actions = new Set(["deactivate", "reactivate", "request_deletion", "delete_account", "mark_duplicate", "cancel_deletion"]);
 const reasons = new Set([
   "duplicate_registration", "customer_request", "created_by_mistake",
   "security_review", "terms_violation", "legal_requirement", "other",
@@ -44,7 +44,9 @@ const notificationCopy = (name: string, action: string, reason: string) => {
   };
   const statusText = action === "reactivate" || action === "cancel_deletion"
     ? "Seu acesso ao Clube Adoce está ativo novamente."
-    : action === "request_deletion"
+    : action === "delete_account"
+      ? "Seu acesso e seus dados pessoais foram excluídos. Mantivemos somente registros operacionais anonimizados exigidos para histórico e segurança."
+      : action === "request_deletion"
       ? "Seu cadastro entrou no processo seguro de exclusão e tratamento dos dados aplicáveis."
       : "Seu acesso ao Clube Adoce foi desativado.";
   return {
@@ -114,19 +116,21 @@ export default async (request: Request) => {
   const adminClient = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
-    .select("id,full_name,email,account_status,active,status_reason_code,status_reason_note,status_changed_at,status_changed_by")
+    .select("id,full_name,email,phone_e164,birth_date,preferred_channel,postal_code,address_line,address_number,address_complement,neighborhood,city,state_code,flavor_preferences,whatsapp_verified_at,auth_upgraded_at,account_status,active,status_reason_code,status_reason_note,status_changed_at,status_changed_by,member_code")
     .eq("id", profileId)
     .maybeSingle();
   if (profileError || !profile) return json({ error: "Cliente não encontrado." }, 404);
 
-  const resultingStatus = action === "request_deletion"
-    ? "pending_deletion"
+  const resultingStatus = action === "delete_account"
+    ? "anonymized"
+    : action === "request_deletion"
+      ? "pending_deletion"
     : action === "reactivate" || action === "cancel_deletion"
       ? "active"
       : "deactivated";
   const active = resultingStatus === "active";
   const now = new Date().toISOString();
-  const { error: updateError } = await adminClient.from("profiles").update({
+  const profileUpdate = {
     account_status: resultingStatus,
     active,
     status_reason_code: reasonCode,
@@ -134,7 +138,25 @@ export default async (request: Request) => {
     status_changed_at: now,
     status_changed_by: userData.user.id,
     updated_at: now,
-  }).eq("id", profileId);
+    ...(action === "delete_account" ? {
+      full_name: `Cadastro excluído ${profile.member_code.slice(-4)}`,
+      email: null,
+      phone_e164: null,
+      birth_date: null,
+      preferred_channel: "none",
+      postal_code: null,
+      address_line: null,
+      address_number: null,
+      address_complement: null,
+      neighborhood: null,
+      city: null,
+      state_code: null,
+      flavor_preferences: [],
+      whatsapp_verified_at: null,
+      auth_upgraded_at: null,
+    } : {}),
+  };
+  const { error: updateError } = await adminClient.from("profiles").update(profileUpdate).eq("id", profileId);
   if (updateError) return json({ error: updateError.message }, 500);
 
   const restorePreviousState = async () => {
@@ -145,20 +167,27 @@ export default async (request: Request) => {
       status_reason_note: profile.status_reason_note,
       status_changed_at: profile.status_changed_at,
       status_changed_by: profile.status_changed_by,
+      full_name: profile.full_name,
+      email: profile.email,
+      phone_e164: profile.phone_e164,
+      birth_date: profile.birth_date,
+      preferred_channel: profile.preferred_channel,
+      postal_code: profile.postal_code,
+      address_line: profile.address_line,
+      address_number: profile.address_number,
+      address_complement: profile.address_complement,
+      neighborhood: profile.neighborhood,
+      city: profile.city,
+      state_code: profile.state_code,
+      flavor_preferences: profile.flavor_preferences,
+      whatsapp_verified_at: profile.whatsapp_verified_at,
+      auth_upgraded_at: profile.auth_upgraded_at,
       updated_at: new Date().toISOString(),
     }).eq("id", profileId);
     await adminClient.auth.admin.updateUserById(profileId, {
       ban_duration: profile.active ? "none" : "876000h",
     });
   };
-
-  const { error: authError } = await adminClient.auth.admin.updateUserById(profileId, {
-    ban_duration: active ? "none" : "876000h",
-  });
-  if (authError) {
-    await restorePreviousState();
-    return json({ error: "A alteração não foi concluída e o cadastro foi restaurado ao estado anterior." }, 500);
-  }
 
   const initialNotificationStatus = profile.email ? "pending" : "not_applicable";
   const { data: actionRecord, error: actionError } = await adminClient.from("customer_account_actions").insert({
@@ -178,6 +207,15 @@ export default async (request: Request) => {
     return json({ error: "A alteração não foi concluída porque o registro de auditoria falhou." }, 500);
   }
 
+  const { error: authError } = action === "delete_account"
+    ? await adminClient.auth.admin.deleteUser(profileId, true)
+    : await adminClient.auth.admin.updateUserById(profileId, { ban_duration: active ? "none" : "876000h" });
+  if (authError) {
+    await restorePreviousState();
+    await adminClient.from("customer_account_actions").delete().eq("id", actionRecord.id);
+    return json({ error: "A alteração não foi concluída e o cadastro foi restaurado ao estado anterior." }, 500);
+  }
+
   const notification = profile.email
     ? await sendNotification(profile.email, profile.full_name, action, reasonCode)
     : { status: "not_applicable", error: null };
@@ -189,11 +227,49 @@ export default async (request: Request) => {
     })
     .eq("id", actionRecord.id);
 
+  const cleanupErrors: string[] = [];
+  if (action === "delete_account") {
+    const cleanupResults = await Promise.all([
+      adminClient
+        .from("customer_account_actions")
+        .update({ notification_email: null, reason_note: null })
+        .eq("profile_id", profileId),
+      adminClient
+        .from("audit_events")
+        .update({ payload: { anonymized: true } })
+        .eq("entity_type", "profile")
+        .eq("entity_id", profileId),
+      adminClient
+        .from("service_requests")
+        .update({
+          customer_name: "Cliente excluído",
+          customer_phone: "550000000000",
+          customer_email: null,
+          service_location: "Dados removidos",
+          customer_notes: "",
+        })
+        .eq("profile_id", profileId),
+      adminClient
+        .from("crm_notes")
+        .update({ note: "Conteúdo removido após exclusão do cadastro." })
+        .eq("profile_id", profileId),
+      adminClient
+        .from("crm_tasks")
+        .update({ title: "Cadastro excluído", description: "" })
+        .eq("profile_id", profileId),
+    ]);
+    cleanupResults.forEach((result) => {
+      if (result.error) cleanupErrors.push(result.error.message);
+    });
+  }
+
   return json({
     applied: true,
     resultingStatus,
     notificationStatus: notification.status,
-    auditWarning: notificationAuditError ? "O envio foi processado, mas o status precisa ser conferido." : null,
+    auditWarning: notificationAuditError || cleanupErrors.length > 0
+      ? "A ação principal foi concluída, mas uma etapa secundária de auditoria precisa ser conferida."
+      : null,
   });
 };
 

@@ -11,6 +11,9 @@
     "generate:assets": "node scripts/generate-assets.mjs",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "docs:build": "node scripts/generate-docs.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "release:preview": "npm run release:check && npx --yes netlify-cli@26.2.0 deploy --no-build --alias=homologacao-adoce",
+    "release:prod": "npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --no-build",
     "prebuild": "npm run generate:pwa-icons && npm run docs:build",
     "launch:build": "node scripts/generate-launch-page-v3.mjs",
     "launch:verify": "node scripts/verify-launch-v3.cjs"
@@ -24,6 +27,7 @@
     "qrcode": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "react-icons": "^5.7.0",
     "vite": "latest"
   },
   "devDependencies": {

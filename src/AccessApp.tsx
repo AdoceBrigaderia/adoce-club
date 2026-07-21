@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Camera,
   Check,
+  ClipboardCheck,
   CircleHelp,
   Copy,
   Download,
@@ -27,12 +28,15 @@ import {
   Mail,
   KeyRound,
   MessageCircle,
+  MoreHorizontal,
   Plus,
   QrCode,
   RotateCcw,
   Search,
   Settings2,
+  Share2,
   ShieldCheck,
+  SquarePlus,
   Smartphone,
   Sparkles,
   UserRound,
@@ -45,6 +49,7 @@ import {
   getWhatsAppVerificationStatus,
   registerCustomerPasskey,
   requestEmailCode,
+  signInWithEmailPassword,
   signInWithPhonePassword,
   signOut,
   upgradeCustomerSecurity,
@@ -69,13 +74,16 @@ import ProductionRollbackPanel from "./ProductionRollbackPanel";
 import {
   currentConsent,
   isCustomerOnboardingComplete,
+  isRealCustomerName,
   type ConsentEvent,
 } from "./customer-onboarding";
+import { updateCustomerName } from "./customer-profile-admin";
 import "./access-app.css";
 import "./referral.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
+const DirectorPlanChecklist = lazy(() => import("./DirectorPlanChecklist"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 const passkeysEnabled = import.meta.env.VITE_ENABLE_PASSKEYS === "true";
@@ -84,7 +92,8 @@ const passwordRecoveryStorageKey = "adoce-password-recovery";
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "attend" | "movements" | "customers" | "orders" | "team" | "content" | "security";
+type OperationView = "attend" | "movements" | "customers" | "orders" | "catalog" | "team" | "content" | "director-plan" | "security";
+type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 
 type NotificationPreferences = {
   flavors: boolean;
@@ -122,7 +131,7 @@ function NotificationPreferencesFields({
   const topics: Array<[keyof NotificationPreferences, string]> = [
     ["flavors", "Sabores disponíveis no dia"],
     ["festival", "Festivais e horários especiais"],
-    ["promotions", "Promoções e compra em grupo"],
+    ["promotions", "Promoções e Pede Junto Adoce"],
     ["club_news", "Novidades do Clube Adoce"],
     ["rewards", "Fatia grátis, carimbos e indicações"],
     ["birthday", "Mimos e ações de aniversário"],
@@ -364,6 +373,16 @@ function InstallGuide({
   isInstalled: boolean;
   appName: string;
 }) {
+  const [addressCopied, setAddressCopied] = useState(false);
+  const copyAddressForSafari = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setAddressCopied(true);
+    } catch {
+      setAddressCopied(false);
+    }
+  }, []);
+
   return (
     <div className="install-guide">
       <div className="install-guide-head">
@@ -403,16 +422,57 @@ function InstallGuide({
         {(platform === "ios" || platform === "desktop") && (
           <article className={platform === "ios" ? "recommended" : ""}>
             <strong>iPhone · Safari</strong>
+            <p className="install-ios-note">
+              No iPhone, a Apple não abre uma janela automática de instalação.
+              O aplicativo é adicionado pelo menu do Safari.
+            </p>
             {platform === "ios" && !iosSafari && (
-              <p className="install-browser-warning">
-                Primeiro abra esta página no Safari. O iPhone instala o app por ele.
-              </p>
+              <div className="install-browser-warning">
+                <strong>Você não está usando o Safari.</strong>
+                <p>Copie o endereço, abra o Safari, cole na barra e acesse.</p>
+                <button type="button" onClick={() => void copyAddressForSafari()}>
+                  <Copy /> {addressCopied ? "Endereço copiado" : "Copiar endereço do Clube"}
+                </button>
+              </div>
             )}
-            <ol>
-              <li>Toque em Compartilhar (quadrado com seta para cima).</li>
-              <li>Escolha “Adicionar à Tela de Início”.</li>
-              <li>Confirme em “Adicionar”.</li>
+            <ol className="install-ios-steps">
+              <li>
+                <span><MoreHorizontal /></span>
+                <div>
+                  <b>Abra o menu do Safari</b>
+                  <small>Toque em Mais (…) e depois em Compartilhar. Se o botão de compartilhar já estiver visível, toque diretamente nele.</small>
+                </div>
+              </li>
+              <li>
+                <span><Share2 /></span>
+                <div>
+                  <b>Role a lista de opções</b>
+                  <small>Procure e toque em “Adicionar à Tela de Início”.</small>
+                </div>
+              </li>
+              <li>
+                <span><SquarePlus /></span>
+                <div>
+                  <b>Se a opção não aparecer</b>
+                  <small>Vá até o fim da lista, toque em “Editar Ações” e adicione “Adicionar à Tela de Início”.</small>
+                </div>
+              </li>
+              <li>
+                <span><Check /></span>
+                <div>
+                  <b>Finalize</b>
+                  <small>Ative “Abrir como App da Web”, quando essa opção aparecer, e toque em “Adicionar”.</small>
+                </div>
+              </li>
             </ol>
+            <a
+              className="install-apple-help"
+              href="https://support.apple.com/pt-br/guide/iphone/iph42ab2f3a7/ios"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Ver instrução oficial da Apple <ArrowRight />
+            </a>
           </article>
         )}
       </div>
@@ -664,7 +724,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(true);
   const [loginMode, setLoginMode] = useState<"password" | "email">(
-    surface === "client" ? "password" : "email",
+    "password",
   );
   const [code, setCode] = useState(directParams?.code || "");
   const [whatsAppChallenge, setWhatsAppChallenge] =
@@ -689,7 +749,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
       setStage("identify");
       setMessage("");
     } else {
-      setLoginMode("email");
+      setLoginMode("password");
       setRegistering(false);
       setStage("identify");
       setMessage("");
@@ -758,8 +818,13 @@ function AuthScreen({ surface }: { surface: Surface }) {
     setBusy(true);
     setMessage("");
     try {
-      await signInWithPhonePassword(phone, password, rememberLogin);
-      location.hash = "minha-conta";
+      if (surface === "operation") {
+        await signInWithEmailPassword(email, password, rememberLogin);
+        location.hash = "operacao";
+      } else {
+        await signInWithPhonePassword(phone, password, rememberLogin);
+        location.hash = "minha-conta";
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível entrar agora.");
     } finally {
@@ -769,6 +834,10 @@ function AuthScreen({ surface }: { surface: Surface }) {
 
   const submitCode = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (registering && !isRealCustomerName(name)) {
+      setMessage("Informe seu nome real para concluir o cadastro.");
+      return;
+    }
     setBusy(true);
     setMessage("");
     try {
@@ -925,8 +994,8 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 ? "Aceitar convite e reservar meu carimbo"
                 : registering
                   ? "Quero fazer parte"
-                  : loginMode === "password" && surface === "client"
-                    ? "Entrar com celular"
+                  : loginMode === "password"
+                    ? surface === "operation" ? "Entrar com senha" : "Entrar com celular"
                     : surface === "operation"
                       ? "Entrar na operação"
                       : "Entrar no Clube"}
@@ -938,25 +1007,28 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 : `Digite o código de 6 números enviado para ${email}.`
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
-              : loginMode === "password" && surface === "client" && !registering
-                ? "Use seu celular com DDD e a senha criada no primeiro acesso."
+              : loginMode === "password" && !registering
+                ? surface === "operation"
+                  ? "Use o e-mail autorizado da equipe e sua senha."
+                  : "Use seu celular com DDD e a senha criada no primeiro acesso."
                 : surface === "operation"
                   ? "Use o e-mail autorizado da equipe para receber seu código de acesso."
                   : "O código por e-mail será usado no primeiro acesso ou na recuperação da conta."}
           </p>
           {stage === "identify" ? (
-            surface === "client" && !registering && loginMode === "password" ? (
+            !registering && loginMode === "password" ? (
               <form onSubmit={submitPassword}>
                 <label>
-                  Celular com DDD
+                  {surface === "operation" ? "E-mail da equipe" : "Celular com DDD"}
                   <div className="input-icon">
-                    <Smartphone />
+                    {surface === "operation" ? <Mail /> : <Smartphone />}
                     <input
-                      value={phone}
-                      onChange={(event) => setPhone(event.target.value)}
-                      inputMode="tel"
+                      value={surface === "operation" ? email : phone}
+                      onChange={(event) => surface === "operation" ? setEmail(event.target.value) : setPhone(event.target.value)}
+                      inputMode={surface === "operation" ? "email" : "tel"}
+                      type={surface === "operation" ? "email" : "tel"}
                       autoComplete="username"
-                      placeholder="(85) 99999-9999"
+                      placeholder={surface === "operation" ? "equipe@adocebrigaderia.com.br" : "(85) 99999-9999"}
                       required
                     />
                   </div>
@@ -983,19 +1055,21 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   <span>Continuar conectado neste aparelho</span>
                 </label>
                 <button className="access-primary" disabled={busy}>
-                  {busy ? "Entrando..." : "Entrar no Clube"}
+                  {busy ? "Entrando..." : surface === "operation" ? "Entrar na operação" : "Entrar no Clube"}
                   <ArrowRight />
                 </button>
-                <button
-                  className="access-link"
-                  type="button"
-                  onClick={() => {
-                    setLoginMode("email");
-                    setMessage("");
-                  }}
-                >
-                  Primeiro acesso, criar senha ou recuperar conta
-                </button>
+                {surface === "client" && (
+                  <button
+                    className="access-link"
+                    type="button"
+                    onClick={() => {
+                      setLoginMode("email");
+                      setMessage("");
+                    }}
+                  >
+                    Primeiro acesso, criar senha ou recuperar conta
+                  </button>
+                )}
               </form>
             ) : (
             <form onSubmit={submitEmail}>
@@ -1163,12 +1237,14 @@ function AuthScreen({ surface }: { surface: Surface }) {
               {message}
             </div>
           )}
-          {surface === "client" && stage === "identify" && (
+          {stage === "identify" && (
             <button
               className="access-switch"
               type="button"
               onClick={() => {
-                if (!registering && loginMode === "email") {
+                if (surface === "operation") {
+                  setLoginMode(loginMode === "password" ? "email" : "password");
+                } else if (!registering && loginMode === "email") {
                   setLoginMode("password");
                 } else {
                   setRegistering(!registering);
@@ -1177,7 +1253,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 setMessage("");
               }}
             >
-              {registering
+              {surface === "operation"
+                ? loginMode === "email"
+                  ? "Entrar com e-mail e senha"
+                  : "Entrar com código enviado por e-mail"
+                : registering
                 ? "Entrar no Clube"
                 : loginMode === "email"
                   ? "Entrar com celular e senha"
@@ -1410,10 +1490,7 @@ function CustomerHome({ session }: { session: Session }) {
   const completeOnboarding = async (event: React.FormEvent) => {
     event.preventDefault();
     const cleanName = profileName.trim();
-    if (
-      cleanName.length < 2 ||
-      cleanName.toLocaleLowerCase("pt-BR") === "cliente adoce"
-    ) {
+    if (!isRealCustomerName(cleanName)) {
       setMessage("Informe seu nome para fazer parte do Clube.");
       return;
     }
@@ -2454,10 +2531,20 @@ function OperationHome({ session }: { session: Session }) {
   const [busy, setBusy] = useState(false);
   const [correctionQty, setCorrectionQty] = useState(1);
   const [correctionReason, setCorrectionReason] = useState("");
+  const [correctionError, setCorrectionError] = useState("");
   const [accountAction, setAccountAction] = useState<CustomerAccountAction>("deactivate");
   const [accountReason, setAccountReason] = useState<CustomerAccountReason>("customer_request");
   const [accountReasonNote, setAccountReasonNote] = useState("");
-  const [view, setView] = useState<OperationView>("attend");
+  const [memberCounts, setMemberCounts] = useState<MemberCounts>({ total: 0, active: 0, deactivated: 0, pending: 0 });
+  const [editingCustomerName, setEditingCustomerName] = useState(false);
+  const [customerNameDraft, setCustomerNameDraft] = useState("");
+  const [view, setView] = useState<OperationView>(() =>
+    location.hash.includes("plano-diretor")
+      ? "director-plan"
+      : location.hash.includes("catalogo")
+        ? "catalog"
+        : "attend",
+  );
   const [movements, setMovements] = useState<Movement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -2475,17 +2562,21 @@ function OperationHome({ session }: { session: Session }) {
       setSelected(null);
       setGeneratedAccess(null);
       const supabase = requireSupabase();
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id,full_name,phone_e164,email,member_code,account_status,updated_at")
-        .order("full_name", { ascending: true })
-        .limit(200);
+      const [{ data: profiles, error: profilesError }, { data: staffRows }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("id,full_name,phone_e164,email,member_code,account_status,updated_at")
+          .order("full_name", { ascending: true })
+          .limit(1000),
+        supabase.from("staff_members").select("user_id"),
+      ]);
       if (profilesError) {
         setBusy(false);
         setMessage(profilesError.message);
         return;
       }
-      const matched = [...((profiles || []) as Array<{
+      const staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
+      const customers = [...((profiles || []) as Array<{
         id: string;
         full_name: string;
         phone_e164: string | null;
@@ -2494,6 +2585,14 @@ function OperationHome({ session }: { session: Session }) {
         account_status: string;
         updated_at: string;
       }>)]
+        .filter((profile) => !staffIds.has(profile.id) && profile.account_status !== "anonymized");
+      setMemberCounts({
+        total: customers.length,
+        active: customers.filter((profile) => profile.account_status === "active").length,
+        deactivated: customers.filter((profile) => ["deactivated", "merged"].includes(profile.account_status)).length,
+        pending: customers.filter((profile) => profile.account_status === "pending_deletion").length,
+      });
+      const matched = customers
         .filter((profile) => matchesCustomerSearch(profile, term))
         .sort((a, b) =>
           a.full_name.localeCompare(b.full_name, "pt-BR", {
@@ -2521,6 +2620,8 @@ function OperationHome({ session }: { session: Session }) {
     setGeneratedAccess(null);
     setCorrectionQty(1);
     setCorrectionReason("");
+    setEditingCustomerName(false);
+    setCustomerNameDraft(customer.full_name);
     const supabase = requireSupabase();
     const [
       { data: memberships, error: membershipsError },
@@ -2623,6 +2724,7 @@ function OperationHome({ session }: { session: Session }) {
       deactivate: "desativar este cadastro",
       reactivate: "reativar este cadastro",
       request_deletion: "registrar a solicitação de exclusão",
+      delete_account: "excluir definitivamente o acesso e os dados pessoais deste cadastro",
       mark_duplicate: "marcar este cadastro como duplicado e desativá-lo",
       cancel_deletion: "cancelar a exclusão e reativar o cadastro",
     };
@@ -2636,8 +2738,9 @@ function OperationHome({ session }: { session: Session }) {
         reasonCode: accountReason,
         reasonNote: accountReasonNote,
       });
-      const successMessage =
-        result.notificationStatus === "sent"
+      const successMessage = result.resultingStatus === "anonymized"
+        ? "Cadastro excluído. O acesso e os dados pessoais foram removidos; o histórico operacional foi preservado."
+        : result.notificationStatus === "sent"
           ? "Cadastro atualizado e cliente avisado por e-mail."
           : "Cadastro atualizado. A notificação ficou pendente para envio.";
       await search(query);
@@ -2648,6 +2751,21 @@ function OperationHome({ session }: { session: Session }) {
       setBusy(false);
     }
   }, [accountAction, accountReason, accountReasonNote, query, search, selected, session.access_token]);
+  useEffect(() => {
+    if (selected?.account_status === "pending_deletion") setAccountAction("delete_account");
+  }, [selected?.account_status, selected?.profile_id]);
+  const saveCustomerName = useCallback(async () => {
+    if (!selected) return;
+    setBusy(true); setMessage("");
+    try {
+      const cleanName = await updateCustomerName(session.access_token, selected.profile_id, customerNameDraft);
+      setEditingCustomerName(false);
+      await search(query);
+      setMessage(`Nome atualizado para ${cleanName} e registrado na auditoria.`);
+    } catch (nameError) {
+      setMessage(nameError instanceof Error ? nameError.message : "Não foi possível atualizar o nome.");
+    } finally { setBusy(false); }
+  }, [customerNameDraft, query, search, selected, session.access_token]);
   const stopScanner = useCallback(() => {
     scannerControls.current?.stop();
     scannerControls.current = null;
@@ -2737,6 +2855,15 @@ function OperationHome({ session }: { session: Session }) {
   };
   const openView = async (next: OperationView) => {
     setView(next);
+    window.history.replaceState(
+      null,
+      "",
+      next === "catalog"
+        ? "#operacao-catalogo"
+        : next === "director-plan"
+          ? "#operacao-plano-diretor"
+          : "#operacao",
+    );
     setSelected(null);
     setMessage("");
     if (next === "customers") await search("");
@@ -2843,8 +2970,16 @@ function OperationHome({ session }: { session: Session }) {
   };
   const correctStamps = async () => {
     if (!selected || role !== "owner") return;
+    const normalizedReason = correctionReason.trim();
+    if (normalizedReason.length < 5) {
+      setCorrectionError(
+        "Explique o motivo com pelo menos 5 caracteres para manter o histórico claro.",
+      );
+      return;
+    }
+    setCorrectionError("");
     const confirmed = window.confirm(
-      `Remover ${correctionQty} carimbo(s) de ${selected.full_name}?\n\nSaldo atual: ${selected.current_progress} de 14\nMotivo: ${correctionReason.trim()}\n\nA correção ficará registrada no histórico.`,
+      `Remover ${correctionQty} carimbo(s) de ${selected.full_name}?\n\nSaldo atual: ${selected.current_progress} de 14\nMotivo: ${normalizedReason}\n\nA correção ficará registrada no histórico.`,
     );
     if (!confirmed) return;
     setBusy(true);
@@ -2853,7 +2988,7 @@ function OperationHome({ session }: { session: Session }) {
       target_account_id: selected.account_id,
       target_profile_id: selected.profile_id,
       quantity_to_remove: correctionQty,
-      adjustment_reason: correctionReason.trim(),
+      adjustment_reason: normalizedReason,
       operation_key: crypto.randomUUID(),
     });
     setBusy(false);
@@ -2864,6 +2999,7 @@ function OperationHome({ session }: { session: Session }) {
       );
       setCorrectionQty(1);
       setCorrectionReason("");
+      setCorrectionError("");
       await refreshSelected();
     }
   };
@@ -2973,6 +3109,14 @@ function OperationHome({ session }: { session: Session }) {
               <CalendarDays /> Pedidos & Agenda
             </button>
           )}
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "catalog" ? "active" : ""}
+              onClick={() => void openView("catalog")}
+            >
+              <Settings2 /> Catálogo & Mídias
+            </button>
+          )}
           <button
             className={view === "team" ? "active" : ""}
             onClick={() => void openView("team")}
@@ -2985,6 +3129,14 @@ function OperationHome({ session }: { session: Session }) {
               onClick={() => void openView("content")}
             >
               <Settings2 /> Administrar Adoce
+            </button>
+          )}
+          {role === "owner" && (
+            <button
+              className={view === "director-plan" ? "active" : ""}
+              onClick={() => void openView("director-plan")}
+            >
+              <ClipboardCheck /> Plano Diretor
             </button>
           )}
           {role === "owner" && (
@@ -3054,7 +3206,14 @@ function OperationHome({ session }: { session: Session }) {
                     <span className="avatar">{selected.full_name[0]}</span>
                     <div>
                       <small>Membro do Clube Adoce</small>
-                      <h2>{selected.full_name}</h2>
+                      {editingCustomerName ? <div className="customer-name-editor">
+                        <input value={customerNameDraft} onChange={(event) => setCustomerNameDraft(event.target.value)} aria-label="Nome completo do cliente" />
+                        <button type="button" onClick={() => void saveCustomerName()} disabled={busy || !isRealCustomerName(customerNameDraft)}><Check /> Salvar nome</button>
+                        <button type="button" onClick={() => { setEditingCustomerName(false); setCustomerNameDraft(selected.full_name); }}>Cancelar</button>
+                      </div> : <div className="customer-name-display">
+                        <h2>{selected.full_name}</h2>
+                        {["owner", "manager"].includes(role) ? <button type="button" onClick={() => setEditingCustomerName(true)}>Editar nome</button> : null}
+                      </div>}
                       <p>{selected.phone_e164 || selected.email}</p>
                       <p className="customer-member-code">
                         Código do Membro: <strong>{selected.member_code}</strong>
@@ -3150,15 +3309,16 @@ function OperationHome({ session }: { session: Session }) {
                         <ShieldCheck />
                         <span>
                           <small>Segurança e privacidade</small>
-                          <strong>Desativar, reativar ou solicitar exclusão</strong>
-                          <p>A exclusão não apaga carimbos e histórico imediatamente. Primeiro ela bloqueia o acesso, registra o motivo e notifica o cliente.</p>
+                          <strong>Desativar, reativar ou excluir o cadastro</strong>
+                          <p>Excluir remove definitivamente o acesso e os dados pessoais, mas preserva carimbos, pedidos e auditoria sem identificação pessoal.</p>
                         </span>
                       </div>
                       <label>
                         Ação
                         <select value={accountAction} onChange={(event) => setAccountAction(event.target.value as CustomerAccountAction)}>
                           <option value="deactivate">Desativar acesso</option>
-                          <option value="request_deletion">Solicitação de exclusão</option>
+                          <option value="delete_account">Excluir cadastro agora</option>
+                          <option value="request_deletion">Solicitação de exclusão para análise</option>
                           <option value="mark_duplicate">Marcar como cadastro duplicado</option>
                           <option value="reactivate">Reativar acesso</option>
                           <option value="cancel_deletion">Cancelar exclusão e reativar</option>
@@ -3263,18 +3423,35 @@ function OperationHome({ session }: { session: Session }) {
                           Motivo da correção
                           <input
                             value={correctionReason}
-                            onChange={(event) =>
-                              setCorrectionReason(event.target.value)
-                            }
+                            onChange={(event) => {
+                              setCorrectionReason(event.target.value);
+                              if (event.target.value.trim().length >= 5) {
+                                setCorrectionError("");
+                              }
+                            }}
+                            minLength={5}
+                            required
+                            aria-invalid={Boolean(correctionError)}
+                            aria-describedby="correction-reason-help"
                             placeholder="Ex.: compra lançada em duplicidade"
                           />
+                          <span
+                            id="correction-reason-help"
+                            className={correctionError ? "field-error" : "field-help"}
+                            role={correctionError ? "alert" : undefined}
+                          >
+                            {correctionError ||
+                              (correctionReason.trim().length > 0 &&
+                              correctionReason.trim().length < 5
+                                ? `Digite mais ${5 - correctionReason.trim().length} caractere(s).`
+                                : "Informe um motivo claro com pelo menos 5 caracteres.")}
+                          </span>
                         </label>
                         <button
                           className="access-secondary danger"
                           onClick={() => void correctStamps()}
                           disabled={
                             busy ||
-                            correctionReason.trim().length < 5 ||
                             selected.completed_cards * 14 +
                               selected.current_progress <
                               1
@@ -3297,6 +3474,12 @@ function OperationHome({ session }: { session: Session }) {
                   <h1>Membros</h1>
                   <p>Lista das contas cadastradas no Clube Adoce.</p>
                 </div>
+              </div>
+              <div className="operation-member-counts" aria-label="Quantidade de membros cadastrados">
+                <strong><b>{memberCounts.total}</b><span>clientes cadastrados</span></strong>
+                <span><b>{memberCounts.active}</b> ativos</span>
+                <span><b>{memberCounts.deactivated}</b> desativados</span>
+                <span><b>{memberCounts.pending}</b> aguardando exclusão</span>
               </div>
               <form
                 className="operation-search"
@@ -3402,8 +3585,18 @@ function OperationHome({ session }: { session: Session }) {
               <OperationCommercialAdmin session={session} role={role} />
             </Suspense>
           )}
+          {view === "catalog" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando catálogo e mídias...</p>}>
+              <OperationCommercialAdmin session={session} role={role} initialTab="catalog" />
+            </Suspense>
+          )}
           {view === "security" && role === "owner" && (
             <ProductionRollbackPanel accessToken={session.access_token} />
+          )}
+          {view === "director-plan" && role === "owner" && (
+            <Suspense fallback={<p>Carregando validação do projeto...</p>}>
+              <DirectorPlanChecklist session={session} />
+            </Suspense>
           )}
           {scannerOpen && (
             <div

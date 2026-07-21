@@ -1,0 +1,196 @@
+.image-editor-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(32, 13, 8, .76);
+  backdrop-filter: blur(10px);
+}
+
+.image-editor-shell {
+  box-sizing: border-box;
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 44px);
+  overflow: auto;
+  border: 1px solid #ead8ca;
+  border-radius: 24px;
+  background: #fffaf4;
+  color: #32140d;
+  box-shadow: 0 28px 90px rgba(28, 9, 5, .34);
+}
+
+.image-editor-shell > header,
+.image-editor-shell > footer {
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.image-editor-shell > header { border-bottom: 1px solid #ead8ca; }
+.image-editor-shell > footer { border-top: 1px solid #ead8ca; }
+.image-editor-shell > header > div { display: flex; align-items: center; gap: 11px; }
+.image-editor-shell > header span { display: grid; gap: 2px; }
+.image-editor-shell > header small,
+.image-editor-shell > footer > span { color: #7b5b50; font-size: .72rem; }
+.image-editor-shell svg { width: 18px; }
+.image-editor-shell > header > button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e4cdbd;
+  border-radius: 999px;
+  background: white;
+  color: #32140d;
+}
+
+.image-editor-workspace {
+  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 24px;
+  align-items: start;
+}
+
+.image-editor-stage-column { min-width: 0; display: grid; gap: 12px; }
+.image-editor-stage {
+  position: relative;
+  width: 100%;
+  max-height: 64vh;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #f2e4d9;
+  box-shadow: inset 0 0 0 1px rgba(50, 20, 13, .12);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.image-editor-stage:active { cursor: grabbing; }
+.image-editor-stage > img {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: none;
+  max-height: none;
+  transform-origin: center;
+  pointer-events: none;
+  will-change: transform, filter;
+}
+
+.image-editor-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 33.1%, rgba(255,255,255,.55) 33.3%, transparent 33.5%, transparent 66.4%, rgba(255,255,255,.55) 66.6%, transparent 66.8%),
+    linear-gradient(transparent 33.1%, rgba(255,255,255,.55) 33.3%, transparent 33.5%, transparent 66.4%, rgba(255,255,255,.55) 66.6%, transparent 66.8%);
+}
+
+.image-editor-stage > small {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: white;
+  background: rgba(50, 20, 13, .78);
+  text-align: center;
+  font-size: .67rem;
+}
+
+.image-editor-quality {
+  padding: 12px 14px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid #ddc8b8;
+  border-radius: 12px;
+  background: white;
+}
+.image-editor-quality strong { font-size: .76rem; }
+.image-editor-quality span { color: #795b51; font-size: .65rem; }
+.image-editor-quality.good strong { color: #3f7657; }
+.image-editor-quality.warning strong { color: #a14f31; }
+
+.image-editor-controls { display: grid; gap: 16px; }
+.image-editor-controls fieldset {
+  margin: 0;
+  padding: 14px;
+  display: grid;
+  gap: 11px;
+  border: 1px solid #e4cdbd;
+  border-radius: 14px;
+  background: white;
+}
+.image-editor-controls legend { padding: 0 5px; font-size: .72rem; font-weight: 850; }
+.image-editor-controls label { display: grid; grid-template-columns: 1fr auto; gap: 7px; font-size: .68rem; }
+.image-editor-controls label output { color: #a34f47; }
+.image-editor-controls input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: #ef6a61; }
+.image-editor-segmented { padding: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-radius: 10px; background: #f3e5db; }
+.image-editor-segmented button,
+.image-editor-actions-row button,
+.image-editor-auto,
+.image-editor-compare {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #68443a;
+  background: transparent;
+  font-size: .66rem;
+  font-weight: 800;
+}
+.image-editor-segmented button.active { color: white; background: #32140d; }
+.image-editor-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.image-editor-actions-row button { border-color: #e2c9ba; background: white; }
+.image-editor-auto { width: 100%; color: white; background: #ef6a61; }
+.image-editor-compare { width: 100%; border-color: #e2c9ba; background: #fffaf4; }
+.image-editor-error { margin: 0 22px 18px; padding: 11px 13px; border-radius: 10px; color: #8f302c; background: #ffebe6; font-size: .72rem; }
+.image-editor-shell > footer > div { display: flex; gap: 8px; }
+.image-editor-shell > footer button {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #dfc6b6;
+  border-radius: 9px;
+  color: #613d33;
+  background: white;
+  font-size: .7rem;
+  font-weight: 850;
+}
+.image-editor-shell > footer button.primary { display: flex; align-items: center; gap: 7px; border-color: #ef6a61; color: white; background: #ef6a61; }
+.image-editor-shell button:disabled { opacity: .5; }
+
+@media (max-width: 760px) {
+  .image-editor-backdrop { padding: 0; align-items: end; }
+  .image-editor-shell { width: 100%; max-height: 100dvh; border-radius: 22px 22px 0 0; }
+  .image-editor-workspace { padding: 14px; grid-template-columns: 1fr; gap: 16px; }
+  .image-editor-stage { max-height: 48vh; }
+  .image-editor-controls { grid-template-columns: 1fr; }
+  .image-editor-shell > footer { position: sticky; bottom: 0; z-index: 4; align-items: stretch; flex-direction: column; background: #fffaf4; }
+  .image-editor-shell > footer > div { display: grid; grid-template-columns: .7fr 1.3fr; }
+  .image-editor-shell > footer > span { text-align: center; }
+  .image-editor-shell > header { padding: 14px 16px; }
+  .image-editor-shell > header strong { font-size: 1rem; }
+  .image-editor-shell > header small { font-size: .78rem; }
+  .image-editor-stage > small { bottom: 8px; font-size: .74rem; }
+  .image-editor-quality strong { font-size: .85rem; }
+  .image-editor-quality span { font-size: .75rem; line-height: 1.4; }
+  .image-editor-controls { gap: 13px; }
+  .image-editor-controls fieldset { padding: 12px; }
+  .image-editor-controls legend { font-size: .82rem; }
+  .image-editor-controls label { font-size: .8rem; }
+  .image-editor-segmented button,
+  .image-editor-actions-row button,
+  .image-editor-auto,
+  .image-editor-compare { min-height: 48px; font-size: .78rem; }
+  .image-editor-shell > footer { padding: 13px 14px; }
+  .image-editor-shell > footer button { min-height: 48px; font-size: .8rem; }
+}

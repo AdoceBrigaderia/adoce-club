@@ -6,11 +6,16 @@ export type ConsentEvent = {
   created_at: string;
 };
 
-const PROVISIONAL_NAMES = new Set(["", "cliente adoce"]);
+const PROVISIONAL_NAMES = new Set([
+  "", "cliente", "cliente adoce", "adoce", "teste", "test",
+  "nome", "sem nome", "nao informado", "não informado",
+]);
 
 export function isRealCustomerName(name: string | null | undefined): boolean {
   const normalized = (name || "").trim().toLocaleLowerCase("pt-BR");
-  return normalized.length >= 2 && !PROVISIONAL_NAMES.has(normalized);
+  return normalized.length >= 3
+    && /[a-záàâãéêíóôõúç]/i.test(normalized)
+    && !PROVISIONAL_NAMES.has(normalized);
 }
 
 export function currentConsent(events: ConsentEvent[], type: ConsentType): boolean {

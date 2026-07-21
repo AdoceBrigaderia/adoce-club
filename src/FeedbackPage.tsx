@@ -25,7 +25,7 @@ export default function FeedbackPage() {
   return <main className="feedback-page">
     <a className="feedback-back" href="/"><ArrowLeft /> Voltar ao site</a>
     <section className="feedback-shell">
-      <div className="feedback-copy"><MessageSquareText /><span>Escuta Adoce</span><h1>Sua experiência ajuda a gente a cuidar melhor de cada detalhe.</h1><p>Conte se encontrou um erro, teve uma dificuldade ou imaginou uma melhoria. A mensagem chega à nossa operação com um protocolo para acompanhamento.</p></div>
+      <div className="feedback-copy"><MessageSquareText /><span>Escuta Adoce</span><h1>Sua experiência ajuda a gente a cuidar melhor de cada detalhe.</h1><p>Conte se encontrou um erro, teve uma dificuldade ou imaginou uma melhoria. Você recebe um protocolo para acompanhar a mensagem.</p></div>
       {protocol ? <div className="feedback-success"><CheckCircle2 /><h2>Recebemos sua mensagem.</h2><p>Protocolo <strong>{protocol}</strong></p><a href="/">Voltar ao site</a></div> :
       <form onSubmit={submit}>
         <h2>Reclamação ou sugestão</h2>
