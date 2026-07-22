@@ -40,6 +40,37 @@
 .instant-order-operation-items > span > span { display: grid; gap: 3px; }
 .instant-order-operation-items > span > span small { color: #8f7066; line-height: 1.4; }
 .instant-order-operation-actions button.payment-send { background: #168b55; }
+.payment-link-help { display: block; margin-top: 5px; color: #80655c; font-size: .7rem; line-height: 1.35; }
+
+.instant-order-loyalty {
+  margin: 4px 0 10px;
+  padding: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  border: 1px solid #ead2c4;
+  border-radius: 13px;
+  background: #fff8f1;
+}
+.instant-order-loyalty.recognized { border-color: #aed6be; background: #edf8f1; }
+.instant-order-loyalty > svg { width: 24px; flex: 0 0 auto; color: #d84f58; fill: #d84f58; }
+.instant-order-loyalty small { color: #a54d4e; text-transform: uppercase; letter-spacing: .1em; font-weight: 900; }
+.instant-order-loyalty h3 { margin: 3px 0 5px; font: 700 1.25rem Georgia, serif; }
+.instant-order-loyalty p { margin: 0; color: #765a50; line-height: 1.45; }
+.instant-order-reward-alert { margin-top: 9px; display: flex; align-items: center; gap: 7px; color: #246544; }
+.instant-order-reward-alert svg { width: 18px; }
+
+.instant-order-reward-picker { margin: 0 0 12px; padding: 14px; display: grid; gap: 10px; border: 1px solid #e7b26c; border-radius: 13px; background: #fff7e7; }
+.instant-order-reward-picker > div { display: flex; align-items: center; gap: 9px; }
+.instant-order-reward-picker > div > svg { width: 23px; color: #a86118; }
+.instant-order-reward-picker > div span { display: grid; gap: 2px; }
+.instant-order-reward-picker > div small { color: #a86118; text-transform: uppercase; letter-spacing: .1em; font-weight: 900; }
+.instant-order-reward-picker select { width: 100%; min-height: 44px; padding: 8px 10px; border: 1px solid #dfbd90; border-radius: 9px; background: #fff; color: #3b1a12; }
+.instant-order-reward-picker button { min-height: 44px; border: 0; border-radius: 9px; background: #8a571c; color: #fff; display: flex; align-items: center; justify-content: center; gap: 7px; font-weight: 900; }
+.instant-order-reward-picker button svg { width: 18px; }
+.instant-order-operation-items > span.reward-item { border-color: #dfbd90; background: #fff7e7; }
+.instant-order-operation-items > span.reward-item small { display: flex; align-items: center; gap: 5px; color: #8a571c; font-weight: 800; }
+.instant-order-operation-items > span.reward-item small svg { width: 14px; }
 
 .instant-order-status-track {
   margin: 2px 0 8px;

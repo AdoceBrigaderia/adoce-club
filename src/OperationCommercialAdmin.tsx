@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { operationWhatsAppUrl } from "./operation-whatsapp";
 import {
   AlertTriangle,
   ArrowRight,
@@ -1343,7 +1344,7 @@ export default function OperationCommercialAdmin({
                 </>}
               </div>
             ) : null}
-            <a href={`https://wa.me/${selectedRequest.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Adoce Brigaderia.`)}`} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente</a>
+            <a href={operationWhatsAppUrl(selectedRequest.customer_phone, `Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Adoce Brigaderia.`)} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente no WhatsApp Business</a>
           </aside>
         </div>
       ) : null}

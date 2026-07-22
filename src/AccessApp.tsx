@@ -493,8 +493,9 @@ function InstallGuide({
 }
 
 function Brand({ label }: { label: string }) {
+  const homeHref = label === "Adoce Operação" ? "/#operacao" : "/";
   return (
-    <a className="access-brand" href="/">
+    <a className="access-brand" href={homeHref}>
       <img src="/site/logo.webp" alt="Adoce Brigaderia" />
       <span>
         <strong>{label}</strong>
