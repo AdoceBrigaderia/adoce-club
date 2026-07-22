@@ -83,6 +83,7 @@ import "./referral.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
+const OperationNotificationCenter = lazy(() => import("./OperationNotificationCenter"));
 const DirectorPlanChecklist = lazy(() => import("./DirectorPlanChecklist"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
@@ -93,6 +94,7 @@ type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
 type OperationView = "attend" | "movements" | "customers" | "orders" | "catalog" | "team" | "content" | "director-plan" | "security";
+type OperationCommercialTab = "agenda" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 
 type NotificationPreferences = {
@@ -2543,7 +2545,20 @@ function OperationHome({ session }: { session: Session }) {
       ? "director-plan"
       : location.hash.includes("catalogo")
         ? "catalog"
+        : location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes")
+          ? "orders"
+          : location.hash.includes("membros")
+            ? "customers"
         : "attend",
+  );
+  const [commercialTab, setCommercialTab] = useState<OperationCommercialTab>(() =>
+    location.hash.includes("pede-junto")
+      ? "pede_junto"
+      : location.hash.includes("reclamacoes")
+        ? "feedback"
+        : location.hash.includes("pedidos")
+          ? "requests"
+          : "agenda",
   );
   const [movements, setMovements] = useState<Movement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
@@ -2944,6 +2959,24 @@ function OperationHome({ session }: { session: Session }) {
       );
     }
   };
+  const openNotificationTarget = useCallback((actionUrl: string) => {
+    if (actionUrl.includes("pede-junto")) {
+      setCommercialTab("pede_junto");
+      setView("orders");
+    } else if (actionUrl.includes("reclamacoes")) {
+      setCommercialTab("feedback");
+      setView("orders");
+    } else if (actionUrl.includes("pedidos")) {
+      setCommercialTab("requests");
+      setView("orders");
+    } else if (actionUrl.includes("membros")) {
+      setView("customers");
+      void search("");
+    }
+    window.history.replaceState(null, "", actionUrl || "#operacao");
+    setSelected(null);
+    setMessage("");
+  }, [search]);
   const purchase = async () => {
     if (!selected) return;
     const total = selected.current_progress + qty;
@@ -3082,6 +3115,9 @@ function OperationHome({ session }: { session: Session }) {
                 ? "Gerente"
                 : "Atendimento"}
           </span>
+          <Suspense fallback={null}>
+            <OperationNotificationCenter session={session} onNavigate={openNotificationTarget} />
+          </Suspense>
           <button onClick={() => setInstallGuideOpen(true)}>
             <Download /> Instalar
           </button>
@@ -3591,7 +3627,7 @@ function OperationHome({ session }: { session: Session }) {
           )}
           {view === "orders" && (role === "owner" || role === "manager") && (
             <Suspense fallback={<p>Carregando agenda e CRM...</p>}>
-              <OperationCommercialAdmin session={session} role={role} />
+              <OperationCommercialAdmin session={session} role={role} initialTab={commercialTab} />
             </Suspense>
           )}
           {view === "catalog" && (role === "owner" || role === "manager") && (

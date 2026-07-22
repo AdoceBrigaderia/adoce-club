@@ -1,4 +1,4 @@
-const CACHE = "clube-adoce-v3";
+const CACHE = "clube-adoce-v4";
 const SHELL = [
   "/site/logo.webp",
   "/manifest-clube.webmanifest",
@@ -32,4 +32,38 @@ self.addEventListener("fetch", event => {
     }
     return response;
   })));
+});
+
+self.addEventListener("push", event => {
+  let payload = {};
+  try {
+    payload = event.data?.json() || {};
+  } catch {
+    payload = { title: "Novo alerta na Operação Adoce" };
+  }
+  event.waitUntil(self.registration.showNotification(
+    payload.title || "Novo alerta na Operação Adoce",
+    {
+      body: payload.body || "Abra a Operação Adoce para conferir com segurança.",
+      icon: "/pwa/operacao/icon-192.png",
+      badge: "/pwa/operacao/icon-192.png",
+      tag: payload.tag || "adoce-operation-alert",
+      renotify: Boolean(payload.urgent),
+      data: { url: payload.url || "/#operacao" },
+    },
+  ));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const targetUrl = new URL(event.notification.data?.url || "/#operacao", self.location.origin).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const existing = windows.find(client => new URL(client.url).origin === self.location.origin);
+    if (existing) {
+      await existing.navigate(targetUrl);
+      return existing.focus();
+    }
+    return self.clients.openWindow(targetUrl);
+  })());
 });

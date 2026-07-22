@@ -1,120 +1,180 @@
 .public-contact-dock {
   position: fixed;
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
   z-index: 90;
-  display: flex;
-  gap: 7px;
-  padding: 7px;
-  border: 1px solid rgba(86, 46, 35, .18);
-  border-radius: 999px;
-  background: rgba(255, 248, 241, .94);
-  box-shadow: 0 16px 42px rgba(54, 21, 13, .2);
-  backdrop-filter: blur(14px);
-}
-
-.public-contact-dock a {
-  position: relative;
-  width: 46px;
-  height: 46px;
   display: grid;
-  place-items: center;
-  border-radius: 50%;
-  color: #fff8f1;
-  background: #35150e;
-  text-decoration: none;
-  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+  justify-items: end;
+  gap: 10px;
 }
 
-.public-contact-dock a:nth-child(2) {
-  background: linear-gradient(135deg, #833ab4, #e1306c 55%, #f77737);
+.public-contact-trigger {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, .38);
+  border-radius: 999px;
+  background: #f16668;
+  color: #fff;
+  box-shadow: 0 15px 36px rgba(76, 25, 16, .25);
+  font: 800 14px/1 "Segoe UI", sans-serif;
+  cursor: pointer;
+  transition: transform .18s ease, box-shadow .18s ease;
 }
 
-.public-contact-dock a.whatsapp {
-  background: #178d52;
+.public-contact-trigger:hover,
+.public-contact-trigger:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(76, 25, 16, .3);
 }
 
-.public-contact-dock a:hover,
-.public-contact-dock a:focus-visible {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 20px rgba(54, 21, 13, .2);
-}
-
-.public-contact-dock a:focus-visible {
-  outline: 3px solid rgba(239, 111, 104, .45);
+.public-contact-trigger:focus-visible,
+.public-contact-menu button:focus-visible,
+.public-contact-menu a:focus-visible {
+  outline: 3px solid rgba(239, 111, 104, .42);
   outline-offset: 3px;
 }
 
-.public-contact-dock svg {
-  width: 21px;
-  height: 21px;
+.public-contact-trigger svg {
+  width: 22px;
+  height: 22px;
 }
 
-.public-contact-dock small {
-  position: absolute;
-  right: -1px;
-  bottom: -1px;
-  width: 17px;
-  height: 17px;
+.public-contact-menu {
+  width: min(310px, calc(100vw - 28px));
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid rgba(86, 46, 35, .16);
+  border-radius: 24px;
+  background: rgba(255, 248, 241, .98);
+  box-shadow: 0 22px 54px rgba(54, 21, 13, .23);
+  backdrop-filter: blur(16px);
+}
+
+.public-contact-menu header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 5px 9px;
+}
+
+.public-contact-menu header div {
+  display: grid;
+  gap: 3px;
+}
+
+.public-contact-menu header span {
+  color: #d95055;
+  font: 800 10px/1.2 "Segoe UI", sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.public-contact-menu header strong {
+  color: #35150e;
+  font: 700 16px/1.25 Georgia, serif;
+}
+
+.public-contact-menu header button {
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border: 2px solid #fff8f1;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: #f7e8de;
+  color: #35150e;
+  cursor: pointer;
+}
+
+.public-contact-menu header button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.public-contact-menu a {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 11px;
+  border-radius: 16px;
+  color: #35150e;
+  text-decoration: none;
+  transition: transform .18s ease, background .18s ease;
+}
+
+.public-contact-menu a:hover,
+.public-contact-menu a:focus-visible {
+  transform: translateX(-3px);
+  background: #f8eade;
+}
+
+.public-contact-menu a > svg {
+  width: 42px;
+  height: 42px;
+  padding: 11px;
   border-radius: 50%;
   background: #35150e;
-  color: #fff;
-  font: 800 9px/1 "Segoe UI", sans-serif;
-}
-
-.public-contact-dock a::after {
-  content: attr(data-label);
-  position: absolute;
-  right: 50%;
-  bottom: calc(100% + 11px);
-  transform: translateX(50%) translateY(4px);
-  width: max-content;
-  max-width: 180px;
-  padding: 7px 9px;
-  border-radius: 8px;
-  background: #2a110c;
   color: #fff8f1;
-  font: 700 11px/1.2 "Segoe UI", sans-serif;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease;
 }
 
-.public-contact-dock a:hover::after,
-.public-contact-dock a:focus-visible::after {
-  opacity: 1;
-  transform: translateX(50%) translateY(0);
+.public-contact-menu a.instagram > svg {
+  background: linear-gradient(135deg, #833ab4, #e1306c 55%, #f77737);
+}
+
+.public-contact-menu a.whatsapp > svg {
+  background: #178d52;
+}
+
+.public-contact-menu a span {
+  display: grid;
+  gap: 3px;
+}
+
+.public-contact-menu a strong {
+  font: 800 13px/1.2 "Segoe UI", sans-serif;
+}
+
+.public-contact-menu a small {
+  color: #8d6051;
+  font: 500 11px/1.3 "Segoe UI", sans-serif;
 }
 
 @media (max-width: 560px) {
   .public-contact-dock {
-    right: max(9px, env(safe-area-inset-right));
-    bottom: max(10px, env(safe-area-inset-bottom));
-    gap: 5px;
-    padding: 6px;
-  }
-
-  .public-contact-dock a {
-    width: 42px;
-    height: 42px;
-  }
-
-  .public-contact-dock a::after {
-    display: none;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
   }
 
   body:has(.today-page) .public-contact-dock {
-    position: static;
-    width: max-content;
-    margin: -82px auto 106px;
+    bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .public-contact-trigger {
+    width: 52px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .public-contact-trigger span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .public-contact-dock a {
+  .public-contact-trigger,
+  .public-contact-menu a {
     transition: none;
   }
 }

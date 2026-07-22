@@ -271,6 +271,7 @@ export default function OperationCommercialAdmin({
   initialTab?: AdminTab;
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
+  useEffect(() => setTab(initialTab), [initialTab]);
   const [products, setProducts] = useState<CommercialProduct[]>([]);
   const [productOptions, setProductOptions] = useState<CommercialProductOption[]>([]);
   const [segmentMedia, setSegmentMedia] = useState<CommercialSegmentMedia[]>([]);
