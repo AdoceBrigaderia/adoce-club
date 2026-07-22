@@ -81,8 +81,12 @@ export default function App(){
       refreshRoute(version => version + 1);
       document.title = location.hash.startsWith("#operacao")
         ? "Adoce Operação"
-        : location.hash.startsWith("#adoce-hoje")
-          ? "Adoce Hoje · Adoce Brigaderia"
+          : location.hash.startsWith("#adoce-hoje")
+            ? "Adoce Hoje · Adoce Brigaderia"
+          : location.hash.startsWith("#cadastro")
+            ? "Cadastro · Clube Adoce"
+          : location.hash.startsWith("#docinhos")
+            ? "Docinhos · Adoce Brigaderia"
           : location.hash.startsWith("#encomendas")
             ? "Encomendas · Adoce Brigaderia"
             : location.hash.startsWith("#eventos")
@@ -124,6 +128,7 @@ export default function App(){
   if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client"/></Suspense>;
   if(location.hash.startsWith("#adoce-hoje"))return <Suspense fallback={loading}><AdoceHoje/></Suspense>;
   if(location.hash.startsWith("#encomendas"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="cakes"/></Suspense>;
+  if(location.hash.startsWith("#docinhos"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="sweets"/></Suspense>;
   if(location.hash.startsWith("#eventos"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="events"/></Suspense>;
   if(location.hash.startsWith("#adoce-na-escola"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="school"/></Suspense>;
   if(location.hash.startsWith("#aluguel-decoracao"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="rentals"/></Suspense>;
@@ -135,7 +140,7 @@ export default function App(){
   if(location.hash.startsWith("#privacidade"))return <Suspense fallback={loading}><LegalPage kind="privacy"/></Suspense>;
   const pilotToken=location.hash.match(/^#cartao\/([a-f0-9-]+)$/i)?.[1];
   if(pilotToken)return <Suspense fallback={loading}><PilotApp token={pilotToken}/></Suspense>;
-  if(location.hash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
+  if(import.meta.env.DEV && location.hash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
   if(import.meta.env.DEV && location.hash.startsWith("#prototipo"))return <LegacyApp/>;
   return <MarketingLanding/>
 }

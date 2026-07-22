@@ -16,5 +16,8 @@ describe("contatos públicos da Adoce", () => {
     expect(shouldShowPublicContactDock("operacao.adocebrigaderia.com.br", "")).toBe(false);
     expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#operacao")).toBe(false);
     expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#campanha-feed")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#entrar")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#cadastro")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#fale-com-a-adoce")).toBe(false);
   });
 });

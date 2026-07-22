@@ -18,7 +18,7 @@ export default function ClubExperience() {
             <a className="public-secondary" href="/#entrar">Entrar no Clube</a>
           </div>
         </div>
-        <img className="club-intro-product" src="/site/clube-aprovado-mobile-claro.png" alt="Exemplo do cartão digital, QR e recompensas do Clube Adoce" />
+        <img className="club-intro-product" src="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" alt="Exemplo do cartão digital, QR e recompensas do Clube Adoce" />
       </section>
 
       <section className="approved-club-visual" aria-labelledby="club-inside-title">
@@ -28,9 +28,9 @@ export default function ClubExperience() {
           <p>Cartão, QR, Adoce Hoje e Fatia Grátis reunidos na mesma experiência.</p>
         </div>
         <picture>
-          <source media="(max-width: 520px)" srcSet="/site/clube-aprovado-mobile-claro.png" />
-          <source media="(max-width: 900px)" srcSet="/site/clube-aprovado-mobile-escuro.png" />
-          <img src="/site/clube-aprovado-desktop.png" alt="Apresentação visual do Clube Adoce com cartão digital, QR Code, Adoce Hoje e fatia grátis" />
+          <source media="(max-width: 520px)" srcSet="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" />
+          <source media="(max-width: 900px)" srcSet="/.netlify/images?url=/site/clube-aprovado-mobile-escuro.png&w=1200&fm=webp&q=78" />
+          <img src="/.netlify/images?url=/site/clube-aprovado-desktop.png&w=1600&fm=webp&q=80" alt="Apresentação visual do Clube Adoce com cartão digital, QR Code, Adoce Hoje e fatia grátis" />
         </picture>
       </section>
 

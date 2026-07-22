@@ -30,7 +30,11 @@ describe("conclusão do cadastro do cliente", () => {
   });
 
   it("libera somente um cadastro nominal com termos e privacidade aceitos", () => {
-    expect(isRealCustomerName("Ana")).toBe(true);
+    expect(isRealCustomerName("Ana")).toBe(false);
+    expect(isRealCustomerName("João D")).toBe(false);
+    expect(isRealCustomerName("Ana Maria")).toBe(true);
+    expect(isRealCustomerName("Maria de Fátima")).toBe(true);
+    expect(isRealCustomerName("João D'Ávila")).toBe(true);
     expect(isCustomerOnboardingComplete("Marcos Bezerra", requiredConsents)).toBe(true);
   });
 });

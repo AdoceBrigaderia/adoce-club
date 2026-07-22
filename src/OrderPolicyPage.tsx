@@ -24,7 +24,7 @@ export default function OrderPolicyPage() {
             <ArrowLeft /> Voltar à Adoce
           </a>
           <p className="public-kicker">Antes de fazer seu pedido</p>
-          <h1>Política de<br /><em>pedidos.</em></h1>
+          <h1>Política de<br />{" "}<em>pedidos.</em></h1>
           <p>
             Nossa produção é artesanal e cada detalhe precisa de tempo e cuidado.
             Por isso, os produtos disponíveis para encomenda mudam conforme o dia

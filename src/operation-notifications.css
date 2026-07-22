@@ -27,8 +27,12 @@
 .operation-notification-list time { color: #a77a6b; font: 700 9px/1.2 "Segoe UI", sans-serif; white-space: nowrap; }
 .operation-notification-empty { margin: 0; padding: 28px 22px; color: #8d6051; font: 500 12px/1.5 "Segoe UI", sans-serif; text-align: center; }
 @media (max-width: 720px) {
+  .operation-home > header { backdrop-filter: none; }
   .operation-notification-trigger { width: 42px; padding: 0; justify-content: center; }
   .operation-notification-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
   .operation-notification-trigger strong { position: absolute; top: -6px; right: -6px; }
-  .operation-notification-panel { position: fixed; top: 72px; right: 10px; left: 10px; width: auto; max-height: calc(100vh - 86px); }
+  .operation-notification-panel { position: fixed; top: 76px; right: 10px; bottom: 84px; left: 10px; width: auto; max-height: none; border-radius: 20px; }
+  .operation-notification-panel > header { padding: 18px 16px 10px; }
+  .operation-notification-actions { padding-inline: 16px; }
+  .operation-notification-list > button { padding-inline: 14px; }
 }

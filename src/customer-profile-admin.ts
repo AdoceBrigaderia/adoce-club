@@ -2,7 +2,7 @@ import { isRealCustomerName } from "./customer-onboarding";
 
 export async function updateCustomerName(accessToken: string, profileId: string, fullName: string) {
   const cleanName = fullName.trim().replace(/\s+/g, " ");
-  if (!isRealCustomerName(cleanName)) throw new Error("Informe o nome real do cliente.");
+  if (!isRealCustomerName(cleanName)) throw new Error("Informe o nome e sobrenome do cliente.");
   const response = await fetch("/api/customer-profile-update", {
     method: "POST",
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },

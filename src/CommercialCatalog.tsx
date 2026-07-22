@@ -223,6 +223,14 @@ const miniPartyExperience: ExperienceCopy = {
   steps: ["Escolha o formato", "Confira o que está incluído", "Alinhe tema, data e local"],
 };
 
+const segmentRoutes: Record<CommercialSegment, string> = {
+  cakes: "#encomendas",
+  sweets: "#docinhos",
+  events: "#eventos",
+  school: "#adoce-na-escola",
+  rentals: "#aluguel-decoracao",
+};
+
 export default function CommercialCatalog({ initialSegment = "cakes" }: { initialSegment?: CommercialSegment }) {
   const [products, setProducts] = useState<CommercialProduct[]>([]);
   const [segmentMedia, setSegmentMedia] = useState<SegmentMedia[]>([]);
@@ -331,6 +339,8 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     setResult(null);
     setNotice("");
     setFieldErrors({});
+    const nextHash = segmentRoutes[nextSegment];
+    if (window.location.hash !== nextHash) window.location.hash = nextHash;
   };
 
   const changeEventSubcategory = (nextSubcategory: CommercialEventSubcategory) => {

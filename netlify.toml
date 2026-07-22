@@ -2,6 +2,10 @@
   command = "node scripts/generate-docs.mjs && node scripts/publish-docs.mjs && npm run build"
   publish = "dist"
 
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 [[redirects]]
   from = "/documentacao"
   to = "/documentacao.html"

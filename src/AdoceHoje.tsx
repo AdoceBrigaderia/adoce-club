@@ -1058,7 +1058,7 @@ export default function AdoceHoje() {
           <h2>Procurando tortas, docinhos ou uma experiência para seu evento?</h2>
           <p>
             O Festival de Fatias continua aqui. Para produtos inteiros, festas,
-            Adoce na Escola e aluguel de acervo, consulte o cardápio de encomendas.
+            Adoce na Escola e aluguel de decoração, consulte o cardápio de encomendas.
           </p>
         </div>
         <a className="today-primary" href="/#encomendas">

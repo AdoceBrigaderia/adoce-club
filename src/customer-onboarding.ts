@@ -12,9 +12,19 @@ const PROVISIONAL_NAMES = new Set([
 ]);
 
 export function isRealCustomerName(name: string | null | undefined): boolean {
-  const normalized = (name || "").trim().toLocaleLowerCase("pt-BR");
-  return normalized.length >= 3
-    && /[a-záàâãéêíóôõúç]/i.test(normalized)
+  const normalized = (name || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("pt-BR");
+  const connectors = new Set(["da", "das", "de", "do", "dos", "e"]);
+  const meaningfulParts = normalized
+    .split(" ")
+    .filter((part) => !connectors.has(part));
+  const validPart = /^(?:\p{L}{2,}(?:['’-]\p{L}{2,})*|\p{L}['’-]\p{L}{2,})$/u;
+
+  return normalized.length >= 5
+    && meaningfulParts.length >= 2
+    && meaningfulParts.every((part) => validPart.test(part))
     && !PROVISIONAL_NAMES.has(normalized);
 }
 

@@ -23,5 +23,10 @@ export function shouldShowPublicContactDock(hostname: string, hash: string) {
     "#prototipo",
     "#campanha-",
     "#lancamento-",
+    "#entrar",
+    "#cadastro",
+    "#minha-conta",
+    "#acesso-direto",
+    "#fale-com-a-adoce",
   ].some((prefix) => normalizedHash.startsWith(prefix));
 }

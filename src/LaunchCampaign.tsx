@@ -25,7 +25,7 @@ const slides = [
   {
     eyebrow: "Encomendas & eventos",
     title: <>Seu momento já pode entrar <em>na nossa agenda.</em></>,
-    text: "Tortas, docinhos, Adoce na Escola, festas e acervo para celebrar.",
+    text: "Tortas, docinhos, Adoce na Escola, festas e decoração para celebrar.",
     icon: CalendarDays,
   },
   {

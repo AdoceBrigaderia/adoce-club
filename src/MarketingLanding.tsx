@@ -67,7 +67,7 @@ const paths = [
     href: "/#clube",
     action: "Ver o Clube por dentro",
     icon: Heart,
-    image: "/site/clube-aprovado-mobile-claro.png",
+    image: "/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78",
     className: "club",
   },
   {

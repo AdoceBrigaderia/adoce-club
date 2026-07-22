@@ -837,7 +837,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const submitCode = async (event: React.FormEvent) => {
     event.preventDefault();
     if (registering && !isRealCustomerName(name)) {
-      setMessage("Informe seu nome real para concluir o cadastro.");
+      setMessage("Informe seu nome e sobrenome para concluir o cadastro.");
       return;
     }
     setBusy(true);
@@ -1493,7 +1493,7 @@ function CustomerHome({ session }: { session: Session }) {
     event.preventDefault();
     const cleanName = profileName.trim();
     if (!isRealCustomerName(cleanName)) {
-      setMessage("Informe seu nome para fazer parte do Clube.");
+      setMessage("Informe seu nome e sobrenome para fazer parte do Clube.");
       return;
     }
     if (!termsAccepted || !privacyAccepted) {
