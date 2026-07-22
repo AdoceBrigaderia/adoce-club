@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, Check, ChevronRight, Gift, Heart, History, LayoutDas
 import { Customer, cycleProgress, earn, formatPhone, maskPhone, redeem, remainingFor, rewardsFor } from "./domain";
 import { loadCustomers, saveCustomers } from "./store";
 import MarketingLanding from "./MarketingLanding";
+import { installPublicAnalytics } from "./analytics";
 
 const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
 const ClubExperience = lazy(() => import("./ClubExperience"));
@@ -74,6 +75,7 @@ function Admin({customers,back}:{customers:Customer[];back:()=>void}) { const to
 function LegacyApp(){ const seeded=useMemo(loadCustomers,[]); const [page,setPage]=useState<Page>(()=>location.hash.includes("card-demo")?"card":location.hash.includes("staff")?"staff":location.hash.includes("admin")?"admin":"join"); const [customers,setCustomers]=useState(seeded); const [current,setCurrent]=useState<Customer|null>(()=>location.hash.includes("card-demo")?seeded.find(c=>c.balance===14)||seeded[0]:null); const update=(c:Customer)=>{const next=customers.map(x=>x.id===c.id?c:x);setCustomers(next);saveCustomers(next);setCurrent(c)}; const nav=(p:Page)=>{setPage(p);location.hash=p}; useEffect(()=>{const f=()=>setPage(location.hash.includes("card-demo")?"card":location.hash.includes("staff")?"staff":location.hash.includes("admin")?"admin":"join");addEventListener("hashchange",f);return()=>removeEventListener("hashchange",f)},[]); if(page==="card"&&current)return <Card customer={current} onBack={()=>nav("join")}/>; if(page==="staff")return <Staff customers={customers} update={update} back={()=>nav("join")}/>; if(page==="admin")return <Admin customers={customers} back={()=>nav("join")}/>; return <Join onCreated={c=>{setCurrent(c);nav("card")}} goStaff={()=>nav("staff")}/> }
 export default function App(){
   const [, refreshRoute] = useState(0);
+  useEffect(() => installPublicAnalytics(), []);
   useEffect(() => {
     const handleHashChange = () => {
       refreshRoute(version => version + 1);

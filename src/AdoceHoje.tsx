@@ -18,6 +18,7 @@ import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 import GroupOrderArtwork from "./GroupOrderArtwork";
 import { serviceStatusMessage } from "./service-status";
 import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
+import { trackPublicEvent } from "./analytics";
 import "./adoce-hoje.css";
 import "./adoce-hoje-content.css";
 import "./today-promotions.css";
@@ -438,6 +439,10 @@ export default function AdoceHoje() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const openSchedule = () => {
+    trackPublicEvent("schedule_open", { source: "adoce_hoje" });
+    setScheduleOpen(true);
+  };
   const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null);
   const [updated, setUpdated] = useState(false);
   useEffect(() => {
@@ -707,7 +712,7 @@ export default function AdoceHoje() {
                 <h2>Barraquinha de rua</h2>
                 <p className="today-service-description">
                   O Festival de Fatias presencial acontece somente nos dias e horários informados{" "}
-                  <button className="today-inline-link" type="button" onClick={() => setScheduleOpen(true)}>
+                  <button className="today-inline-link" type="button" onClick={openSchedule}>
                     aqui
                   </button>.
                 </p>
@@ -1077,7 +1082,7 @@ export default function AdoceHoje() {
             <MapPin /> Chegar
           </a>
         ) : (
-          <button type="button" onClick={() => setScheduleOpen(true)}>
+          <button type="button" onClick={openSchedule}>
             <CalendarDays /> Ver agenda
           </button>
         )}

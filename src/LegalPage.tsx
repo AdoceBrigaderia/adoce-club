@@ -1,8 +1,16 @@
+import { useState } from "react";
 import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
 import "./legal.css";
 
 export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
   const privacy = kind === "privacy";
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(() =>
+    typeof window === "undefined" || window.localStorage.getItem("adoce-analytics") !== "denied",
+  );
+  const updateAnalyticsPreference = (allowed: boolean) => {
+    window.localStorage.setItem("adoce-analytics", allowed ? "allowed" : "denied");
+    setAnalyticsAllowed(allowed);
+  };
   return (
     <main className="legal-page">
       <header>
@@ -15,7 +23,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
       <article>
         <span>{privacy ? "Privacidade e dados pessoais" : "Clube Adoce"}</span>
         <h1>{privacy ? "Política de Privacidade" : "Termos do Clube Adoce"}</h1>
-        <p className="legal-version">Versão 1.0 · vigente desde 19 de julho de 2026</p>
+        <p className="legal-version">Versão 1.1 · vigente desde 22 de julho de 2026</p>
 
         {privacy ? (
           <>
@@ -48,6 +56,20 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
               necessários para prestar o serviço e não podem utilizá-los para fins
               próprios incompatíveis. Não vendemos dados pessoais.
             </p>
+            <h2>Medição anônima de uso do site</h2>
+            <p>
+              Registramos eventos agregados, como página visitada, abertura de um produto,
+              clique no WhatsApp e envio de pré-reserva, para melhorar a experiência. Esses
+              eventos não recebem nome, telefone, e-mail, endereço IP, conteúdo digitado nem
+              identificador persistente do visitante.
+            </p>
+            <div className="legal-analytics-choice">
+              <strong>Medição anônima: {analyticsAllowed ? "permitida neste aparelho" : "desativada neste aparelho"}</strong>
+              <div>
+                <button type="button" className={analyticsAllowed ? "active" : ""} onClick={() => updateAnalyticsPreference(true)}>Permitir</button>
+                <button type="button" className={!analyticsAllowed ? "active" : ""} onClick={() => updateAnalyticsPreference(false)}>Não permitir</button>
+              </div>
+            </div>
             <h2>Seus direitos</h2>
             <p>
               Você pode solicitar confirmação, acesso, correção, informação sobre

@@ -15,7 +15,10 @@ import {
   PackagePlus,
   Plus,
   RefreshCw,
+  RotateCcw,
+  Save,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
@@ -57,6 +60,7 @@ type RequestStatus =
   | "completed"
   | "cancelled"
   | "expired";
+type RequestFilter = "active" | "attention" | "confirmed" | "completed" | "cancelled" | "all";
 
 type ServiceRequest = {
   id: string;
@@ -110,6 +114,19 @@ type CrmTask = {
   status: string;
 };
 
+type RequestHistory = {
+  id: number;
+  entity_id: string | null;
+  payload: { status?: RequestStatus; from_status?: RequestStatus; request_number?: string };
+  created_at: string;
+};
+
+type SiteAnalyticsEvent = {
+  event_name: string;
+  page_path: string;
+  occurred_at: string;
+};
+
 type CommercialSegmentMedia = {
   id: string;
   segment: CommercialSegment;
@@ -141,7 +158,7 @@ type SiteFeedback = {
   created_at: string;
 };
 
-const statuses: Record<RequestStatus, string> = {
+export const statuses: Record<RequestStatus, string> = {
   prebooked: "Pré-reserva",
   quoted: "Orçamento enviado",
   awaiting_deposit: "Aguardando sinal",
@@ -151,6 +168,53 @@ const statuses: Record<RequestStatus, string> = {
   completed: "Concluído",
   cancelled: "Cancelado",
   expired: "Expirado",
+};
+
+export const requestTransitions: Record<RequestStatus, RequestStatus[]> = {
+  prebooked: ["quoted"],
+  quoted: ["awaiting_deposit"],
+  awaiting_deposit: ["confirmed"],
+  confirmed: ["in_production"],
+  in_production: ["ready"],
+  ready: ["completed"],
+  completed: [],
+  cancelled: ["prebooked"],
+  expired: ["prebooked"],
+};
+
+export const requestFilterMatches = (status: RequestStatus, filter: RequestFilter) => {
+  if (filter === "all") return true;
+  if (filter === "active") return !["completed", "cancelled", "expired"].includes(status);
+  if (filter === "attention") return ["prebooked", "quoted", "awaiting_deposit"].includes(status);
+  if (filter === "confirmed") return ["confirmed", "in_production", "ready"].includes(status);
+  if (filter === "completed") return status === "completed";
+  return ["cancelled", "expired"].includes(status);
+};
+
+export const requestIsPastDue = (request: Pick<ServiceRequest, "status" | "expires_at">, reference = Date.now()) =>
+  Boolean(
+    request.expires_at
+      && !["confirmed", "in_production", "ready", "completed", "cancelled", "expired"].includes(request.status)
+      && new Date(request.expires_at).getTime() < reference,
+  );
+
+const transitionLabels: Partial<Record<RequestStatus, string>> = {
+  quoted: "Marcar orçamento como enviado",
+  awaiting_deposit: "Aguardar sinal",
+  confirmed: "Confirmar pedido",
+  in_production: "Iniciar produção",
+  ready: "Marcar como pronto",
+  completed: "Concluir atendimento",
+  prebooked: "Reabrir como pré-reserva",
+};
+
+const sourceLabels: Record<string, string> = {
+  website: "Site",
+  operation: "Operação",
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  phone: "Telefone",
+  walk_in: "Atendimento presencial",
 };
 
 const toLocalInput = (date = new Date()) => {
@@ -215,12 +279,19 @@ export default function OperationCommercialAdmin({
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);
   const [notes, setNotes] = useState<CrmNote[]>([]);
   const [tasks, setTasks] = useState<CrmTask[]>([]);
+  const [requestHistory, setRequestHistory] = useState<RequestHistory[]>([]);
+  const [analyticsEvents, setAnalyticsEvents] = useState<SiteAnalyticsEvent[]>([]);
   const [feedback, setFeedback] = useState<SiteFeedback[]>([]);
   const [selectedFeedback, setSelectedFeedback] = useState<SiteFeedback | null>(null);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<CalendarBlock | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<CommercialProduct | null>(null);
   const [optionForm, setOptionForm] = useState({ group: "recheio", label: "", adjustment: 0 });
   const [filter, setFilter] = useState("");
+  const [requestFilter, setRequestFilter] = useState<RequestFilter>("active");
+  const [showManualRequest, setShowManualRequest] = useState(false);
+  const [showCancellation, setShowCancellation] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [blockForm, setBlockForm] = useState({
@@ -241,12 +312,13 @@ export default function OperationCommercialAdmin({
   const [crmText, setCrmText] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState(toLocalInput(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+  const canManage = role === "owner" || role === "manager";
 
   const load = useCallback(async () => {
     setBusy(true);
     setNotice("");
     const supabase = requireSupabase();
-    const [productResult, optionResult, mediaResult, galleryResult, requestResult, blockResult, noteResult, taskResult, feedbackResult] = await Promise.all([
+    const [productResult, optionResult, mediaResult, galleryResult, requestResult, blockResult, noteResult, taskResult, feedbackResult, historyResult, analyticsResult] = await Promise.all([
       supabase.from("commercial_products").select("*").order("sort_order"),
       supabase.from("commercial_product_options").select("*").order("sort_order"),
       supabase.from("commercial_segment_media").select("*").order("segment"),
@@ -260,6 +332,8 @@ export default function OperationCommercialAdmin({
       supabase.from("crm_notes").select("*").order("created_at", { ascending: false }).limit(200),
       supabase.from("crm_tasks").select("*").order("due_at", { ascending: true }).limit(200),
       supabase.from("site_feedback").select("*").order("created_at", { ascending: false }).limit(300),
+      supabase.from("audit_events").select("id,entity_id,payload,created_at").eq("entity_type", "service_request").eq("action", "service_request_status_changed").order("created_at", { ascending: false }).limit(500),
+      supabase.from("site_analytics_events").select("event_name,page_path,occurred_at").gte("occurred_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()).order("occurred_at", { ascending: false }).limit(5000),
     ]);
     const error = productResult.error || optionResult.error || requestResult.error || blockResult.error || noteResult.error || taskResult.error || feedbackResult.error;
     if (error) setNotice(error.message);
@@ -273,6 +347,8 @@ export default function OperationCommercialAdmin({
       setNotes((noteResult.data || []) as CrmNote[]);
       setTasks((taskResult.data || []) as CrmTask[]);
       setFeedback((feedbackResult.data || []) as SiteFeedback[]);
+      if (!historyResult.error) setRequestHistory((historyResult.data || []) as RequestHistory[]);
+      if (!analyticsResult.error) setAnalyticsEvents((analyticsResult.data || []) as SiteAnalyticsEvent[]);
     }
     setBusy(false);
   }, []);
@@ -281,7 +357,24 @@ export default function OperationCommercialAdmin({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!selectedRequest && !selectedBlock) return;
+    const closeDrawer = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setSelectedRequest(null);
+      setSelectedBlock(null);
+      setShowCancellation(false);
+      setCancellationReason("");
+    };
+    window.addEventListener("keydown", closeDrawer);
+    return () => window.removeEventListener("keydown", closeDrawer);
+  }, [selectedBlock, selectedRequest]);
+
   const now = Date.now();
+  const analyticsLast7Days = useMemo(
+    () => analyticsEvents.filter((event) => new Date(event.occurred_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000),
+    [analyticsEvents],
+  );
   const activeRequests = useMemo(
     () =>
       requests.filter((request) =>
@@ -291,13 +384,12 @@ export default function OperationCommercialAdmin({
   );
   const filteredRequests = useMemo(() => {
     const clean = filter.trim().toLocaleLowerCase("pt-BR");
-    if (!clean) return requests;
-    return requests.filter((request) =>
-      `${request.request_number} ${request.customer_name} ${request.customer_phone} ${request.commercial_products?.name || ""}`
+    return requests
+      .filter((request) => requestFilterMatches(request.status, requestFilter))
+      .filter((request) => !clean || `${request.request_number} ${request.customer_name} ${request.customer_phone} ${request.commercial_products?.name || ""}`
         .toLocaleLowerCase("pt-BR")
-        .includes(clean),
-    );
-  }, [filter, requests]);
+        .includes(clean));
+  }, [filter, requestFilter, requests]);
 
   const competingCount = (current: ServiceRequest) =>
     requests.filter(
@@ -334,6 +426,10 @@ export default function OperationCommercialAdmin({
 
   const createBlock = async (event: FormEvent) => {
     event.preventDefault();
+    if (new Date(blockForm.end) <= new Date(blockForm.start)) {
+      setNotice("O horário final precisa ser posterior ao início.");
+      return;
+    }
     setBusy(true);
     const { error } = await requireSupabase().from("calendar_blocks").insert({
       title: blockForm.title.trim(),
@@ -358,13 +454,17 @@ export default function OperationCommercialAdmin({
     event.preventDefault();
     const product = products.find((item) => item.id === manualRequest.productId);
     if (!product) return;
+    const phone = normalizeBrazilianPhone(manualRequest.phone);
+    if (!/^55\d{10,11}$/.test(phone)) return setNotice("Informe um WhatsApp válido com DDD.");
+    if (manualRequest.name.trim().length < 3) return setNotice("Informe o nome do cliente.");
     const start = new Date(manualRequest.start);
+    if (start.getTime() <= Date.now()) return setNotice("Escolha uma data e um horário futuros.");
     setBusy(true);
     const { error } = await requireSupabase().from("service_requests").insert({
       request_number: "",
       product_id: product.id,
       customer_name: manualRequest.name.trim(),
-      customer_phone: `+${normalizeBrazilianPhone(manualRequest.phone)}`,
+      customer_phone: `+${phone}`,
       quantity: product.minimum_quantity,
       desired_start: start.toISOString(),
       desired_end: new Date(start.getTime() + (product.segment === "rentals" ? 48 : 2) * 60 * 60 * 1000).toISOString(),
@@ -378,6 +478,7 @@ export default function OperationCommercialAdmin({
     if (error) setNotice(error.message);
     else {
       setManualRequest({ ...manualRequest, name: "", phone: "", notes: "" });
+      setShowManualRequest(false);
       setNotice("Solicitação inserida manualmente como pré-reserva.");
       await load();
     }
@@ -632,6 +733,53 @@ export default function OperationCommercialAdmin({
     }
   };
 
+  const saveRequestDetails = async (request: ServiceRequest) => {
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc("manager_update_service_request", {
+      target_request_id: request.id,
+      next_status: request.status,
+      next_total: request.quoted_total,
+      next_deposit: request.deposit_amount,
+      next_internal_notes: request.internal_notes,
+    });
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    const updated = { ...request, ...(data as Partial<ServiceRequest>) };
+    setRequests((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setSelectedRequest(updated);
+    setNotice(`${request.request_number}: valores e anotações salvos.`);
+  };
+
+  const cancelRequest = async (request: ServiceRequest) => {
+    const reason = cancellationReason.trim();
+    if (reason.length < 5) return setNotice("Explique o motivo do cancelamento com pelo menos 5 caracteres.");
+    const timestamp = new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "America/Fortaleza",
+    }).format(new Date());
+    const internalNotes = [request.internal_notes.trim(), `[Cancelamento em ${timestamp}] ${reason}`]
+      .filter(Boolean)
+      .join("\n\n");
+    setCancellationReason("");
+    setShowCancellation(false);
+    await updateRequest({ ...request, internal_notes: internalNotes }, "cancelled");
+  };
+
+  const cancelCalendarBlock = async (block: CalendarBlock) => {
+    if (!window.confirm(`Cancelar “${block.title}” e retirá-lo da agenda ativa? O registro continuará no histórico.`)) return;
+    setBusy(true);
+    const { error } = await requireSupabase()
+      .from("calendar_blocks")
+      .update({ status: "cancelled", updated_by: session.user.id })
+      .eq("id", block.id);
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    setSelectedBlock(null);
+    setNotice(`“${block.title}” foi retirado da agenda ativa e preservado no histórico.`);
+    await load();
+  };
+
   return (
     <div className="operation-commercial">
       <div className="operation-title">
@@ -651,6 +799,14 @@ export default function OperationCommercialAdmin({
         <span><strong>{requests.filter((item) => item.status === "confirmed").length}</strong><small>confirmados</small></span>
         <span><strong>{tasks.filter((item) => item.status === "open" && item.due_at && new Date(item.due_at).getTime() <= now + 24 * 60 * 60 * 1000).length}</strong><small>lembretes em 24h</small></span>
       </div>
+
+      {canManage ? <section className="operation-analytics-summary" aria-label="Resultados do site nos últimos sete dias">
+        <div><span>Últimos 7 dias</span><strong>Sinais reais do site</strong><small>Dados anônimos, sem nome, telefone, e-mail ou conteúdo digitado.</small></div>
+        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "page_view").length}</strong><small>páginas vistas</small></span>
+        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "whatsapp_click").length}</strong><small>cliques no WhatsApp</small></span>
+        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "prebook_start").length}</strong><small>pré-reservas iniciadas</small></span>
+        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "prebook_success").length}</strong><small>pré-reservas enviadas</small></span>
+      </section> : null}
 
       <nav className="operation-commercial-tabs">
         <button className={tab === "agenda" ? "active" : ""} onClick={() => setTab("agenda")}><CalendarDays /> Agenda</button>
@@ -676,6 +832,7 @@ export default function OperationCommercialAdmin({
                 status: item.status,
                 warning: competingCount(item),
                 request: item,
+                block: null,
               })), ...blocks.filter((item) => item.status !== "cancelled").map((item) => ({
                 id: item.id,
                 title: item.title,
@@ -684,10 +841,11 @@ export default function OperationCommercialAdmin({
                 status: item.status,
                 warning: 0,
                 request: null,
+                block: item,
               }))]
                 .sort((a, b) => +new Date(a.starts) - +new Date(b.starts))
                 .map((item) => (
-                  <button key={`${item.request ? "r" : "b"}-${item.id}`} onClick={() => item.request && setSelectedRequest(item.request)}>
+                  <button key={`${item.request ? "r" : "b"}-${item.id}`} onClick={() => item.request ? setSelectedRequest(item.request) : item.block && setSelectedBlock(item.block)}>
                     <CalendarDays />
                     <span><strong>{item.title}</strong><small>{item.subtitle} · {dateTime(item.starts)}</small></span>
                     {item.warning ? <b><AlertTriangle /> {item.warning} concorrente(s)</b> : <em>{statuses[item.status as RequestStatus] || item.status}</em>}
@@ -711,25 +869,49 @@ export default function OperationCommercialAdmin({
         <div className="operation-commercial-grid">
           <section>
             <form className="operation-commercial-search" onSubmit={(event) => event.preventDefault()}><Search /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Buscar número, cliente, telefone ou produto" /></form>
+            <div className="operation-request-filters" role="group" aria-label="Filtrar pedidos por etapa">
+              {([
+                ["active", "Em andamento"],
+                ["attention", "Precisam de retorno"],
+                ["confirmed", "Confirmados"],
+                ["completed", "Concluídos"],
+                ["cancelled", "Cancelados"],
+                ["all", "Todos"],
+              ] as [RequestFilter, string][]).map(([value, label]) => (
+                <button type="button" key={value} className={requestFilter === value ? "active" : ""} onClick={() => setRequestFilter(value)}>
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="operation-request-list">
               {filteredRequests.map((request) => (
                 <button key={request.id} onClick={() => setSelectedRequest(request)}>
                   <span><small>{request.request_number}</small><strong>{request.customer_name}</strong><em>{request.commercial_products?.name}</em></span>
                   <span><strong>{dateTime(request.desired_start)}</strong><small>{request.customer_phone}</small></span>
-                  <b className={`status-${request.status}`}>{statuses[request.status]}</b><ArrowRight />
+                  <b className={`status-${request.status}${requestIsPastDue(request, now) ? " is-overdue" : ""}`}>{requestIsPastDue(request, now) ? "Prazo vencido" : statuses[request.status]}</b><ArrowRight />
                 </button>
               ))}
+              {!filteredRequests.length ? <div className="operation-empty compact"><Search /><p>Nenhum pedido encontrado neste filtro.</p></div> : null}
             </div>
           </section>
-          <form className="operation-block-form" onSubmit={createManualRequest}>
-            <small>Atendimento por telefone ou WhatsApp</small><h2>Nova pré-reserva</h2>
-            <label>Produto<select required value={manualRequest.productId} onChange={(event) => setManualRequest({ ...manualRequest, productId: event.target.value })}><option value="">Selecione</option>{products.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-            <label>Cliente<input required value={manualRequest.name} onChange={(event) => setManualRequest({ ...manualRequest, name: event.target.value })} /></label>
-            <label>WhatsApp<input required value={manualRequest.phone} onChange={(event) => setManualRequest({ ...manualRequest, phone: event.target.value })} /></label>
-            <label>Data e hora<input required type="datetime-local" value={manualRequest.start} onChange={(event) => setManualRequest({ ...manualRequest, start: event.target.value })} /></label>
-            <label>Detalhes<textarea value={manualRequest.notes} onChange={(event) => setManualRequest({ ...manualRequest, notes: event.target.value })} /></label>
-            <button disabled={busy}><Plus /> Criar pré-reserva</button>
-          </form>
+          <aside className="operation-manual-request">
+            <small>Atendimento por telefone ou WhatsApp</small>
+            <h2>Registrar uma nova solicitação</h2>
+            <p>Use quando o pedido chegar fora do site. Ele entra na mesma fila e recebe número e prazo.</p>
+            {!showManualRequest ? <button type="button" onClick={() => setShowManualRequest(true)}><Plus /> Nova solicitação</button> : (
+              <form className="operation-block-form" onSubmit={createManualRequest}>
+                <label>Produto<select required value={manualRequest.productId} onChange={(event) => setManualRequest({ ...manualRequest, productId: event.target.value })}><option value="">Selecione</option>{products.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+                <label>Cliente<input required value={manualRequest.name} onChange={(event) => setManualRequest({ ...manualRequest, name: event.target.value })} /></label>
+                <label>WhatsApp com DDD<input required inputMode="tel" value={manualRequest.phone} onChange={(event) => setManualRequest({ ...manualRequest, phone: event.target.value })} /></label>
+                <label>Data e hora<input required type="datetime-local" value={manualRequest.start} onChange={(event) => setManualRequest({ ...manualRequest, start: event.target.value })} /></label>
+                <label>Detalhes<textarea value={manualRequest.notes} onChange={(event) => setManualRequest({ ...manualRequest, notes: event.target.value })} /></label>
+                <div className="operation-form-actions">
+                  <button type="button" className="secondary" onClick={() => setShowManualRequest(false)}>Fechar</button>
+                  <button disabled={busy}><Plus /> Registrar pré-reserva</button>
+                </div>
+              </form>
+            )}
+          </aside>
         </div>
       ) : null}
 
@@ -1029,6 +1211,7 @@ export default function OperationCommercialAdmin({
               <p>{selectedRequest.customer_phone} · {selectedRequest.customer_email || "sem e-mail"}</p>
               <div className="operation-crm-timeline">
                 <article><CircleDollarSign /><span><strong>{selectedRequest.commercial_products?.name}</strong><small>{selectedRequest.request_number} · {statuses[selectedRequest.status]}</small></span></article>
+                {requestHistory.filter((event) => event.entity_id === selectedRequest.id).map((event) => <article key={`history-${event.id}`}><RefreshCw /><span><strong>{event.payload.from_status ? `${statuses[event.payload.from_status]} → ` : ""}{event.payload.status ? statuses[event.payload.status] : "Pedido atualizado"}</strong><small>{dateTime(event.created_at)}</small></span></article>)}
                 {notes.filter((note) => note.service_request_id === selectedRequest.id).map((note) => <article key={note.id}><NotebookPen /><span><strong>{note.note}</strong><small>{dateTime(note.created_at)}</small></span></article>)}
                 {tasks.filter((task) => task.service_request_id === selectedRequest.id).map((task) => <article key={task.id}><Clock3 /><span><strong>{task.title}</strong><small>{task.due_at ? dateTime(task.due_at) : "Sem prazo"} · {task.status}</small></span>{task.status === "open" ? <button onClick={() => void completeTask(task)}><Check /></button> : null}</article>)}
               </div>
@@ -1079,22 +1262,61 @@ export default function OperationCommercialAdmin({
       ) : null}
 
       {selectedRequest && tab !== "crm" ? (
-        <div className="operation-request-drawer" role="dialog" aria-modal="true" aria-label={`Solicitação ${selectedRequest.request_number}`}>
-          <button className="drawer-close" onClick={() => setSelectedRequest(null)}>×</button>
-          <small>{selectedRequest.request_number}</small><h2>{selectedRequest.customer_name}</h2>
-          <p>{selectedRequest.commercial_products?.name} · {dateTime(selectedRequest.desired_start)}</p>
-          <dl><div><dt>WhatsApp</dt><dd>{selectedRequest.customer_phone}</dd></div><div><dt>Quantidade</dt><dd>{selectedRequest.quantity}</dd></div><div><dt>Status</dt><dd>{statuses[selectedRequest.status]}</dd></div><div><dt>Expira</dt><dd>{selectedRequest.expires_at ? dateTime(selectedRequest.expires_at) : "Não expira"}</dd></div></dl>
-          {competingCount(selectedRequest) ? <div className="drawer-warning"><AlertTriangle /> Existem {competingCount(selectedRequest)} pré-reserva(s) concorrente(s). A preferência é de quem confirmar primeiro.</div> : null}
-          <label>Total do orçamento<input type="number" min="0" step="0.01" value={selectedRequest.quoted_total ?? ""} onChange={(event) => setSelectedRequest({ ...selectedRequest, quoted_total: event.target.value === "" ? null : Number(event.target.value) })} /></label>
-          <label>Sinal recebido<input type="number" min="0" step="0.01" value={selectedRequest.deposit_amount ?? ""} onChange={(event) => setSelectedRequest({ ...selectedRequest, deposit_amount: event.target.value === "" ? null : Number(event.target.value) })} /></label>
-          <label>Notas internas<textarea value={selectedRequest.internal_notes} onChange={(event) => setSelectedRequest({ ...selectedRequest, internal_notes: event.target.value })} /></label>
-          <div className="drawer-actions">
-            <button onClick={() => void updateRequest(selectedRequest, "quoted")}>Orçamento enviado</button>
-            <button onClick={() => void updateRequest(selectedRequest, "awaiting_deposit")}>Aguardar sinal</button>
-            <button className="confirm" onClick={() => void updateRequest(selectedRequest, "confirmed")}>Confirmar pedido</button>
-            <button className="cancel" onClick={() => void updateRequest(selectedRequest, "cancelled")}>Cancelar</button>
-          </div>
-          <a href={`https://wa.me/${selectedRequest.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Adoce Brigaderia.`)}`} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente</a>
+        <div className="operation-drawer-layer">
+          <button className="operation-drawer-backdrop" aria-label="Fechar detalhes do pedido" onClick={() => setSelectedRequest(null)} />
+          <aside className="operation-request-drawer" role="dialog" aria-modal="true" aria-label={`Solicitação ${selectedRequest.request_number}`}>
+            <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={() => setSelectedRequest(null)}>×</button>
+            <small>{selectedRequest.request_number}</small><h2>{selectedRequest.customer_name}</h2>
+            <p>{selectedRequest.commercial_products?.name} · {dateTime(selectedRequest.desired_start)}</p>
+            <dl>
+              <div><dt>WhatsApp</dt><dd>{selectedRequest.customer_phone}</dd></div>
+              <div><dt>Quantidade</dt><dd>{selectedRequest.quantity}</dd></div>
+              <div><dt>Status</dt><dd>{statuses[selectedRequest.status]}</dd></div>
+              <div><dt>Origem</dt><dd>{sourceLabels[selectedRequest.source] || selectedRequest.source}</dd></div>
+              <div><dt>Prazo</dt><dd>{requestIsPastDue(selectedRequest, now) ? "Vencido — precisa de decisão" : selectedRequest.expires_at ? dateTime(selectedRequest.expires_at) : "Não expira"}</dd></div>
+              <div><dt>Local</dt><dd>{selectedRequest.service_location || "Não informado"}</dd></div>
+            </dl>
+            {competingCount(selectedRequest) ? <div className="drawer-warning"><AlertTriangle /> Existem {competingCount(selectedRequest)} pré-reserva(s) concorrente(s). A preferência é de quem confirmar primeiro.</div> : null}
+            <label>Total do orçamento<input type="number" min="0" step="0.01" value={selectedRequest.quoted_total ?? ""} onChange={(event) => setSelectedRequest({ ...selectedRequest, quoted_total: event.target.value === "" ? null : Number(event.target.value) })} /></label>
+            <label>Sinal recebido<input type="number" min="0" step="0.01" value={selectedRequest.deposit_amount ?? ""} onChange={(event) => setSelectedRequest({ ...selectedRequest, deposit_amount: event.target.value === "" ? null : Number(event.target.value) })} /></label>
+            <label>Notas internas<textarea value={selectedRequest.internal_notes} onChange={(event) => setSelectedRequest({ ...selectedRequest, internal_notes: event.target.value })} placeholder="Registre combinados e motivos de alterações." /></label>
+            {canManage ? <button className="drawer-save" disabled={busy} onClick={() => void saveRequestDetails(selectedRequest)}><Save /> Salvar valores e anotações</button> : null}
+            <div className="drawer-next-step">
+              <small>Próxima ação recomendada</small>
+              <div className="drawer-actions">
+                {requestTransitions[selectedRequest.status].map((nextStatus) => (
+                  <button className={nextStatus === "confirmed" || nextStatus === "completed" ? "confirm" : ""} key={nextStatus} disabled={busy || !canManage} onClick={() => void updateRequest(selectedRequest, nextStatus)}>
+                    {nextStatus === "prebooked" ? <RotateCcw /> : null}{transitionLabels[nextStatus] || statuses[nextStatus]}
+                  </button>
+                ))}
+                {!requestTransitions[selectedRequest.status].length ? <p>Este atendimento já está encerrado. O histórico continua disponível no CRM.</p> : null}
+              </div>
+            </div>
+            {canManage && !["completed", "cancelled", "expired"].includes(selectedRequest.status) ? (
+              <div className="drawer-cancellation">
+                {!showCancellation ? <button className="cancel" onClick={() => setShowCancellation(true)}><Trash2 /> Cancelar e retirar da fila</button> : <>
+                  <label>Motivo do cancelamento<textarea autoFocus value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="Ex.: cliente desistiu, data indisponível ou solicitação duplicada." /></label>
+                  <p>O pedido sairá da fila ativa, mas continuará no histórico para consulta.</p>
+                  <div><button onClick={() => { setShowCancellation(false); setCancellationReason(""); }}>Voltar</button><button className="cancel" disabled={busy} onClick={() => void cancelRequest(selectedRequest)}>Confirmar cancelamento</button></div>
+                </>}
+              </div>
+            ) : null}
+            <a href={`https://wa.me/${selectedRequest.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Adoce Brigaderia.`)}`} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente</a>
+          </aside>
+        </div>
+      ) : null}
+      {selectedBlock ? (
+        <div className="operation-drawer-layer">
+          <button className="operation-drawer-backdrop" aria-label="Fechar detalhes do compromisso" onClick={() => setSelectedBlock(null)} />
+          <aside className="operation-request-drawer" role="dialog" aria-modal="true" aria-label={`Compromisso ${selectedBlock.title}`}>
+            <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={() => setSelectedBlock(null)}>×</button>
+            <small>Compromisso da agenda</small><h2>{selectedBlock.title}</h2>
+            <p>{dateTime(selectedBlock.starts_at)} até {dateTime(selectedBlock.ends_at)}</p>
+            <dl><div><dt>Tipo</dt><dd>{selectedBlock.block_kind}</dd></div><div><dt>Status</dt><dd>{selectedBlock.status}</dd></div><div><dt>Recurso</dt><dd>{selectedBlock.resource_key || "Não informado"}</dd></div></dl>
+            {selectedBlock.notes ? <div className="drawer-block-notes"><strong>Observações</strong><p>{selectedBlock.notes}</p></div> : null}
+            {canManage ? <button className="drawer-remove-block" disabled={busy} onClick={() => void cancelCalendarBlock(selectedBlock)}><Trash2 /> Cancelar e retirar da agenda</button> : null}
+            <small>O registro permanecerá no histórico.</small>
+          </aside>
         </div>
       ) : null}
       {pendingImage ? (

@@ -36,6 +36,7 @@ import "./commercial-catalog.css";
 import "./commercial-product-options.css";
 import "./commercial-editorial.css";
 import "./commercial-validation.css";
+import { trackPublicEvent } from "./analytics";
 
 const segments = Object.keys(segmentLabels) as CommercialSegment[];
 type SegmentMedia = {
@@ -301,6 +302,8 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
   const productGallery = (productId: string) => galleryMedia.filter((item) => item.product_id === productId);
 
   const openRequest = (product: CommercialProduct) => {
+    trackPublicEvent("product_view", { product_id: product.id, product_slug: product.slug, segment: product.segment });
+    trackPublicEvent("prebook_start", { product_id: product.id, product_slug: product.slug, segment: product.segment });
     setSelected(product);
     setResult(null);
     setNotice("");
@@ -344,6 +347,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     );
     const firstInvalidField = (Object.keys(errors) as CommercialRequestField[])[0];
     if (firstInvalidField) {
+      trackPublicEvent("prebook_error", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment, result: "validation" });
       setFieldErrors(errors);
       setNotice("Falta só um pequeno ajuste. Confira o campo indicado para enviarmos sua solicitação.");
       requestAnimationFrame(() => document.getElementById(`commercial-${firstInvalidField}`)?.focus());
@@ -356,6 +360,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
     setSubmitting(true);
     setNotice("");
+    trackPublicEvent("prebook_submit", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment });
     const { data, error } = await requireSupabase().rpc("submit_service_request", {
       requested_product_id: selected.id,
       requested_customer_name: form.name.trim(),
@@ -370,6 +375,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     });
     setSubmitting(false);
     if (error) {
+      trackPublicEvent("prebook_error", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment, result: "database" });
       const friendlyError = /antecedência mínima/i.test(error.message)
         ? leadTimeMessage(selected.lead_business_days, minimumDate)
         : /data ou horário inválido/i.test(error.message)
@@ -383,6 +389,12 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     }
     const nextResult = data as ServiceRequestResult;
     setResult(nextResult);
+    trackPublicEvent(nextResult.accepted ? "prebook_success" : "prebook_error", {
+      product_id: selected.id,
+      product_slug: selected.slug,
+      segment: selected.segment,
+      result: nextResult.accepted ? "accepted" : "rejected",
+    });
     if (!nextResult.accepted) setNotice(nextResult.message);
   };
 
