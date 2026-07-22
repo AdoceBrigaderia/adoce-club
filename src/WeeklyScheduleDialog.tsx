@@ -45,6 +45,8 @@ type ScheduleException = {
   closes_at: string | null;
 };
 
+type ScheduleChannel = WeeklyMenuItem["channel_slug"];
+
 const whatsappBase = "https://wa.me/5585982156026?text=";
 
 function parseDate(date: string) {
@@ -81,13 +83,14 @@ function dayShort(date: string) {
     .replace(".", "");
 }
 
-function stallWindows(
+function serviceWindows(
   date: string,
+  channel: ScheduleChannel,
   hours: ScheduleHour[],
   exceptions: ScheduleException[],
 ) {
   const exception = exceptions.find(
-    (item) => item.channel_slug === "in_person" && item.service_date === date,
+    (item) => item.channel_slug === channel && item.service_date === date,
   );
   if (exception?.closed) return [];
   if (exception?.opens_at && exception?.closes_at) {
@@ -97,7 +100,7 @@ function stallWindows(
   return hours.filter(
     (item) =>
       item.active &&
-      item.channel_slug === "in_person" &&
+      item.channel_slug === channel &&
       item.weekday === weekday,
   );
 }
@@ -132,18 +135,36 @@ export default function WeeklyScheduleDialog({
     () =>
       Array.from({ length: 7 }, (_, index) => {
         const date = addDays(today, index);
-        const windows = stallWindows(date, hours, exceptions);
-        return { date, windows, hasStall: windows.length > 0 };
+        const stall = serviceWindows(date, "in_person", hours, exceptions);
+        const pickup = serviceWindows(date, "online_orders", hours, exceptions);
+        const dateItems = menuItems.filter(
+          (item) => item.service_date === date && item.status !== "hidden",
+        );
+        return {
+          date,
+          stall,
+          pickup,
+          hasStall:
+            stall.length > 0 ||
+            dateItems.some((item) => item.channel_slug === "in_person"),
+          hasPickup:
+            pickup.length > 0 ||
+            dateItems.some((item) => item.channel_slug === "online_orders"),
+          hasMenu: dateItems.length > 0,
+        };
       }),
-    [today, hours, exceptions],
+    [today, hours, exceptions, menuItems],
   );
-  const firstStallDate = days.find((day) => day.hasStall)?.date || today;
-  const [selectedDate, setSelectedDate] = useState(firstStallDate);
+  const firstAvailableDate =
+    days.find((day) => day.hasMenu)?.date ||
+    days.find((day) => day.hasPickup || day.hasStall)?.date ||
+    today;
+  const [selectedDate, setSelectedDate] = useState(firstAvailableDate);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!open) return;
-    setSelectedDate(firstStallDate);
+    setSelectedDate(firstAvailableDate);
     setQuantities({});
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -154,7 +175,7 @@ export default function WeeklyScheduleDialog({
       document.removeEventListener("keydown", closeOnEscape);
       document.body.classList.remove("schedule-dialog-open");
     };
-  }, [open, firstStallDate, onClose]);
+  }, [open, firstAvailableDate, onClose]);
 
   if (!open) return null;
 
@@ -162,9 +183,7 @@ export default function WeeklyScheduleDialog({
   const selectedItems = menuItems
     .filter(
       (item) =>
-        item.service_date === selectedDate &&
-        item.channel_slug === "in_person" &&
-        item.status !== "hidden",
+        item.service_date === selectedDate && item.status !== "hidden",
     )
     .map((item) => ({
       ...item,
@@ -178,17 +197,120 @@ export default function WeeklyScheduleDialog({
   const onlineLink =
     whatsappBase +
     encodeURIComponent(
-      "Olá, Adoce! Vi a agenda da semana e quero conhecer os sabores disponíveis para retirada hoje.",
+      `Olá, Adoce! Vi a agenda da semana e quero conhecer os sabores disponíveis para retirada em ${dayTitle(selectedDate)}.`,
     );
   const reservationText = selectedItems
     .filter((item) => (quantities[item.id] || 0) > 0)
-    .map((item) => `${quantities[item.id]}x ${item.flavor?.name}`)
+    .map(
+      (item) =>
+        `${quantities[item.id]}x ${item.flavor?.name} (${item.channel_slug === "in_person" ? "barraquinha" : "retirada"})`,
+    )
     .join(", ");
   const reservationLink =
     whatsappBase +
     encodeURIComponent(
       `Olá, Adoce! Quero solicitar uma reserva para ${dayTitle(selectedDate)}: ${reservationText}. Sei que a reserva será confirmada pela Adoce no WhatsApp.`,
     );
+
+  const renderFlavorList = (channel: ScheduleChannel) => {
+    const channelItems = selectedItems.filter(
+      (item) => item.channel_slug === channel,
+    );
+    if (!channelItems.length) return null;
+
+    return (
+      <div className="weekly-flavor-list">
+        {channelItems.map((item) => {
+          const available =
+            item.quantity_planned === null
+              ? null
+              : Math.max(item.quantity_planned - item.quantity_reserved, 0);
+          const selected = quantities[item.id] || 0;
+          const maximum = available === null ? 12 : available;
+          const soldOut = item.status === "sold_out" || maximum === 0;
+          return (
+            <article key={item.id} className={soldOut ? "sold-out" : ""}>
+              <img
+                src={item.flavor!.image}
+                alt={`Fatia ${item.flavor!.name}`}
+              />
+              <div>
+                <strong>{item.flavor!.name}</strong>
+                <small>
+                  {soldOut
+                    ? "Esse sabor já foi muito amado e esgotou"
+                    : available === null
+                      ? "Disponibilidade confirmada pela Adoce"
+                      : `${available} ${available === 1 ? "fatia disponível" : "fatias disponíveis"}`}
+                </small>
+              </div>
+              {!soldOut ? (
+                <div
+                  className="weekly-quantity"
+                  aria-label={`Quantidade de ${item.flavor!.name}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuantities((current) => ({
+                        ...current,
+                        [item.id]: Math.max(selected - 1, 0),
+                      }))
+                    }
+                    disabled={selected === 0}
+                    aria-label={`Remover uma ${item.flavor!.name}`}
+                  >
+                    <Minus />
+                  </button>
+                  <strong>{selected}</strong>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuantities((current) => ({
+                        ...current,
+                        [item.id]: Math.min(selected + 1, maximum),
+                      }))
+                    }
+                    disabled={selected >= maximum}
+                    aria-label={`Adicionar uma ${item.flavor!.name}`}
+                  >
+                    <Plus />
+                  </button>
+                </div>
+              ) : null}
+            </article>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const channels = [
+    {
+      slug: "online_orders" as const,
+      icon: ShoppingBag,
+      title: "Pedidos para retirada",
+      active: selectedDay.hasPickup,
+      windows: selectedDay.pickup,
+      activeText: "Retirada programada neste dia",
+      inactiveText: "Sem retirada programada neste dia",
+      emptyTitle: "Os sabores para retirada ainda não foram publicados.",
+      emptyText:
+        "Não precisa esperar a barraquinha. Chame a Adoce para consultar o que estará disponível.",
+    },
+    {
+      slug: "in_person" as const,
+      icon: Store,
+      title: "Barraquinha de rua",
+      active: selectedDay.hasStall,
+      windows: selectedDay.stall,
+      activeText: "A barraquinha estará por perto",
+      inactiveText: "Neste dia, a barraquinha descansa",
+      emptyTitle: "O cardápio da barraquinha ainda está ganhando forma.",
+      emptyText:
+        "Chame a gente e conte qual sabor você gostaria de encontrar na barraquinha.",
+    },
+  ];
 
   return (
     <div className="weekly-schedule-backdrop" onMouseDown={onClose}>
@@ -199,14 +321,22 @@ export default function WeeklyScheduleDialog({
         aria-labelledby="weekly-schedule-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <button className="weekly-schedule-close" type="button" onClick={onClose} aria-label="Fechar agenda">
+        <button
+          className="weekly-schedule-close"
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar agenda"
+        >
           <X />
         </button>
         <header className="weekly-schedule-heading">
           <CalendarDays />
           <div>
-            <h2 id="weekly-schedule-title">Quando a barraquinha vai estar por perto?</h2>
-            <p>Veja os próximos dias e escolha como prefere adoçar a sua semana.</p>
+            <h2 id="weekly-schedule-title">Sabores e atendimentos da semana</h2>
+            <p>
+              Veja o que estará disponível para retirada e na barraquinha, sem
+              misturar as duas modalidades.
+            </p>
           </div>
         </header>
 
@@ -223,105 +353,85 @@ export default function WeeklyScheduleDialog({
             >
               {day.hasStall ? <Store /> : <ShoppingBag />}
               <span>{dayShort(day.date)}</span>
-              <small>{day.hasStall ? "Barraquinha" : "Pedidos on-line"}</small>
+              <small>
+                {day.hasStall && day.hasPickup
+                  ? "Retirada + barraquinha"
+                  : day.hasStall
+                    ? "Barraquinha"
+                    : day.hasPickup
+                      ? "Retirada"
+                      : "Sem atendimento"}
+              </small>
             </button>
           ))}
         </div>
 
         <div className="weekly-schedule-content">
-          <article className="weekly-stall-day">
-            <div className="weekly-selected-date">
-              <div>
-                <Store />
-                <span>
-                  <strong>{dayTitle(selectedDate)}</strong>
-                  <small>
-                    {selectedDay.hasStall
-                      ? "A barraquinha estará por perto"
-                      : "Neste dia, a barraquinha descansa"}
-                  </small>
-                </span>
-              </div>
-              {selectedDay.hasStall ? (
-                <span className="weekly-hour"><Clock3 /> {hourLabel(selectedDay.windows)}</span>
-              ) : null}
+          <div className="weekly-selected-date weekly-date-summary">
+            <div>
+              <CalendarDays />
+              <span>
+                <strong>{dayTitle(selectedDate)}</strong>
+                <small>
+                  Escolha uma modalidade abaixo para planejar sua vontade.
+                </small>
+              </span>
             </div>
+          </div>
 
-            {selectedDay.hasStall ? (
-              selectedItems.length ? (
-                <div className="weekly-flavor-list">
-                  {selectedItems.map((item) => {
-                    const available =
-                      item.quantity_planned === null
-                        ? null
-                        : Math.max(item.quantity_planned - item.quantity_reserved, 0);
-                    const selected = quantities[item.id] || 0;
-                    const maximum = available === null ? 12 : available;
-                    const soldOut = item.status === "sold_out" || maximum === 0;
-                    return (
-                      <article key={item.id} className={soldOut ? "sold-out" : ""}>
-                        <img src={item.flavor!.image} alt={`Fatia ${item.flavor!.name}`} />
-                        <div>
-                          <strong>{item.flavor!.name}</strong>
-                          <small>
-                            {soldOut
-                              ? "Esse sabor já foi muito amado e esgotou"
-                              : available === null
-                                ? "Disponibilidade confirmada pela Adoce"
-                                : `${available} ${available === 1 ? "fatia disponível" : "fatias disponíveis"}`}
-                          </small>
-                        </div>
-                        {!soldOut ? (
-                          <div className="weekly-quantity" aria-label={`Quantidade de ${item.flavor!.name}`}>
-                            <button
-                              type="button"
-                              onClick={() => setQuantities((current) => ({ ...current, [item.id]: Math.max(selected - 1, 0) }))}
-                              disabled={selected === 0}
-                              aria-label={`Remover uma ${item.flavor!.name}`}
-                            ><Minus /></button>
-                            <strong>{selected}</strong>
-                            <button
-                              type="button"
-                              onClick={() => setQuantities((current) => ({ ...current, [item.id]: Math.min(selected + 1, maximum) }))}
-                              disabled={selected >= maximum}
-                              aria-label={`Adicionar uma ${item.flavor!.name}`}
-                            ><Plus /></button>
-                          </div>
-                        ) : null}
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="weekly-menu-pending">
-                  <Heart />
-                  <strong>O cardápio deste dia ainda está ganhando forma.</strong>
-                  <p>Chame a gente e conte qual sabor você gostaria de encontrar na barraquinha.</p>
-                </div>
-              )
-            ) : (
-              <div className="weekly-menu-pending">
-                <ShoppingBag />
-                <strong>Hoje também dá para adoçar.</strong>
-                <p>Faça seu pedido on-line e combine a retirada no portão com a Adoce.</p>
-              </div>
-            )}
-          </article>
+          <div className="weekly-channel-grid">
+            {channels.map((channel) => {
+              const ChannelIcon = channel.icon;
+              const flavorList = renderFlavorList(channel.slug);
+              return (
+                <article
+                  className={`weekly-channel-card ${channel.slug}`}
+                  key={channel.slug}
+                >
+                  <div className="weekly-channel-head">
+                    <div>
+                      <ChannelIcon />
+                      <span>
+                        <strong>{channel.title}</strong>
+                        <small>
+                          {channel.active
+                            ? channel.activeText
+                            : channel.inactiveText}
+                        </small>
+                      </span>
+                    </div>
+                    {channel.windows.length ? (
+                      <span className="weekly-hour">
+                        <Clock3 /> {hourLabel(channel.windows)}
+                      </span>
+                    ) : null}
+                  </div>
 
-          <aside className="weekly-online-invite">
-            <ShoppingBag />
-            <h3>Não precisa esperar a barraquinha.</h3>
-            <p>Se a vontade chegou antes, veja os sabores de hoje e peça para retirar.</p>
-            <a href={onlineLink} target="_blank" rel="noreferrer">
-              <MessageCircle /> Pedir para retirar
-            </a>
-          </aside>
+                  {flavorList || (
+                    <div className="weekly-menu-pending">
+                      <Heart />
+                      <strong>{channel.emptyTitle}</strong>
+                      <p>{channel.emptyText}</p>
+                      {channel.slug === "online_orders" ? (
+                        <a href={onlineLink} target="_blank" rel="noreferrer">
+                          <MessageCircle /> Consultar retirada
+                        </a>
+                      ) : null}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
         </div>
 
         {selectedCount > 0 ? (
           <footer className="weekly-reservation-bar">
             <div>
-              <strong>Solicitação de reserva · {selectedCount} {selectedCount === 1 ? "fatia" : "fatias"}</strong>
+              <strong>
+                Solicitação de reserva · {selectedCount}{" "}
+                {selectedCount === 1 ? "fatia" : "fatias"}
+              </strong>
               <small>A Adoce confirma sua reserva pelo WhatsApp.</small>
             </div>
             <a href={reservationLink} target="_blank" rel="noreferrer">

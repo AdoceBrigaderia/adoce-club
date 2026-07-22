@@ -18,9 +18,20 @@ describe("agenda semanal do Festival de Fatias", () => {
 
   it("oferece pedido imediato e solicitação de reserva honesta", () => {
     expect(dialog).toContain("Não precisa esperar a barraquinha.");
-    expect(dialog).toContain("Pedir para retirar");
+    expect(dialog).toContain("Consultar retirada");
     expect(dialog).toContain("A Adoce confirma sua reserva pelo WhatsApp.");
     expect(dialog).toContain("Solicitar minha reserva");
+  });
+
+  it("mostra separadamente os sabores antecipados de retirada e da barraquinha", () => {
+    expect(dialog).toContain('serviceWindows(date, "online_orders"');
+    expect(dialog).toContain('serviceWindows(date, "in_person"');
+    expect(dialog).toContain('title: "Pedidos para retirada"');
+    expect(dialog).toContain('title: "Barraquinha de rua"');
+    expect(dialog).toContain("item.channel_slug === channel");
+    expect(dialog).not.toContain(
+      'item.channel_slug === "in_person" &&\n        item.status !== "hidden"',
+    );
   });
 
   it("permite planejar data, modalidade, sabor e quantidade na operação", () => {

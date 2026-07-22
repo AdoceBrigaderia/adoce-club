@@ -75,14 +75,34 @@ body.schedule-dialog-open { overflow: hidden; }
 .weekly-day-rail svg { width: 20px; color: #ef6d65; }
 .weekly-day-rail span { font-weight: 900; text-transform: capitalize; }
 .weekly-day-rail small { color: #967064; font-size: .7rem; }
-.weekly-schedule-content { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .7fr); gap: 18px; }
-.weekly-stall-day,
-.weekly-online-invite {
+.weekly-schedule-content { display: grid; gap: 14px; }
+.weekly-date-summary {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid #ecd7ca;
+  border-radius: 18px;
+  background: #fff5f1;
+}
+.weekly-channel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.weekly-channel-card {
   border: 1px solid #ecd7ca;
   border-radius: 22px;
   background: #fff;
   padding: 20px;
 }
+.weekly-channel-card.online_orders { border-top: 4px solid #4a9879; }
+.weekly-channel-card.in_person { border-top: 4px solid #f3655e; }
+.weekly-channel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.weekly-channel-head > div { display: flex; align-items: center; gap: 10px; }
+.weekly-channel-head > div > svg { flex: 0 0 auto; color: #f3655e; }
+.weekly-channel-card.online_orders .weekly-channel-head > div > svg { color: #3f8b6e; }
+.weekly-channel-head strong { display: block; font: 700 1.25rem Georgia, serif; }
+.weekly-channel-head small { display: block; margin-top: 3px; color: #8c6253; }
 .weekly-selected-date { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
 .weekly-selected-date > div { display: flex; gap: 10px; align-items: center; }
 .weekly-selected-date svg { color: #f3655e; }
@@ -104,13 +124,9 @@ body.schedule-dialog-open { overflow: hidden; }
 .weekly-menu-pending svg { color: #f3655e; }
 .weekly-menu-pending strong { margin-top: 8px; font: 700 1.25rem Georgia, serif; }
 .weekly-menu-pending p { max-width: 430px; margin: 7px auto 0; color: #8c6253; }
-.weekly-online-invite { display: grid; align-content: center; justify-items: start; background: #fff5f1; }
-.weekly-online-invite > svg { color: #f3655e; }
-.weekly-online-invite h3 { margin: 14px 0 8px; font: 700 1.65rem/1.08 Georgia, serif; }
-.weekly-online-invite p { margin: 0 0 20px; color: #825c50; line-height: 1.55; }
-.weekly-online-invite a,
+.weekly-menu-pending a { display: inline-flex; align-items: center; gap: 7px; margin-top: 15px; color: #3b160e; font-weight: 850; text-underline-offset: 3px; }
+.weekly-menu-pending a svg { width: 18px; }
 .weekly-reservation-bar a { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 13px; background: #f3655e; color: white; padding: 13px 16px; text-decoration: none; font-weight: 900; }
-.weekly-online-invite a svg,
 .weekly-reservation-bar a svg { width: 19px; }
 .weekly-reservation-bar { position: sticky; bottom: -34px; display: flex; justify-content: space-between; align-items: center; gap: 18px; margin: 18px -34px -34px; padding: 17px 34px; border-top: 1px solid #e8d0c3; background: rgba(255, 250, 245, .96); backdrop-filter: blur(12px); }
 .weekly-reservation-bar strong,
@@ -125,8 +141,10 @@ body.schedule-dialog-open { overflow: hidden; }
   .weekly-schedule-heading { padding-right: 46px; }
   .weekly-schedule-heading h2 { font-size: 2rem; }
   .weekly-day-rail { grid-template-columns: repeat(7, 112px); margin-inline: -16px; padding-inline: 16px; }
-  .weekly-schedule-content { grid-template-columns: 1fr; }
+  .weekly-channel-grid { grid-template-columns: 1fr; }
   .weekly-selected-date { align-items: flex-start; flex-direction: column; }
+  .weekly-date-summary { padding: 14px; }
+  .weekly-channel-head { flex-direction: column; }
   .weekly-flavor-list > article { grid-template-columns: 62px minmax(0, 1fr); }
   .weekly-flavor-list img { width: 62px; }
   .weekly-quantity { grid-column: 2; justify-self: start; }

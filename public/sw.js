@@ -1,6 +1,5 @@
-const CACHE = "clube-adoce-v2";
+const CACHE = "clube-adoce-v3";
 const SHELL = [
-  "/",
   "/site/logo.webp",
   "/manifest-clube.webmanifest",
   "/manifest-operacao.webmanifest",
@@ -25,9 +24,12 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   if (new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(fetch(event.request).then(response => {
-    const copy = response.clone();
-    caches.open(CACHE).then(cache => cache.put(event.request, copy));
+  if (event.request.mode === "navigate" || new URL(event.request.url).pathname.startsWith("/assets/")) return;
+  event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
+    if (response.ok) {
+      const copy = response.clone();
+      caches.open(CACHE).then(cache => cache.put(event.request, copy));
+    }
     return response;
-  }).catch(() => caches.match(event.request).then(response => response || caches.match("/"))));
+  })));
 });
