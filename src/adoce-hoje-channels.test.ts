@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { serviceHeadline, serviceState, type BusinessHour } from "./AdoceHoje";
 
 const page = readFileSync(new URL("./AdoceHoje.tsx", import.meta.url), "utf8");
+const contentStyles = readFileSync(
+  new URL("./adoce-hoje-content.css", import.meta.url),
+  "utf8",
+);
 
 describe("canais independentes do Adoce Hoje", () => {
   it("não mistura o status da retirada com o da barraquinha", () => {
@@ -99,8 +103,25 @@ describe("canais independentes do Adoce Hoje", () => {
 
   it("fala sobre os sabores de forma acolhedora, sem linguagem de sistema", () => {
     expect(page).toContain("Tem um sabor esperando por você");
-    expect(page).toContain("Escolha o seu favorito e chame a gente para reservar.");
+    expect(page).toContain("Toque no seu favorito e peça pelo WhatsApp.");
     expect(page).not.toContain("sabor sinalizado");
     expect(page).not.toContain("As fotos continuam visíveis");
+  });
+
+  it("mostra os sabores antes dos cartões de atendimento e permite pedi-los", () => {
+    expect(page.indexOf('className="today-live-showcase"')).toBeLessThan(
+      page.indexOf('className="today-service-grid"'),
+    );
+    expect(page).toContain('href={orderLink(flavor.name)}');
+    expect(page).toContain("Sabores disponíveis agora");
+  });
+
+  it("preserva o desktop e prioriza os sabores somente no celular", () => {
+    expect(contentStyles).toMatch(/\.today-service-grid\s*{\s*order:\s*1;/);
+    expect(contentStyles).toMatch(/\.today-live-showcase\s*{\s*order:\s*2;/);
+    expect(contentStyles).toContain("@media (max-width: 700px)");
+    expect(contentStyles).toMatch(/\.today-live-showcase\s*{\s*order:\s*1;/);
+    expect(contentStyles).toMatch(/\.today-service-grid\s*{\s*order:\s*2;/);
+    expect(contentStyles).toMatch(/\.today-hero-actions\s*{\s*display:\s*none;/);
   });
 });

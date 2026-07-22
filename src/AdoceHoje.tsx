@@ -680,6 +680,46 @@ export default function AdoceHoje() {
           </div>
         </div>
         <div className="today-service-experience" id="atendimento">
+          <div className="today-live-showcase" aria-label="Sabores disponíveis para retirada">
+            <header>
+              <span><Heart /> Sabores disponíveis agora</span>
+              <strong>
+                {availableCount
+                  ? availableCount === 1
+                    ? "Tem um sabor esperando por você"
+                    : `Tem ${availableCount} sabores esperando por você`
+                  : "Quer saber o que saiu hoje?"}
+              </strong>
+              <small>
+                {updated
+                  ? anyServiceOpen
+                    ? "Toque no seu favorito e peça pelo WhatsApp."
+                    : "Gostou de algum? Toque no sabor para confirmar e combinar a retirada."
+                  : "Só um instante: estamos preparando as delícias de hoje."}
+              </small>
+            </header>
+            <div className="today-live-flavor-grid">
+              {flavors
+                .filter((flavor) => flavor.available)
+                .slice(0, 4)
+                .map((flavor) => (
+                  <a
+                    className="today-live-flavor"
+                    href={orderLink(flavor.name)}
+                    key={flavor.id}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Pedir ${flavor.name} pelo WhatsApp`}
+                  >
+                    <figure>
+                      <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
+                      <figcaption>{flavor.name}</figcaption>
+                    </figure>
+                  </a>
+                ))}
+            </div>
+          </div>
+
           <div className="today-service-grid" aria-label="Canais de atendimento de hoje">
             <article className={`today-service-card ${pickupOpen ? "is-open" : "is-closed"}`}>
               <img
@@ -748,36 +788,6 @@ export default function AdoceHoje() {
             </article>
           </div>
 
-          <div className="today-live-showcase" aria-label="Sabores disponíveis hoje">
-            <header>
-              <span><Heart /> Uma pausa doce para hoje</span>
-              <strong>
-                {availableCount
-                  ? availableCount === 1
-                    ? "Tem um sabor esperando por você"
-                    : `Tem ${availableCount} sabores esperando por você`
-                  : "Quer saber o que saiu hoje?"}
-              </strong>
-              <small>
-                {updated
-                  ? anyServiceOpen
-                    ? "Escolha o seu favorito e chame a gente para reservar."
-                    : "Gostou de algum? Chame a gente para confirmar e combinar a retirada."
-                  : "Só um instante: estamos preparando as delícias de hoje."}
-              </small>
-            </header>
-            <div className="today-live-flavor-grid">
-              {flavors
-                .filter((flavor) => flavor.available)
-                .slice(0, 4)
-                .map((flavor) => (
-                  <figure key={flavor.id}>
-                    <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
-                    <figcaption>{flavor.name}</figcaption>
-                  </figure>
-                ))}
-            </div>
-          </div>
         </div>
       </section>
       <section className="today-group-order" aria-labelledby="pede-junto-adoce">
