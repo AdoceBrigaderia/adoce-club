@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   Clock3,
@@ -140,32 +140,50 @@ export default function WeeklyScheduleDialog({
         const dateItems = menuItems.filter(
           (item) => item.service_date === date && item.status !== "hidden",
         );
+        const hasStallMenu = dateItems.some(
+          (item) => item.channel_slug === "in_person",
+        );
+        const hasPickupMenu = dateItems.some(
+          (item) => item.channel_slug === "online_orders",
+        );
+        const hasBookableMenu = dateItems.some((item) => {
+          const available =
+            item.quantity_planned === null ||
+            item.quantity_planned - item.quantity_reserved > 0;
+          const channelHasHours =
+            item.channel_slug === "in_person"
+              ? stall.length > 0
+              : pickup.length > 0;
+          return item.status === "published" && available && channelHasHours;
+        });
         return {
           date,
           stall,
           pickup,
-          hasStall:
-            stall.length > 0 ||
-            dateItems.some((item) => item.channel_slug === "in_person"),
-          hasPickup:
-            pickup.length > 0 ||
-            dateItems.some((item) => item.channel_slug === "online_orders"),
+          hasStall: stall.length > 0,
+          hasPickup: pickup.length > 0,
+          hasStallMenu,
+          hasPickupMenu,
+          hasBookableMenu,
           hasMenu: dateItems.length > 0,
         };
       }),
     [today, hours, exceptions, menuItems],
   );
   const firstAvailableDate =
+    days.find((day) => day.hasBookableMenu)?.date ||
     days.find((day) => day.hasMenu)?.date ||
     days.find((day) => day.hasPickup || day.hasStall)?.date ||
     today;
   const [selectedDate, setSelectedDate] = useState(firstAvailableDate);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
     setSelectedDate(firstAvailableDate);
     setQuantities({});
+    window.requestAnimationFrame(() => closeButtonRef.current?.focus());
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
@@ -212,7 +230,7 @@ export default function WeeklyScheduleDialog({
       `Olá, Adoce! Quero solicitar uma reserva para ${dayTitle(selectedDate)}: ${reservationText}. Sei que a reserva será confirmada pela Adoce no WhatsApp.`,
     );
 
-  const renderFlavorList = (channel: ScheduleChannel) => {
+  const renderFlavorList = (channel: ScheduleChannel, channelActive: boolean) => {
     const channelItems = selectedItems.filter(
       (item) => item.channel_slug === channel,
     );
@@ -244,7 +262,7 @@ export default function WeeklyScheduleDialog({
                       : `${available} ${available === 1 ? "fatia disponível" : "fatias disponíveis"}`}
                 </small>
               </div>
-              {!soldOut ? (
+              {!soldOut && channelActive ? (
                 <div
                   className="weekly-quantity"
                   aria-label={`Quantidade de ${item.flavor!.name}`}
@@ -277,6 +295,10 @@ export default function WeeklyScheduleDialog({
                     <Plus />
                   </button>
                 </div>
+              ) : !soldOut ? (
+                <small className="weekly-awaiting-hour">
+                  Horário ainda não confirmado
+                </small>
               ) : null}
             </article>
           );
@@ -326,6 +348,7 @@ export default function WeeklyScheduleDialog({
           type="button"
           onClick={onClose}
           aria-label="Fechar agenda"
+          ref={closeButtonRef}
         >
           <X />
         </button>
@@ -382,7 +405,7 @@ export default function WeeklyScheduleDialog({
           <div className="weekly-channel-grid">
             {channels.map((channel) => {
               const ChannelIcon = channel.icon;
-              const flavorList = renderFlavorList(channel.slug);
+              const flavorList = renderFlavorList(channel.slug, channel.active);
               return (
                 <article
                   className={`weekly-channel-card ${channel.slug}`}
@@ -406,6 +429,15 @@ export default function WeeklyScheduleDialog({
                       </span>
                     ) : null}
                   </div>
+
+                  {!channel.active &&
+                  ((channel.slug === "online_orders" && selectedDay.hasPickupMenu) ||
+                    (channel.slug === "in_person" && selectedDay.hasStallMenu)) ? (
+                    <p className="weekly-channel-awaiting">
+                      Os sabores já estão previstos, mas a reserva será liberada
+                      somente quando o horário deste atendimento for confirmado.
+                    </p>
+                  ) : null}
 
                   {flavorList || (
                     <div className="weekly-menu-pending">

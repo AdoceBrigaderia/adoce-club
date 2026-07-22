@@ -116,6 +116,8 @@ body.schedule-dialog-open { overflow: hidden; }
 .weekly-flavor-list strong { display: block; }
 .weekly-flavor-list small { color: #8f675b; }
 .weekly-flavor-list .sold-out { opacity: .68; }
+.weekly-awaiting-hour { max-width: 110px; color: #a2463f !important; font-weight: 750; text-align: right; }
+.weekly-channel-awaiting { margin: 0 0 12px; padding: 11px 13px; border-radius: 12px; background: #fff1e8; color: #7b4638; font-size: .82rem; line-height: 1.45; }
 .weekly-quantity { display: grid; grid-template-columns: 34px 28px 34px; align-items: center; text-align: center; }
 .weekly-quantity button { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #ead4c7; border-radius: 9px; background: #fff; color: #4d2117; cursor: pointer; }
 .weekly-quantity button:disabled { opacity: .35; cursor: not-allowed; }

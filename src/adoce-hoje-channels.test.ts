@@ -1,15 +1,15 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { serviceState, type BusinessHour } from "./AdoceHoje";
+import { serviceHeadline, serviceState, type BusinessHour } from "./AdoceHoje";
 
 const page = readFileSync(new URL("./AdoceHoje.tsx", import.meta.url), "utf8");
 
 describe("canais independentes do Adoce Hoje", () => {
   it("não mistura o status da retirada com o da barraquinha", () => {
     expect(page).toContain("Retirada aberta agora");
-    expect(page).toContain("Retirada fechada agora");
+    expect(page).toContain("Sem retirada neste momento");
     expect(page).toContain("Barraquinha aberta agora");
-    expect(page).toContain("Barraquinha fechada agora");
+    expect(page).toContain("Barraquinha fechada hoje");
     expect(page).toContain("A barraquinha está fechada, mas os pedidos para retirada funcionam separadamente.");
   });
 
@@ -59,6 +59,42 @@ describe("canais independentes do Adoce Hoje", () => {
         date: "2026-07-21",
       }),
     ).toMatchObject({ open: true });
+  });
+
+  it("explica se o atendimento ainda vai abrir ou se já encerrou", () => {
+    const hours: BusinessHour[] = [
+      {
+        channel_slug: "online_orders",
+        weekday: 2,
+        opens_at: "09:00:00",
+        closes_at: "22:00:00",
+        active: true,
+        note: null,
+      },
+    ];
+    const before = serviceState("pickup", hours, [], {
+      weekday: 2,
+      hour: 8.5,
+      date: "2026-07-21",
+    });
+    const after = serviceState("pickup", hours, [], {
+      weekday: 2,
+      hour: 22.5,
+      date: "2026-07-21",
+    });
+
+    expect(serviceHeadline("pickup", before)).toBe("A retirada abre mais tarde");
+    expect(before.message).toContain("abre hoje às 09:00");
+    expect(serviceHeadline("pickup", after)).toBe("Retirada encerrada hoje");
+    expect(after.message).toContain("encerrou o atendimento de hoje às 22:00");
+  });
+
+  it("não oferece localização da barraquinha fechada no atalho móvel", () => {
+    expect(page).toContain("Ver agenda");
+    expect(page).toContain('open ? (');
+    expect(page).toContain('setScheduleOpen(true)');
+    expect(page).toContain('href={open ? maps : orderLink()}');
+    expect(page).toContain("Como chegar à barraquinha");
   });
 
   it("fala sobre os sabores de forma acolhedora, sem linguagem de sistema", () => {

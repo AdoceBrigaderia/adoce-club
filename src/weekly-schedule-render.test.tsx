@@ -50,4 +50,39 @@ describe("agenda semanal renderizada", () => {
     expect(stallCard).toBeGreaterThan(flavor);
     expect(markup).toContain("10 fatias disponíveis");
   });
+
+  it("não libera reserva quando há cardápio sem horário confirmado", () => {
+    const markup = renderToStaticMarkup(
+      <WeeklyScheduleDialog
+        open
+        onClose={vi.fn()}
+        today="2026-07-21"
+        hours={[]}
+        exceptions={[]}
+        menuItems={[
+          {
+            id: "pickup-without-hours",
+            service_date: "2026-07-22",
+            channel_slug: "online_orders",
+            flavor_id: "chocolatudo-supreme",
+            quantity_planned: 10,
+            quantity_reserved: 0,
+            status: "published",
+            note: null,
+          },
+        ]}
+        flavors={[
+          {
+            id: "chocolatudo-supreme",
+            name: "Chocolatudo Supreme",
+            image: "/adoce-hoje/chocolatudo.webp",
+          },
+        ]}
+      />,
+    );
+
+    expect(markup).toContain("Horário ainda não confirmado");
+    expect(markup).toContain("a reserva será liberada");
+    expect(markup).not.toContain("Adicionar uma Chocolatudo Supreme");
+  });
 });

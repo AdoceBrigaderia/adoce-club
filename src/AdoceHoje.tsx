@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
+  CalendarDays,
   Clock3,
   Heart,
   House,
@@ -194,6 +195,12 @@ function timeNumber(value: string | null) {
   return hours + minutes / 60;
 }
 
+function clockLabel(value: number) {
+  const hours = Math.floor(value);
+  const minutes = Math.round((value - hours) * 60);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
 function dateAfter(date: string, days: number) {
   const result = new Date(`${date}T12:00:00Z`);
   result.setUTCDate(result.getUTCDate() + days);
@@ -255,18 +262,51 @@ export function serviceState(
   const active = today.find(
     (window) => now.hour >= window.start && now.hour < window.end,
   );
+  const firstWindow = today[0];
+  const lastWindow = today[today.length - 1];
+  const beforeOpening = Boolean(firstWindow && now.hour < firstWindow.start);
+  const finishedToday = Boolean(lastWindow && now.hour >= lastWindow.end);
+  const subject = kind === "stall" ? "A barraquinha" : "A retirada";
+  const timingMessage = beforeOpening
+    ? `${subject} abre hoje às ${clockLabel(firstWindow.start)} e funciona até ${clockLabel(lastWindow.end)}.`
+    : finishedToday
+      ? `${subject} encerrou o atendimento de hoje às ${clockLabel(lastWindow.end)}.`
+      : today.map((window) => window.label).join(" ");
   return {
     open: Boolean(active),
+    phase: active
+      ? ("open" as const)
+      : beforeOpening
+        ? ("before_opening" as const)
+        : finishedToday
+          ? ("finished_today" as const)
+          : ("unavailable" as const),
     message:
       active?.label ||
       (exception?.closed
         ? exception.message || "Fechado excepcionalmente hoje."
         : "") ||
-      today.map((window) => window.label).join(" ") ||
+      timingMessage ||
       (kind === "stall"
         ? "A barraquinha não funciona hoje."
         : "Não há retirada programada hoje."),
   };
+}
+
+export function serviceHeadline(
+  kind: ServiceKind,
+  state: ReturnType<typeof serviceState>,
+) {
+  if (state.open) {
+    return kind === "stall" ? "Barraquinha aberta agora" : "Retirada aberta agora";
+  }
+  if (state.phase === "before_opening") {
+    return kind === "stall" ? "A barraquinha abre mais tarde" : "A retirada abre mais tarde";
+  }
+  if (state.phase === "finished_today") {
+    return kind === "stall" ? "Barraquinha encerrada hoje" : "Retirada encerrada hoje";
+  }
+  return kind === "stall" ? "Barraquinha fechada hoje" : "Sem retirada neste momento";
 }
 
 const fallback: Flavor[] = [
@@ -406,6 +446,7 @@ export default function AdoceHoje() {
   const dateLabel = useMemo(
     () =>
       new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Fortaleza",
         weekday: "long",
         day: "2-digit",
         month: "long",
@@ -551,9 +592,12 @@ export default function AdoceHoje() {
   const online = channels.find((c) => c.slug === "online_orders");
   const stallState = serviceState("stall", businessHours, hourExceptions);
   const pickupState = serviceState("pickup", businessHours, hourExceptions);
-  const open = inPerson?.status === "paused" ? false : stallState.open;
+  const stallPaused = inPerson?.status === "paused";
+  const open = stallPaused ? false : stallState.open;
   const availableCount = flavors.filter((f) => f.available).length;
-  const stallStatus = open ? "Aberto agora" : "Fechado agora";
+  const stallHeadline = stallPaused
+    ? "Barraquinha pausada agora"
+    : serviceHeadline("stall", stallState);
   const stallMessage = serviceStatusMessage({
     open,
     paused: inPerson?.status === "paused",
@@ -561,8 +605,11 @@ export default function AdoceHoje() {
     scheduleMessage: stallState.message,
     pausedMessage: "Atendimento presencial pausado no momento.",
   });
-  const pickupOpen = online?.status === "paused" ? false : pickupState.open;
-  const pickupStatus = pickupOpen ? "Aberto agora" : "Fechado agora";
+  const pickupPaused = online?.status === "paused";
+  const pickupOpen = pickupPaused ? false : pickupState.open;
+  const pickupHeadline = pickupPaused
+    ? "Retiradas pausadas agora"
+    : serviceHeadline("pickup", pickupState);
   const pickupMessage = serviceStatusMessage({
     open: pickupOpen,
     paused: online?.status === "paused",
@@ -635,7 +682,7 @@ export default function AdoceHoje() {
                 <div className="today-channel-status" role="status">
                   <span aria-hidden="true" />
                   <div>
-                    <strong>{pickupOpen ? "Retirada aberta agora" : "Retirada fechada agora"}</strong>
+                    <strong>{pickupHeadline}</strong>
                     <small>{pickupMessage}</small>
                   </div>
                 </div>
@@ -667,7 +714,7 @@ export default function AdoceHoje() {
                 <div className="today-channel-status" role="status">
                   <span aria-hidden="true" />
                   <div>
-                    <strong>{open ? "Barraquinha aberta agora" : "Barraquinha fechada agora"}</strong>
+                    <strong>{stallHeadline}</strong>
                     <small>{stallMessage}</small>
                   </div>
                 </div>
@@ -981,23 +1028,25 @@ export default function AdoceHoje() {
               : "Consulte o próximo horário."}
           </h2>
           <p>
-            <strong>Barraquinha:</strong> {stallStatus}.{" "}
-            {stallMessage}
+             <strong>{stallHeadline}.</strong> {stallMessage}
           </p>
           <p>
-            <strong>Retirada no portão:</strong> {pickupStatus}.{" "}
-            {pickupMessage} O local de produção não é aberto à visitação.
+             <strong>{pickupHeadline}.</strong> {pickupMessage} O local de produção não é aberto à visitação.
             Endereço para retirada confirmada: Rua Professor Odílio Filho,
             227, Passaré.
           </p>
           <a
             className="today-primary"
-            href={anyServiceOpen ? maps : orderLink()}
+             href={open ? maps : orderLink()}
             target="_blank"
             rel="noreferrer"
           >
-            {anyServiceOpen ? <MapPin /> : <MessageCircle />}
-            {anyServiceOpen ? "Abrir localização" : "Consultar atendimento"}
+             {open ? <MapPin /> : <MessageCircle />}
+             {open
+               ? "Como chegar à barraquinha"
+               : pickupOpen
+                 ? "Pedir para retirar"
+                 : "Consultar próximo horário"}
           </a>
         </div>
         <div className="today-contact">
@@ -1023,11 +1072,17 @@ export default function AdoceHoje() {
         <p>Aqui na Adoce você compra a fatia e a felicidade vai junto.</p>
       </footer>
       <div className="today-mobile-bar">
-        <a href={maps} target="_blank" rel="noreferrer">
-          <MapPin /> Chegar
-        </a>
+        {open ? (
+          <a href={maps} target="_blank" rel="noreferrer">
+            <MapPin /> Chegar
+          </a>
+        ) : (
+          <button type="button" onClick={() => setScheduleOpen(true)}>
+            <CalendarDays /> Ver agenda
+          </button>
+        )}
         <a href={orderLink()} target="_blank" rel="noreferrer">
-          <MessageCircle /> Consultar
+          <MessageCircle /> {pickupOpen ? "Pedir para retirar" : "Consultar"}
         </a>
       </div>
       <WeeklyScheduleDialog
