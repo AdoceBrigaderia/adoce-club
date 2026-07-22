@@ -124,4 +124,17 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(contentStyles).toMatch(/\.today-service-grid\s*{\s*order:\s*2;/);
     expect(contentStyles).toMatch(/\.today-hero-actions\s*{\s*display:\s*none;/);
   });
+
+  it("leva o contexto para depois das fotos somente no celular", () => {
+    expect(page.indexOf('className="today-mobile-context"')).toBeGreaterThan(
+      page.indexOf('className="today-live-flavor-grid"'),
+    );
+    expect(contentStyles).toMatch(/\.today-mobile-context\s*{\s*display:\s*none;/);
+    expect(contentStyles).toMatch(
+      /@media \(max-width: 700px\)[\s\S]*?\.today-mobile-context\s*{[\s\S]*?display:\s*grid;/,
+    );
+    expect(contentStyles).toMatch(
+      /\.today-hero-copy > \.today-live,[\s\S]*?\.today-hero-copy > \.today-lead\s*{\s*display:\s*none;/,
+    );
+  });
 });

@@ -352,6 +352,9 @@
   color: inherit;
   text-decoration: none;
 }
+.today-mobile-context {
+  display: none;
+}
 .today-live-showcase .today-live-flavor-grid figure {
   min-height: 0;
   aspect-ratio: 1/1;
@@ -410,6 +413,22 @@
   .today-live-flavor-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .today-mobile-context {
+    display: grid;
+    gap: 12px;
+    padding: 16px 4px 2px;
+    border-top: 1px solid rgba(94, 42, 26, 0.12);
+  }
+  .today-mobile-context .today-live {
+    width: max-content;
+    max-width: 100%;
+    margin: 0;
+  }
+  .today-mobile-context .today-lead {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
 }
 
 @media (max-width: 620px) {
@@ -420,15 +439,15 @@
   .today-hero-copy {
     padding-top: 0;
   }
+  .today-hero-copy > .today-live,
+  .today-hero-copy > .today-lead {
+    display: none;
+  }
   .today-hero h1 {
     font-size: 2.8rem;
   }
   .today-hero-copy .today-kicker {
     margin: 18px 0 10px;
-  }
-  .today-lead {
-    margin: 16px 0 0;
-    line-height: 1.5;
   }
   .today-hero-actions {
     display: none;

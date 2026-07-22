@@ -60,3 +60,24 @@ O hero foi comparado em detalhe porque concentra os elementos de maior fidelidad
 ## Resultado
 
 **final result: passed**
+
+---
+
+# Design QA — Adoce Hoje no celular
+
+## Referência
+
+- Tela enviada pelo proprietário em 22/07/2026, com largura aproximada de 390 px.
+- Objetivo: colocar os sabores disponíveis imediatamente após a data e o título.
+
+## Alteração verificada
+
+- O selo “Informações atualizadas” deixou de ocupar o topo no celular.
+- O texto explicativo deixou de anteceder os produtos no celular.
+- Fotos e nomes dos sabores aparecem logo após o título.
+- Selo e texto explicativo aparecem depois das fotos.
+- O layout de desktop permanece com a composição anterior.
+
+## Resultado
+
+**final result: passed**

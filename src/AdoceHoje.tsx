@@ -718,6 +718,15 @@ export default function AdoceHoje() {
                   </a>
                 ))}
             </div>
+            <div className="today-mobile-context">
+              <div className="today-live">
+                <span /> Informações atualizadas
+              </div>
+              <p className="today-lead">
+                Sabores, disponibilidade e formas de atendimento reunidos para você
+                escolher sua fatia e combinar a retirada com facilidade.
+              </p>
+            </div>
           </div>
 
           <div className="today-service-grid" aria-label="Canais de atendimento de hoje">
