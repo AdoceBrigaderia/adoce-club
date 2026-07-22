@@ -2409,6 +2409,48 @@
   .customer-account-admin > label:nth-of-type(3) { grid-column: auto; }
   .customer-account-admin > button { width: 100%; }
 }
+
+/* Galaxy Tab A7 Lite e tablets compactos: navegação lateral curta, área útil
+   contínua e alvos de toque confortáveis sem transformar o tablet em celular. */
+@media (min-width: 621px) and (max-width: 900px) {
+  .operation-shell { grid-template-columns: 92px minmax(0, 1fr); align-items: start; }
+  .operation-shell > aside {
+    position: sticky;
+    top: 86px;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    height: calc(100dvh - 86px);
+    padding: 10px 7px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-right: 1px solid var(--access-line);
+    border-top: 0;
+    background: rgba(255, 250, 244, .98);
+  }
+  .operation-shell > aside button {
+    flex: 0 0 61px;
+    width: 100%;
+    height: 61px;
+    padding: 6px 3px;
+    justify-content: center;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 10px;
+    font-size: .55rem;
+    line-height: 1.15;
+    text-align: center;
+  }
+  .operation-shell > aside button.active { border-radius: 10px; }
+  .operation-work { padding: 32px 22px 50px; max-width: 100%; }
+  .operation-title h1 { font-size: clamp(2.45rem, 7vw, 3.8rem); }
+  .operation-shell button,
+  .operation-shell input,
+  .operation-shell select { min-height: 42px; }
+}
 .operation-member-counts {
   margin: 20px 0 24px;
   padding: 16px;

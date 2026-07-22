@@ -94,7 +94,7 @@ type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
 type OperationView = "attend" | "movements" | "customers" | "orders" | "catalog" | "team" | "content" | "director-plan" | "security";
-type OperationCommercialTab = "agenda" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
+type OperationCommercialTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 
 type NotificationPreferences = {
@@ -2545,14 +2545,16 @@ function OperationHome({ session }: { session: Session }) {
       ? "director-plan"
       : location.hash.includes("catalogo")
         ? "catalog"
-        : location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes")
+        : location.hash.includes("vendas") || location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes")
           ? "orders"
           : location.hash.includes("membros")
             ? "customers"
         : "attend",
   );
   const [commercialTab, setCommercialTab] = useState<OperationCommercialTab>(() =>
-    location.hash.includes("pede-junto")
+    location.hash.includes("vendas")
+      ? "sales"
+      : location.hash.includes("pede-junto")
       ? "pede_junto"
       : location.hash.includes("reclamacoes")
         ? "feedback"
@@ -2960,7 +2962,10 @@ function OperationHome({ session }: { session: Session }) {
     }
   };
   const openNotificationTarget = useCallback((actionUrl: string) => {
-    if (actionUrl.includes("pede-junto")) {
+    if (actionUrl.includes("vendas")) {
+      setCommercialTab("sales");
+      setView("orders");
+    } else if (actionUrl.includes("pede-junto")) {
       setCommercialTab("pede_junto");
       setView("orders");
     } else if (actionUrl.includes("reclamacoes")) {

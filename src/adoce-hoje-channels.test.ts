@@ -112,7 +112,8 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(page.indexOf('className="today-live-showcase"')).toBeLessThan(
       page.indexOf('className="today-service-grid"'),
     );
-    expect(page).toContain('href={orderLink(flavor.name)}');
+    expect(page).toContain("openInstantOrder(flavor.id)");
+    expect(page).toContain("Adicionar ao pedido");
     expect(page).toContain("Sabores disponíveis agora");
   });
 

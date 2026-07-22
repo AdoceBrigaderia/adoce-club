@@ -6,6 +6,12 @@ status: Produção em evolução
 
 # Status da publicação
 
+### 22/07/2026 — pedidos imediatos em homologação
+
+Foi criada a fundação dos pedidos individuais de fatias para retirada. O cliente monta quantidades a partir do Adoce Hoje, recebe um número de pedido e continua o atendimento pelo WhatsApp. A operação ganhou uma fila própria de Vendas com confirmação, reserva transacional de estoque, pagamento manual, separação, retirada, cancelamento e histórico. O endereço de retirada fica registrado no pedido, evitando divergência quando houver mais de um local de atendimento.
+
+O checkout automático permanece desligado até a configuração segura do Mercado Pago. Enquanto isso, nenhum estoque é reservado automaticamente sem que a equipe confirme a disponibilidade. Reservas confirmadas expiram e devolvem o estoque automaticamente. A interface operacional também recebeu uma disposição específica para tablets compactos, tomando o Galaxy Tab A7 Lite como primeiro aparelho de validação.
+
 ### 20/07/2026 — Pede Junto Adoce publicado
 
 O produto anterior de pedido coletivo foi substituído pelo Pede Junto Adoce em todo o site. A experiência permite sala compartilhada sem limite coletivo de fatias, entrega grátis liberada na quinta unidade, continuidade do grupo após a meta, escolha separada por participante e pagamento individual. A operação recebeu controle de estoque, reservas, participantes, links do Mercado Pago e evolução do pedido. O banco e o frontend foram publicados, e o fluxo real foi validado com dez fatias em computador, tablet e celular. O grupo e o estoque criados exclusivamente para o teste foram removidos após a conferência.

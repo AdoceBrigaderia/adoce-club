@@ -77,6 +77,14 @@ Cada solicitação alimenta o histórico de relacionamento. A equipe pode regist
 
 O CRM não modifica o livro imutável de carimbos e recompensas.
 
+## Vendas imediatas de fatias
+
+O Adoce Hoje possui uma jornada separada para fatias disponíveis no mesmo dia. O cliente escolhe sabores e quantidades, informa nome e WhatsApp e recebe um número de pedido. A equipe confere a disponibilidade na fila **Vendas**, reserva o estoque de forma transacional e conduz o pedido pelos estados de pagamento, separação, pronto e entregue.
+
+A regra preparada para o checkout automático considera quatro ou mais unidades, conforme a diretriz de “acima de três”. Ela permanece desativada até o Mercado Pago estar configurado. Com a automação desligada, todos os pedidos aguardam a confirmação da Adoce antes de qualquer pagamento ou reserva. Quando ativada, a reserva terá prazo configurável e o estoque será devolvido automaticamente se o pagamento não ocorrer.
+
+O pedido guarda uma cópia do nome e do endereço de retirada válidos naquele momento. Assim, uma mudança posterior na agenda não altera silenciosamente a orientação já entregue ao cliente.
+
 ## Segurança
 
 O catálogo publicado é público. Solicitações, agenda, notas e tarefas possuem RLS. Dados pessoais são lidos somente pelo próprio cliente autenticado ou pela equipe autorizada. A criação pública ocorre por uma função validada que não devolve dados de outros clientes.

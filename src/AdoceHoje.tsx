@@ -19,6 +19,7 @@ import GroupOrderArtwork from "./GroupOrderArtwork";
 import { serviceStatusMessage } from "./service-status";
 import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
 import { trackPublicEvent } from "./analytics";
+import InstantOrderPanel from "./InstantOrderPanel";
 import "./adoce-hoje.css";
 import "./adoce-hoje-content.css";
 import "./today-promotions.css";
@@ -452,6 +453,8 @@ export default function AdoceHoje() {
     setScheduleOpen(true);
   };
   const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null);
+  const [instantOrderOpen, setInstantOrderOpen] = useState(false);
+  const [initialOrderFlavorId, setInitialOrderFlavorId] = useState<string | null>(null);
   const [updated, setUpdated] = useState(false);
   useEffect(() => {
     document.title = "Adoce Hoje · Clube Adoce";
@@ -631,6 +634,23 @@ export default function AdoceHoje() {
     pausedMessage: "Retiradas pausadas no momento.",
   });
   const anyServiceOpen = pickupOpen || open;
+  const instantOrderFlavors = useMemo(() => flavors
+    .filter((flavor) => flavor.available && flavor.price > 0)
+    .map((flavor) => ({
+      id: flavor.id,
+      name: flavor.name,
+      image: flavor.image,
+      price: flavor.price,
+      free: flavor.quantityAvailable === null || flavor.quantityAvailable === undefined
+        ? null
+        : Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0),
+    }))
+    .filter((flavor) => flavor.free === null || flavor.free > 0), [flavors]);
+  const openInstantOrder = (flavorId?: string) => {
+    setInitialOrderFlavorId(flavorId || null);
+    setInstantOrderOpen(true);
+    trackPublicEvent("instant_order_open", { source: flavorId ? "flavor" : "adoce_hoje" });
+  };
   return (
     <main className="today-page">
       <header className="today-header">
@@ -703,19 +723,18 @@ export default function AdoceHoje() {
                 .filter((flavor) => flavor.available)
                 .slice(0, 4)
                 .map((flavor) => (
-                  <a
+                  <button
+                    type="button"
                     className="today-live-flavor"
-                    href={orderLink(flavor.name)}
                     key={flavor.id}
-                    target="_blank"
-                    rel="noreferrer"
-                    aria-label={`Pedir ${flavor.name} pelo WhatsApp`}
+                    onClick={() => openInstantOrder(flavor.id)}
+                    aria-label={`Adicionar ${flavor.name} ao pedido`}
                   >
                     <figure>
                       <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
                       <figcaption>{flavor.name}</figcaption>
                     </figure>
-                  </a>
+                  </button>
                 ))}
             </div>
             <div className="today-mobile-context">
@@ -968,9 +987,15 @@ export default function AdoceHoje() {
                   </strong>
                 </div>
               </div>
-              <a href={orderLink(flavor.name)} target="_blank" rel="noreferrer">
-                <MessageCircle /> Quero esta
-              </a>
+              {flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
+                <button className="today-order-flavor" type="button" onClick={() => openInstantOrder(flavor.id)}>
+                  <ShoppingBag /> Adicionar ao pedido
+                </button>
+              ) : (
+                <a className="today-order-flavor" href={orderLink(flavor.name)} target="_blank" rel="noreferrer">
+                  <MessageCircle /> Consultar este sabor
+                </a>
+              )}
               {(flavor.photos?.length || 0) > 1 && (
                 <button
                   className="today-gallery-link"
@@ -1113,10 +1138,18 @@ export default function AdoceHoje() {
             <CalendarDays /> Ver agenda
           </button>
         )}
-        <a href={orderLink()} target="_blank" rel="noreferrer">
-          <MessageCircle /> {pickupOpen ? "Pedir para retirar" : "Consultar"}
-        </a>
+        {instantOrderFlavors.length ? <button type="button" onClick={() => openInstantOrder()}>
+          <ShoppingBag /> Montar pedido
+        </button> : <a href={orderLink()} target="_blank" rel="noreferrer">
+          <MessageCircle /> Consultar
+        </a>}
       </div>
+      <InstantOrderPanel
+        open={instantOrderOpen}
+        onClose={() => setInstantOrderOpen(false)}
+        flavors={instantOrderFlavors}
+        initialFlavorId={initialOrderFlavorId}
+      />
       <WeeklyScheduleDialog
         open={scheduleOpen}
         onClose={() => setScheduleOpen(false)}

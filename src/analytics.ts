@@ -9,12 +9,15 @@ export type PublicAnalyticsEvent =
   | "prebook_success"
   | "prebook_error"
   | "schedule_open"
+  | "instant_order_open"
+  | "instant_order_start"
+  | "instant_order_success"
   | "pede_junto_start"
   | "club_join_start";
 
 type AnalyticsProperties = Partial<Record<
-  "segment" | "product_id" | "product_slug" | "source" | "channel" | "result" | "device",
-  string
+  "segment" | "product_id" | "product_slug" | "source" | "channel" | "result" | "device" | "quantity" | "checkout_mode",
+  string | number | boolean
 >>;
 
 const productionHosts = new Set([

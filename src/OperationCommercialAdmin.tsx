@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  ShoppingCart,
   Trash2,
   Users,
 } from "lucide-react";
@@ -35,6 +36,7 @@ import ClipboardImageInput from "./ClipboardImageInput";
 import CommercialMediaAdmin from "./CommercialMediaAdmin";
 import { normalizeInstagramUrl, type CommercialMediaItem } from "./commercial-media";
 import OperationPedeJunto from "./OperationPedeJunto";
+import OperationInstantOrders from "./OperationInstantOrders";
 import {
   CommercialEventSubcategory,
   CommercialProduct,
@@ -49,7 +51,7 @@ import "./operation-commercial.css";
 import "./operation-product-options.css";
 import "./operation-media-editor.css";
 
-type AdminTab = "agenda" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
+type AdminTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
 type RequestStatus =
   | "prebooked"
   | "quoted"
@@ -821,6 +823,7 @@ export default function OperationCommercialAdmin({
 
       <nav className="operation-commercial-tabs">
         <button className={tab === "agenda" ? "active" : ""} onClick={() => setTab("agenda")}><CalendarDays /> Agenda</button>
+        <button className={tab === "sales" ? "active" : ""} onClick={() => setTab("sales")}><ShoppingCart /> Vendas</button>
         <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}><PackagePlus /> Pedidos</button>
         <button className={tab === "pede_junto" ? "active" : ""} onClick={() => setTab("pede_junto")}><Users /> Pede Junto</button>
         <button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><Edit3 /> Catálogo</button>
@@ -925,6 +928,8 @@ export default function OperationCommercialAdmin({
           </aside>
         </div>
       ) : null}
+
+      {tab === "sales" ? <OperationInstantOrders /> : null}
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
