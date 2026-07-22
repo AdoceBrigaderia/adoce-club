@@ -19,6 +19,8 @@ describe("experiência comercial pública", () => {
     expect(home).toContain("Fotos e condições reais");
     expect(home).toContain("Cada pessoa escolhe e paga a sua.");
     expect(home).toContain("Cada fatia vira um carinho de volta.");
+    expect(home).toContain('/site/hero-slice-real.webp');
+    expect(home).toContain('/site/clube-cartao-destaque-v2.webp');
   });
 
   it("usa ícones para as redes sociais sem exibir URLs", () => {

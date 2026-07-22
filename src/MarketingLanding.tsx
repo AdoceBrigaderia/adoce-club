@@ -105,7 +105,7 @@ export default function MarketingLanding() {
           </div>
           <div className="brand-hero-cake" aria-hidden="true">
             <Heart />
-            <img src="/site/hero-cake.webp" alt="" />
+            <img src="/site/hero-slice-real.webp" alt="" />
           </div>
         </div>
       </section>
@@ -235,7 +235,7 @@ export default function MarketingLanding() {
               <p>Você recebe um carimbo por fatia tradicional ou premium. Ao completar 14, ganha uma fatia para comemorar do seu jeito.</p>
               <a href="/#clube">Conhecer o Clube Adoce <ArrowRight /></a>
             </div>
-            <img src="/site/clube-aprovado-mobile-claro.png" alt="Cartão de fidelidade do Clube Adoce" loading="lazy" />
+            <img src="/site/clube-cartao-destaque-v2.webp" alt="Cartão digital do Clube Adoce com os carimbos conquistados" loading="lazy" />
           </article>
         </div>
       </section>
