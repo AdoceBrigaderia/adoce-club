@@ -88,10 +88,10 @@ export default function MarketingLanding() {
         <PublicHeader />
         <div className="brand-hero-inner">
           <div className="brand-hero-copy">
-            <p className="public-kicker">Confeitaria artesanal de verdade · Fortaleza</p>
+            <p className="public-kicker">Confeitaria artesanal feita em Fortaleza</p>
             <h1>Feito pelas mãos da Beth.<br /><em>Escolhido para adoçar o seu momento.</em></h1>
             <p className="brand-hero-lead">
-              Da fatia que transforma uma pausa às celebrações que ficam na memória: aqui você encontra sabor, cuidado e informação honesta para escolher com tranquilidade.
+              Da fatia que transforma uma pausa às celebrações que ficam na memória: aqui você encontra sabores feitos com cuidado e caminhos simples para escolher o que combina com o seu momento.
             </p>
             <div className="public-actions">
               <a className="public-primary" href="/#adoce-hoje">Quero uma fatia hoje <ArrowRight /></a>
@@ -99,7 +99,7 @@ export default function MarketingLanding() {
             </div>
             <div className="home-proof-strip" aria-label="Compromissos da Adoce">
               <span><Sparkles /> Produção artesanal</span>
-              <span><CakeSlice /> Fotos e condições reais</span>
+              <span><CakeSlice /> Fotos dos nossos produtos</span>
               <span><Heart /> Atendimento próximo</span>
             </div>
           </div>
@@ -140,7 +140,7 @@ export default function MarketingLanding() {
             <p className="public-kicker">Comece por aqui</p>
             <h2 id="path-title">Há um jeito Adoce para cada ocasião.</h2>
           </div>
-          <p>Conheça cada experiência com fotografias, valores, condições e próximos passos claros. Sem promessas vagas e sem surpresas.</p>
+          <p>Veja fotografias, valores, o que cada opção inclui e como pedir. Assim fica mais fácil escolher o que combina com o seu momento.</p>
         </div>
         <div className="path-list">
           {paths.map(({ title, text, href, action, icon: Icon, image, className }, index) => (
@@ -183,7 +183,7 @@ export default function MarketingLanding() {
           <p>Consulte sabores, fotografias, disponibilidade, retirada e horário da barraquinha em uma experiência feita para decidir rápido.</p>
           <ul>
             <li><CakeSlice /> Sabores e valores atualizados</li>
-            <li><CalendarDays /> Funcionamento real do dia</li>
+            <li><CalendarDays /> Horários e atendimento de hoje</li>
             <li><MessageCircle /> Pedido e contato em poucos toques</li>
           </ul>
           <a className="public-primary" href="/#adoce-hoje">Abrir o Adoce Hoje <ArrowRight /></a>
@@ -202,7 +202,7 @@ export default function MarketingLanding() {
         <div>
           <p>Depois de mais de dez anos como professora de Ciências, Beth precisou se dedicar integralmente ao cuidado do filho Samuel. Em 2023, a confeitaria entrou nessa história como um novo começo — e revelou um talento que hoje adoça a vida de muitas famílias.</p>
           <p>Ela cria e produz; Rubens cuida do atendimento e da organização. Da cozinha de casa à barraquinha de rua, cada torta, docinho e experiência passa pelas mãos de quem constrói a Adoce todos os dias.</p>
-          <p className="brand-story-promise"><Heart /> Aqui, artesanal não é uma palavra bonita: é a forma como tudo realmente é feito.</p>
+          <p className="brand-story-promise"><Heart /> O cuidado artesanal aparece em cada etapa, do preparo à entrega.</p>
           <div className="story-links">
             <a href="https://www.instagram.com/_adocebrigaderia_/" target="_blank" rel="noreferrer" aria-label="Abrir Instagram da Adoce" title="Instagram"><FaInstagram /></a>
             <a href="https://www.facebook.com/adocebrigaderia" target="_blank" rel="noreferrer" aria-label="Abrir Facebook da Adoce" title="Facebook"><FaFacebookF /></a>

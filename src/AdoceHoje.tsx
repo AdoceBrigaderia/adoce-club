@@ -658,8 +658,8 @@ export default function AdoceHoje() {
             Descubra o que pode <em>adoçar seu dia.</em>
           </h1>
           <p className="today-lead">
-            Sabores, disponibilidade e atendimento reunidos em um só lugar —
-            sempre com uma informação honesta antes de você sair de casa.
+            Sabores, disponibilidade e formas de atendimento reunidos para você
+            escolher sua fatia e combinar a retirada com facilidade.
           </p>
           <div className="today-hero-actions">
             <a
@@ -983,8 +983,8 @@ export default function AdoceHoje() {
             <h2>Tortas inteiras por encomenda</h2>
           </div>
           <p>
-            Fotos reais dos produtos. Consulte abaixo o valor cadastrado para o
-            tamanho G; outros tamanhos ficam sob consulta.
+            Veja as fotos dos produtos e o valor cadastrado para o tamanho G.
+            Outros tamanhos ficam sob consulta.
           </p>
         </div>
         <div className="today-cake-rail">

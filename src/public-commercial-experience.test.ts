@@ -8,7 +8,7 @@ describe("experiência comercial pública", () => {
   it("apresenta Beth como fundadora com uma fotografia real e contexto humano", () => {
     expect(home).toContain('/site/beth-fundadora.png');
     expect(home).toContain('Fundadora e confeiteira da Adoce');
-    expect(home).toContain('artesanal não é uma palavra bonita');
+    expect(home).toContain('O cuidado artesanal aparece em cada etapa');
   });
 
   it("transforma a home em uma entrada comercial guiada e humana", () => {
@@ -16,7 +16,7 @@ describe("experiência comercial pública", () => {
     expect(home).toContain("O que trouxe você até a Adoce hoje?");
     expect(home).toContain("Quero uma doçura para hoje.");
     expect(home).toContain("Estou planejando algo especial.");
-    expect(home).toContain("Fotos e condições reais");
+    expect(home).toContain("Fotos dos nossos produtos");
     expect(home).toContain("Cada pessoa escolhe e paga a sua.");
     expect(home).toContain("Cada fatia vira um carinho de volta.");
     expect(home).toContain('/site/hero-slice-real.webp');

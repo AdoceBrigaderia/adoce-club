@@ -523,7 +523,7 @@ export default function GroupOrderPage() {
       </section>
 
       <section className="pede-junto-proof">
-        <div><small>Cuidado de verdade</small><h2>Na Adoce, cada pacote vai <em>identificado.</em></h2><p>Cada pessoa recebe exatamente o que escolheu, com o carinho escrito em cada pacote.</p></div>
+        <div><small>Carinho em cada pacote</small><h2>Na Adoce, cada pacote vai <em>identificado.</em></h2><p>Cada pessoa recebe exatamente o que escolheu, com o carinho escrito em cada pacote.</p></div>
         <img src="/site/pede-junto-pacotes.webp" alt="Oito pacotes reais Adoce identificados com os nomes dos participantes de um pedido coletivo" />
       </section>
 

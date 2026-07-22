@@ -151,7 +151,7 @@ const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
     title: "A torta certa começa pelo tamanho do seu momento.",
     text: "Escolha quantas pessoas vão celebrar. Depois, combine massa e recheios com a Adoce.",
     cta: "Ver qual tamanho combina",
-    compareTitle: "Escolha com clareza",
+    compareTitle: "Encontre o tamanho do seu momento",
     proofTitle: "Você escolhe. A gente faz do zero.",
     proofText: "Cada torta é preparada artesanalmente para a data combinada, com acabamento alinhado antes da produção.",
     steps: ["Escolha o tamanho", "Combine massa e recheios", "Confirme a data e o acabamento"],
@@ -163,7 +163,7 @@ const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
     cta: "Comparar docinhos",
     compareTitle: "Compare as opções",
     proofTitle: "Pequenos no tamanho. Enormes no cuidado.",
-    proofText: "Produção artesanal, sabores escolhidos por você e apresentação real — sem foto esticada e sem promessa diferente do que entregamos.",
+    proofText: "Produção artesanal, sabores escolhidos por você e docinhos apresentados por inteiro para facilitar a sua escolha.",
     steps: ["Escolha a linha", "Defina quantidade e sabores", "Confirme a data da encomenda"],
   },
   events: {
@@ -172,8 +172,8 @@ const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
     text: "No Tabuleiro, a Adoce circula e serve durante o evento. Nas Mini Festas, você escolhe uma celebração compacta e cheia de carinho.",
     cta: "Escolher a experiência",
     compareTitle: "Escolha a experiência",
-    proofTitle: "Serviço de verdade, apresentado com clareza.",
-    proofText: "A foto é real. Quantidade, duração, deslocamento e tudo o que está incluído aparecem antes de você solicitar.",
+    proofTitle: "Veja como cada experiência funciona.",
+    proofText: "Quantidade, duração, deslocamento e tudo o que está incluído aparecem antes de você solicitar.",
     steps: ["Escolha Tabuleiro ou Mini Festa", "Compare formato e valor", "Conte a data e o local"],
   },
   school: {
@@ -183,7 +183,7 @@ const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
     cta: "Ver pacotes para a escola",
     compareTitle: "Escolha como celebrar",
     proofTitle: "Pensado para a rotina da escola.",
-    proofText: "Mostramos com clareza o que cada pacote inclui, a quantidade de crianças e a antecedência necessária.",
+    proofText: "Você encontra o que cada pacote inclui, a quantidade de crianças e a antecedência necessária.",
     steps: ["Escolha o pacote", "Informe turma e quantidade", "Alinhe data e personalização"],
   },
   rentals: {
@@ -192,8 +192,8 @@ const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
     text: "Escolha peças e kits da Adoce, retire no período combinado e monte uma comemoração com a sua cara.",
     cta: "Conhecer os kits",
     compareTitle: "Encontre o kit certo",
-    proofTitle: "Você vê o que aluga.",
-    proofText: "As fotos mostram montagens reais. Peças, período, retirada, devolução e disponibilidade são confirmados antes do sinal.",
+    proofTitle: "Veja cada peça antes de escolher.",
+    proofText: "As fotos apresentam as montagens, e a gente confirma peças, período, retirada, devolução e disponibilidade antes do sinal.",
     steps: ["Escolha o kit", "Confira peças e período", "Confirme retirada e devolução"],
   },
 };
@@ -458,7 +458,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
 
       <div className="commercial-proof-strip" aria-label="Diferenciais da Adoce">
         <span><Sparkles /> Feito artesanalmente</span>
-        <span><Heart /> Fotos e condições reais</span>
+        <span><Heart /> Fotos dos produtos e serviços</span>
         <span><MessageCircle /> Atendimento próximo pelo WhatsApp</span>
       </div>
 
