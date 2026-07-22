@@ -30,8 +30,12 @@ describe("fundação segura dos pedidos imediatos", () => {
   });
 
   it("oferece fila operacional e abre a rota direta de vendas", () => {
-    expect(operationQueue).toContain("Confirmar e reservar");
-    expect(operationQueue).toContain("Marcar como pago");
+    expect(operationQueue).toContain("Confirmar e enviar cobrança");
+    expect(operationQueue).toContain("Iniciar separação e avisar");
+    expect(operationQueue).toContain("Pedido pronto e avisar retirada");
+    expect(operationQueue).toContain("Pagamento recebido: iniciar separação e avisar");
+    expect(operationQueue).toContain("Confirmamos a disponibilidade e reservamos as fatias");
+    expect(operationQueue).toContain("instant-order-status-track");
     expect(operationQueue).toContain("Marcar como entregue");
     expect(accessApp).toContain('location.hash.includes("vendas")');
   });

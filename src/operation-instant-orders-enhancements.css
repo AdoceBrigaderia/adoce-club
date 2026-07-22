@@ -1,0 +1,95 @@
+.instant-order-sauce-admin {
+  margin: 0 0 24px;
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  border: 1px solid #ead2c4;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.instant-order-sauce-admin > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.instant-order-sauce-admin > header > svg { width: 22px; color: #eb6560; }
+.instant-order-sauce-admin h3 { margin: 3px 0; font: 700 1.4rem Georgia, serif; }
+.instant-order-sauce-admin header small { color: #d45551; text-transform: uppercase; letter-spacing: .12em; font-weight: 900; }
+.instant-order-sauce-admin header p { margin: 0; color: #826157; font-size: .72rem; }
+.instant-order-sauce-options { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.instant-order-sauce-options label {
+  min-width: 180px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid #ead2c4;
+  border-radius: 11px;
+  background: #fffaf5;
+}
+
+.instant-order-sauce-options label > span { display: grid; gap: 2px; }
+.instant-order-sauce-options small { color: #8f7066; }
+.instant-order-sauce-new { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.instant-order-sauce-new input { min-width: 0; border: 1px solid #e5cbbc; border-radius: 9px; padding: 10px; }
+.instant-order-sauce-new button { border: 0; border-radius: 9px; padding: 0 14px; background: #ec6660; color: #fff; display: flex; align-items: center; gap: 6px; font-weight: 800; }
+.instant-order-sauce-new button svg { width: 16px; }
+.instant-order-operation-items > span > span { display: grid; gap: 3px; }
+.instant-order-operation-items > span > span small { color: #8f7066; line-height: 1.4; }
+.instant-order-operation-actions button.payment-send { background: #168b55; }
+
+.instant-order-status-track {
+  margin: 2px 0 8px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+}
+
+.instant-order-status-track li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  color: #a78b80;
+  text-align: center;
+}
+
+.instant-order-status-track li:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 14px);
+  width: calc(100% - 28px);
+  height: 2px;
+  background: #eadbd2;
+}
+
+.instant-order-status-track li.done:not(:last-child)::after { background: #5b8b6d; }
+.instant-order-status-track li > span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ddc8bd;
+  border-radius: 50%;
+  background: #fffaf5;
+  font-weight: 900;
+  font-size: .72rem;
+  z-index: 1;
+}
+.instant-order-status-track li > span svg { width: 14px; }
+.instant-order-status-track li.done > span { color: #fff; border-color: #5b8b6d; background: #5b8b6d; }
+.instant-order-status-track li.current > span { color: #fff; border-color: #ec6660; background: #ec6660; box-shadow: 0 0 0 4px #fde9e2; }
+.instant-order-status-track li.current small { color: #6d3126; font-weight: 900; }
+.instant-order-status-track small { font-size: .57rem; line-height: 1.25; }
+
+@media (max-width: 560px) {
+  .instant-order-sauce-new { grid-template-columns: 1fr; }
+  .instant-order-sauce-new button { min-height: 42px; justify-content: center; }
+  .instant-order-sauce-options label { width: 100%; }
+  .instant-order-status-track { overflow-x: auto; grid-template-columns: repeat(5, 78px); justify-content: start; padding: 5px 1px 9px; }
+}

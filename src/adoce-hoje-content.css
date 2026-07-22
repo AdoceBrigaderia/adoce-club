@@ -342,6 +342,38 @@
   font-size: 0.7rem;
   line-height: 1.4;
 }
+.today-weekly-link {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(94, 42, 26, 0.16);
+  border-radius: 13px;
+  background: #fff7ef;
+  color: var(--today-chocolate);
+  text-align: left;
+  cursor: pointer;
+}
+.today-weekly-link > svg {
+  width: 19px;
+  flex: 0 0 auto;
+  color: var(--today-coral);
+}
+.today-weekly-link > span {
+  display: grid;
+  gap: 2px;
+}
+.today-weekly-link > span > strong {
+  margin: 0;
+  font: 850 0.78rem/1.2 Inter, system-ui, sans-serif;
+}
+.today-weekly-link > span > small {
+  margin: 0;
+  font-size: 0.66rem;
+}
 .today-live-flavor-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -416,6 +448,9 @@
   }
   .today-live-showcase > header {
     padding: 4px 4px 8px;
+  }
+  .today-weekly-link {
+    margin-top: 10px;
   }
   .today-live-flavor-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, Clock3, ExternalLink, MessageCircle, PackageCheck, RefreshCw, Users, X } from "lucide-react";
+import { Check, ChevronRight, Clock3, ExternalLink, MessageCircle, PackageCheck, Printer, RefreshCw, Users, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { money } from "./commercial";
 import "./operation-pede-junto.css";
+import "./operation-pede-junto-enhancements.css";
+import "./operation-print.css";
 
 type Item = { id: string; flavor_name: string; quantity: number; unit_price: number; status: string };
 type Participant = { id: string; name: string; phone_e164: string; status: string; payment_url: string | null; payment_expires_at: string | null; pede_junto_items: Item[] };
@@ -25,6 +27,7 @@ export default function OperationPedeJunto() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [paymentDrafts, setPaymentDrafts] = useState<Record<string, string>>({});
+  const [cancelReason, setCancelReason] = useState("");
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -56,12 +59,23 @@ export default function OperationPedeJunto() {
 
   const updateGroup = async (status: string) => {
     if (!selected) return;
-    if (["completed", "cancelled"].includes(status) && !window.confirm(`Marcar “${selected.name}” como ${groupLabels[status].toLowerCase()}?`)) return;
+    if (status === "cancelled" && cancelReason.trim().length < 5) {
+      setNotice("Explique o motivo do cancelamento com pelo menos 5 caracteres.");
+      return;
+    }
+    if (status === "completed" && !window.confirm(`Concluir “${selected.name}”? Confirme somente depois da entrega.`)) return;
     setBusy(true);
-    const { error } = await requireSupabase().rpc("staff_update_pede_junto_group", { target_group_id: selected.id, next_status: status });
+    const { error } = await requireSupabase().rpc("staff_update_pede_junto_group", {
+      target_group_id: selected.id,
+      next_status: status,
+      next_cancellation_reason: status === "cancelled" ? cancelReason.trim() : null,
+    });
     setBusy(false);
     setNotice(error ? error.message : `Grupo atualizado: ${groupLabels[status]}.`);
-    if (!error) await load();
+    if (!error) {
+      setCancelReason("");
+      await load();
+    }
   };
 
   const paymentMessage = (participant: Participant) => {
@@ -79,16 +93,20 @@ export default function OperationPedeJunto() {
         {groups.map((group) => <button key={group.id} className={group.id === selectedId ? "active" : ""} onClick={() => setSelectedId(group.id)}><span><small>{group.public_code}</small><strong>{group.name}</strong><em>{group.organizer_name} · {dateTime(group.created_at)}</em></span><b className={totalSlices(group) >= 5 ? "unlocked" : ""}>{totalSlices(group)} fatias</b><i>{groupLabels[group.status] || group.status}</i><ChevronRight /></button>)}
         {!groups.length && !busy ? <p>Nenhum Pede Junto criado ainda.</p> : null}
       </div>
-      {selected ? <article className="op-pede-detail">
+      {selected ? <article className="op-pede-detail print-scope">
         <div className="op-pede-detail-head"><div><small>{selected.public_code}</small><h3>{selected.name}</h3><p>{selected.delivery_address}{selected.delivery_reference ? ` · ${selected.delivery_reference}` : ""}</p></div><span className={totalSlices(selected) >= 5 ? "unlocked" : ""}><strong>{totalSlices(selected)}</strong><small>fatias</small></span></div>
+        <p className="op-pede-created"><Clock3 /> Pedido criado em {dateTime(selected.created_at)}</p>
+        <button type="button" className="op-pede-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
+        {selected.status === "completed" && selected.pede_junto_participants.some((participant) => participant.status !== "paid" && !["removed", "cancelled"].includes(participant.status)) ? <p className="op-pede-inconsistency">Este registro antigo foi concluído com pagamento pendente. Revise antes de usar os dados como venda confirmada.</p> : null}
         <div className="op-pede-benefit"><PackageCheck /><span><strong>{totalSlices(selected) >= 5 ? "Entrega grátis liberada" : `Faltam ${5 - totalSlices(selected)} para liberar`}</strong><small>O grupo pode receber quantas fatias quiser.</small></span><b>{money(totalValue(selected))}</b></div>
         <div className="op-pede-participants">
           {selected.pede_junto_participants.map((participant) => {
             const amount = participant.pede_junto_items.filter((item) => item.status !== "cancelled").reduce((sum, item) => sum + item.quantity * Number(item.unit_price), 0);
-            return <section key={participant.id}><header><span><strong>{participant.name}</strong><small>{participant.phone_e164} · {participantLabels[participant.status] || participant.status}</small></span><b>{money(amount)}</b></header><ul>{participant.pede_junto_items.filter((item) => item.status !== "cancelled").map((item) => <li key={item.id}><span>{item.quantity}× {item.flavor_name}</span><strong>{money(item.quantity * Number(item.unit_price))}</strong></li>)}</ul><label>Link de pagamento individual<input type="url" value={paymentDrafts[participant.id] || ""} onChange={(event) => setPaymentDrafts({ ...paymentDrafts, [participant.id]: event.target.value })} placeholder="Cole o link gerado no Mercado Pago" /></label><div className="op-pede-participant-actions"><button disabled={busy} onClick={() => void updateParticipant(participant, "payment_pending")}><Clock3 /> Salvar e aguardar</button><button className="paid" disabled={busy} onClick={() => void updateParticipant(participant, "paid")}><Check /> Marcar pago</button><button className="remove" disabled={busy} onClick={() => void updateParticipant(participant, "removed")}><X /> Remover</button>{(paymentDrafts[participant.id] || participant.payment_url) ? <a href={`https://wa.me/${digits(participant.phone_e164)}?text=${paymentMessage(participant)}`} target="_blank" rel="noreferrer"><MessageCircle /> Enviar link</a> : null}</div></section>;
+            const groupClosed = ["completed", "cancelled", "expired"].includes(selected.status);
+            return <section key={participant.id}><header><span><strong>{participant.name}</strong><small>{participant.phone_e164} · {participantLabels[participant.status] || participant.status}</small></span><b>{money(amount)}</b></header><ul>{participant.pede_junto_items.filter((item) => item.status !== "cancelled").map((item) => <li key={item.id}><span>{item.quantity}× {item.flavor_name}</span><strong>{money(item.quantity * Number(item.unit_price))}</strong></li>)}</ul>{!groupClosed ? <><label>Link de pagamento individual<input type="url" value={paymentDrafts[participant.id] || ""} onChange={(event) => setPaymentDrafts({ ...paymentDrafts, [participant.id]: event.target.value })} placeholder="Cole o link gerado no Mercado Pago" /></label><div className="op-pede-participant-actions"><button disabled={busy} onClick={() => void updateParticipant(participant, "payment_pending")}><Clock3 /> Salvar e aguardar</button><button className="paid" disabled={busy} onClick={() => void updateParticipant(participant, "paid")}><Check /> Marcar pago</button><button className="remove" disabled={busy} onClick={() => void updateParticipant(participant, "removed")}><X /> Remover</button>{(paymentDrafts[participant.id] || participant.payment_url) ? <a href={`https://wa.me/${digits(participant.phone_e164)}?text=${paymentMessage(participant)}`} target="_blank" rel="noreferrer"><MessageCircle /> Enviar link</a> : null}</div></> : null}</section>;
           })}
         </div>
-        <div className="op-pede-group-actions"><strong>Próxima etapa do grupo</strong><div><button onClick={() => void updateGroup("confirmed")}>Confirmar separação</button><button onClick={() => void updateGroup("awaiting_payment")}>Aguardar pagamentos</button><button onClick={() => void updateGroup("preparing")}>Em preparação</button><button onClick={() => void updateGroup("ready")}>Pronto</button><button className="finish" onClick={() => void updateGroup("completed")}>Concluir</button><button className="cancel" onClick={() => void updateGroup("cancelled")}>Cancelar</button></div></div>
+        {! ["cancelled", "expired"].includes(selected.status) ? <div className="op-pede-group-actions"><strong>Próxima etapa do grupo</strong><div><button disabled={busy} onClick={() => void updateGroup("confirmed")}>Confirmar separação</button><button disabled={busy} onClick={() => void updateGroup("awaiting_payment")}>Aguardar pagamentos</button><button disabled={busy} onClick={() => void updateGroup("preparing")}>Em preparação</button><button disabled={busy} onClick={() => void updateGroup("ready")}>Pronto</button><button className="finish" disabled={busy} onClick={() => void updateGroup("completed")}>Concluir</button></div><label className="op-pede-cancel-reason">Motivo para cancelar o grupo<input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: pedido de teste ou cliente desistiu" /></label><button className="cancel op-pede-cancel" disabled={busy || cancelReason.trim().length < 5} onClick={() => void updateGroup("cancelled")}><X /> Cancelar e preservar no histórico</button></div> : null}
         <a className="op-pede-contact" href={`https://wa.me/${digits(selected.organizer_phone)}`} target="_blank" rel="noreferrer"><ExternalLink /> Falar com o organizador</a>
       </article> : <div className="op-pede-empty"><Users /><p>Escolha um grupo para conferir participantes, estoque e pagamentos.</p></div>}
     </div>

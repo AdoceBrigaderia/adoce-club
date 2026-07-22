@@ -14,6 +14,7 @@ import {
   NotebookPen,
   PackagePlus,
   Plus,
+  Printer,
   RefreshCw,
   RotateCcw,
   Save,
@@ -23,6 +24,7 @@ import {
   Users,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
+import "./operation-print.css";
 import {
   uploadEditedProductImage,
   type EditedProductImage,
@@ -774,9 +776,25 @@ export default function OperationCommercialAdmin({
     const internalNotes = [request.internal_notes.trim(), `[Cancelamento em ${timestamp}] ${reason}`]
       .filter(Boolean)
       .join("\n\n");
+    setBusy(true);
+    const { error } = await requireSupabase().rpc("manager_update_service_request", {
+      target_request_id: request.id,
+      next_status: "cancelled",
+      next_total: request.quoted_total,
+      next_deposit: request.deposit_amount,
+      next_internal_notes: internalNotes,
+    });
+    setBusy(false);
+    if (error) {
+      setNotice(`Não foi possível cancelar ${request.request_number}: ${error.message}`);
+      return;
+    }
     setCancellationReason("");
     setShowCancellation(false);
-    await updateRequest({ ...request, internal_notes: internalNotes }, "cancelled");
+    setSelectedRequest(null);
+    setRequestFilter("cancelled");
+    setNotice(`${request.request_number} foi cancelado e movido para o histórico de cancelados.`);
+    await load();
   };
 
   const cancelCalendarBlock = async (block: CalendarBlock) => {
@@ -1282,9 +1300,10 @@ export default function OperationCommercialAdmin({
       {selectedRequest && tab !== "crm" ? (
         <div className="operation-drawer-layer">
           <button className="operation-drawer-backdrop" aria-label="Fechar detalhes do pedido" onClick={() => setSelectedRequest(null)} />
-          <aside className="operation-request-drawer" role="dialog" aria-modal="true" aria-label={`Solicitação ${selectedRequest.request_number}`}>
+          <aside className="operation-request-drawer print-scope" role="dialog" aria-modal="true" aria-label={`Solicitação ${selectedRequest.request_number}`}>
             <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={() => setSelectedRequest(null)}>×</button>
             <small>{selectedRequest.request_number}</small><h2>{selectedRequest.customer_name}</h2>
+            <button type="button" className="drawer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
             <p>{selectedRequest.commercial_products?.name} · {dateTime(selectedRequest.desired_start)}</p>
             <dl>
               <div><dt>WhatsApp</dt><dd>{selectedRequest.customer_phone}</dd></div>
@@ -1331,9 +1350,10 @@ export default function OperationCommercialAdmin({
       {selectedBlock ? (
         <div className="operation-drawer-layer">
           <button className="operation-drawer-backdrop" aria-label="Fechar detalhes do compromisso" onClick={() => setSelectedBlock(null)} />
-          <aside className="operation-request-drawer" role="dialog" aria-modal="true" aria-label={`Compromisso ${selectedBlock.title}`}>
+          <aside className="operation-request-drawer print-scope" role="dialog" aria-modal="true" aria-label={`Compromisso ${selectedBlock.title}`}>
             <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={() => setSelectedBlock(null)}>×</button>
             <small>Compromisso da agenda</small><h2>{selectedBlock.title}</h2>
+            <button type="button" className="drawer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
             <p>{dateTime(selectedBlock.starts_at)} até {dateTime(selectedBlock.ends_at)}</p>
             <dl><div><dt>Tipo</dt><dd>{selectedBlock.block_kind}</dd></div><div><dt>Status</dt><dd>{selectedBlock.status}</dd></div><div><dt>Recurso</dt><dd>{selectedBlock.resource_key || "Não informado"}</dd></div></dl>
             {selectedBlock.notes ? <div className="drawer-block-notes"><strong>Observações</strong><p>{selectedBlock.notes}</p></div> : null}

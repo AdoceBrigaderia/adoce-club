@@ -2331,8 +2331,8 @@
   .operation-home > header .access-brand span { min-width: 0; }
   .operation-home > header .access-brand strong { font-size: 1rem; }
   .operation-home > header > div { gap: 5px; }
-  .operation-home > header > div button { width: 42px; min-width: 42px; font-size: 0; padding: 0; justify-content: center; }
-  .operation-home > header > div button svg { margin: 0; }
+  .operation-home > header > div > button { width: 42px; min-width: 42px; font-size: 0; padding: 0; justify-content: center; }
+  .operation-home > header > div > button svg { margin: 0; }
   .operation-work { width: 100%; max-width: 100vw; min-width: 0; padding: 28px 14px 98px; }
   .operation-title { min-width: 0; }
   .operation-title h1 { max-width: 100%; font-size: clamp(2rem, 10vw, 2.7rem); line-height: .96; overflow-wrap: anywhere; }

@@ -30,6 +30,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Plus,
+  Printer,
   QrCode,
   RotateCcw,
   Search,
@@ -44,6 +45,7 @@ import {
   X,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
+import "./operation-print.css";
 import {
   beginWhatsAppVerification,
   getWhatsAppVerificationStatus,
@@ -84,6 +86,11 @@ import "./referral.css";
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
 const OperationNotificationCenter = lazy(() => import("./OperationNotificationCenter"));
+const OperationNotificationPreview = lazy(() =>
+  import("./OperationNotificationCenter").then((module) => ({
+    default: module.OperationNotificationPreview,
+  })),
+);
 const DirectorPlanChecklist = lazy(() => import("./DirectorPlanChecklist"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
@@ -590,6 +597,9 @@ export function OperationDemo() {
         <Brand label="Adoce Operação" />
         <div>
           <span>Proprietário · Prévia local</span>
+          <Suspense fallback={null}>
+            <OperationNotificationPreview initialOpen={location.hash.includes("alertas")} />
+          </Suspense>
           <a href="/#adoce-hoje"><CakeSlice /> Adoce Hoje</a>
         </div>
       </header>
@@ -3242,7 +3252,7 @@ function OperationHome({ session }: { session: Session }) {
               {!selected ? (
                 customerList
               ) : (
-                <div className="operation-customer">
+                <div className="operation-customer print-scope">
                   <button
                     className="back"
                     onClick={() => {
@@ -3252,6 +3262,7 @@ function OperationHome({ session }: { session: Session }) {
                   >
                     ← Voltar à busca
                   </button>
+                  <button type="button" className="drawer-print customer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
                   <div className="customer-top">
                     <span className="avatar">{selected.full_name[0]}</span>
                     <div>

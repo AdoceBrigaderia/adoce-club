@@ -152,7 +152,7 @@ export default function MarketingLanding() {
                 <p>{text}</p>
                 <a href={href}>{action} <ArrowRight /></a>
               </div>
-              <div className="path-image"><img src={image} alt="" /></div>
+              <div className="path-image"><img src={image} alt="" onError={(event) => { if (image.includes("clube-aprovado")) event.currentTarget.src = "/site/clube-aprovado-mobile-claro.png"; }} /></div>
             </article>
           ))}
         </div>

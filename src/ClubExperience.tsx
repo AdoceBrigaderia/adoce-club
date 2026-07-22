@@ -1,7 +1,14 @@
 import { ArrowLeft, ArrowRight, Heart, MessageCircle } from "lucide-react";
+import type { SyntheticEvent } from "react";
 import PublicHeader from "./PublicHeader";
 import "./public-site.css";
 import "./public-commercial-polish.css";
+
+const useDirectClubImage = (event: SyntheticEvent<HTMLImageElement>, path: string) => {
+  const image = event.currentTarget;
+  image.parentElement?.querySelectorAll("source").forEach((source) => source.remove());
+  if (image.getAttribute("src") !== path) image.src = path;
+};
 
 export default function ClubExperience() {
   return (
@@ -18,7 +25,7 @@ export default function ClubExperience() {
             <a className="public-secondary" href="/#entrar">Entrar no Clube</a>
           </div>
         </div>
-        <img className="club-intro-product" src="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" alt="Exemplo do cartão digital, QR e recompensas do Clube Adoce" />
+        <img className="club-intro-product" src="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" onError={(event) => useDirectClubImage(event, "/site/clube-aprovado-mobile-claro.png")} alt="Exemplo do cartão digital, QR e recompensas do Clube Adoce" />
       </section>
 
       <section className="approved-club-visual" aria-labelledby="club-inside-title">
@@ -30,7 +37,7 @@ export default function ClubExperience() {
         <picture>
           <source media="(max-width: 520px)" srcSet="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" />
           <source media="(max-width: 900px)" srcSet="/.netlify/images?url=/site/clube-aprovado-mobile-escuro.png&w=1200&fm=webp&q=78" />
-          <img src="/.netlify/images?url=/site/clube-aprovado-desktop.png&w=1600&fm=webp&q=80" alt="Apresentação visual do Clube Adoce com cartão digital, QR Code, Adoce Hoje e fatia grátis" />
+          <img src="/.netlify/images?url=/site/clube-aprovado-desktop.png&w=1600&fm=webp&q=80" onError={(event) => useDirectClubImage(event, window.innerWidth <= 520 ? "/site/clube-aprovado-mobile-claro.png" : window.innerWidth <= 900 ? "/site/clube-aprovado-mobile-escuro.png" : "/site/clube-aprovado-desktop.png")} alt="Apresentação visual do Clube Adoce com cartão digital, QR Code, Adoce Hoje e fatia grátis" />
         </picture>
       </section>
 

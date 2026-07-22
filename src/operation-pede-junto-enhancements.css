@@ -1,0 +1,57 @@
+.op-pede-created {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: #745147;
+  font-size: .68rem;
+  font-weight: 800;
+}
+.op-pede-created svg { width: 14px; }
+.op-pede-print {
+  width: max-content;
+  border: 1px solid var(--access-line);
+  background: #fffaf5;
+  color: inherit;
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 850;
+}
+.op-pede-print svg { width: 16px; }
+.op-pede-inconsistency {
+  background: #fff0df;
+  border-left: 3px solid #d78a43;
+  padding: 11px;
+  color: #824d2c;
+  font-weight: 750;
+}
+.op-pede-cancel-reason {
+  display: grid;
+  gap: 6px;
+  margin-top: 13px;
+  color: #69483e;
+  font-size: .64rem;
+  font-weight: 850;
+}
+.op-pede-cancel-reason input {
+  border: 1px solid var(--access-line);
+  border-radius: 8px;
+  background: #fffaf5;
+  padding: 10px;
+}
+.op-pede-group-actions > .op-pede-cancel {
+  margin-top: 8px;
+  border: 1px solid #e2bfb8;
+  background: #fff1ea;
+  color: #994c46;
+  border-radius: 8px;
+  padding: 9px 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 850;
+}
+.op-pede-group-actions > .op-pede-cancel:disabled { opacity: .48; }

@@ -138,14 +138,14 @@ const availabilityLabels: Record<AvailabilityStatus, string> = {
 const week = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const scheduleChannelHints: Record<string, string> = {
-  online_orders: "Pedidos de fatias feitos on-line para retirada no portão.",
+  online_orders: "Pedidos de fatias feitos on-line para retirada na Adoce.",
   in_person: "Atendimento presencial na barraquinha de rua.",
   preorders: "Encomendas de tortas, docinhos, escola e eventos.",
   store: "Canal antigo, sem atendimento ao público no endereço de produção.",
 };
 
 const scheduleChannelLabels: Record<string, string> = {
-  online_orders: "Pedidos online — retirada no portão",
+  online_orders: "Pedidos online — retirada na Adoce",
   in_person: "Barraquinha de rua",
   preorders: "Encomendas futuras — não controla a retirada",
   store: "Canal antigo — não utilizar",

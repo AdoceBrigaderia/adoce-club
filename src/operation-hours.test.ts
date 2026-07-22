@@ -46,7 +46,7 @@ describe("filtro da agenda recorrente", () => {
       fs.readFile(new URL("./OperationContentAdmin.tsx", import.meta.url), "utf8"),
     );
 
-    expect(source).toContain("Pedidos online — retirada no portão");
+    expect(source).toContain("Pedidos online — retirada na Adoce");
     expect(source).toContain("Encomendas futuras — não controla a retirada");
     expect(source).toContain('channel.slug !== "store"');
   });

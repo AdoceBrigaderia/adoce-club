@@ -18,8 +18,8 @@ describe("canais independentes do Adoce Hoje", () => {
   });
 
   it("explica a retirada residencial sem prometer atendimento dentro do local", () => {
-    expect(page).toContain("receba seu pacote no portão");
-    expect(page).toContain("Retirada no portão da Adoce");
+    expect(page).toContain("retire no endereço da Adoce");
+    expect(page).toContain("Retirada na Adoce");
     expect(page).toContain("O local de produção não é aberto à visitação");
     expect(page).not.toContain("Retirada na Fábrica Adoce");
   });
@@ -94,11 +94,23 @@ describe("canais independentes do Adoce Hoje", () => {
   });
 
   it("não oferece localização da barraquinha fechada no atalho móvel", () => {
-    expect(page).toContain("Ver agenda");
+    expect(page).toContain("Sabores da semana");
     expect(page).toContain('open ? (');
     expect(page).toContain('setScheduleOpen(true)');
     expect(page).toContain('href={open ? maps : orderLink()}');
     expect(page).toContain("Como chegar à barraquinha");
+  });
+
+  it("deixa os sabores da semana explícitos para o cliente", () => {
+    expect(page).toContain('className="today-weekly-link"');
+    expect(page).toContain("Veja os próximos sete dias");
+    expect(page.match(/Sabores da semana/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("mantém o texto de ação visível em botões e links dos produtos", () => {
+    expect(page).toContain("<span>Adicionar ao pedido</span>");
+    expect(page).toContain("<span>Consultar este sabor</span>");
+    expect(contentStyles).toMatch(/\.today-weekly-link\s*\{/);
   });
 
   it("fala sobre os sabores de forma acolhedora, sem linguagem de sistema", () => {

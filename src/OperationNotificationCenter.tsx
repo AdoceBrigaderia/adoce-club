@@ -16,6 +16,27 @@ type OperationNotification = {
 
 const publicPushKey = import.meta.env.VITE_WEB_PUSH_PUBLIC_KEY || "";
 
+const previewItems: OperationNotification[] = [
+  {
+    id: "preview-new-member",
+    event_type: "member_created",
+    priority: "important",
+    title: "Novo cadastro no Clube Adoce",
+    message: "A cliente concluiu o cadastro e já pode usar o cartão.",
+    action_url: "#operacao/membros",
+    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "preview-order",
+    event_type: "order_created",
+    priority: "urgent",
+    title: "Novo pedido para retirada",
+    message: "Confira os itens e confirme a separação com a cliente.",
+    action_url: "#operacao/pedidos",
+    created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+  },
+];
+
 function urlBase64ToUint8Array(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
   const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -30,6 +51,49 @@ function relativeTime(value: string) {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `há ${hours} h`;
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(value));
+}
+
+export function OperationNotificationPreview({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
+  const visibleItems = previewItems.filter((item) => !readIds.has(item.id));
+  return (
+    <div className="operation-notification-center">
+      <button
+        className="operation-notification-trigger"
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-label={`Abrir alertas: ${visibleItems.length} não lidos`}
+      >
+        <BellRing />
+        <span>Alertas</span>
+        {visibleItems.length ? <strong>{visibleItems.length}</strong> : null}
+      </button>
+      {open ? (
+        <section className="operation-notification-panel">
+          <header>
+            <div><span>Operação em tempo real</span><h2>Alertas</h2></div>
+            <button type="button" onClick={() => setOpen(false)} aria-label="Fechar alertas"><X /></button>
+          </header>
+          <div className="operation-notification-actions">
+            <button type="button"><Bell /> Ativar neste aparelho</button>
+            {visibleItems.length ? <button type="button" onClick={() => setReadIds(new Set(previewItems.map((item) => item.id)))}><CheckCheck /> Marcar todos como lidos</button> : null}
+          </div>
+          <div className="operation-notification-list">
+            {visibleItems.map((item) => (
+              <button type="button" className={`${item.priority} unread`} key={item.id} onClick={() => { setReadIds((current) => new Set(current).add(item.id)); setOpen(false); }}>
+                <span className="operation-notification-dot" aria-hidden="true" />
+                <span><strong>{item.title}</strong><small>{item.message}</small></span>
+                <time dateTime={item.created_at}>{relativeTime(item.created_at)}</time>
+              </button>
+            ))}
+            {!visibleItems.length ? <p className="operation-notification-empty">Nenhum alerta pendente neste aparelho.</p> : null}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
 }
 
 export default function OperationNotificationCenter({
@@ -116,6 +180,7 @@ export default function OperationNotificationCenter({
   }, [open]);
 
   const unread = useMemo(() => items.filter((item) => !readIds.has(item.id)).length, [items, readIds]);
+  const visibleItems = useMemo(() => items.filter((item) => !readIds.has(item.id)), [items, readIds]);
 
   const markRead = useCallback(async (notificationId: string) => {
     setReadIds((current) => new Set(current).add(notificationId));
@@ -222,7 +287,7 @@ export default function OperationNotificationCenter({
           </div>
           {notice ? <p className="operation-notification-notice" role="status">{notice}</p> : null}
           <div className="operation-notification-list">
-            {items.length ? items.map((item) => (
+            {visibleItems.length ? visibleItems.map((item) => (
               <button
                 type="button"
                 className={`${item.priority} ${readIds.has(item.id) ? "read" : "unread"}`}

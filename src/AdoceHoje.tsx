@@ -105,7 +105,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 22,
-      label: "Retirada no portão da Adoce, das 9h às 22h.",
+      label: "Retirada na Adoce, das 9h às 22h.",
     },
   ],
   2: [
@@ -113,7 +113,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 22,
-      label: "Retirada no portão da Adoce, das 9h às 22h.",
+      label: "Retirada na Adoce, das 9h às 22h.",
     },
   ],
   3: [
@@ -121,7 +121,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 22,
-      label: "Retirada no portão da Adoce, das 9h às 22h.",
+      label: "Retirada na Adoce, das 9h às 22h.",
     },
   ],
   4: [
@@ -129,7 +129,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 18,
-      label: "Retirada no portão da Adoce, das 9h às 18h.",
+      label: "Retirada na Adoce, das 9h às 18h.",
     },
     {
       kind: "stall",
@@ -143,7 +143,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 18,
-      label: "Retirada no portão da Adoce, das 9h às 18h.",
+      label: "Retirada na Adoce, das 9h às 18h.",
     },
     {
       kind: "stall",
@@ -157,7 +157,7 @@ const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
       kind: "pickup",
       start: 9,
       end: 16,
-      label: "Retirada no portão da Adoce, das 9h às 16h.",
+      label: "Retirada na Adoce, das 9h às 16h.",
     },
     {
       kind: "stall",
@@ -245,7 +245,7 @@ export function serviceState(
       end: timeNumber(item.closes_at),
       label:
         item.note ||
-        `${kind === "stall" ? "Barraquinha Adoce" : "Retirada no portão da Adoce"}, das ${item.opens_at.slice(0, 5)} às ${item.closes_at.slice(0, 5)}.`,
+        `${kind === "stall" ? "Barraquinha Adoce" : "Retirada na Adoce"}, das ${item.opens_at.slice(0, 5)} às ${item.closes_at.slice(0, 5)}.`,
     }));
   const fallbackWindows = weeklyServiceWindows[now.weekday].filter(
     (window) => window.kind === kind,
@@ -717,6 +717,13 @@ export default function AdoceHoje() {
                     : "Gostou de algum? Toque no sabor para confirmar e combinar a retirada."
                   : "Só um instante: estamos preparando as delícias de hoje."}
               </small>
+              <button className="today-weekly-link" type="button" onClick={openSchedule}>
+                <CalendarDays />
+                <span>
+                  <strong>Sabores da semana</strong>
+                  <small>Veja os próximos sete dias</small>
+                </span>
+              </button>
             </header>
             <div className="today-live-flavor-grid">
               {flavors
@@ -752,13 +759,13 @@ export default function AdoceHoje() {
             <article className={`today-service-card ${pickupOpen ? "is-open" : "is-closed"}`}>
               <img
                 src="/site/adoce-hoje-retirada-ilustracao.webp"
-                alt="Ilustração de um pedido on-line sendo retirado no portão da casa da Adoce"
+                alt="Ilustração de um pedido on-line sendo retirado no endereço da Adoce"
               />
               <div className="today-service-card-body">
                 <p className="today-service-kind"><House /> Pedido on-line</p>
                 <h2>Pedidos para retirada</h2>
                 <p className="today-service-description">
-                  Peça pelo WhatsApp e, depois da confirmação, receba seu pacote no portão. O local de produção não é aberto à visitação.
+                  Peça pelo WhatsApp e, depois da confirmação, retire no endereço da Adoce. A área de produção não é aberta à visitação.
                 </p>
                 <div className="today-channel-status" role="status">
                   <span aria-hidden="true" />
@@ -989,11 +996,11 @@ export default function AdoceHoje() {
               </div>
               {flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
                 <button className="today-order-flavor" type="button" onClick={() => openInstantOrder(flavor.id)}>
-                  <ShoppingBag /> Adicionar ao pedido
+                  <ShoppingBag /> <span>Adicionar ao pedido</span>
                 </button>
               ) : (
                 <a className="today-order-flavor" href={orderLink(flavor.name)} target="_blank" rel="noreferrer">
-                  <MessageCircle /> Consultar este sabor
+                  <MessageCircle /> <span>Consultar este sabor</span>
                 </a>
               )}
               {(flavor.photos?.length || 0) > 1 && (
@@ -1135,7 +1142,7 @@ export default function AdoceHoje() {
           </a>
         ) : (
           <button type="button" onClick={openSchedule}>
-            <CalendarDays /> Ver agenda
+            <CalendarDays /> Sabores da semana
           </button>
         )}
         {instantOrderFlavors.length ? <button type="button" onClick={() => openInstantOrder()}>

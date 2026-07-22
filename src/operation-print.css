@@ -1,0 +1,37 @@
+.drawer-print {
+  width: max-content;
+  border: 1px solid #e5cbbc;
+  background: #fffaf5;
+  color: #3a170f;
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 850;
+}
+.drawer-print svg { width: 16px; }
+
+@media print {
+  @page { margin: 12mm; }
+  body * { visibility: hidden !important; }
+  .print-scope, .print-scope * { visibility: visible !important; }
+  .print-scope {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    background: #fff !important;
+  }
+  .print-scope button,
+  .print-scope input,
+  .print-scope textarea,
+  .print-scope label,
+  .print-scope a { display: none !important; }
+  .print-scope .customer-access-help,
+  .print-scope .customer-account-admin,
+  .print-scope .customer-name-editor { display: none !important; }
+}

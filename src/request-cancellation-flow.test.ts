@@ -12,6 +12,9 @@ describe("cancelamento de pedidos na operação", () => {
 
   it("preserva o pedido cancelado no histórico em vez de apagá-lo sem rastreabilidade", () => {
     expect(source).toContain("O pedido sairá da fila ativa, mas continuará no histórico para consulta.");
-    expect(source).toContain('updateRequest({ ...request, internal_notes: internalNotes }, "cancelled")');
+    expect(source).toContain('next_status: "cancelled"');
+    expect(source).toContain('setRequestFilter("cancelled")');
+    expect(source).toContain("foi cancelado e movido para o histórico de cancelados");
+    expect(source).not.toContain('await updateRequest({ ...request, internal_notes: internalNotes }, "cancelled")');
   });
 });
