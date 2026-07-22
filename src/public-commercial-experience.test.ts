@@ -11,6 +11,16 @@ describe("experiência comercial pública", () => {
     expect(home).toContain('artesanal não é uma palavra bonita');
   });
 
+  it("transforma a home em uma entrada comercial guiada e humana", () => {
+    expect(home).toContain("Feito pelas mãos da Beth.");
+    expect(home).toContain("O que trouxe você até a Adoce hoje?");
+    expect(home).toContain("Quero uma doçura para hoje.");
+    expect(home).toContain("Estou planejando algo especial.");
+    expect(home).toContain("Fotos e condições reais");
+    expect(home).toContain("Cada pessoa escolhe e paga a sua.");
+    expect(home).toContain("Cada fatia vira um carinho de volta.");
+  });
+
   it("usa ícones para as redes sociais sem exibir URLs", () => {
     expect(home).toContain("<FaInstagram />");
     expect(home).toContain("<FaFacebookF />");

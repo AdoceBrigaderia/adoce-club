@@ -88,14 +88,19 @@ export default function MarketingLanding() {
         <PublicHeader />
         <div className="brand-hero-inner">
           <div className="brand-hero-copy">
-            <p className="public-kicker">Adoce Brigaderia · Fortaleza</p>
-            <h1>Doçura para hoje.<br /><em>E para celebrar.</em></h1>
+            <p className="public-kicker">Confeitaria artesanal de verdade · Fortaleza</p>
+            <h1>Feito pelas mãos da Beth.<br /><em>Escolhido para adoçar o seu momento.</em></h1>
             <p className="brand-hero-lead">
-              Fatias artesanais, tortas, docinhos e experiências que acompanham desde uma vontade de agora até os momentos que ficam para sempre.
+              Da fatia que transforma uma pausa às celebrações que ficam na memória: aqui você encontra sabor, cuidado e informação honesta para escolher com tranquilidade.
             </p>
             <div className="public-actions">
-              <a className="public-primary" href="/#adoce-hoje">Ver fatias de hoje <ArrowRight /></a>
-              <a className="public-secondary on-dark" href="/#eventos">Planejar uma comemoração</a>
+              <a className="public-primary" href="/#adoce-hoje">Quero uma fatia hoje <ArrowRight /></a>
+              <a className="public-secondary on-dark" href="/#encomendas">Quero celebrar</a>
+            </div>
+            <div className="home-proof-strip" aria-label="Compromissos da Adoce">
+              <span><Sparkles /> Produção artesanal</span>
+              <span><CakeSlice /> Fotos e condições reais</span>
+              <span><Heart /> Atendimento próximo</span>
             </div>
           </div>
           <div className="brand-hero-cake" aria-hidden="true">
@@ -105,13 +110,37 @@ export default function MarketingLanding() {
         </div>
       </section>
 
+      <section className="intent-split" aria-labelledby="intent-title">
+        <div className="intent-split-head">
+          <p className="public-kicker">Seu momento começa aqui</p>
+          <h2 id="intent-title">O que trouxe você até a Adoce hoje?</h2>
+          <p>Escolha o caminho mais parecido com a sua vontade. A gente mostra somente o que ajuda você a decidir.</p>
+        </div>
+        <div className="intent-split-grid">
+          <a className="intent-card intent-card-now" href="/#adoce-hoje">
+            <img src="/adoce-hoje/chocolatudo.webp" alt="Fatia artesanal de torta Adoce" />
+            <span className="public-kicker">Para agora</span>
+            <h3>Quero uma doçura para hoje.</h3>
+            <p>Veja os sabores disponíveis, retirada e horário da barraquinha antes de sair de casa.</p>
+            <strong>Descobrir os sabores <ArrowRight /></strong>
+          </a>
+          <a className="intent-card intent-card-celebrate" href="/#encomendas">
+            <img src="/adoce-hoje/festas-eventos.webp" alt="Celebração preparada com doces da Adoce" loading="lazy" />
+            <span className="public-kicker">Para celebrar</span>
+            <h3>Estou planejando algo especial.</h3>
+            <p>Tortas, docinhos, escola, eventos e decoração reunidos para você escolher sem adivinhar.</p>
+            <strong>Planejar meu momento <ArrowRight /></strong>
+          </a>
+        </div>
+      </section>
+
       <section className="path-finder" aria-labelledby="path-title">
         <div className="path-finder-head">
           <div>
             <p className="public-kicker">Comece por aqui</p>
-            <h2 id="path-title">O que você procura hoje?</h2>
+            <h2 id="path-title">Há um jeito Adoce para cada ocasião.</h2>
           </div>
-          <p>Cada experiência da Adoce tem seu próprio espaço, com informações e próximos passos específicos.</p>
+          <p>Conheça cada experiência com fotografias, valores, condições e próximos passos claros. Sem promessas vagas e sem surpresas.</p>
         </div>
         <div className="path-list">
           {paths.map(({ title, text, href, action, icon: Icon, image, className }, index) => (
@@ -179,6 +208,35 @@ export default function MarketingLanding() {
             <a href="https://www.facebook.com/adocebrigaderia" target="_blank" rel="noreferrer" aria-label="Abrir Facebook da Adoce" title="Facebook"><FaFacebookF /></a>
             <a href="https://maps.app.goo.gl/PWLL5zE9fqVpmunj8" target="_blank" rel="noreferrer"><MapPin /> Como chegar</a>
           </div>
+        </div>
+      </section>
+
+      <section className="signature-experiences" aria-labelledby="signature-title">
+        <div className="signature-experiences-head">
+          <p className="public-kicker">Dois jeitos de adoçar ainda mais</p>
+          <h2 id="signature-title">Uma fatia pode reunir pessoas e ainda render recompensa.</h2>
+        </div>
+        <div className="signature-grid">
+          <article className="signature-card signature-group">
+            <div className="signature-copy">
+              <Users />
+              <p className="public-kicker">Pede Junto Adoce</p>
+              <h3>Cada pessoa escolhe e paga a sua.</h3>
+              <p>Com cinco fatias para o mesmo endereço, a entrega é grátis. O grupo pode continuar crescendo: quanto mais gente participa, mais doce fica.</p>
+              <a href="/#pede-junto">Abrir um Pede Junto <ArrowRight /></a>
+            </div>
+            <img src="/site/pede-junto-pacotes.webp" alt="Pedidos individuais reunidos no Pede Junto Adoce" loading="lazy" />
+          </article>
+          <article className="signature-card signature-club">
+            <div className="signature-copy">
+              <Heart />
+              <p className="public-kicker">Clube Adoce</p>
+              <h3>Cada fatia vira um carinho de volta.</h3>
+              <p>Você recebe um carimbo por fatia tradicional ou premium. Ao completar 14, ganha uma fatia para comemorar do seu jeito.</p>
+              <a href="/#clube">Conhecer o Clube Adoce <ArrowRight /></a>
+            </div>
+            <img src="/site/clube-aprovado-mobile-claro.png" alt="Cartão de fidelidade do Clube Adoce" loading="lazy" />
+          </article>
         </div>
       </section>
 

@@ -15,7 +15,7 @@ const clubExperience = readFileSync(new URL("./ClubExperience.tsx", import.meta.
 
 describe("terminologia do Clube Adoce", () => {
   it("mantém os textos principais exatamente como definidos", () => {
-    expect(landing).toContain("Doçura para hoje.");
+    expect(landing).toContain("Feito pelas mãos da Beth.");
     expect(clubExperience).toContain("Seu cartão agora é digital — <em>mas a tradição continua.</em>");
     expect(clubExperience).toContain("A cada fatia, você ganha 1 carimbo. Complete 14 e ganhe uma fatia grátis.");
     expect(memberArea).toContain("Área do Membro");

@@ -65,6 +65,14 @@ type Channel = {
   next_change_at: string | null;
 };
 
+export function sortFlavorsByAvailability<T extends { available: boolean; name: string }>(items: T[]) {
+  return [...items].sort(
+    (a, b) =>
+      Number(b.available) - Number(a.available) ||
+      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+  );
+}
+
 export type ServiceKind = "pickup" | "stall";
 type ServiceWindow = {
   kind: ServiceKind;
@@ -568,11 +576,11 @@ export default function AdoceHoje() {
   }, []);
   const visible = useMemo(
     () =>
-      flavors.filter(
+      sortFlavorsByAvailability(flavors.filter(
         (f) =>
           filter === "all" ||
           (filter === "available" ? f.available : f.premium),
-      ),
+      )),
     [flavors, filter],
   );
   const wholeCakes = useMemo(() => {
