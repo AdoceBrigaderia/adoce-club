@@ -142,6 +142,7 @@ type PendingCommercialImage = {
   kind: "gallery" | "product" | "segment";
   segment?: CommercialSegment;
   productId?: string;
+  mediaItemId?: string;
 };
 
 type SiteFeedback = {
@@ -537,20 +538,26 @@ export default function OperationCommercialAdmin({
         const ownerItems = galleryMedia.filter((item) => pendingImage.productId
           ? item.product_id === pendingImage.productId
           : item.segment === pendingImage.segment);
-        const { error: galleryError } = await supabase.from("commercial_media_items").insert({
+        const mediaPayload = {
           segment: pendingImage.segment || null,
           product_id: pendingImage.productId || null,
           media_type: "image",
           image_url: uploaded.imageUrl,
           original_image_url: uploaded.originalImageUrl,
           alt_text: pendingImage.productId ? `Foto real de ${selectedProduct?.name || "produto Adoce"}` : `Foto real de ${segmentLabels[pendingImage.segment!]}`,
-          sort_order: ownerItems.length ? Math.max(...ownerItems.map((item) => item.sort_order)) + 10 : 10,
-          created_by: session.user.id,
           updated_by: session.user.id,
-        });
+        } as const;
+        const galleryQuery = pendingImage.mediaItemId
+          ? supabase.from("commercial_media_items").update(mediaPayload).eq("id", pendingImage.mediaItemId)
+          : supabase.from("commercial_media_items").insert({
+              ...mediaPayload,
+              sort_order: ownerItems.length ? Math.max(...ownerItems.map((item) => item.sort_order)) + 10 : 10,
+              created_by: session.user.id,
+            });
+        const { error: galleryError } = await galleryQuery;
         if (galleryError) throw galleryError;
         setPendingImage(null);
-        setNotice("Foto adicionada à galeria.");
+        setNotice(pendingImage.mediaItemId ? "Foto substituída e reenquadrada na galeria." : "Foto adicionada à galeria.");
         await load();
         return;
       }
@@ -597,7 +604,7 @@ export default function OperationCommercialAdmin({
 
   const addInstagramMedia = async (owner: { segment?: CommercialSegment; productId?: string }, url: string, caption: string) => {
     const normalized = normalizeInstagramUrl(url);
-    if (!normalized) { setNotice("Cole um link público válido de Reel ou publicação do Instagram."); return; }
+    if (!normalized) { setNotice("Cole um link público válido de Reel ou publicação do Instagram."); return false; }
     setBusy(true);
     const items = galleryFor(owner);
     const { error } = await requireSupabase().from("commercial_media_items").insert({
@@ -607,7 +614,10 @@ export default function OperationCommercialAdmin({
       created_by: session.user.id, updated_by: session.user.id,
     });
     setBusy(false);
-    if (error) setNotice(error.message); else { setNotice("Reel adicionado sem ocupar o armazenamento de vídeos."); await load(); }
+    if (error) { setNotice(error.message); return false; }
+    setNotice("Reel adicionado sem ocupar o armazenamento de vídeos.");
+    await load();
+    return true;
   };
 
   const moveGalleryMedia = async (owner: { segment?: CommercialSegment; productId?: string }, item: CommercialMediaItem, direction: -1 | 1) => {
@@ -752,7 +762,7 @@ export default function OperationCommercialAdmin({
 
   const cancelRequest = async (request: ServiceRequest) => {
     const reason = cancellationReason.trim();
-    if (reason.length < 5) return setNotice("Explique o motivo do cancelamento com pelo menos 5 caracteres.");
+    if (reason.length < 5) return;
     const timestamp = new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
       timeStyle: "short",
@@ -968,6 +978,7 @@ export default function OperationCommercialAdmin({
                       busy={busy}
                       onError={setNotice}
                       onImage={(file) => setPendingImage({ file, kind: "gallery", segment, title: `Foto de ${segmentLabels[segment]}`, preset: CATEGORY_IMAGE_PRESET })}
+                      onReplace={(item, file) => setPendingImage({ file, kind: "gallery", segment, mediaItemId: item.id, title: `Substituir foto de ${segmentLabels[segment]}`, preset: CATEGORY_IMAGE_PRESET })}
                       onAddReel={(url, caption) => addInstagramMedia({ segment }, url, caption)}
                       onMove={(item, direction) => void moveGalleryMedia({ segment }, item, direction)}
                       onCover={(item) => void setGalleryCover({ segment }, item)}
@@ -1125,7 +1136,7 @@ export default function OperationCommercialAdmin({
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp"
-                        disabled={busy}
+                        disabled={busy || !selectedProduct.id}
                         onChange={(event) => {
                           const file = event.target.files?.[0];
                           if (file) setPendingImage({
@@ -1140,7 +1151,7 @@ export default function OperationCommercialAdmin({
                       />
                     </label>
                     <ClipboardImageInput
-                      disabled={busy}
+                      disabled={busy || !selectedProduct.id}
                       onError={setNotice}
                       onImage={(file) => setPendingImage({
                         file,
@@ -1162,6 +1173,7 @@ export default function OperationCommercialAdmin({
                 busy={busy}
                 onError={setNotice}
                 onImage={(file) => setPendingImage({ file, kind: "gallery", productId: selectedProduct.id, title: `Foto de ${selectedProduct.name}`, preset: PRODUCT_IMAGE_PRESET })}
+                onReplace={(item, file) => setPendingImage({ file, kind: "gallery", productId: selectedProduct.id, mediaItemId: item.id, title: `Substituir foto de ${selectedProduct.name}`, preset: PRODUCT_IMAGE_PRESET })}
                 onAddReel={(url, caption) => addInstagramMedia({ productId: selectedProduct.id }, url, caption)}
                 onMove={(item, direction) => void moveGalleryMedia({ productId: selectedProduct.id }, item, direction)}
                 onCover={(item) => void setGalleryCover({ productId: selectedProduct.id }, item)}
@@ -1294,10 +1306,15 @@ export default function OperationCommercialAdmin({
             </div>
             {canManage && !["completed", "cancelled", "expired"].includes(selectedRequest.status) ? (
               <div className="drawer-cancellation">
-                {!showCancellation ? <button className="cancel" onClick={() => setShowCancellation(true)}><Trash2 /> Cancelar e retirar da fila</button> : <>
-                  <label>Motivo do cancelamento<textarea autoFocus value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="Ex.: cliente desistiu, data indisponível ou solicitação duplicada." /></label>
+                {!showCancellation ? <button className="cancel" onClick={() => { setCancellationReason(""); setNotice(""); setShowCancellation(true); }}><Trash2 /> Cancelar e retirar da fila</button> : <>
+                  <label>Motivo do cancelamento<textarea autoFocus value={cancellationReason} aria-describedby="request-cancellation-guidance" onChange={(event) => setCancellationReason(event.target.value)} placeholder="Ex.: cliente desistiu, data indisponível ou solicitação duplicada." /></label>
+                  <small id="request-cancellation-guidance" className={cancellationReason.trim().length > 0 && cancellationReason.trim().length < 5 ? "drawer-cancellation-error" : ""}>
+                    {cancellationReason.trim().length < 5
+                      ? `Conte o motivo em mais ${5 - cancellationReason.trim().length} caractere(s). Assim o histórico fica claro para a equipe.`
+                      : "Motivo pronto para ser registrado no histórico."}
+                  </small>
                   <p>O pedido sairá da fila ativa, mas continuará no histórico para consulta.</p>
-                  <div><button onClick={() => { setShowCancellation(false); setCancellationReason(""); }}>Voltar</button><button className="cancel" disabled={busy} onClick={() => void cancelRequest(selectedRequest)}>Confirmar cancelamento</button></div>
+                  <div><button onClick={() => { setShowCancellation(false); setCancellationReason(""); }}>Voltar</button><button className="cancel" disabled={busy || cancellationReason.trim().length < 5} onClick={() => void cancelRequest(selectedRequest)}>Confirmar cancelamento</button></div>
                 </>}
               </div>
             ) : null}

@@ -55,6 +55,7 @@ const segmentFallbackMedia: Record<CommercialSegment, SegmentMedia> = {
 
 // A galeria principal já apresenta a mídia da categoria sem repeti-la abaixo.
 const singleImageSegments = new Set<CommercialSegment>();
+const categoryOnlyMediaSegments = new Set<CommercialSegment>(["events", "school", "rentals"]);
 
 const groupOptions = (options: CommercialProductOption[]) => options.reduce<Record<string, CommercialProductOption[]>>(
   (groups, option) => ({ ...groups, [option.group_key]: [...(groups[option.group_key] || []), option] }),
@@ -230,6 +231,8 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
   const [eventSubcategory, setEventSubcategory] = useState<CommercialEventSubcategory>("trays");
   const [selected, setSelected] = useState<CommercialProduct | null>(null);
   const [loading, setLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
+  const [catalogReload, setCatalogReload] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<CommercialRequestField, string>>>({});
@@ -254,13 +257,15 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
 
   useEffect(() => {
     void (async () => {
+      setLoading(true);
+      setCatalogError("");
       const [productResult, optionResult, mediaResult, galleryResult] = await Promise.all([
         requireSupabase().from("commercial_products").select("*").eq("active", true).eq("published", true).order("sort_order"),
         requireSupabase().from("commercial_product_options").select("*").eq("active", true).order("sort_order"),
         requireSupabase().from("commercial_segment_media").select("segment,image_url,alt_text"),
         requireSupabase().from("commercial_media_items").select("*").eq("active", true).order("sort_order"),
       ]);
-      if (productResult.error || optionResult.error) setNotice("Não foi possível carregar o cardápio agora.");
+      if (productResult.error || optionResult.error) setCatalogError("Não conseguimos abrir as opções agora. Sua comemoração continua importante para a gente — tente novamente ou fale com a Adoce pelo WhatsApp.");
       else {
         const options = (optionResult.data || []) as CommercialProductOption[];
         setProducts(((productResult.data || []) as CommercialProduct[]).map((product) => ({
@@ -272,7 +277,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
       }
       setLoading(false);
     })();
-  }, []);
+  }, [catalogReload]);
 
   useEffect(() => setSegment(initialSegment), [initialSegment]);
 
@@ -382,7 +387,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
           ? "Não conseguimos reconhecer essa data ou esse horário. Confira os campos e tente novamente."
           : /quantidade mínima/i.test(error.message)
             ? `Esta opção começa com ${selected.minimum_quantity} unidade(s).`
-            : error.message;
+            : "Não conseguimos registrar a pré-reserva agora. Tente novamente em instantes ou fale com a Adoce pelo WhatsApp para não perder sua data.";
       if (/antecedência mínima/i.test(error.message)) setFieldErrors({ date: friendlyError });
       setNotice(friendlyError);
       return;
@@ -470,6 +475,12 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
       </nav>
 
       <section className="commercial-catalog" id="opcoes-comerciais" aria-live="polite">
+        {catalogError ? <div className="commercial-catalog-error" role="alert">
+          <Heart />
+          <div><strong>As opções não carregaram desta vez.</strong><p>{catalogError}</p></div>
+          <button type="button" onClick={() => setCatalogReload((value) => value + 1)}>Tentar novamente</button>
+          <a href="https://wa.me/5585981994370?text=Ol%C3%A1!%20N%C3%A3o%20consegui%20ver%20as%20op%C3%A7%C3%B5es%20no%20site%20e%20gostaria%20de%20atendimento." target="_blank" rel="noreferrer">Falar no WhatsApp</a>
+        </div> : null}
         {segment === "events" ? (
           <nav className="commercial-subcategories" aria-label="Tipos de eventos">
             {(Object.keys(eventSubcategoryLabels) as CommercialEventSubcategory[]).map((item) => (
@@ -518,10 +529,14 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
             {visibleProducts.map((product) => {
               const productImage = catalogProductImage(product);
               const itemGallery = productGallery(product.id);
-              const showProductGallery = itemGallery.length > 0 && activeEventProduct?.id !== product.id;
+              const showProductGallery = !categoryOnlyMediaSegments.has(segment)
+                && itemGallery.length > 0
+                && activeEventProduct?.id !== product.id;
+              const showProductMedia = showProductGallery
+                || (!categoryOnlyMediaSegments.has(segment) && Boolean(productImage));
               return (
-              <article className={showProductGallery || productImage ? "with-image" : ""} key={product.id}>
-                {showProductGallery || productImage ? <CommercialMediaCarousel items={itemGallery} fallbackImage={productImage} fallbackAlt={product.name} label={product.name} /> : null}
+              <article className={showProductMedia ? "with-image" : ""} key={product.id}>
+                {showProductMedia ? <CommercialMediaCarousel items={itemGallery} fallbackImage={productImage} fallbackAlt={product.name} label={product.name} /> : null}
                 <div className="commercial-product-main">
                   <span>
                     {product.segment === "events" && product.subcategory

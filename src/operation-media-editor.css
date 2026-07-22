@@ -53,9 +53,14 @@
 .commercial-media-admin-grid img, .commercial-media-admin-reel { width: 100%; height: 110px; object-fit: contain; background: #f0e2d8; }
 .commercial-media-admin-reel { display: grid; place-items: center; color: #b24e46; }.commercial-media-admin-reel svg { width: 34px; }
 .commercial-media-admin-grid article > span { padding: 7px 8px 3px; font-size: .6rem; font-weight: 800; }
-.commercial-media-admin-grid article > div:last-child { padding: 5px; display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+.commercial-media-admin-grid article > div:last-child { padding: 5px; display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; }
 .commercial-media-admin-grid button { min-height: 34px; padding: 0; display: grid; place-items: center; border: 1px solid #ead8ca; border-radius: 7px; color: #62362b; background: white; }
 .commercial-media-admin-grid button svg { width: 14px; }.commercial-media-admin-grid button:disabled { opacity: .3; }
+.commercial-media-admin-grid article > div:last-child > label { min-height: 34px; margin: 0; padding: 0; display: grid; place-items: center; border: 1px solid #ead8ca; border-radius: 7px; color: #62362b; background: white; cursor: pointer; }
+.commercial-media-admin-grid article > div:last-child > label svg { width: 14px; }
+.commercial-media-admin-grid article > div:last-child > label input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.commercial-media-admin-grid article > div:last-child > label:has(input:disabled) { cursor: not-allowed; opacity: .3; }
+.commercial-media-admin-grid .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .commercial-media-admin-empty { margin: 0; padding: 14px; border-radius: 9px; color: #806156; background: #f6eae1; font-size: .67rem; }
 .commercial-media-admin-add { display: grid; gap: 8px; }
 .commercial-media-admin-add > label { min-height: 42px; margin: 0; display: flex; align-items: center; justify-content: center; gap: 7px; border-radius: 9px; color: white; background: #32140d; cursor: pointer; font-size: .67rem; font-weight: 850; }

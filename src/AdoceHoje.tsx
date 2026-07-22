@@ -740,7 +740,7 @@ export default function AdoceHoje() {
             </article>
           </div>
 
-          <div className="today-live-showcase" aria-label="Sabores realmente sinalizados hoje">
+          <div className="today-live-showcase" aria-label="Sabores disponíveis hoje">
             <header>
               <span><Heart /> Uma pausa doce para hoje</span>
               <strong>
@@ -840,8 +840,8 @@ export default function AdoceHoje() {
             <h2>Escolha sua próxima paixão</h2>
           </div>
           <p>
-            A disponibilidade muda ao longo do dia. Quando um sabor não estiver
-            sinalizado, consulte pelo WhatsApp antes de pedir.
+            A disponibilidade muda ao longo do dia. Quando um sabor não aparecer
+            como disponível, consulte pelo WhatsApp antes de pedir.
           </p>
         </div>
         <div className="today-filters">
@@ -855,7 +855,7 @@ export default function AdoceHoje() {
             className={filter === "available" ? "active" : ""}
             onClick={() => setFilter("available")}
           >
-            Sinalizados hoje <span>{availableCount}</span>
+            Disponíveis hoje <span>{availableCount}</span>
           </button>
           <button
             className={filter === "premium" ? "active" : ""}
@@ -916,7 +916,7 @@ export default function AdoceHoje() {
                           ? "Festival de hoje à noite"
                           : flavor.status === "last_units"
                             ? "Últimas unidades"
-                            : "Sinalizado hoje"}
+                            : "Disponível hoje"}
                       </>
                     ) : (
                       <>
@@ -926,7 +926,7 @@ export default function AdoceHoje() {
                   </div>
                   {flavor.available && flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
                     <div className="today-stock-count">
-                      {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} fatia(s) livre(s) agora
+                      {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} fatia(s) disponível(is) agora
                     </div>
                   ) : null}
                   <h3>{flavor.name}</h3>

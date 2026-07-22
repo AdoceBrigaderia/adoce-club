@@ -2562,12 +2562,29 @@ function OperationHome({ session }: { session: Session }) {
       setSelected(null);
       setGeneratedAccess(null);
       const supabase = requireSupabase();
+      const loadAllProfiles = async () => {
+        const rows: Array<{
+          id: string;
+          full_name: string;
+          phone_e164: string | null;
+          email: string | null;
+          member_code: string | null;
+          account_status: string;
+          updated_at: string;
+        }> = [];
+        for (let from = 0; ; from += 1000) {
+          const page = await supabase
+            .from("profiles")
+            .select("id,full_name,phone_e164,email,member_code,account_status,updated_at")
+            .order("full_name", { ascending: true })
+            .range(from, from + 999);
+          if (page.error) return { data: rows, error: page.error };
+          rows.push(...((page.data || []) as typeof rows));
+          if ((page.data || []).length < 1000) return { data: rows, error: null };
+        }
+      };
       const [{ data: profiles, error: profilesError }, { data: staffRows }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id,full_name,phone_e164,email,member_code,account_status,updated_at")
-          .order("full_name", { ascending: true })
-          .limit(1000),
+        loadAllProfiles(),
         supabase.from("staff_members").select("user_id"),
       ]);
       if (profilesError) {
@@ -2576,15 +2593,7 @@ function OperationHome({ session }: { session: Session }) {
         return;
       }
       const staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
-      const customers = [...((profiles || []) as Array<{
-        id: string;
-        full_name: string;
-        phone_e164: string | null;
-        email: string | null;
-        member_code: string | null;
-        account_status: string;
-        updated_at: string;
-      }>)]
+      const customers = [...(profiles || [])]
         .filter((profile) => !staffIds.has(profile.id) && profile.account_status !== "anonymized");
       setMemberCounts({
         total: customers.length,
@@ -3219,7 +3228,7 @@ function OperationHome({ session }: { session: Session }) {
                         Código do Membro: <strong>{selected.member_code}</strong>
                       </p>
                       <p className={`customer-account-status status-${selected.account_status}`}>
-                        {selected.account_status === "active" ? "Cadastro ativo" : selected.account_status === "pending_deletion" ? "Exclusão solicitada" : "Cadastro desativado"}
+                        {selected.account_status === "active" ? "Cadastro ativo" : selected.account_status === "pending_deletion" ? "Aguardando decisão da Adoce: excluir ou reativar" : "Cadastro desativado"}
                       </p>
                     </div>
                     <div className="customer-progress">
@@ -3318,7 +3327,7 @@ function OperationHome({ session }: { session: Session }) {
                         <select value={accountAction} onChange={(event) => setAccountAction(event.target.value as CustomerAccountAction)}>
                           <option value="deactivate">Desativar acesso</option>
                           <option value="delete_account">Excluir cadastro agora</option>
-                          <option value="request_deletion">Solicitação de exclusão para análise</option>
+                          <option value="request_deletion">Registrar pedido do cliente para decidir depois (não exclui agora)</option>
                           <option value="mark_duplicate">Marcar como cadastro duplicado</option>
                           <option value="reactivate">Reativar acesso</option>
                           <option value="cancel_deletion">Cancelar exclusão e reativar</option>
@@ -3479,7 +3488,7 @@ function OperationHome({ session }: { session: Session }) {
                 <strong><b>{memberCounts.total}</b><span>clientes cadastrados</span></strong>
                 <span><b>{memberCounts.active}</b> ativos</span>
                 <span><b>{memberCounts.deactivated}</b> desativados</span>
-                <span><b>{memberCounts.pending}</b> aguardando exclusão</span>
+                <span><b>{memberCounts.pending}</b> aguardando decisão da Adoce</span>
               </div>
               <form
                 className="operation-search"

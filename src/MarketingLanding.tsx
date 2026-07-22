@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import PublicHeader from "./PublicHeader";
+import { FaFacebookF, FaInstagram } from "react-icons/fa";
 import "./public-site.css";
 import "./public-commercial-polish.css";
 
@@ -163,14 +164,19 @@ export default function MarketingLanding() {
       <section className="brand-story">
         <div>
           <p className="public-kicker">Sobre a Adoce</p>
-          <h2>Uma história feita de reinvenção, cuidado e coragem.</h2>
+          <h2>O cuidado da Beth virou receita. E a receita virou Adoce.</h2>
         </div>
+        <figure className="brand-story-photo">
+          <img src="/site/beth-fundadora.png" alt="Elizabeth, a Beth, segurando uma torta artesanal feita por ela" loading="lazy" />
+          <figcaption><strong>Elizabeth “Beth”</strong><span>Fundadora e confeiteira da Adoce</span></figcaption>
+        </figure>
         <div>
-          <p>A Adoce nasceu em 2023, da força de uma mãe atípica que encontrou na confeitaria artesanal uma forma de transformar cuidado em sabor. Rubens e Elizabeth seguem construindo essa história ao lado de cada cliente.</p>
-          <p>Cada torta, docinho e experiência passa pelas mãos de quem produz e atende. Nossa fábrica fica no Passaré, em Fortaleza, e o cuidado aparece no sabor, na apresentação e na forma de receber cada pessoa.</p>
+          <p>Depois de mais de dez anos como professora de Ciências, Beth precisou se dedicar integralmente ao cuidado do filho Samuel. Em 2023, a confeitaria entrou nessa história como um novo começo — e revelou um talento que hoje adoça a vida de muitas famílias.</p>
+          <p>Ela cria e produz; Rubens cuida do atendimento e da organização. Da cozinha de casa à barraquinha de rua, cada torta, docinho e experiência passa pelas mãos de quem constrói a Adoce todos os dias.</p>
+          <p className="brand-story-promise"><Heart /> Aqui, artesanal não é uma palavra bonita: é a forma como tudo realmente é feito.</p>
           <div className="story-links">
-            <a href="https://www.instagram.com/_adocebrigaderia_/" target="_blank" rel="noreferrer">Instagram</a>
-            <a href="https://www.facebook.com/adocebrigaderia" target="_blank" rel="noreferrer">Facebook</a>
+            <a href="https://www.instagram.com/_adocebrigaderia_/" target="_blank" rel="noreferrer" aria-label="Abrir Instagram da Adoce" title="Instagram"><FaInstagram /></a>
+            <a href="https://www.facebook.com/adocebrigaderia" target="_blank" rel="noreferrer" aria-label="Abrir Facebook da Adoce" title="Facebook"><FaFacebookF /></a>
             <a href="https://maps.app.goo.gl/PWLL5zE9fqVpmunj8" target="_blank" rel="noreferrer"><MapPin /> Como chegar</a>
           </div>
         </div>
