@@ -55,3 +55,30 @@
   font-weight: 850;
 }
 .op-pede-group-actions > .op-pede-cancel:disabled { opacity: .48; }
+.op-pede-view-toggle {
+  display: flex;
+  gap: 8px;
+  margin: -10px 0 18px;
+}
+.op-pede-view-toggle button,
+.op-pede-archive {
+  border: 1px solid var(--access-line);
+  border-radius: 999px;
+  background: #fffaf5;
+  color: #704a40;
+  padding: 9px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-weight: 850;
+}
+.op-pede-view-toggle button.active { background: var(--access-chocolate); color: white; }
+.op-pede-view-toggle svg,
+.op-pede-archive svg { width: 16px; }
+.op-pede-archive {
+  width: 100%;
+  margin-top: 18px;
+  border-radius: 10px;
+  color: #8b4c45;
+}

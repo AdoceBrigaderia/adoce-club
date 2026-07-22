@@ -62,9 +62,9 @@ type PendingFlavorImage = {
   file: File;
   role: "cover" | "gallery" | "whole_cake";
 };
-type AvailabilityStatus =
+export type AvailabilityStatus =
   "available" | "last_units" | "sold_out" | "preorder_only" | "unavailable";
-type Availability = {
+export type Availability = {
   id?: string;
   flavor_id: string;
   status: AvailabilityStatus;
@@ -144,6 +144,34 @@ const scheduleChannelHints: Record<string, string> = {
   store: "Canal antigo, sem atendimento ao público no endereço de produção.",
 };
 
+const availabilityPriority: Record<AvailabilityStatus, number> = {
+  available: 0,
+  last_units: 1,
+  preorder_only: 2,
+  sold_out: 3,
+  unavailable: 4,
+};
+
+export function sortFlavorsByAvailability(
+  flavors: Flavor[],
+  availability: Availability[],
+) {
+  const statusByFlavor = new Map(
+    availability.map((item) => [item.flavor_id, item.status]),
+  );
+  return flavors
+    .filter((flavor) => flavor.active)
+    .slice()
+    .sort((a, b) => {
+      const aStatus = statusByFlavor.get(a.id) || "unavailable";
+      const bStatus = statusByFlavor.get(b.id) || "unavailable";
+      return (
+        availabilityPriority[aStatus] - availabilityPriority[bStatus] ||
+        a.name.localeCompare(b.name, "pt-BR")
+      );
+    });
+}
+
 const scheduleChannelLabels: Record<string, string> = {
   online_orders: "Pedidos online — retirada na Adoce",
   in_person: "Barraquinha de rua",
@@ -181,6 +209,10 @@ export default function OperationContentAdmin({
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const sortedAvailabilityFlavors = useMemo(
+    () => sortFlavorsByAvailability(flavors, availability),
+    [flavors, availability],
+  );
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
@@ -914,9 +946,7 @@ export default function OperationContentAdmin({
             </div>
           </div>
           <div className="availability-list">
-            {flavors
-              .filter((f) => f.active)
-              .map((flavor) => {
+            {sortedAvailabilityFlavors.map((flavor) => {
                 const current =
                   availability.find((item) => item.flavor_id === flavor.id)
                     ?.status || "unavailable";
