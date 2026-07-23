@@ -1,4 +1,7 @@
 .director-checklist { max-width: 1120px; margin: 0 auto; color: #3b2018; }
+.director-archived-summary { display: flex; gap: 12px; align-items: flex-start; margin: 16px 0 24px; padding: 16px 18px; border: 1px solid #cce5d5; border-radius: 18px; background: #f0faf4; color: #315f46; }
+.director-archived-summary svg { width: 22px; height: 22px; flex: 0 0 auto; margin-top: 1px; }
+.director-archived-summary span { display: grid; gap: 3px; line-height: 1.45; }
 .director-loading { padding: 48px 24px; color: #765b51; }
 .director-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 28px; margin-bottom: 28px; }
 .director-heading h1 { margin: 10px 0 8px; font: 500 clamp(2.35rem, 5vw, 4rem)/.98 'Playfair Display', serif; letter-spacing: -.04em; }

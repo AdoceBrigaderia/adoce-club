@@ -81,18 +81,27 @@ A base precisa nascer preparada para grupos, duas trilhas de fidelidade e prêmi
 - O backend começará no Supabase Free, com meta de migração ao Pro em 6 meses e limite máximo de 12 meses.
 - O Clube Adoce evoluirá para um CRM de relacionamento com histórico, segmentação, campanhas, tarefas e visão completa do cliente.
 
-## Recomendações aguardando validação
+## Pendências que ainda exigem decisão
 
-| Tema | Recomendação inicial |
+O checklist privado foi revisado em 23/07/2026. Das 70 perguntas do planejamento
+inicial, 46 já foram definidas, implementadas ou deixaram de exigir validação.
+As 24 pendências ativas estão concentradas nestes temas:
+
+| Tema | O que ainda precisa ser confirmado |
 | --- | --- |
-| Nome da indicação | **Espalhe Doçura** |
-| Nome do compartilhamento | **Cartão em Grupo** |
-| Limite de grupo | 6 participantes, configurável |
-| Resgate em grupo | Titular escolhe resgate livre ou com autorização |
-| Bônus do indicado | 1 carimbo adicional aos carimbos da primeira compra |
-| Prêmio de indicação | Mesma fatia gratuita do cartão principal |
-| Validade | Sem expiração no lançamento |
-| App | Web responsiva/PWA; app nativo somente se houver necessidade comprovada |
+| Estoque e barraquinha | Responsáveis pela contagem e forma de conferir a transferência da produção |
+| Carrinho e reserva | Limite temporário, extensão de prazo e tratamento de substituições |
+| Delivery | Existência de entrega própria, regiões, responsável, taxa e prazo |
+| Mercado Pago | Parcelamento, política de estorno e modelo da maquininha presencial |
+| Caixa | Troco, autorização para descontos e procedimento sem internet |
+| WhatsApp | Número que poderá usar a API oficial da Meta |
+| Impressão | Teste físico da KP-1025 no Galaxy Tab A7 Lite, momento da impressão e mensagens do rodapé |
+| Encomendas | Percentual de sinal e validade de orçamento/reserva de data |
+| Equipe e contingência | Pessoas por perfil e procedimento quando uma parte da operação falhar |
+| Fiscal e privacidade | Tratamento contábil e prazo de retenção de dados |
+
+As respostas históricas das decisões retiradas continuam preservadas. A lista
+online mostra somente essas pendências atuais para Rubens e Beth.
 
 ## Fora da primeira entrega operacional
 
@@ -106,6 +115,7 @@ A base precisa nascer preparada para grupos, duas trilhas de fidelidade e prêmi
 
 | Data | Versão | Mudança |
 | --- | --- | --- |
+| 23/07/2026 | 1.1 | Checklist do Plano Diretor reduzido às 24 decisões que ainda exigem confirmação. |
 | 16/07/2026 | 1.0 | Fundação Supabase criada e piloto funcional do festival publicado para cadastro, carimbos, cartão do cliente e resgate. |
 | 14/07/2026 | 0.1 | Consolidação inicial da visão, regras, jornadas, arquitetura e roadmap |
 

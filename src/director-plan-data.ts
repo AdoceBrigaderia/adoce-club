@@ -75,7 +75,7 @@ export const DIRECTOR_AREA_CONTEXT: Record<string, string> = {
   Aprovação: "Esta escolha evita que uma fase avance sem a concordância de quem responde pela operação, pelo financeiro e pela segurança.",
 };
 
-export const DIRECTOR_DECISIONS: DirectorDecision[] = [
+const ALL_DIRECTOR_DECISIONS: DirectorDecision[] = [
   ["D01", "Objetivo", "Qual é a principal meta do primeiro lançamento?", "Reduzir divergências de estoque e agilizar o caixa antes de buscar crescimento online.", "Rubens e Beth", "Crítica", "Fase 0"],
   ["D02", "Objetivo", "Qual festival ou data será usado como piloto real?", "Escolher um festival com movimento médio, nunca o dia mais cheio.", "Rubens e Beth", "Alta", "Fase 0"],
   ["D03", "Escopo", "O primeiro lançamento venderá somente fatias prontas?", "Sim. Encomendas permanecem no fluxo atual até o estoque e o caixa estabilizarem.", "Rubens e Beth", "Crítica", "Fase 0"],
@@ -155,3 +155,115 @@ export const DIRECTOR_DECISIONS: DirectorDecision[] = [
   priority: priority as DirectorDecision["priority"],
   phase,
 }));
+
+const PENDING_DECISION_IDS = new Set([
+  "D11", "D13", "D19", "D23", "D25", "D30", "D31", "D32",
+  "D34", "D36", "D37", "D40", "D41", "D45", "D46", "D50",
+  "D51", "D53", "D57", "D58", "D61", "D66", "D68", "D69",
+]);
+
+const CURRENT_DECISION_COPY: Record<string, Pick<DirectorDecision, "question" | "recommendation">> = {
+  D11: {
+    question: "Quem confirma a contagem de abertura da produção e quem substitui essa pessoa quando necessário?",
+    recommendation: "Beth confirma a produção; Rubens atua como substituto. Ajustem os nomes se a rotina real for diferente.",
+  },
+  D13: {
+    question: "Como será feita a conferência das fatias levadas da produção para a barraquinha?",
+    recommendation: "Usar transferência em lote, com quantidade por sabor e confirmação de quem enviou e de quem recebeu.",
+  },
+  D19: {
+    question: "Precisamos limitar temporariamente a quantidade de fatias por cliente ou por pedido?",
+    recommendation: "Começar sem limite fixo e permitir que o proprietário configure um limite em dias de alta procura.",
+  },
+  D23: {
+    question: "A equipe poderá estender o prazo de uma reserva que ainda está em atendimento?",
+    recommendation: "Permitir uma extensão por vez, sempre com motivo, novo horário e aviso claro ao cliente.",
+  },
+  D25: {
+    question: "Como o cliente deve escolher o que fazer quando uma fatia reservada fica indisponível?",
+    recommendation: "Perguntar se aceita um sabor semelhante, prefere ser consultado ou deseja cancelar somente aquele item.",
+  },
+  D30: {
+    question: "Além de retirada e Pede Junto, a Adoce oferecerá delivery próprio? Em quais regiões?",
+    recommendation: "No início, manter retirada e coleta solicitada pelo cliente. Só publicar delivery próprio depois de definir regiões e capacidade.",
+  },
+  D31: {
+    question: "Se houver delivery próprio, quem realizará as entregas?",
+    recommendation: "Escolher entre entregador próprio, parceiro fixo ou serviço solicitado pela Adoce e definir quem acompanhará cada entrega.",
+  },
+  D32: {
+    question: "Se houver delivery próprio, como a taxa e o prazo serão calculados?",
+    recommendation: "Começar com taxa e prazo fixos por região; cálculo automático por distância pode vir depois.",
+  },
+  D34: {
+    question: "Compras online no cartão poderão ser parceladas? A partir de qual valor?",
+    recommendation: "Não parcelar fatias de retirada imediata. Definir parcelamento e valor mínimo somente para encomendas e eventos.",
+  },
+  D36: {
+    question: "Qual política de cancelamento e estorno será mostrada antes do pagamento?",
+    recommendation: "Estorno integral quando a Adoce não puder atender. Definir os demais prazos e condições por tipo de pedido.",
+  },
+  D37: {
+    question: "Qual é o modelo exato da maquininha Mercado Pago usada no atendimento presencial?",
+    recommendation: "Registrar o modelo e testar a integração depois que o fluxo de pagamento online estiver estável.",
+  },
+  D40: {
+    question: "O caixa presencial terá abertura e fechamento de dinheiro para troco?",
+    recommendation: "Registrar o valor inicial, as retiradas e o fechamento separado por forma de pagamento.",
+  },
+  D41: {
+    question: "Quem poderá conceder desconto e quais motivos serão aceitos?",
+    recommendation: "Restringir a proprietário ou gerente e exigir motivo em toda alteração de preço.",
+  },
+  D45: {
+    question: "Qual será o procedimento quando a internet cair durante o atendimento?",
+    recommendation: "Pausar pedidos online, registrar vendas numa contingência simples e reconciliar estoque e caixa quando a conexão voltar.",
+  },
+  D46: {
+    question: "Qual número oficial será usado na futura automação do WhatsApp e ele pode ser conectado à API da Meta?",
+    recommendation: "Validar o número do WhatsApp Business, custos, consentimentos e modelos de mensagem antes de automatizar envios.",
+  },
+  D50: {
+    question: "A impressora KP-1025 funciona corretamente com o Galaxy Tab A7 Lite no atendimento real?",
+    recommendation: "Fazer um teste físico de conexão, impressão, reconexão e autonomia antes de ativar impressão automática.",
+  },
+  D51: {
+    question: "Em qual etapa cada tipo de pedido deve ser impresso automaticamente?",
+    recommendation: "Pedido online após pagamento confirmado; venda feita pelo WhatsApp ou operador somente ao finalizar ou por comando manual.",
+  },
+  D53: {
+    question: "Quais mensagens curtas da Adoce devem aparecer no rodapé dos pedidos?",
+    recommendation: "Escolher de 3 a 5 mensagens alegres e originais para alternar nas impressões.",
+  },
+  D57: {
+    question: "Qual sinal será exigido para tortas, docinhos, escola, eventos e decoração?",
+    recommendation: "Definir o percentual por categoria; usar 50% apenas onde fizer sentido para cobrir materiais e reservar agenda.",
+  },
+  D58: {
+    question: "Por quantos dias cada orçamento ficará válido e por quanto tempo a data ficará reservada?",
+    recommendation: "Mostrar validade e prazo de reserva no orçamento, sem bloquear a agenda indefinidamente.",
+  },
+  D61: {
+    question: "Quem terá acesso como proprietário, gerente e operador?",
+    recommendation: "Listar cada pessoa e conceder somente as funções necessárias para o trabalho dela.",
+  },
+  D66: {
+    question: "Qual procedimento a equipe seguirá se estoque, pagamento ou impressão falhar durante o atendimento?",
+    recommendation: "Manter uma folha simples de contingência, pausar o canal afetado e reconciliar tudo antes de retomar.",
+  },
+  D68: {
+    question: "Como as vendas, taxas, comprovantes e eventuais estornos devem ser tratados na contabilidade?",
+    recommendation: "Validar com o contador. O comprovante da impressora deve continuar identificado como não fiscal.",
+  },
+  D69: {
+    question: "Por quanto tempo dados de clientes, pedidos, endereços e históricos cancelados devem ser guardados?",
+    recommendation: "Definir com orientação jurídica e contábil o prazo necessário para atendimento, auditoria e obrigações legais.",
+  },
+};
+
+export const DIRECTOR_DECISIONS = ALL_DIRECTOR_DECISIONS
+  .filter((decision) => PENDING_DECISION_IDS.has(decision.id))
+  .map((decision) => ({ ...decision, ...CURRENT_DECISION_COPY[decision.id] }));
+
+export const DIRECTOR_ARCHIVED_DECISION_COUNT =
+  ALL_DIRECTOR_DECISIONS.length - DIRECTOR_DECISIONS.length;

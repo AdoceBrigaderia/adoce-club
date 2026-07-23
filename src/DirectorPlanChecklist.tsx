@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import {
+  DIRECTOR_ARCHIVED_DECISION_COUNT,
   DIRECTOR_AREA_CONTEXT,
   DIRECTOR_DECISIONS,
   DIRECTOR_PHASE_CONTEXT,
@@ -51,14 +52,14 @@ const emptyReview = (decisionId: string): Review => ({
 export default function DirectorPlanChecklist({ session }: { session: Session }) {
   const [reviews, setReviews] = useState<Record<string, Review>>({});
   const [query, setQuery] = useState("");
-  const [phase, setPhase] = useState("Fase 0");
+  const [phase, setPhase] = useState("Todas");
   const [area, setArea] = useState("Todas");
   const [priority, setPriority] = useState("Todas");
   const [onlyPending, setOnlyPending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [saveState, setSaveState] = useState<SaveState>("idle");
-  const [activeDecisionId, setActiveDecisionId] = useState("D01");
+  const [activeDecisionId, setActiveDecisionId] = useState(DIRECTOR_DECISIONS[0]?.id || "");
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
@@ -175,8 +176,8 @@ export default function DirectorPlanChecklist({ session }: { session: Session })
       <header className="director-heading">
         <div>
           <span className="director-private"><LockKeyhole /> Área privada dos proprietários</span>
-          <h1>Validação do Plano Diretor</h1>
-          <p>Respondam juntos pelo celular ou computador. Cada alteração é salva automaticamente.</p>
+          <h1>Pendências do Plano Diretor</h1>
+          <p>Aqui aparecem somente as escolhas que ainda precisam da confirmação de vocês. Cada alteração é salva automaticamente.</p>
         </div>
         <div className="director-save" data-state={saveState}>
           {saveState === "error" ? <CircleAlert /> : saveState === "saved" ? <CheckCircle2 /> : <Cloud />}
@@ -187,20 +188,27 @@ export default function DirectorPlanChecklist({ session }: { session: Session })
       </header>
 
       <section className="director-progress" aria-label={`${progress}% do checklist concluído`}>
-        <div><strong>{finalized}</strong><span>de {DIRECTOR_DECISIONS.length} decisões finalizadas</span></div>
+        <div><strong>{finalized}</strong><span>de {DIRECTOR_DECISIONS.length} pendências finalizadas</span></div>
         <div className="director-progress-track"><span style={{ width: `${progress}%` }} /></div>
         <b>{progress}%</b>
       </section>
 
+      <p className="director-archived-summary">
+        <CheckCircle2 />
+        <span>
+          <strong>{DIRECTOR_ARCHIVED_DECISION_COUNT} decisões anteriores já saíram desta lista.</strong>
+          Elas foram definidas, implementadas ou deixaram de exigir validação, mas as respostas históricas continuam preservadas.
+        </span>
+      </p>
+
       <section className="director-introduction" aria-labelledby="director-introduction-title">
         <div className="director-introduction-copy">
           <span><BookOpen /> Como usar esta validação</span>
-          <h2 id="director-introduction-title">Uma decisão de cada vez, sempre ligada à rotina da Adoce.</h2>
+          <h2 id="director-introduction-title">Só o que ainda precisa de uma decisão real.</h2>
           <p>
-            Vocês não estão aprovando uma frase solta. Cada resposta vira uma regra usada para
-            construir o estoque, o caixa, os pedidos e o atendimento. Comecem pela Fase 0 e avancem
-            somente quando a decisão final estiver escrita de forma que qualquer pessoa da equipe
-            consiga entender.
+            O checklist inicial foi comparado com as regras aprovadas e com o que já está em uso.
+            Restaram apenas decisões ligadas à rotina de vocês, a testes físicos, ao contador ou
+            a etapas futuras.
           </p>
         </div>
         <ol>
@@ -229,7 +237,7 @@ export default function DirectorPlanChecklist({ session }: { session: Session })
       </section>
 
       {message && <p className="director-message" role="alert">{message}</p>}
-      <p className="director-result-count">Mostrando {filtered.length} de {DIRECTOR_DECISIONS.length} decisões</p>
+      <p className="director-result-count">Mostrando {filtered.length} de {DIRECTOR_DECISIONS.length} pendências atuais</p>
 
       <section className="director-list">
         {filtered.map((item, index) => {
