@@ -942,7 +942,10 @@ export default function OperationContentAdmin({
                   "pt-BR",
                 )}
               </h2>
-              <p>O cliente verá somente o status que você confirmar aqui.</p>
+              <p>
+                O estoque continua de um dia para o outro e só muda com vendas,
+                reservas ou ajustes feitos por você.
+              </p>
             </div>
           </div>
           <div className="availability-list">
@@ -979,7 +982,7 @@ export default function OperationContentAdmin({
                       )}
                     </select>
                     <label className="availability-quantity">
-                      <span>Fatias hoje</span>
+                      <span>Estoque atual</span>
                       <input
                         type="number"
                         min="0"
