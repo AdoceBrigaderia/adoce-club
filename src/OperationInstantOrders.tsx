@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Clock3, Droplets, Gift, Heart, MessageCircle, PackageCheck, Plus, Printer, RefreshCw, Search, ShoppingCart, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { openOperationWhatsApp, operationWhatsAppUrl } from "./operation-whatsapp";
+import OperationManualSale from "./OperationManualSale";
 import "./operation-instant-orders.css";
 import "./operation-instant-orders-enhancements.css";
 import "./operation-print.css";
@@ -14,6 +15,8 @@ type InstantOrder = {
   customer_phone: string;
   status: InstantOrderStatus;
   payment_status: string;
+  payment_method_code: string | null;
+  payment_method_label: string | null;
   checkout_mode: string;
   total: number;
   payment_url: string | null;
@@ -26,6 +29,7 @@ type InstantOrder = {
   instant_order_items: Array<{ id: string; flavor_id: string; flavor_name: string; quantity: number; unit_price: number; status: string; is_reward: boolean; reward_id: string | null; instant_order_item_sauces: Array<{ id: string; unit_number: number; sauce_name: string }> }>;
 };
 type OrderSauce = { id: string; name: string; active: boolean; sort_order: number };
+type PaymentMethod = { code: string; label: string; active: boolean };
 type RewardFlavor = { id: string; name: string; base_price: number; remaining: number };
 type LoyaltyContext = {
   recognized: boolean;
@@ -80,20 +84,24 @@ export default function OperationInstantOrders() {
   const [rewardFlavors, setRewardFlavors] = useState<RewardFlavor[]>([]);
   const [rewardFlavorId, setRewardFlavorId] = useState("");
   const [loyalty, setLoyalty] = useState<LoyaltyContext | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [recoveryMethod, setRecoveryMethod] = useState("pix");
+  const [view, setView] = useState<"active" | "expired">("active");
 
   const load = useCallback(async () => {
     setBusy(true);
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
-    const [{ data, error }, { data: sauceData, error: sauceError }, { data: flavorData, error: flavorError }, { data: availabilityData, error: availabilityError }] = await Promise.all([
+    const [{ data, error }, { data: sauceData, error: sauceError }, { data: flavorData, error: flavorError }, { data: availabilityData, error: availabilityError }, { data: settingsData, error: settingsError }] = await Promise.all([
       requireSupabase().from("instant_orders")
         .select("*,instant_order_items(id,flavor_id,flavor_name,quantity,unit_price,status,is_reward,reward_id,instant_order_item_sauces(id,unit_number,sauce_name))")
         .order("created_at", { ascending: false }).limit(300),
       requireSupabase().from("order_sauces").select("id,name,active,sort_order").order("sort_order").order("name"),
       requireSupabase().from("flavors").select("id,name,base_price").eq("active", true).order("name"),
       requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", today),
+      requireSupabase().rpc("staff_get_commerce_settings"),
     ]);
     setBusy(false);
-    if (error || sauceError || flavorError || availabilityError) return setNotice((error || sauceError || flavorError || availabilityError)?.message || "Não foi possível atualizar a tela.");
+    if (error || sauceError || flavorError || availabilityError || settingsError) return setNotice((error || sauceError || flavorError || availabilityError || settingsError)?.message || "Não foi possível atualizar a tela.");
     setOrders((data || []) as InstantOrder[]);
     setSauces((sauceData || []) as OrderSauce[]);
     setRewardFlavors((flavorData || []).map((flavor) => {
@@ -105,6 +113,9 @@ export default function OperationInstantOrders() {
         remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0)),
       };
     }).filter((flavor) => flavor.remaining > 0));
+    const activeMethods = ((settingsData?.payment_methods || []) as PaymentMethod[]).filter((method) => method.active);
+    setPaymentMethods(activeMethods);
+    setRecoveryMethod((current) => activeMethods.some((method) => method.code === current) ? current : (activeMethods[0]?.code || ""));
   }, []);
 
   const addSauce = async () => {
@@ -280,18 +291,57 @@ export default function OperationInstantOrders() {
     }
     setSelected(null);
     const stampsAdded = Number(data?.stamps_added || 0);
+    const newRewards = Number(data?.new_rewards || 0);
     const rewardRedeemed = Boolean(data?.reward_redeemed);
     setNotice(`${order.order_number}: pagamento confirmado e pedido em separação.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}`);
     await load();
     const firstName = order.customer_name.trim().split(/\s+/)[0];
-    const message = `Olá, ${firstName}! 💗 Recebemos o pagamento do pedido ${order.order_number} e já iniciamos a separação das suas fatias. Avisaremos assim que estiver tudo pronto para retirada.`;
+    const loyaltyMessage = rewardRedeemed
+      ? ` E tem um carinho especial: sua fatia-presente do Clube Adoce também já está sendo separada com o pedido. É um prazer presentear clientes fiéis como você! 💝`
+      : newRewards > 0
+        ? ` Você completou seu cartão do Clube Adoce e conquistou uma fatia-presente! 💝 Ela ficou disponível para combinarmos seu resgate.`
+        : stampsAdded > 0
+          ? ` Também confirmamos ${stampsAdded} novo(s) carimbo(s) no seu Clube Adoce. Obrigado por escolher a gente mais uma vez! 💗`
+          : "";
+    const message = `Olá, ${firstName}! 💗 Recebemos o pagamento do pedido ${order.order_number} e já iniciamos a separação das suas fatias.${loyaltyMessage} Avisaremos assim que estiver tudo pronto para retirada.`;
     openOperationWhatsApp(order.customer_phone, message, whatsapp);
+  };
+
+  const reopenExpired = async () => {
+    if (!selected) return;
+    setBusy(true);
+    const { error } = await requireSupabase().rpc("staff_reopen_expired_instant_order", { target_order_id: selected.id });
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    setNotice(`${selected.order_number} voltou para a fila de conferência.`);
+    setSelected(null); setView("active"); await load();
+  };
+
+  const finalizeExpired = async (reconcileInventory: boolean) => {
+    if (!selected || !recoveryMethod) return setNotice("Escolha a forma de pagamento usada nesta venda.");
+    setBusy(true);
+    const { error } = await requireSupabase().rpc("staff_finalize_expired_instant_order", {
+      target_order_id: selected.id,
+      requested_payment_method: recoveryMethod,
+      next_internal_notes: internalNotes,
+      allow_inventory_reconciliation: reconcileInventory,
+    });
+    setBusy(false);
+    if (error) {
+      if (!reconcileInventory && /estoque/i.test(error.message)) setNotice("O estoque atual não comporta essa baixa. Confira os itens e use “Concluir com ajuste de estoque” somente se a venda realmente aconteceu.");
+      else setNotice(error.message);
+      return;
+    }
+    setNotice(`${selected.order_number} foi registrado como pago e entregue. Estoque, Clube Adoce e financeiro foram atualizados.`);
+    setSelected(null); await load();
   };
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
-    return orders.filter((order) => !term || `${order.order_number} ${order.customer_name} ${order.customer_phone}`.toLocaleLowerCase("pt-BR").includes(term));
-  }, [orders, search]);
+    return orders
+      .filter((order) => view === "expired" ? order.status === "expired" : !["completed", "cancelled", "expired"].includes(order.status))
+      .filter((order) => !term || `${order.order_number} ${order.customer_name} ${order.customer_phone}`.toLocaleLowerCase("pt-BR").includes(term));
+  }, [orders, search, view]);
   const active = orders.filter((order) => !["completed", "cancelled", "expired"].includes(order.status));
 
   return <section className="operation-instant-orders">
@@ -305,6 +355,7 @@ export default function OperationInstantOrders() {
       <span><strong>{orders.filter((order) => order.status === "awaiting_payment").length}</strong><small>aguardando pagamento</small></span>
       <span><strong>{orders.filter((order) => order.status === "ready").length}</strong><small>prontos</small></span>
     </div>
+    <OperationManualSale onCreated={() => void load()} />
     <section className="instant-order-sauce-admin" aria-labelledby="order-sauces-title">
       <header><Droplets /><div><small>Complementos do pedido</small><h3 id="order-sauces-title">Caldas disponíveis</h3><p>O cliente só vê as caldas marcadas como disponíveis.</p></div></header>
       <div className="instant-order-sauce-options">
@@ -319,6 +370,10 @@ export default function OperationInstantOrders() {
       </div>
     </section>
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
+    <div className="instant-order-view-switch">
+      <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Em andamento</button>
+      <button className={view === "expired" ? "active" : ""} onClick={() => setView("expired")}>Prazo encerrado ({orders.filter((order) => order.status === "expired").length})</button>
+    </div>
     <label className="instant-order-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar número, cliente ou celular" /></label>
     <div className="instant-order-operation-list">
       {filtered.map((order) => <button key={order.id} onClick={() => openOrder(order)}>
@@ -366,6 +421,12 @@ export default function OperationInstantOrders() {
         </section> : null}
         <div className="instant-order-operation-items">{selected.instant_order_items.map((item) => <span key={item.id} className={item.is_reward ? "reward-item" : ""}><b>{item.quantity}×</b><span>{item.flavor_name}{item.is_reward ? <small><Gift /> Fatia premiada do Clube Adoce</small> : null}{item.instant_order_item_sauces?.length ? <small>{item.instant_order_item_sauces.slice().sort((a, b) => a.unit_number - b.unit_number).map((choice) => `Fatia ${choice.unit_number}: ${choice.sauce_name}`).join(" · ")}</small> : null}</span><strong>{item.is_reward && Number(item.unit_price) === 0 ? "GRÁTIS" : money(item.quantity * Number(item.unit_price))}</strong></span>)}</div>
         <div className="instant-order-operation-total"><span>Total</span><strong>{money(selected.total)}</strong></div>
+        {selected.payment_method_label ? <p><strong>Pagamento:</strong> {selected.payment_method_label}</p> : null}
+        {selected.status === "expired" ? <section className="expired-recovery-box">
+          <small>Venda com prazo encerrado</small><h3>O que aconteceu com este pedido?</h3><p>Você pode reabrir para continuar o atendimento ou registrar que ele já foi pago e entregue.</p>
+          <label>Forma de pagamento<select value={recoveryMethod} onChange={(event) => setRecoveryMethod(event.target.value)}>{paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.label}</option>)}</select></label>
+          <div className="expired-recovery-actions"><button onClick={() => void reopenExpired()} disabled={busy}>Reabrir e continuar atendimento</button><button onClick={() => void finalizeExpired(false)} disabled={busy}>Registrar como pago e entregue</button><button onClick={() => { if (window.confirm("Use esta opção somente se a venda realmente aconteceu. O estoque será conciliado e o ajuste ficará registrado.")) void finalizeExpired(true); }} disabled={busy}>Concluir com ajuste de estoque</button></div>
+        </section> : null}
         <label>Link de pagamento<input type="text" value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Cole o link ou a mensagem copiada do Mercado Pago" /><small className="payment-link-help">Pode colar a mensagem inteira. A operação localizará e enviará somente o link.</small></label>
         <label>Anotações internas<textarea value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} /></label>
         <div className="instant-order-operation-actions">

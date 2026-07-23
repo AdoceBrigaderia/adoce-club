@@ -8,6 +8,10 @@
   gap: 10px;
 }
 
+body:has(.instant-order-layer) .public-contact-dock {
+  display: none;
+}
+
 .public-contact-trigger {
   min-height: 52px;
   display: inline-flex;

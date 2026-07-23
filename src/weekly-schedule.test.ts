@@ -34,6 +34,26 @@ describe("agenda semanal do Festival de Fatias", () => {
     );
   });
 
+  it("distingue um dia somente com retirada de uma barraquinha sem cardápio publicado", () => {
+    expect(dialog).toContain(
+      "Neste dia, o atendimento é somente por retirada.",
+    );
+    expect(dialog).toContain(
+      "Escolha suas fatias na opção de retirada acima",
+    );
+    expect(dialog).toContain(
+      'emptyTitle: "O cardápio da barraquinha ainda está ganhando forma."',
+    );
+    expect(dialog).toContain("!channel.active &&");
+  });
+
+  it("diferencia estoque disponível hoje de estoque planejado para datas futuras", () => {
+    expect(dialog).toContain("const isToday = selectedDate === today");
+    expect(dialog).toContain("fatia estará disponível");
+    expect(dialog).toContain("fatias estarão disponíveis");
+    expect(dialog).toContain("Disponibilidade prevista para este dia");
+  });
+
   it("permite planejar data, modalidade, sabor e quantidade na operação", () => {
     expect(admin).toContain("Cardápio por dia e atendimento");
     expect(admin).toContain("quantity_planned");

@@ -12,4 +12,22 @@
 @media(max-width:1050px){.operation-analytics-summary{grid-template-columns:1fr 1fr 1fr}.operation-analytics-summary>div{grid-column:1/-1}.operation-analytics-summary>span{border-top:1px solid rgba(255,255,255,.12)}}
 @media(max-width:620px){.operation-analytics-summary{grid-template-columns:1fr 1fr;margin-top:-10px}.operation-analytics-summary>div{grid-column:1/-1}.operation-request-filters{margin-inline:-2px}.operation-manual-request{padding:18px}.operation-form-actions{grid-template-columns:1fr!important}.operation-drawer-backdrop{background:rgba(31,13,8,.26)}.drawer-cancellation>div{grid-template-columns:1fr}}
 .drawer-cancellation>small{color:#6f655d;font-size:.61rem;line-height:1.45}.drawer-cancellation>small.drawer-cancellation-error{color:#984b46}.drawer-cancellation>div button:disabled{cursor:not-allowed;opacity:.45}
+.drawer-cancellation>.drawer-cancellation-failure{margin:0;border-left:3px solid #984b46;background:#fff0ed;color:#7b342f;padding:10px;font-size:.65rem;font-weight:750;line-height:1.5}
 .operation-request-list>button>b.is-overdue{background:#fff0df;color:#9a552a;box-shadow:inset 0 0 0 1px #edc9a1}
+.operation-crm-cancellation{display:grid;gap:12px;margin-top:4px;padding-top:16px;border-top:1px solid var(--access-line)}
+.operation-crm-cancellation>div:first-child{display:grid;gap:4px}.operation-crm-cancellation strong{font:600 1.08rem Georgia,serif;color:#7f332f}.operation-crm-cancellation small{color:#8e6d63;line-height:1.45}
+.operation-danger-button{min-height:43px;border:1px solid #e7b9b2;border-radius:9px;background:#fff0ed;color:#984b46;padding:0 13px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:.68rem;font-weight:850;cursor:pointer}.operation-danger-button svg{width:16px}.operation-danger-button:disabled{cursor:not-allowed;opacity:.5}
+.operation-crm-cancellation-confirm{display:grid;gap:9px}.operation-crm-cancellation-confirm>div{display:grid;grid-template-columns:1fr 1.35fr;gap:8px}.operation-crm-cancellation-confirm>div>button:not(.operation-danger-button){min-height:43px;border:1px solid var(--access-line);border-radius:9px;background:white;color:var(--access-chocolate);font-size:.68rem;font-weight:800}
+@media(max-width:620px){.operation-crm-cancellation-confirm>div{grid-template-columns:1fr}}
+
+/* Agrupamento semântico da central comercial: reduz a sensação de menus misturados. */
+.operation-commercial-tabs { align-items: flex-end; gap: 14px; padding-top: 8px; }
+.operation-commercial-tabs > div { flex: 0 0 auto; display: grid; gap: 2px; }
+.operation-commercial-tabs > div > small { padding-left: 12px; color: #aa6b5c; font-size: .5rem; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+.operation-commercial-tabs > div > span { display: flex; }
+@media(max-width:620px){
+  .operation-commercial-tabs { align-items: stretch; gap: 8px; padding-bottom: 4px; }
+  .operation-commercial-tabs > div { border-right: 1px solid var(--access-line); padding-right: 8px; }
+  .operation-commercial-tabs > div:last-child { border-right: 0; }
+  .operation-commercial-tabs button { padding-inline: 11px; }
+}

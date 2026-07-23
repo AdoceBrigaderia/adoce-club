@@ -103,7 +103,7 @@
   bottom: -140px;
   width: 510px;
   height: 510px;
-  background: url("/site/hero-cake.webp") center/contain no-repeat;
+  background: var(--adoce-hero-cake-image, url("/site/hero-cake.webp")) center/contain no-repeat;
   filter: drop-shadow(0 28px 35px rgba(0, 0, 0, 0.45));
   opacity: 0.46;
 }
@@ -1425,6 +1425,17 @@
   background: var(--access-cream);
   color: var(--access-chocolate);
 }
+.operation-nav-group {
+  display: block;
+  margin: 20px 12px 7px;
+  color: #b16a5b;
+  font-size: .62rem;
+  font-weight: 850;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.operation-nav-group:first-child { margin-top: 0; }
+.operation-mobile-nav-toggle { display: none !important; }
 .operation-simple-list {
   display: grid;
   margin-top: 30px;
@@ -2055,6 +2066,54 @@
   color: #7e4f2b;
   font-size: 0.78rem;
   line-height: 1.45;
+}
+
+@media (max-width: 620px) {
+  .operation-mobile-nav-toggle { display: flex !important; }
+  .operation-shell > aside {
+    position: fixed;
+    z-index: 40;
+    inset: 70px 0 0 auto;
+    width: min(88vw, 350px);
+    height: calc(100dvh - 70px);
+    padding: 18px 14px 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 0;
+    border-left: 1px solid var(--access-line);
+    box-shadow: -24px 0 60px rgba(58, 22, 15, .18);
+    background: #fffaf4;
+    transform: translateX(105%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform .22s ease;
+  }
+  .operation-shell > aside.is-open { transform: translateX(0); visibility: visible; pointer-events: auto; }
+  .operation-shell > aside .operation-nav-group {
+    display: block;
+    flex: none;
+    margin: 20px 10px 6px;
+  }
+  .operation-shell > aside .operation-nav-group:first-child { margin-top: 0; }
+  .operation-shell > aside button {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 50px;
+    padding: 12px;
+    justify-content: flex-start;
+    flex-direction: row;
+    gap: 10px;
+    font-size: .78rem;
+    text-align: left;
+    border-radius: 10px;
+  }
+  .operation-shell > aside button.active { border-radius: 10px; }
+  .operation-work { padding-bottom: 35px; }
 }
 .install-browser-warning strong,
 .install-browser-warning p {

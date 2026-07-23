@@ -48,7 +48,7 @@ describe("agenda semanal renderizada", () => {
     expect(pickupCard).toBeGreaterThan(-1);
     expect(flavor).toBeGreaterThan(pickupCard);
     expect(stallCard).toBeGreaterThan(flavor);
-    expect(markup).toContain("10 fatias disponíveis");
+    expect(markup).toContain("10 fatias estarão disponíveis");
   });
 
   it("não libera reserva quando há cardápio sem horário confirmado", () => {

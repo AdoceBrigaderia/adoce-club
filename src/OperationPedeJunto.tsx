@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, Check, ChevronRight, Clock3, ExternalLink, MessageCircle, PackageCheck, Printer, RefreshCw, RotateCcw, Users, X } from "lucide-react";
+import { Check, ChevronRight, Clock3, ExternalLink, MessageCircle, PackageCheck, Printer, RefreshCw, Users, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { money } from "./commercial";
 import { operationWhatsAppUrl } from "./operation-whatsapp";
@@ -28,20 +28,21 @@ export default function OperationPedeJunto() {
   const [notice, setNotice] = useState("");
   const [paymentDrafts, setPaymentDrafts] = useState<Record<string, string>>({});
   const [cancelReason, setCancelReason] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
 
   const load = useCallback(async () => {
     setBusy(true);
-    let query = requireSupabase().from("pede_junto_groups").select("*,pede_junto_participants(*,pede_junto_items(*))");
-    query = showArchived ? query.not("archived_at", "is", null) : query.is("archived_at", null);
-    const { data, error } = await query.order("created_at", { ascending: false }).limit(100);
+    const { data, error } = await requireSupabase().from("pede_junto_groups")
+      .select("*,pede_junto_participants(*,pede_junto_items(*))")
+      .is("archived_at", null)
+      .order("created_at", { ascending: false }).limit(100);
     setBusy(false);
     if (error) { setNotice(error.message); return; }
-    const next = (data || []) as unknown as Group[];
+    const next = ((data || []) as unknown as Group[])
+      .filter((group) => !["completed", "cancelled", "expired"].includes(group.status));
     setGroups(next);
     setSelectedId((current) => next.some((group) => group.id === current) ? current : next[0]?.id || "");
     setPaymentDrafts(Object.fromEntries(next.flatMap((group) => group.pede_junto_participants.map((participant) => [participant.id, participant.payment_url || ""]))));
-  }, [showArchived]);
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
   const selected = groups.find((group) => group.id === selectedId) || null;
@@ -81,23 +82,6 @@ export default function OperationPedeJunto() {
     }
   };
 
-  const archiveGroup = async (archive: boolean) => {
-    if (!selected) return;
-    const action = archive ? "arquivar e retirar da lista principal" : "restaurar na lista principal";
-    if (!window.confirm(`Deseja ${action} o grupo “${selected.name}”?`)) return;
-    setBusy(true);
-    const { error } = await requireSupabase().rpc("staff_archive_pede_junto_group", {
-      target_group_id: selected.id,
-      should_archive: archive,
-    });
-    setBusy(false);
-    setNotice(error ? error.message : archive ? "Grupo arquivado. O histórico foi preservado." : "Grupo restaurado na lista principal.");
-    if (!error) {
-      setSelectedId("");
-      await load();
-    }
-  };
-
   const paymentMessage = (participant: Participant) => {
     const url = paymentDrafts[participant.id] || participant.payment_url || "";
     const first = participant.name.split(/\s+/)[0];
@@ -107,7 +91,6 @@ export default function OperationPedeJunto() {
   return <section className="op-pede-junto">
     <header><div><small>Venda compartilhada</small><h2>Pede Junto Adoce</h2><p>A quinta fatia libera a entrega grátis. Depois disso, o grupo continua crescendo sem limite.</p></div><button onClick={() => void load()} disabled={busy}><RefreshCw /> Atualizar</button></header>
     <div className="op-pede-summary"><span><strong>{activeGroups.length}</strong><small>grupos ativos</small></span><span><strong>{activeGroups.reduce((sum, group) => sum + totalSlices(group), 0)}</strong><small>fatias em andamento</small></span><span><strong>{activeGroups.filter((group) => totalSlices(group) >= 5).length}</strong><small>entregas grátis liberadas</small></span></div>
-    <div className="op-pede-view-toggle"><button type="button" className={!showArchived ? "active" : ""} onClick={() => setShowArchived(false)}>Grupos atuais</button><button type="button" className={showArchived ? "active" : ""} onClick={() => setShowArchived(true)}><Archive /> Arquivados</button></div>
     {notice ? <p className="op-pede-notice" role="status">{notice}</p> : null}
     <div className="op-pede-layout">
       <div className="op-pede-list">
@@ -128,7 +111,6 @@ export default function OperationPedeJunto() {
           })}
         </div>
         {! ["completed", "cancelled", "expired"].includes(selected.status) ? <div className="op-pede-group-actions"><strong>Próxima etapa do grupo</strong><div><button disabled={busy} onClick={() => void updateGroup("confirmed")}>Confirmar separação</button><button disabled={busy} onClick={() => void updateGroup("awaiting_payment")}>Aguardar pagamentos</button><button disabled={busy} onClick={() => void updateGroup("preparing")}>Em preparação</button><button disabled={busy} onClick={() => void updateGroup("ready")}>Pronto</button><button className="finish" disabled={busy} onClick={() => void updateGroup("completed")}>Concluir</button></div><label className="op-pede-cancel-reason">Motivo para cancelar o grupo<input value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: pedido de teste ou cliente desistiu" /></label><button className="cancel op-pede-cancel" disabled={busy || cancelReason.trim().length < 5} onClick={() => void updateGroup("cancelled")}><X /> Cancelar e preservar no histórico</button></div> : null}
-        {["completed", "cancelled", "expired"].includes(selected.status) ? <button type="button" className="op-pede-archive" disabled={busy} onClick={() => void archiveGroup(!selected.archived_at)}>{selected.archived_at ? <RotateCcw /> : <Archive />}{selected.archived_at ? "Restaurar na lista principal" : "Arquivar e retirar da lista"}</button> : null}
         <a className="op-pede-contact" href={operationWhatsAppUrl(selected.organizer_phone)} target="_blank" rel="noreferrer"><ExternalLink /> Falar com o organizador no WhatsApp Business</a>
       </article> : <div className="op-pede-empty"><Users /><p>Escolha um grupo para conferir participantes, estoque e pagamentos.</p></div>}
     </div>

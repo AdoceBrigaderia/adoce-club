@@ -21,7 +21,7 @@ describe("caldas individuais no pedido de fatias", () => {
     expect(panel).toContain("Escolha uma opção para cada fatia");
     expect(panel).toContain('<option value="none">Sem calda</option>');
     expect(panel).toContain("Enviar somente as fatias");
-    expect(panel).toContain('rpc("submit_instant_order_v2"');
+    expect(panel).toContain('rpc("submit_instant_order_v5"');
   });
 
   it("oferece cadastro e disponibilidade na operação", () => {

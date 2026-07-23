@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Save,
   Search,
+  Settings2,
   ShoppingCart,
   Trash2,
   Users,
@@ -40,6 +41,8 @@ import CommercialMediaAdmin from "./CommercialMediaAdmin";
 import { normalizeInstagramUrl, type CommercialMediaItem } from "./commercial-media";
 import OperationPedeJunto from "./OperationPedeJunto";
 import OperationInstantOrders from "./OperationInstantOrders";
+import OperationFinance from "./OperationFinance";
+import OperationCommerceSettings from "./OperationCommerceSettings";
 import {
   CommercialEventSubcategory,
   CommercialProduct,
@@ -54,7 +57,18 @@ import "./operation-commercial.css";
 import "./operation-product-options.css";
 import "./operation-media-editor.css";
 
-type AdminTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
+type AdminTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
+const tabPresentation: Record<AdminTab, { eyebrow: string; title: string; description: string }> = {
+  agenda: { eyebrow: "Encomendas & agenda", title: "Agenda operacional", description: "Compromissos, retiradas, produção e bloqueios de horário em uma visão única." },
+  sales: { eyebrow: "Vendas de fatias", title: "Caixa e pedidos", description: "Lance vendas, acompanhe pagamentos, separação, retirada e baixa de estoque." },
+  requests: { eyebrow: "Encomendas", title: "Pedidos e pré-reservas", description: "Acompanhe cada solicitação desde o primeiro contato até a entrega." },
+  pede_junto: { eyebrow: "Venda compartilhada", title: "Pede Junto Adoce", description: "Grupos, participantes, pagamentos individuais e entrega do pedido." },
+  catalog: { eyebrow: "Produtos", title: "Catálogo comercial", description: "Produtos, opções, preços, fotos e informações apresentadas aos clientes." },
+  crm: { eyebrow: "Relacionamento", title: "Clientes de encomendas", description: "Histórico, anotações e próximos contatos ligados às solicitações." },
+  feedback: { eyebrow: "Experiência do cliente", title: "Reclamações e sugestões", description: "Registre, acompanhe e resolva cada retorno recebido pelo site." },
+  finance: { eyebrow: "Gestão financeira", title: "Vendas e recebimentos", description: "Compare faturamento, taxas e valor líquido por período e pagamento." },
+  settings: { eyebrow: "Administração", title: "Configurações comerciais", description: "Defina prazos, regras de reserva, pagamentos e taxas da operação." },
+};
 type RequestStatus =
   | "prebooked"
   | "quoted"
@@ -270,12 +284,21 @@ export default function OperationCommercialAdmin({
   session,
   role,
   initialTab = "agenda",
+  onTabChange,
+  onOpenContent,
 }: {
   session: Session;
   role: string;
   initialTab?: AdminTab;
+  onTabChange?: (tab: AdminTab) => void;
+  onOpenContent?: () => void;
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
+  const presentation = tabPresentation[tab];
+  const changeTab = (next: AdminTab) => {
+    setTab(next);
+    onTabChange?.(next);
+  };
   useEffect(() => setTab(initialTab), [initialTab]);
   const [products, setProducts] = useState<CommercialProduct[]>([]);
   const [productOptions, setProductOptions] = useState<CommercialProductOption[]>([]);
@@ -299,6 +322,7 @@ export default function OperationCommercialAdmin({
   const [showManualRequest, setShowManualRequest] = useState(false);
   const [showCancellation, setShowCancellation] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationError, setCancellationError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [blockForm, setBlockForm] = useState({
@@ -320,6 +344,21 @@ export default function OperationCommercialAdmin({
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState(toLocalInput(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const canManage = role === "owner" || role === "manager";
+
+  const openRequest = (request: ServiceRequest) => {
+    setSelectedRequest(request);
+    setSelectedBlock(null);
+    setShowCancellation(false);
+    setCancellationReason("");
+    setCancellationError("");
+  };
+
+  const closeRequest = () => {
+    setSelectedRequest(null);
+    setShowCancellation(false);
+    setCancellationReason("");
+    setCancellationError("");
+  };
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -769,12 +808,13 @@ export default function OperationCommercialAdmin({
   const cancelRequest = async (request: ServiceRequest) => {
     const reason = cancellationReason.trim();
     if (reason.length < 5) return;
+    setCancellationError("");
     const timestamp = new Intl.DateTimeFormat("pt-BR", {
       dateStyle: "short",
       timeStyle: "short",
       timeZone: "America/Fortaleza",
     }).format(new Date());
-    const internalNotes = [request.internal_notes.trim(), `[Cancelamento em ${timestamp}] ${reason}`]
+    const internalNotes = [(request.internal_notes || "").trim(), `[Cancelamento em ${timestamp}] ${reason}`]
       .filter(Boolean)
       .join("\n\n");
     setBusy(true);
@@ -787,14 +827,20 @@ export default function OperationCommercialAdmin({
     });
     setBusy(false);
     if (error) {
-      setNotice(`Não foi possível cancelar ${request.request_number}: ${error.message}`);
+      const message = `Não foi possível cancelar ${request.request_number}: ${error.message}`;
+      setCancellationError(message);
+      setNotice(message);
       return;
     }
+    setRequests((current) => current.map((item) => item.id === request.id
+      ? { ...item, status: "cancelled", internal_notes: internalNotes }
+      : item));
     setCancellationReason("");
+    setCancellationError("");
     setShowCancellation(false);
     setSelectedRequest(null);
-    setRequestFilter("cancelled");
-    setNotice(`${request.request_number} foi cancelado e movido para o histórico de cancelados.`);
+    setRequestFilter("active");
+    setNotice(`${request.request_number} foi cancelado e movido para Histórico.`);
     await load();
   };
 
@@ -816,23 +862,23 @@ export default function OperationCommercialAdmin({
     <div className="operation-commercial">
       <div className="operation-title">
         <div>
-          <span>Agenda & CRM</span>
-          <h1>Pedidos e eventos</h1>
-          <p>Pré-reservas, encomendas, agenda operacional e relacionamento em um só lugar.</p>
+          <span>{presentation.eyebrow}</span>
+          <h1>{presentation.title}</h1>
+          <p>{presentation.description}</p>
         </div>
         <button className="commercial-refresh" onClick={() => void load()} disabled={busy}>
           <RefreshCw /> Atualizar
         </button>
       </div>
 
-      <div className="operation-commercial-metrics">
+      {(["agenda", "requests", "crm", "feedback"] as AdminTab[]).includes(tab) ? <div className="operation-commercial-metrics">
         <span><strong>{activeRequests.length}</strong><small>pedidos ativos</small></span>
         <span><strong>{requests.filter((item) => item.status === "prebooked").length}</strong><small>pré-reservas</small></span>
         <span><strong>{requests.filter((item) => item.status === "confirmed").length}</strong><small>confirmados</small></span>
         <span><strong>{tasks.filter((item) => item.status === "open" && item.due_at && new Date(item.due_at).getTime() <= now + 24 * 60 * 60 * 1000).length}</strong><small>lembretes em 24h</small></span>
-      </div>
+      </div> : null}
 
-      {canManage ? <section className="operation-analytics-summary" aria-label="Resultados do site nos últimos sete dias">
+      {canManage && (["agenda", "requests", "crm", "feedback"] as AdminTab[]).includes(tab) ? <section className="operation-analytics-summary" aria-label="Resultados do site nos últimos sete dias">
         <div><span>Últimos 7 dias</span><strong>Sinais reais do site</strong><small>Dados anônimos, sem nome, telefone, e-mail ou conteúdo digitado.</small></div>
         <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "page_view").length}</strong><small>páginas vistas</small></span>
         <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "whatsapp_click").length}</strong><small>cliques no WhatsApp</small></span>
@@ -841,13 +887,23 @@ export default function OperationCommercialAdmin({
       </section> : null}
 
       <nav className="operation-commercial-tabs">
-        <button className={tab === "agenda" ? "active" : ""} onClick={() => setTab("agenda")}><CalendarDays /> Agenda</button>
-        <button className={tab === "sales" ? "active" : ""} onClick={() => setTab("sales")}><ShoppingCart /> Vendas</button>
-        <button className={tab === "requests" ? "active" : ""} onClick={() => setTab("requests")}><PackagePlus /> Pedidos</button>
-        <button className={tab === "pede_junto" ? "active" : ""} onClick={() => setTab("pede_junto")}><Users /> Pede Junto</button>
-        <button className={tab === "catalog" ? "active" : ""} onClick={() => setTab("catalog")}><Edit3 /> Catálogo</button>
-        <button className={tab === "crm" ? "active" : ""} onClick={() => setTab("crm")}><Users /> CRM</button>
-        <button className={tab === "feedback" ? "active" : ""} onClick={() => setTab("feedback")}><MessageSquareWarning /> Reclamações</button>
+        <div><small>Vendas</small><span>
+          <button className={tab === "sales" ? "active" : ""} onClick={() => changeTab("sales")}><ShoppingCart /> Fatias</button>
+          <button className={tab === "pede_junto" ? "active" : ""} onClick={() => changeTab("pede_junto")}><Users /> Pede Junto</button>
+        </span></div>
+        <div><small>Encomendas</small><span>
+          <button className={tab === "agenda" ? "active" : ""} onClick={() => changeTab("agenda")}><CalendarDays /> Agenda</button>
+          <button className={tab === "requests" ? "active" : ""} onClick={() => changeTab("requests")}><PackagePlus /> Pedidos</button>
+        </span></div>
+        <div><small>Relacionamento</small><span>
+          <button className={tab === "crm" ? "active" : ""} onClick={() => changeTab("crm")}><Users /> Clientes</button>
+          <button className={tab === "feedback" ? "active" : ""} onClick={() => changeTab("feedback")}><MessageSquareWarning /> Retornos</button>
+        </span></div>
+        <div><small>Gestão</small><span>
+          <button className={tab === "catalog" ? "active" : ""} onClick={() => changeTab("catalog")}><Edit3 /> Produtos</button>
+          <button className={tab === "finance" ? "active" : ""} onClick={() => changeTab("finance")}><CircleDollarSign /> Financeiro</button>
+          <button className={tab === "settings" ? "active" : ""} onClick={() => changeTab("settings")}><Settings2 /> Configurações</button>
+        </span></div>
       </nav>
 
       {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
@@ -878,7 +934,7 @@ export default function OperationCommercialAdmin({
               }))]
                 .sort((a, b) => +new Date(a.starts) - +new Date(b.starts))
                 .map((item) => (
-                  <button key={`${item.request ? "r" : "b"}-${item.id}`} onClick={() => item.request ? setSelectedRequest(item.request) : item.block && setSelectedBlock(item.block)}>
+                  <button key={`${item.request ? "r" : "b"}-${item.id}`} onClick={() => item.request ? openRequest(item.request) : item.block && setSelectedBlock(item.block)}>
                     <CalendarDays />
                     <span><strong>{item.title}</strong><small>{item.subtitle} · {dateTime(item.starts)}</small></span>
                     {item.warning ? <b><AlertTriangle /> {item.warning} concorrente(s)</b> : <em>{statuses[item.status as RequestStatus] || item.status}</em>}
@@ -907,9 +963,6 @@ export default function OperationCommercialAdmin({
                 ["active", "Em andamento"],
                 ["attention", "Precisam de retorno"],
                 ["confirmed", "Confirmados"],
-                ["completed", "Concluídos"],
-                ["cancelled", "Cancelados"],
-                ["all", "Todos"],
               ] as [RequestFilter, string][]).map(([value, label]) => (
                 <button type="button" key={value} className={requestFilter === value ? "active" : ""} onClick={() => setRequestFilter(value)}>
                   {label}
@@ -917,8 +970,8 @@ export default function OperationCommercialAdmin({
               ))}
             </div>
             <div className="operation-request-list">
-              {filteredRequests.map((request) => (
-                <button key={request.id} onClick={() => setSelectedRequest(request)}>
+              {filteredRequests.filter((request) => !["completed", "cancelled", "expired"].includes(request.status)).map((request) => (
+                <button key={request.id} onClick={() => openRequest(request)}>
                   <span><small>{request.request_number}</small><strong>{request.customer_name}</strong><em>{request.commercial_products?.name}</em></span>
                   <span><strong>{dateTime(request.desired_start)}</strong><small>{request.customer_phone}</small></span>
                   <b className={`status-${request.status}${requestIsPastDue(request, now) ? " is-overdue" : ""}`}>{requestIsPastDue(request, now) ? "Prazo vencido" : statuses[request.status]}</b><ArrowRight />
@@ -949,6 +1002,12 @@ export default function OperationCommercialAdmin({
       ) : null}
 
       {tab === "sales" ? <OperationInstantOrders /> : null}
+      {tab === "finance" ? <OperationFinance /> : null}
+      {tab === "settings" ? <OperationCommerceSettings
+        session={session}
+        onOpenFlavorImages={onOpenContent}
+        onOpenProductImages={() => changeTab("catalog")}
+      /> : null}
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
@@ -1233,8 +1292,8 @@ export default function OperationCommercialAdmin({
           <section>
             <form className="operation-commercial-search" onSubmit={(event) => event.preventDefault()}><Search /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Buscar cliente no histórico" /></form>
             <div className="operation-request-list crm">
-              {filteredRequests.map((request) => (
-                <button key={request.id} onClick={() => setSelectedRequest(request)}>
+              {filteredRequests.filter((request) => !["completed", "cancelled", "expired"].includes(request.status)).map((request) => (
+                <button key={request.id} onClick={() => openRequest(request)}>
                   <span><strong>{request.customer_name}</strong><small>{request.customer_phone}</small></span>
                   <span><em>{request.commercial_products?.name}</em><small>{statuses[request.status]}</small></span>
                   <b>{notes.filter((note) => note.service_request_id === request.id).length} nota(s)</b><ArrowRight />
@@ -1254,6 +1313,55 @@ export default function OperationCommercialAdmin({
               </div>
               <form onSubmit={addCrmNote}><label>Nova nota<textarea value={crmText} onChange={(event) => setCrmText(event.target.value)} placeholder="Preferências, contexto do atendimento ou combinado..." /></label><button><NotebookPen /> Registrar nota</button></form>
               <form onSubmit={addCrmTask}><label>Lembrete<input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Ex.: confirmar sinal" /></label><label>Quando<input type="datetime-local" value={taskDue} onChange={(event) => setTaskDue(event.target.value)} /></label><button><Clock3 /> Criar lembrete</button></form>
+              {!['cancelled', 'expired', 'completed'].includes(selectedRequest.status) ? (
+                <section className="operation-crm-cancellation" aria-label="Cancelar solicitação">
+                  <div>
+                    <strong>{selectedRequest.status === "prebooked" ? "Cancelar esta pré-reserva" : "Cancelar esta solicitação"}</strong>
+                    <small>Ela sai dos pedidos ativos, libera a agenda e permanece identificada no histórico.</small>
+                  </div>
+                  {!showCancellation ? (
+                    <button
+                      type="button"
+                      className="operation-danger-button"
+                      onClick={() => {
+                        setCancellationReason("");
+                        setNotice("");
+                        setShowCancellation(true);
+                      }}
+                    >
+                      <Trash2 /> {selectedRequest.status === "prebooked" ? "Cancelar pré-reserva" : "Cancelar solicitação"}
+                    </button>
+                  ) : (
+                    <div className="operation-crm-cancellation-confirm">
+                      <label>
+                        Motivo do cancelamento
+                        <textarea
+                          autoFocus
+                          value={cancellationReason}
+                          onChange={(event) => setCancellationReason(event.target.value)}
+                          placeholder="Ex.: solicitação de teste, cliente desistiu ou cadastro duplicado."
+                        />
+                      </label>
+                      <small className={cancellationReason.trim().length > 0 && cancellationReason.trim().length < 5 ? "drawer-cancellation-error" : ""}>
+                        {cancellationReason.trim().length < 5
+                          ? `Informe pelo menos mais ${5 - cancellationReason.trim().length} caractere(s).`
+                          : "O motivo será preservado no histórico da equipe."}
+                      </small>
+                      <div>
+                        <button type="button" onClick={() => { setShowCancellation(false); setCancellationReason(""); }}>Voltar</button>
+                        <button
+                          type="button"
+                          className="operation-danger-button"
+                          disabled={busy || cancellationReason.trim().length < 5}
+                          onClick={() => void cancelRequest(selectedRequest)}
+                        >
+                          Confirmar cancelamento
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </section>
+              ) : null}
             </> : null}
           </div>
         </div>
@@ -1300,9 +1408,9 @@ export default function OperationCommercialAdmin({
 
       {selectedRequest && tab !== "crm" ? (
         <div className="operation-drawer-layer">
-          <button className="operation-drawer-backdrop" aria-label="Fechar detalhes do pedido" onClick={() => setSelectedRequest(null)} />
+          <button className="operation-drawer-backdrop" aria-label="Fechar detalhes do pedido" onClick={closeRequest} />
           <aside className="operation-request-drawer print-scope" role="dialog" aria-modal="true" aria-label={`Solicitação ${selectedRequest.request_number}`}>
-            <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={() => setSelectedRequest(null)}>×</button>
+            <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={closeRequest}>×</button>
             <small>{selectedRequest.request_number}</small><h2>{selectedRequest.customer_name}</h2>
             <button type="button" className="drawer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
             <p>{selectedRequest.commercial_products?.name} · {dateTime(selectedRequest.desired_start)}</p>
@@ -1332,15 +1440,16 @@ export default function OperationCommercialAdmin({
             </div>
             {canManage && !["completed", "cancelled", "expired"].includes(selectedRequest.status) ? (
               <div className="drawer-cancellation">
-                {!showCancellation ? <button className="cancel" onClick={() => { setCancellationReason(""); setNotice(""); setShowCancellation(true); }}><Trash2 /> Cancelar e retirar da fila</button> : <>
+                {!showCancellation ? <button type="button" className="cancel" onClick={() => { setCancellationReason(""); setCancellationError(""); setNotice(""); setShowCancellation(true); }}><Trash2 /> Cancelar e retirar da fila</button> : <>
                   <label>Motivo do cancelamento<textarea autoFocus value={cancellationReason} aria-describedby="request-cancellation-guidance" onChange={(event) => setCancellationReason(event.target.value)} placeholder="Ex.: cliente desistiu, data indisponível ou solicitação duplicada." /></label>
                   <small id="request-cancellation-guidance" className={cancellationReason.trim().length > 0 && cancellationReason.trim().length < 5 ? "drawer-cancellation-error" : ""}>
                     {cancellationReason.trim().length < 5
                       ? `Conte o motivo em mais ${5 - cancellationReason.trim().length} caractere(s). Assim o histórico fica claro para a equipe.`
                       : "Motivo pronto para ser registrado no histórico."}
                   </small>
+                  {cancellationError ? <p className="drawer-cancellation-failure" role="alert">{cancellationError}</p> : null}
                   <p>O pedido sairá da fila ativa, mas continuará no histórico para consulta.</p>
-                  <div><button onClick={() => { setShowCancellation(false); setCancellationReason(""); }}>Voltar</button><button className="cancel" disabled={busy || cancellationReason.trim().length < 5} onClick={() => void cancelRequest(selectedRequest)}>Confirmar cancelamento</button></div>
+                  <div><button type="button" onClick={() => { setShowCancellation(false); setCancellationReason(""); setCancellationError(""); }}>Voltar</button><button type="button" className="cancel" disabled={busy || cancellationReason.trim().length < 5} onClick={() => void cancelRequest(selectedRequest)}>{busy ? "Cancelando..." : "Confirmar cancelamento"}</button></div>
                 </>}
               </div>
             ) : null}

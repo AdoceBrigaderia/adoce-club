@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import PublicContactDock from "./PublicContactDock";
+import SiteVisualOverrides from "./SiteVisualOverrides";
 import "./styles.css";
 import "./theme.css";
 
@@ -16,8 +17,10 @@ window.addEventListener("vite:preloadError", (event) => {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
-    <PublicContactDock />
+    <SiteVisualOverrides>
+      <App />
+      <PublicContactDock />
+    </SiteVisualOverrides>
   </React.StrictMode>,
 );
 

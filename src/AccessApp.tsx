@@ -12,11 +12,13 @@ import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import QRCode from "qrcode";
 import {
   ArrowRight,
+  Archive,
   CakeSlice,
   CalendarDays,
   Camera,
   Check,
   ClipboardCheck,
+  CircleDollarSign,
   CircleHelp,
   Copy,
   Download,
@@ -24,6 +26,7 @@ import {
   Heart,
   History,
   ImagePlus,
+  LayoutDashboard,
   LogOut,
   Mail,
   KeyRound,
@@ -35,6 +38,7 @@ import {
   RotateCcw,
   Search,
   Settings2,
+  ShoppingCart,
   Share2,
   ShieldCheck,
   SquarePlus,
@@ -81,10 +85,13 @@ import {
 } from "./customer-onboarding";
 import { updateCustomerName } from "./customer-profile-admin";
 import "./access-app.css";
+import "./operation-dashboard.css";
 import "./referral.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
+const OperationArchive = lazy(() => import("./OperationArchive"));
+const OperationDashboard = lazy(() => import("./OperationDashboard"));
 const OperationNotificationCenter = lazy(() => import("./OperationNotificationCenter"));
 const OperationNotificationPreview = lazy(() =>
   import("./OperationNotificationCenter").then((module) => ({
@@ -96,12 +103,24 @@ const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 const passkeysEnabled = import.meta.env.VITE_ENABLE_PASSKEYS === "true";
 const passwordRecoveryStorageKey = "adoce-password-recovery";
+const clubOrderInviteDraftKey = "adoce-club-order-invite";
+
+function readClubOrderInviteDraft() {
+  try {
+    const raw = sessionStorage.getItem(clubOrderInviteDraftKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { name?: string; phone?: string };
+    return { name: parsed.name?.trim() || "", phone: parsed.phone?.trim() || "" };
+  } catch {
+    return null;
+  }
+}
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "attend" | "movements" | "customers" | "orders" | "catalog" | "team" | "content" | "director-plan" | "security";
-type OperationCommercialTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback";
+type OperationView = "dashboard" | "attend" | "movements" | "orders" | "catalog" | "archive" | "team" | "content" | "director-plan" | "security";
+type OperationCommercialTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 
 type NotificationPreferences = {
@@ -584,8 +603,8 @@ export function MemberDemo() {
 }
 
 export function OperationDemo() {
-  const [demoView, setDemoView] = useState<"attend" | "customers" | "products">(
-    "attend",
+  const [demoView, setDemoView] = useState<"dashboard" | "attend" | "products">(
+    "dashboard",
   );
   const demoMembers = [
     { name: "Ana Clara", contact: "(85) 9••••-1024", code: "ADOC 2026 0000 0002" },
@@ -606,35 +625,45 @@ export function OperationDemo() {
       </header>
       <div className="operation-shell">
         <aside>
+          <small className="operation-nav-group">Visão geral</small>
+          <button className={demoView === "dashboard" ? "active" : ""} onClick={() => setDemoView("dashboard")}><LayoutDashboard /> Início da operação</button>
+          <small className="operation-nav-group">Clientes e fidelidade</small>
           <button
             className={demoView === "attend" ? "active" : ""}
             onClick={() => setDemoView("attend")}
           >
-            <Search /> Atender membro
-          </button>
-          <button
-            className={demoView === "customers" ? "active" : ""}
-            onClick={() => setDemoView("customers")}
-          >
-            <Users /> Membros
+            <Search /> Clientes & Clube
           </button>
           <button
             className={demoView === "products" ? "active" : ""}
             onClick={() => setDemoView("products")}
           >
-            <Settings2 /> Cadastro de produtos
+            <Settings2 /> Produtos e disponibilidade
           </button>
         </aside>
         <section className="operation-work">
+          {demoView === "dashboard" && (
+            <section className="operation-dashboard">
+              <header className="operation-dashboard-heading"><div><span>Visão do dia</span><h1>Central da operação</h1><p>Comece pelo que precisa de atenção e chegue a cada tarefa sem procurar em vários menus.</p></div><button><RotateCcw /> Atualizar</button></header>
+              <div className="operation-dashboard-priority"><div><CircleHelp /><span><small>Precisa de atenção</small><strong>3</strong></span></div><p>Confira pagamentos, retiradas e itens com poucas unidades.</p></div>
+              <div className="operation-dashboard-metrics">
+                <button><ShoppingCart /><span><strong>4</strong><small>vendas em andamento</small></span><ArrowRight /></button>
+                <button><CircleDollarSign /><span><strong>2</strong><small>aguardando pagamento</small></span><ArrowRight /></button>
+                <button><CakeSlice /><span><strong>1</strong><small>pronta para retirada</small></span><ArrowRight /></button>
+                <button><CalendarDays /><span><strong>3</strong><small>encomendas ativas</small></span><ArrowRight /></button>
+                <button><Users /><span><strong>128</strong><small>clientes cadastrados</small></span><ArrowRight /></button>
+                <button><CircleHelp /><span><strong>0</strong><small>itens com estoque baixo</small></span><ArrowRight /></button>
+              </div>
+            </section>
+          )}
           {demoView === "attend" && (
             <>
               <div className="operation-title">
                 <div>
-                  <span>Atendimento</span>
-                  <h1>Localizar membro</h1>
+                  <span>Clientes e fidelidade</span>
+                  <h1>Clientes & Clube Adoce</h1>
                   <p>
-                    Leia o QR do Cartão Clube Adoce ou digite nome, telefone,
-                    e-mail ou Código do Membro.
+                    Localize um cliente, leia o QR do cartão ou consulte a lista completa em um só lugar.
                   </p>
                 </div>
                 <div className="operation-role"><Check /> Acesso verificado</div>
@@ -646,17 +675,6 @@ export function OperationDemo() {
                   <button>Buscar</button>
                 </div>
                 <button className="operation-scan-button"><Camera /> Ler QR do membro</button>
-              </div>
-            </>
-          )}
-          {demoView === "customers" && (
-            <>
-              <div className="operation-title">
-                <div>
-                  <span>Relacionamento</span>
-                  <h1>Membros em ordem alfabética</h1>
-                  <p>A lista sempre aparece de A a Z, considerando acentos.</p>
-                </div>
               </div>
               <div className="operation-results">
                 {demoMembers.map((member) => (
@@ -710,6 +728,7 @@ export function OperationDemo() {
 }
 
 function AuthScreen({ surface }: { surface: Surface }) {
+  const clubOrderDraft = useMemo(() => readClubOrderInviteDraft(), []);
   const directParams = useMemo(() => {
     if (!location.hash.startsWith("#acesso-direto?")) return null;
     const params = new URLSearchParams(location.hash.split("?")[1] || "");
@@ -731,9 +750,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const invited =
     surface === "client" &&
     Boolean(rememberReferralInvite() || rememberGroupInvite());
-  const [name, setName] = useState("");
+  const [name, setName] = useState(clubOrderDraft?.name || "");
   const [email, setEmail] = useState(directParams?.email || "");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(clubOrderDraft?.phone || "");
   const [password, setPassword] = useState("");
   const [rememberLogin, setRememberLogin] = useState(true);
   const [loginMode, setLoginMode] = useState<"password" | "email">(
@@ -920,6 +939,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
           return;
         }
         await acceptRememberedReferral();
+        sessionStorage.removeItem(clubOrderInviteDraftKey);
         window.dispatchEvent(new Event("adoce-profile-ready"));
         location.hash = "minha-conta";
         return;
@@ -946,6 +966,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
         return;
       }
       await acceptRememberedReferral();
+      sessionStorage.removeItem(clubOrderInviteDraftKey);
       window.dispatchEvent(new Event("adoce-profile-ready"));
       location.hash = "minha-conta";
     } catch (error) {
@@ -2556,11 +2577,13 @@ function OperationHome({ session }: { session: Session }) {
       ? "director-plan"
       : location.hash.includes("catalogo")
         ? "catalog"
-        : location.hash.includes("vendas") || location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes")
+        : location.hash.includes("historico")
+          ? "archive"
+        : location.hash.includes("vendas") || location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes") || location.hash.includes("agenda") || location.hash.includes("financeiro") || location.hash.includes("configuracoes") || location.hash.includes("operacao-clientes")
           ? "orders"
           : location.hash.includes("membros")
-            ? "customers"
-        : "attend",
+            ? "attend"
+        : "dashboard",
   );
   const [commercialTab, setCommercialTab] = useState<OperationCommercialTab>(() =>
     location.hash.includes("vendas")
@@ -2569,9 +2592,15 @@ function OperationHome({ session }: { session: Session }) {
       ? "pede_junto"
       : location.hash.includes("reclamacoes")
         ? "feedback"
+        : location.hash.includes("operacao-clientes")
+          ? "crm"
         : location.hash.includes("pedidos")
           ? "requests"
-          : "agenda",
+          : location.hash.includes("financeiro")
+            ? "finance"
+            : location.hash.includes("configuracoes")
+              ? "settings"
+              : "agenda",
   );
   const [movements, setMovements] = useState<Movement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
@@ -2579,6 +2608,7 @@ function OperationHome({ session }: { session: Session }) {
   const [scannerStarting, setScannerStarting] = useState(false);
   const [manualQr, setManualQr] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerControls = useRef<IScannerControls | null>(null);
   const scanHandled = useRef(false);
@@ -2622,7 +2652,7 @@ function OperationHome({ session }: { session: Session }) {
       }
       const staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
       const customers = [...(profiles || [])]
-        .filter((profile) => !staffIds.has(profile.id) && profile.account_status !== "anonymized");
+        .filter((profile) => !staffIds.has(profile.id));
       setMemberCounts({
         total: customers.length,
         active: customers.filter((profile) => profile.account_status === "active").length,
@@ -2630,6 +2660,7 @@ function OperationHome({ session }: { session: Session }) {
         pending: customers.filter((profile) => profile.account_status === "pending_deletion").length,
       });
       const matched = customers
+        .filter((profile) => ["active", "pending_deletion"].includes(profile.account_status))
         .filter((profile) => matchesCustomerSearch(profile, term))
         .sort((a, b) =>
           a.full_name.localeCompare(b.full_name, "pt-BR", {
@@ -2891,19 +2922,22 @@ function OperationHome({ session }: { session: Session }) {
     if (selected) await openCustomer(selected);
   };
   const openView = async (next: OperationView) => {
+    setMobileNavOpen(false);
     setView(next);
     window.history.replaceState(
       null,
       "",
       next === "catalog"
         ? "#operacao-catalogo"
+        : next === "archive"
+          ? "#operacao-historico"
         : next === "director-plan"
           ? "#operacao-plano-diretor"
           : "#operacao",
     );
     setSelected(null);
     setMessage("");
-    if (next === "customers") await search("");
+    if (next === "attend") await search("");
     if (next === "movements") {
       const supabase = requireSupabase();
       const { data, error } = await supabase
@@ -2986,13 +3020,32 @@ function OperationHome({ session }: { session: Session }) {
       setCommercialTab("requests");
       setView("orders");
     } else if (actionUrl.includes("membros")) {
-      setView("customers");
+      setView("attend");
       void search("");
     }
     window.history.replaceState(null, "", actionUrl || "#operacao");
     setSelected(null);
     setMessage("");
   }, [search]);
+  const openCommercial = useCallback((tab: OperationCommercialTab) => {
+    setMobileNavOpen(false);
+    setCommercialTab(tab);
+    setView("orders");
+    const hashes: Record<OperationCommercialTab, string> = {
+      agenda: "#operacao-agenda",
+      sales: "#operacao-vendas",
+      requests: "#operacao-pedidos",
+      pede_junto: "#operacao-pede-junto",
+      catalog: "#operacao-catalogo-comercial",
+      crm: "#operacao-clientes",
+      feedback: "#operacao-reclamacoes",
+      finance: "#operacao-financeiro",
+      settings: "#operacao-configuracoes",
+    };
+    window.history.replaceState(null, "", hashes[tab]);
+    setSelected(null);
+    setMessage("");
+  }, []);
   const purchase = async () => {
     if (!selected) return;
     const total = selected.current_progress + qty;
@@ -3134,6 +3187,9 @@ function OperationHome({ session }: { session: Session }) {
           <Suspense fallback={null}>
             <OperationNotificationCenter session={session} onNavigate={openNotificationTarget} />
           </Suspense>
+          <button className="operation-mobile-nav-toggle" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Abrir menu da operação" aria-expanded={mobileNavOpen}>
+            {mobileNavOpen ? <X /> : <MoreHorizontal />}
+          </button>
           <button onClick={() => setInstallGuideOpen(true)}>
             <Download /> Instalar
           </button>
@@ -3143,39 +3199,92 @@ function OperationHome({ session }: { session: Session }) {
         </div>
       </header>
       <div className="operation-shell">
-        <aside>
+        <aside className={mobileNavOpen ? "is-open" : ""}>
+          <small className="operation-nav-group">Visão geral</small>
+          <button
+            className={view === "dashboard" ? "active" : ""}
+            onClick={() => void openView("dashboard")}
+          >
+            <LayoutDashboard /> Início da operação
+          </button>
+          <small className="operation-nav-group">Clientes e fidelidade</small>
           <button
             className={view === "attend" ? "active" : ""}
             onClick={() => void openView("attend")}
           >
-            <Search /> Atender membro
+            <Search /> Clientes & Clube
           </button>
           <button
             className={view === "movements" ? "active" : ""}
             onClick={() => void openView("movements")}
           >
-            <History /> Movimentações
+            <History /> Histórico do Clube
           </button>
-          <button
-            className={view === "customers" ? "active" : ""}
-            onClick={() => void openView("customers")}
-          >
-            <Users /> Membros
-          </button>
+          <small className="operation-nav-group">Vendas</small>
           {(role === "owner" || role === "manager") && (
             <button
-              className={view === "orders" ? "active" : ""}
-              onClick={() => void openView("orders")}
+              className={view === "orders" && commercialTab === "sales" ? "active" : ""}
+              onClick={() => openCommercial("sales")}
             >
-              <CalendarDays /> Pedidos & Agenda
+              <ShoppingCart /> Caixa e pedidos de fatias
             </button>
           )}
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "orders" && (commercialTab === "agenda" || commercialTab === "requests") ? "active" : ""}
+              onClick={() => openCommercial("agenda")}
+            >
+              <CalendarDays /> Encomendas e agenda
+            </button>
+          )}
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "orders" && commercialTab === "pede_junto" ? "active" : ""}
+              onClick={() => openCommercial("pede_junto")}
+            >
+              <Users /> Pede Junto Adoce
+            </button>
+          )}
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "orders" && commercialTab === "finance" ? "active" : ""}
+              onClick={() => openCommercial("finance")}
+            >
+              <CircleDollarSign /> Financeiro
+            </button>
+          )}
+          <small className="operation-nav-group">Produtos e disponibilidade</small>
           {(role === "owner" || role === "manager") && (
             <button
               className={view === "catalog" ? "active" : ""}
               onClick={() => void openView("catalog")}
             >
-              <Settings2 /> Catálogo & Mídias
+              <Settings2 /> Produtos e serviços
+            </button>
+          )}
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "content" ? "active" : ""}
+              onClick={() => void openView("content")}
+            >
+              <Settings2 /> Disponibilidade, horários e site
+            </button>
+          )}
+          <small className="operation-nav-group">Administração</small>
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "orders" && commercialTab === "settings" ? "active" : ""}
+              onClick={() => openCommercial("settings")}
+            >
+              <Settings2 /> Configurações globais
+            </button>
+          )}
+          {(role === "owner" || role === "manager") && (
+            <button
+              className={view === "archive" ? "active" : ""}
+              onClick={() => void openView("archive")}
+            >
+              <Archive /> Histórico e arquivados
             </button>
           )}
           <button
@@ -3184,14 +3293,6 @@ function OperationHome({ session }: { session: Session }) {
           >
             <ShieldCheck /> Equipe
           </button>
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "content" ? "active" : ""}
-              onClick={() => void openView("content")}
-            >
-              <Settings2 /> Administrar Adoce
-            </button>
-          )}
           {role === "owner" && (
             <button
               className={view === "director-plan" ? "active" : ""}
@@ -3210,20 +3311,42 @@ function OperationHome({ session }: { session: Session }) {
           )}
         </aside>
         <section className="operation-work">
+          {view === "dashboard" && (
+            <Suspense fallback={<p>Carregando visão da operação…</p>}>
+              <OperationDashboard
+                onNavigate={(destination) => {
+                  if (destination === "customers") {
+                    void openView("attend");
+                    return;
+                  }
+                  if (destination === "catalog") {
+                    void openView("catalog");
+                    return;
+                  }
+                  openCommercial(destination);
+                }}
+              />
+            </Suspense>
+          )}
           {view === "attend" && (
             <>
               <div className="operation-title">
                 <div>
-                  <span>Atendimento</span>
-                  <h1>Localizar membro</h1>
+                  <span>Clientes e fidelidade</span>
+                  <h1>Clientes & Clube Adoce</h1>
                   <p>
-                    Leia o QR do Cartão Clube Adoce ou digite nome, telefone,
-                    e-mail ou Código do Membro.
+                    Localize um cliente, leia o QR do cartão ou consulte a lista completa em um só lugar.
                   </p>
                 </div>
                 <div className="operation-role">
                   <Check /> Acesso verificado
                 </div>
+              </div>
+              <div className="operation-member-counts" aria-label="Quantidade de clientes cadastrados">
+                <strong><b>{memberCounts.total}</b><span>clientes cadastrados</span></strong>
+                <span><b>{memberCounts.active}</b> ativos</span>
+                <span><b>{memberCounts.deactivated}</b> desativados</span>
+                <span><b>{memberCounts.pending}</b> aguardando análise</span>
               </div>
               <div className="operation-search-row">
                 <form
@@ -3528,39 +3651,6 @@ function OperationHome({ session }: { session: Session }) {
               )}
             </>
           )}
-          {view === "customers" && (
-            <>
-              <div className="operation-title">
-                <div>
-                  <span>Relacionamento</span>
-                  <h1>Membros</h1>
-                  <p>Lista das contas cadastradas no Clube Adoce.</p>
-                </div>
-              </div>
-              <div className="operation-member-counts" aria-label="Quantidade de membros cadastrados">
-                <strong><b>{memberCounts.total}</b><span>clientes cadastrados</span></strong>
-                <span><b>{memberCounts.active}</b> ativos</span>
-                <span><b>{memberCounts.deactivated}</b> desativados</span>
-                <span><b>{memberCounts.pending}</b> aguardando decisão da Adoce</span>
-              </div>
-              <form
-                className="operation-search"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void search();
-                }}
-              >
-                <Search />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Filtrar membros"
-                />
-                <button disabled={busy}>Filtrar</button>
-              </form>
-              {customerList}
-            </>
-          )}
           {view === "movements" && (
             <>
               <div className="operation-title">
@@ -3644,12 +3734,28 @@ function OperationHome({ session }: { session: Session }) {
           )}
           {view === "orders" && (role === "owner" || role === "manager") && (
             <Suspense fallback={<p>Carregando agenda e CRM...</p>}>
-              <OperationCommercialAdmin session={session} role={role} initialTab={commercialTab} />
+              <OperationCommercialAdmin
+                session={session}
+                role={role}
+                initialTab={commercialTab}
+                onTabChange={setCommercialTab}
+                onOpenContent={() => void openView("content")}
+              />
             </Suspense>
           )}
           {view === "catalog" && (role === "owner" || role === "manager") && (
             <Suspense fallback={<p>Carregando catálogo e mídias...</p>}>
-              <OperationCommercialAdmin session={session} role={role} initialTab="catalog" />
+              <OperationCommercialAdmin
+                session={session}
+                role={role}
+                initialTab="catalog"
+                onOpenContent={() => void openView("content")}
+              />
+            </Suspense>
+          )}
+          {view === "archive" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando histórico...</p>}>
+              <OperationArchive />
             </Suspense>
           )}
           {view === "security" && role === "owner" && (

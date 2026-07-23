@@ -1,43 +1,64 @@
-# Adoce Fidelidade
+# Portal Adoce
 
-MVP funcional e responsivo do programa de fidelidade da Adoce Brigaderia. Inclui adesão pública, cartão web com QR pessoal, atendimento, painel administrativo, livro de movimentações no cliente, regras de saldo testadas, adaptadores de carteira em modo demonstração e geração determinística dos 15 estados visuais.
+Portal público, Clube Adoce e sistema interno da Adoce Brigaderia. O projeto deixou de ser um protótipo local: utiliza React e TypeScript no frontend, Supabase para dados, autenticação e mídias, e Netlify para hospedagem e funções de servidor.
+
+## Leia antes de trabalhar
+
+1. `AGENTS.md` contém os limites e o método obrigatório de trabalho.
+2. `docs/documentation-manifest.json` define quais documentos são oficiais.
+3. `docs/clube-adoce-documentacao.html` reúne a documentação em um único arquivo offline.
+
+Não use um texto documental como prova de que um fluxo funciona. Confira código, banco, interface e comportamento real.
+
+## Superfícies do produto
+
+- `/#inicio`: vitrine e entrada pública da Adoce.
+- `/#adoce-hoje`: sabores, disponibilidade, agenda e pedidos imediatos.
+- `/#entrar`: acesso do cliente ao Clube Adoce.
+- `/#operacao`: ambiente exclusivo da equipe.
+
+As áreas públicas e internas devem permanecer separadas em rotas, textos, componentes, dados e permissões.
 
 ## Executar localmente
 
 ```bash
 npm install
-npm run generate:assets
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. Atalhos de demonstração:
+O servidor do Vite aceita acesso pela rede local. O endereço exato é informado no terminal.
 
-- `/#card-demo`: cartão com recompensa liberada;
-- `/#staff`: atendimento (busque por “Rubens”);
-- `/#admin`: painel administrativo.
+Variáveis necessárias são documentadas em `.env.example`. Segredos de servidor nunca devem usar o prefixo `VITE_`.
 
-Para validar: `npm test` e `npm run build`. Com Docker: `docker compose up --build` e acesse `http://localhost:8080`.
+## Validação
 
-## Regras implementadas
+```bash
+npm test
+npm run lint
+npm run build
+npm run release:check
+```
 
-- Cada fatia elegível adiciona um carimbo.
-- Recompensas são `floor(saldo / 14)`.
-- Cada resgate desconta exatamente 14, sem zerar excedentes.
-- A mesma chave de idempotência não movimenta duas vezes.
-- Movimentações preservam saldo anterior/posterior e não são editadas.
-- QR contém token aleatório, nunca dados pessoais ou saldo.
-- Consentimento do programa e marketing são separados.
+`release:check` é o portão obrigatório antes de homologação ou produção. Além dos testes automáticos, mudanças visuais precisam de conferência real em computador, celular e, quando envolverem a operação, tablet.
 
-## Arquitetura
+## Publicação
 
-O protótipo local usa React + TypeScript e `localStorage` para ser executável sem infraestrutura ou credenciais. O domínio em `src/domain.ts` não depende da interface e está pronto para migração a uma API transacional. O modelo de produção recomendado, contrato de API e estratégia de carteiras estão em `docs/architecture.md`.
+```bash
+npm run release:preview
+npm run release:prod
+```
 
-Apple Wallet e Google Wallet iniciam explicitamente em modo mock. Publicação real exige credenciais, certificados, domínio HTTPS e aprovação dos emissores; a interface não declara publicação real.
+- Use a prévia somente quando a validação exigir outro aparelho ou acesso remoto.
+- Publique em produção apenas com autorização explícita.
+- Depois do deploy, confira o domínio oficial e os fluxos críticos sem gerar uma nova publicação.
 
-## Dados de demonstração
+## Banco e mídias
 
-O seed local cria quatro clientes Rubens com saldos 0, 8, 13 e 14. Os telefones são deliberadamente fictícios e locais ao navegador. Limpe o armazenamento do site para recriar o seed.
+- Migrações versionadas ficam em `supabase/migrations`.
+- Tabelas expostas exigem RLS e permissões mínimas.
+- Arquivos enviados pela operação usam o bucket `adoce-media`.
+- Imagens de sabores, produtos, categorias, galerias e elementos institucionais possuem editores administrativos próprios.
 
-## Segurança e privacidade
+## Estado do produto
 
-Não há segredos no repositório. `.env.example` documenta os grupos de configuração. Em produção, sessão de equipe, controle OWNER/MANAGER/ATTENDANT, rate limit, CSRF, CSP, logs mascarados e bloqueio transacional precisam ser aplicados no backend conforme `docs/architecture.md`.
+O estado confirmado e as pendências ficam em `docs/07-status-publicacao.md`. Entradas históricas não substituem uma nova validação. Ao relatar uma entrega, diferencie claramente implementação, teste automático, inspeção visual e confirmação em produção.

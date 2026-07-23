@@ -10,7 +10,7 @@ const accountActionSource = readFileSync(
 describe("administração segura de membros", () => {
   it("oferece exclusão imediata e não mostra cadastros anonimizados", () => {
     expect(operationSource).toContain('value="delete_account"');
-    expect(operationSource).toContain('profile.account_status !== "anonymized"');
+    expect(operationSource).toContain('["active", "pending_deletion"].includes(profile.account_status)');
     expect(operationSource).toContain("clientes cadastrados");
   });
 

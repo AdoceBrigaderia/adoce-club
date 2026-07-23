@@ -231,6 +231,7 @@ export default function WeeklyScheduleDialog({
     );
 
   const renderFlavorList = (channel: ScheduleChannel, channelActive: boolean) => {
+    const isToday = selectedDate === today;
     const channelItems = selectedItems.filter(
       (item) => item.channel_slug === channel,
     );
@@ -256,10 +257,16 @@ export default function WeeklyScheduleDialog({
                 <strong>{item.flavor!.name}</strong>
                 <small>
                   {soldOut
-                    ? "Esse sabor já foi muito amado e esgotou"
+                    ? isToday
+                      ? "Esse sabor já foi muito amado e esgotou"
+                      : "Esse sabor já está esgotado para este dia"
                     : available === null
-                      ? "Disponibilidade confirmada pela Adoce"
-                      : `${available} ${available === 1 ? "fatia disponível" : "fatias disponíveis"}`}
+                      ? isToday
+                        ? "Disponibilidade confirmada pela Adoce"
+                        : "Disponibilidade prevista para este dia"
+                      : isToday
+                        ? `${available} ${available === 1 ? "fatia disponível" : "fatias disponíveis"}`
+                        : `${available} ${available === 1 ? "fatia estará disponível" : "fatias estarão disponíveis"}`}
                 </small>
               </div>
               {!soldOut && channelActive ? (
@@ -406,6 +413,24 @@ export default function WeeklyScheduleDialog({
             {channels.map((channel) => {
               const ChannelIcon = channel.icon;
               const flavorList = renderFlavorList(channel.slug, channel.active);
+              const isPickupOnlyDay =
+                channel.slug === "in_person" &&
+                !channel.active &&
+                selectedDay.hasPickup;
+              const isNoServiceDay =
+                channel.slug === "in_person" &&
+                !channel.active &&
+                !selectedDay.hasPickup;
+              const emptyTitle = isPickupOnlyDay
+                ? "Neste dia, o atendimento é somente por retirada."
+                : isNoServiceDay
+                  ? "Neste dia, a barraquinha descansa."
+                  : channel.emptyTitle;
+              const emptyText = isPickupOnlyDay
+                ? "Escolha suas fatias na opção de retirada acima e combine com a Adoce o melhor horário para buscar."
+                : isNoServiceDay
+                  ? "Veja os outros dias da semana para escolher quando encontrar a Adoce."
+                  : channel.emptyText;
               return (
                 <article
                   className={`weekly-channel-card ${channel.slug}`}
@@ -442,8 +467,8 @@ export default function WeeklyScheduleDialog({
                   {flavorList || (
                     <div className="weekly-menu-pending">
                       <Heart />
-                      <strong>{channel.emptyTitle}</strong>
-                      <p>{channel.emptyText}</p>
+                      <strong>{emptyTitle}</strong>
+                      <p>{emptyText}</p>
                       {channel.slug === "online_orders" ? (
                         <a href={onlineLink} target="_blank" rel="noreferrer">
                           <MessageCircle /> Consultar retirada
