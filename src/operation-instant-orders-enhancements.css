@@ -40,6 +40,21 @@
 .instant-order-operation-items > span > span { display: grid; gap: 3px; }
 .instant-order-operation-items > span > span small { color: #8f7066; line-height: 1.4; }
 .instant-order-operation-actions button.payment-send { background: #168b55; }
+.instant-order-operation-actions button.direct-finish { grid-column: 1 / -1; background: #3f241b; color: #fff; }
+.instant-order-direct-finish { display: grid; gap: 12px; padding: 16px; border: 1px solid #d9b78e; border-radius: 15px; background: #fff8e9; }
+.instant-order-direct-finish > small { color: #a25d20; text-transform: uppercase; letter-spacing: .12em; font-weight: 900; }
+.instant-order-direct-finish h3 { margin: 0; font: 700 1.45rem Georgia, serif; color: #3a170f; }
+.instant-order-direct-finish p { margin: 0; line-height: 1.45; }
+.instant-order-direct-finish select { width: 100%; min-height: 45px; padding: 10px 12px; border: 1px solid #dfbd90; border-radius: 10px; background: #fff; color: #3a170f; font: inherit; }
+.instant-order-direct-summary { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border-radius: 11px; background: #edf6ef; color: #315f42; }
+.instant-order-direct-summary > svg { width: 20px; flex: 0 0 auto; }
+.instant-order-direct-summary > span { display: grid; gap: 3px; }
+.instant-order-direct-summary small { color: #547561; line-height: 1.4; }
+.instant-order-direct-finish > div:last-child { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.instant-order-direct-finish > div:last-child button { min-height: 44px; padding: 9px 12px; border: 0; border-radius: 10px; background: #4c7d5d; color: #fff; font-weight: 900; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.instant-order-direct-finish > div:last-child button.secondary { border: 1px solid #d9b78e; background: #fff; color: #6b493e; }
+.instant-order-direct-finish > div:last-child button:disabled { opacity: .5; }
+.instant-order-direct-finish > div:last-child svg { width: 17px; }
 .payment-link-help { display: block; margin-top: 5px; color: #80655c; font-size: .7rem; line-height: 1.35; }
 
 .instant-order-loyalty {
@@ -135,4 +150,5 @@
     font-size: .5rem;
     overflow-wrap: anywhere;
   }
+  .instant-order-direct-finish > div:last-child { grid-template-columns: 1fr; }
 }

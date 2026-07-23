@@ -86,6 +86,7 @@ export default function OperationInstantOrders() {
   const [loyalty, setLoyalty] = useState<LoyaltyContext | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [recoveryMethod, setRecoveryMethod] = useState("pix");
+  const [directFinishOpen, setDirectFinishOpen] = useState(false);
   const [view, setView] = useState<"active" | "expired">("active");
 
   const load = useCallback(async () => {
@@ -173,6 +174,7 @@ export default function OperationInstantOrders() {
     setRewardFlavorId(order.instant_order_items.find((item) => item.is_reward)?.flavor_id || "");
     setLoyalty(null);
     setNotice("");
+    setDirectFinishOpen(false);
     void loadLoyalty(order.id);
   };
 
@@ -336,6 +338,26 @@ export default function OperationInstantOrders() {
     setSelected(null); await load();
   };
 
+  const finalizeDirectly = async () => {
+    if (!selected) return;
+    if (!recoveryMethod) return setNotice("Escolha como esta venda foi paga.");
+    const order = selected;
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc("staff_finalize_instant_order_direct", {
+      target_order_id: order.id,
+      requested_payment_method: recoveryMethod,
+      next_internal_notes: internalNotes || null,
+    });
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    const stampsAdded = Number(data?.stamps_added || 0);
+    const rewardRedeemed = Boolean(data?.reward_redeemed);
+    setNotice(`${order.order_number} foi finalizado. Pagamento, estoque e financeiro foram atualizados.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}`);
+    setDirectFinishOpen(false);
+    setSelected(null);
+    await load();
+  };
+
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
     return orders
@@ -427,6 +449,25 @@ export default function OperationInstantOrders() {
           <label>Forma de pagamento<select value={recoveryMethod} onChange={(event) => setRecoveryMethod(event.target.value)}>{paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.label}</option>)}</select></label>
           <div className="expired-recovery-actions"><button onClick={() => void reopenExpired()} disabled={busy}>Reabrir e continuar atendimento</button><button onClick={() => void finalizeExpired(false)} disabled={busy}>Registrar como pago e entregue</button><button onClick={() => { if (window.confirm("Use esta opção somente se a venda realmente aconteceu. O estoque será conciliado e o ajuste ficará registrado.")) void finalizeExpired(true); }} disabled={busy}>Concluir com ajuste de estoque</button></div>
         </section> : null}
+        {directFinishOpen && !["completed", "cancelled", "expired"].includes(selected.status) ? <section className="instant-order-direct-finish">
+          <small>Venda concluída fora do site</small>
+          <h3>Finalizar sem enviar cobrança</h3>
+          <p>Use quando pagamento, separação e entrega já foram resolvidos pelo WhatsApp ou no atendimento.</p>
+          <label>Como a cliente pagou?
+            <select value={recoveryMethod} onChange={(event) => setRecoveryMethod(event.target.value)}>
+              <option value="">Escolha a forma de pagamento</option>
+              {paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.label}</option>)}
+            </select>
+          </label>
+          <div className="instant-order-direct-summary">
+            <Check />
+            <span><strong>Tudo será registrado de uma vez</strong><small>Pagamento, baixa do estoque, financeiro, Clube Adoce e conclusão do pedido.</small></span>
+          </div>
+          <div>
+            <button type="button" className="secondary" onClick={() => setDirectFinishOpen(false)} disabled={busy}>Voltar</button>
+            <button type="button" onClick={() => void finalizeDirectly()} disabled={busy || !recoveryMethod}><Check /> Confirmar pagamento e finalizar</button>
+          </div>
+        </section> : null}
         <label>Link de pagamento<input type="text" value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Cole o link ou a mensagem copiada do Mercado Pago" /><small className="payment-link-help">Pode colar a mensagem inteira. A operação localizará e enviará somente o link.</small></label>
         <label>Anotações internas<textarea value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} /></label>
         <div className="instant-order-operation-actions">
@@ -436,6 +477,7 @@ export default function OperationInstantOrders() {
           {selected.status === "paid" ? <button onClick={() => void updateAndNotify("preparing", (order) => `Olá, ${order.customer_name.split(/\s+/)[0]}! 💗 O pagamento do pedido ${order.order_number} foi confirmado e suas fatias já estão em separação. Avisaremos assim que estiver tudo pronto.`)} disabled={busy}><PackageCheck /> Iniciar separação e avisar</button> : null}
           {selected.status === "preparing" ? <button onClick={() => void updateAndNotify("ready", (order) => `Olá, ${order.customer_name.split(/\s+/)[0]}! Seu pedido ${order.order_number} está separado e pronto para retirada. 📍 ${order.pickup_label}: ${order.pickup_address}`)} disabled={busy}><PackageCheck /> Pedido pronto e avisar retirada</button> : null}
           {selected.status === "ready" ? <button onClick={() => void update("completed")} disabled={busy}><Check /> Marcar como entregue</button> : null}
+          {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="direct-finish" onClick={() => setDirectFinishOpen(true)} disabled={busy}><Check /> Registrar como pago e finalizar</button> : null}
           {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="cancel" onClick={() => { const reason = window.prompt("Informe ao menos 5 caracteres explicando o cancelamento:")?.trim() || ""; if (reason.length >= 5) void update("cancelled", reason); }} disabled={busy}><X /> Cancelar pedido</button> : null}
         </div>
         <a href={operationWhatsAppUrl(selected.customer_phone, `Olá, ${selected.customer_name.split(" ")[0]}! Estamos falando sobre o pedido ${selected.order_number} da Adoce.`)} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente no WhatsApp Business</a>
