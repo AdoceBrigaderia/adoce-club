@@ -8,6 +8,7 @@ const migration = readFileSync(
 const publicPanel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
 const operationQueue = readFileSync(new URL("./OperationInstantOrders.tsx", import.meta.url), "utf8");
 const accessApp = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
+const styles = readFileSync(new URL("./operation-instant-orders-enhancements.css", import.meta.url), "utf8");
 
 describe("fundação segura dos pedidos imediatos", () => {
   it("mantém o pagamento automático desligado e a regra preparada para quatro fatias", () => {
@@ -36,6 +37,8 @@ describe("fundação segura dos pedidos imediatos", () => {
     expect(operationQueue).toContain("Pagamento recebido: iniciar separação e avisar");
     expect(operationQueue).toContain("Confirmamos a disponibilidade e reservamos as fatias");
     expect(operationQueue).toContain("instant-order-status-track");
+    expect(styles).toContain("grid-template-columns: repeat(5, minmax(0, 1fr))");
+    expect(styles).toContain("overflow: visible");
     expect(operationQueue).toContain("Marcar como entregue");
     expect(accessApp).toContain('location.hash.includes("vendas")');
   });

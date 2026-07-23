@@ -122,5 +122,17 @@
   .instant-order-sauce-new { grid-template-columns: 1fr; }
   .instant-order-sauce-new button { min-height: 42px; justify-content: center; }
   .instant-order-sauce-options label { width: 100%; }
-  .instant-order-status-track { overflow-x: auto; grid-template-columns: repeat(5, 78px); justify-content: start; padding: 5px 1px 9px; }
+  .instant-order-status-track {
+    width: 100%;
+    min-height: 62px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    padding: 5px 0 9px;
+    overflow: visible;
+  }
+  .instant-order-status-track li { min-width: 0; }
+  .instant-order-status-track small {
+    max-width: 100%;
+    font-size: .5rem;
+    overflow-wrap: anywhere;
+  }
 }

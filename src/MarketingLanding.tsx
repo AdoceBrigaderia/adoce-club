@@ -2,11 +2,9 @@ import {
   ArrowRight,
   CakeSlice,
   CalendarDays,
-  Gift,
   Heart,
   MapPin,
   MessageCircle,
-  School,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -21,7 +19,6 @@ const paths = [
     text: "Veja sabores, fotos, disponibilidade e horários antes de sair de casa.",
     href: "/#adoce-hoje",
     action: "Ver as fatias de hoje",
-    icon: CakeSlice,
     image: "/adoce-hoje/chocolatudo.webp",
     className: "today",
   },
@@ -30,7 +27,6 @@ const paths = [
     text: "Monte sua encomenda com tamanhos, recheios, adicionais e valores atualizados.",
     href: "/#encomendas",
     action: "Conhecer encomendas",
-    icon: Gift,
     image: "/adoce-hoje/docinhos-tradicionais.webp",
     className: "orders",
   },
@@ -39,7 +35,6 @@ const paths = [
     text: "Tabuleiro de Doces e experiências conduzidas pela Adoce para servir e encantar.",
     href: "/#eventos",
     action: "Planejar uma celebração",
-    icon: Sparkles,
     image: "/adoce-hoje/festas-eventos.webp",
     className: "events",
   },
@@ -48,7 +43,6 @@ const paths = [
     text: "Pacotes pensados para comemorar na escola com organização e antecedência.",
     href: "/#adoce-na-escola",
     action: "Conhecer os pacotes",
-    icon: School,
     image: "/adoce-hoje/adoce-na-escola.webp",
     className: "school",
   },
@@ -57,7 +51,6 @@ const paths = [
     text: "Cada pessoa escolhe e paga a sua. Com cinco fatias no mesmo endereço, a entrega é grátis — e o grupo pode continuar crescendo.",
     href: "/#pede-junto",
     action: "Abrir meu Pede Junto",
-    icon: Users,
     image: "/site/pede-junto-pacotes.webp",
     className: "group",
   },
@@ -66,7 +59,6 @@ const paths = [
     text: "Cartão digital, QR, carimbos, fatia grátis e doçura compartilhada.",
     href: "/#clube",
     action: "Ver o Clube por dentro",
-    icon: Heart,
     image: "/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78",
     className: "club",
   },
@@ -75,7 +67,6 @@ const paths = [
     text: "Painéis, cilindros, boleiras e kits para montar uma comemoração bonita do seu jeito.",
     href: "/#aluguel-decoracao",
     action: "Conhecer as opções",
-    icon: Gift,
     image: "/adoce-hoje/festas-eventos.webp",
     className: "rentals",
   },
@@ -143,11 +134,9 @@ export default function MarketingLanding() {
           <p>Veja fotografias, valores, o que cada opção inclui e como pedir. Assim fica mais fácil escolher o que combina com o seu momento.</p>
         </div>
         <div className="path-list">
-          {paths.map(({ title, text, href, action, icon: Icon, image, className }, index) => (
+          {paths.map(({ title, text, href, action, image, className }) => (
             <article className={`path-item ${className}`} key={title}>
-              <div className="path-number">0{index + 1}</div>
               <div className="path-copy">
-                <Icon />
                 <h3>{title}</h3>
                 <p>{text}</p>
                 <a href={href}>{action} <ArrowRight /></a>
