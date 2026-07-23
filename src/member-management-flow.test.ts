@@ -18,6 +18,8 @@ describe("gestão de membros", () => {
 
   it("mantém senha como acesso principal da operação", () => {
     expect(source).toContain('surface === "operation" ? "Entrar com senha"');
-    expect(source).toContain("await signInWithEmailPassword(email, password, rememberLogin)");
+    expect(source).toContain(
+      "await signInWithStaffPhonePassword(phone, password, rememberLogin)",
+    );
   });
 });

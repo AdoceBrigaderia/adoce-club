@@ -21,6 +21,7 @@ const MemberDemo = lazy(() =>
 const OperationDemo = lazy(() =>
   import("./AccessApp").then((module) => ({ default: module.OperationDemo })),
 );
+const OperationV2Demo = lazy(() => import("./operation-v2/OperationV2Demo"));
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
 const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 const ProductionRollbackDemo = lazy(() =>
@@ -122,6 +123,7 @@ export default function App(){
   if(location.hash.startsWith("#lancamento-carrossel-"))return <Suspense fallback={loading}><LaunchCampaign format="carousel" slide={Number(location.hash.split("-").at(-1)) || 1}/></Suspense>;
   if(location.hash.startsWith("#lancamento-feed"))return <Suspense fallback={loading}><LaunchCampaign format="feed"/></Suspense>;
   if(import.meta.env.DEV && location.hash.startsWith("#membro-demo"))return <Suspense fallback={loading}><MemberDemo/></Suspense>;
+  if(import.meta.env.DEV && location.hash.startsWith("#operacao-v2"))return <Suspense fallback={loading}><OperationV2Demo/></Suspense>;
   if(import.meta.env.DEV && location.hash.startsWith("#operacao-demo"))return <Suspense fallback={loading}><OperationDemo/></Suspense>;
   if(import.meta.env.DEV && location.hash.startsWith("#restauracao-demo"))return <Suspense fallback={loading}><ProductionRollbackDemo/></Suspense>;
   if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation"/></Suspense>;

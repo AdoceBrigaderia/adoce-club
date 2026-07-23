@@ -18,7 +18,8 @@ export type DashboardDestination =
   | "agenda"
   | "requests"
   | "finance"
-  | "catalog";
+  | "catalog"
+  | "content";
 
 type DashboardData = {
   activeSales: number;
@@ -27,6 +28,8 @@ type DashboardData = {
   activeRequests: number;
   members: number;
   lowStock: number;
+  productionPending: number;
+  productionPendingUnits: number;
 };
 
 const emptyData: DashboardData = {
@@ -36,6 +39,8 @@ const emptyData: DashboardData = {
   activeRequests: 0,
   members: 0,
   lowStock: 0,
+  productionPending: 0,
+  productionPendingUnits: 0,
 };
 const todayKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
 
@@ -51,7 +56,8 @@ export default function OperationDashboard({
   const load = useCallback(async () => {
     setBusy(true);
     const supabase = requireSupabase();
-    const [orders, requests, members, availability] = await Promise.all([
+    const [orders, requests, members, availability, plannedProduction] =
+      await Promise.all([
       supabase
         .from("instant_orders")
         .select("status")
@@ -65,9 +71,20 @@ export default function OperationDashboard({
         .from("flavor_availability")
         .select("quantity_available,quantity_reserved,status")
         .eq("service_date", todayKey()),
-    ]);
+      supabase
+        .from("weekly_service_menu")
+        .select("quantity_planned,quantity_released,status")
+        .eq("service_date", todayKey())
+        .eq("channel_slug", "online_orders")
+        .eq("status", "published"),
+      ]);
 
-    const firstError = orders.error || requests.error || members.error || availability.error;
+    const firstError =
+      orders.error ||
+      requests.error ||
+      members.error ||
+      availability.error ||
+      plannedProduction.error;
     setBusy(false);
     if (firstError) {
       setNotice("Alguns números não puderam ser atualizados agora. As áreas da operação continuam disponíveis.");
@@ -79,6 +96,21 @@ export default function OperationDashboard({
       const remaining = Number(item.quantity_available || 0) - Number(item.quantity_reserved || 0);
       return item.status !== "unavailable" && item.quantity_available != null && remaining >= 0 && remaining <= 3;
     }).length;
+    const pendingProductionRows = (plannedProduction.data || []).filter(
+      (item) =>
+        Number(item.quantity_planned || 0) >
+        Number(item.quantity_released || 0),
+    );
+    const productionPendingUnits = pendingProductionRows.reduce(
+      (sum, item) =>
+        sum +
+        Math.max(
+          Number(item.quantity_planned || 0) -
+            Number(item.quantity_released || 0),
+          0,
+        ),
+      0,
+    );
     setData({
       activeSales: saleRows.length,
       awaitingPayment: saleRows.filter((item) => ["awaiting_payment", "reserved"].includes(item.status)).length,
@@ -86,6 +118,8 @@ export default function OperationDashboard({
       activeRequests: (requests.data || []).length,
       members: members.count || 0,
       lowStock,
+      productionPending: pendingProductionRows.length,
+      productionPendingUnits,
     });
     setNotice("");
   }, []);
@@ -95,8 +129,17 @@ export default function OperationDashboard({
   }, [load]);
 
   const priority = useMemo(
-    () => data.awaitingPayment + data.ready + data.lowStock,
-    [data.awaitingPayment, data.ready, data.lowStock],
+    () =>
+      data.awaitingPayment +
+      data.ready +
+      data.lowStock +
+      data.productionPending,
+    [
+      data.awaitingPayment,
+      data.ready,
+      data.lowStock,
+      data.productionPending,
+    ],
   );
 
   return (
@@ -123,6 +166,22 @@ export default function OperationDashboard({
       </div>
 
       <div className="operation-dashboard-metrics">
+        <button
+          type="button"
+          onClick={() => onNavigate("content")}
+          className={data.productionPending ? "is-warning" : ""}
+        >
+          <PackageCheck />
+          <span>
+            <strong>{data.productionPending}</strong>
+            <small>
+              {data.productionPendingUnits
+                ? `${data.productionPendingUnits} fatias aguardam liberação`
+                : "produção do dia conferida"}
+            </small>
+          </span>
+          <ArrowRight />
+        </button>
         <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span><strong>{data.activeSales}</strong><small>vendas em andamento</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("sales")}><CircleDollarSign /><span><strong>{data.awaitingPayment}</strong><small>aguardando pagamento</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("sales")}><PackageCheck /><span><strong>{data.ready}</strong><small>prontas para retirada</small></span><ArrowRight /></button>

@@ -10,6 +10,7 @@ tmp/
 output/
 outputs/
 exports/
+.private/
 marketing-assets/campanha-adoce-premium-a4/
 marketing-assets/**/*.zip
 

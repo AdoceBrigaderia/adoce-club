@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { CalendarDays, Check, Plus, Store, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarDays,
+  Check,
+  PackageCheck,
+  Plus,
+  Store,
+  Trash2,
+} from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import type { WeeklyMenuItem } from "./WeeklyScheduleDialog";
 
@@ -9,6 +17,18 @@ type AdminFlavor = {
   name: string;
   image_path: string | null;
   active: boolean;
+};
+
+type InventorySnapshot = {
+  flavor_id: string;
+  quantity_available: number | null;
+  quantity_reserved: number;
+};
+
+type ProductionReleaseResult = {
+  released_items: number;
+  released_total: number;
+  already_released: boolean;
 };
 
 function todayInFortaleza() {
@@ -44,6 +64,7 @@ export default function WeeklyMenuAdmin({
 }) {
   const today = todayInFortaleza();
   const [items, setItems] = useState<WeeklyMenuItem[]>([]);
+  const [inventory, setInventory] = useState<InventorySnapshot[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState({
@@ -56,17 +77,25 @@ export default function WeeklyMenuAdmin({
   });
 
   const load = useCallback(async () => {
-    const { data, error } = await requireSupabase()
-      .from("weekly_service_menu")
-      .select(
-        "id,service_date,channel_slug,flavor_id,quantity_planned,quantity_reserved,status,note",
-      )
-      .gte("service_date", today)
-      .lte("service_date", dateAfter(today, 13))
-      .order("service_date")
-      .order("channel_slug");
+    const [menuResult, inventoryResult] = await Promise.all([
+      requireSupabase()
+        .from("weekly_service_menu")
+        .select(
+          "id,service_date,channel_slug,flavor_id,quantity_planned,quantity_reserved,quantity_released,released_at,released_by,status,note",
+        )
+        .gte("service_date", today)
+        .lte("service_date", dateAfter(today, 13))
+        .order("service_date")
+        .order("channel_slug"),
+      requireSupabase()
+        .from("flavor_availability")
+        .select("flavor_id,quantity_available,quantity_reserved")
+        .eq("service_date", today),
+    ]);
+    const error = menuResult.error || inventoryResult.error;
     if (error) return setNotice(error.message);
-    setItems((data || []) as WeeklyMenuItem[]);
+    setItems((menuResult.data || []) as WeeklyMenuItem[]);
+    setInventory((inventoryResult.data || []) as InventorySnapshot[]);
   }, [today]);
 
   useEffect(() => {
@@ -96,8 +125,14 @@ export default function WeeklyMenuAdmin({
         item.flavor_id === draft.flavor_id,
     );
     const reserved = current?.quantity_reserved || 0;
+    const released = current?.quantity_released || 0;
     if (quantity < reserved) {
       return setNotice(`Já existem ${reserved} fatias reservadas. A quantidade não pode ficar abaixo disso.`);
+    }
+    if (quantity < released) {
+      return setNotice(
+        `Você já liberou ${released} fatias desta produção. Para reduzir o estoque físico, faça um ajuste na disponibilidade em vez de diminuir o planejamento.`,
+      );
     }
     setBusy(true);
     const { error } = await requireSupabase()
@@ -129,6 +164,57 @@ export default function WeeklyMenuAdmin({
     const { error } = await requireSupabase().from("weekly_service_menu").delete().eq("id", item.id);
     if (error) return setNotice(error.message);
     setNotice("Sabor retirado deste dia.");
+    await load();
+  };
+
+  const pendingReleaseItems = visibleItems.filter(
+    (item) =>
+      item.service_date === today &&
+      item.channel_slug === "online_orders" &&
+      item.status === "published" &&
+      item.quantity_planned !== null &&
+      item.quantity_planned > (item.quantity_released || 0),
+  );
+  const pendingReleaseTotal = pendingReleaseItems.reduce(
+    (sum, item) =>
+      sum +
+      Math.max(
+        (item.quantity_planned || 0) - (item.quantity_released || 0),
+        0,
+      ),
+    0,
+  );
+
+  const releaseProduction = async () => {
+    if (!pendingReleaseItems.length) {
+      setNotice(
+        "Toda a produção planejada para retirada neste dia já foi liberada.",
+      );
+      return;
+    }
+    const confirmed = window.confirm(
+      `Confirmar que ${pendingReleaseTotal} fatia(s) de ${pendingReleaseItems.length} sabor(es) foram produzidas?\n\nElas serão somadas às sobras que já existem no estoque. Esta ação não apaga nem substitui o saldo atual.`,
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc(
+      "staff_release_weekly_production",
+      {
+        release_date: today,
+        release_item_ids: pendingReleaseItems.map((item) => item.id),
+      },
+    );
+    setBusy(false);
+    if (error) {
+      setNotice(error.message);
+      return;
+    }
+    const result = data as ProductionReleaseResult;
+    setNotice(
+      result.already_released
+        ? "Esta produção já havia sido liberada. Nenhuma unidade foi duplicada."
+        : `${result.released_total} fatia(s) de ${result.released_items} sabor(es) foram somadas ao estoque disponível.`,
+    );
     await load();
   };
 
@@ -212,10 +298,64 @@ export default function WeeklyMenuAdmin({
         </span>
       </div>
 
+      {draft.service_date === today &&
+      draft.channel_slug === "online_orders" ? (
+        <div
+          className={`weekly-production-release ${
+            pendingReleaseItems.length ? "is-pending" : "is-complete"
+          }`}
+        >
+          <div>
+            {pendingReleaseItems.length ? (
+              <AlertTriangle />
+            ) : (
+              <PackageCheck />
+            )}
+            <span>
+              <strong>
+                {pendingReleaseItems.length
+                  ? "Produção planejada aguardando sua confirmação"
+                  : "Produção do dia já conferida"}
+              </strong>
+              <small>
+                {pendingReleaseItems.length
+                  ? `${pendingReleaseTotal} fatia(s) ainda não entraram no estoque. Confira a produção antes de liberar.`
+                  : "Nada será acrescentado novamente até que o planejamento aumente."}
+              </small>
+            </span>
+          </div>
+          <button
+            className="admin-primary"
+            type="button"
+            disabled={busy || !pendingReleaseItems.length}
+            onClick={() => void releaseProduction()}
+          >
+            <PackageCheck />
+            Confirmar produção e liberar estoque
+          </button>
+        </div>
+      ) : null}
+
       <div className="weekly-menu-list">
         {visibleItems.map((item) => {
           const flavor = flavors.find((entry) => entry.id === item.flavor_id);
           const free = item.quantity_planned === null ? null : Math.max(item.quantity_planned - item.quantity_reserved, 0);
+          const released = item.quantity_released || 0;
+          const pending = Math.max(
+            (item.quantity_planned || 0) - released,
+            0,
+          );
+          const stock = inventory.find(
+            (entry) => entry.flavor_id === item.flavor_id,
+          );
+          const physicalFree =
+            stock?.quantity_available === null ||
+            stock?.quantity_available === undefined
+              ? null
+              : Math.max(
+                  stock.quantity_available - stock.quantity_reserved,
+                  0,
+                );
           return (
             <article key={item.id}>
               <img src={flavor?.image_path || "/adoce-hoje/sabores-hoje.webp"} alt="" />
@@ -224,6 +364,17 @@ export default function WeeklyMenuAdmin({
                 <small>
                   {free === null ? "Quantidade sob consulta" : `${free} livre(s) · ${item.quantity_reserved} reservada(s)`}
                 </small>
+                {item.service_date === today &&
+                item.channel_slug === "online_orders" ? (
+                  <small className="weekly-menu-release-status">
+                    {pending > 0
+                      ? `${pending} planejada(s) aguardando liberação`
+                      : `${released} produzida(s) e liberada(s)`}
+                    {physicalFree !== null
+                      ? ` · estoque físico atual: ${physicalFree}`
+                      : ""}
+                  </small>
+                ) : null}
               </span>
               <em>{item.status === "published" ? "Visível" : item.status === "sold_out" ? "Esgotado" : "Oculto"}</em>
               <button className="icon-button danger" type="button" onClick={() => void remove(item)} aria-label={`Retirar ${flavor?.name || "sabor"} deste dia`}>

@@ -55,8 +55,9 @@ import {
   getWhatsAppVerificationStatus,
   registerCustomerPasskey,
   requestEmailCode,
-  signInWithEmailPassword,
   signInWithPhonePassword,
+  signInWithStaffPhonePassword,
+  resetUserPasswordByManager,
   signOut,
   upgradeCustomerSecurity,
   verifyEmailCode,
@@ -121,6 +122,12 @@ type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
 type OperationView = "dashboard" | "attend" | "movements" | "orders" | "catalog" | "archive" | "team" | "content" | "director-plan" | "security";
 type OperationCommercialTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
+type OperationContentTab =
+  | "catalog"
+  | "today"
+  | "operation"
+  | "promotions"
+  | "notifications";
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 
 type NotificationPreferences = {
@@ -315,6 +322,7 @@ type StaffMember = {
   user_id: string;
   role: string;
   active: boolean;
+  must_change_password?: boolean;
   display_name?: string;
 };
 
@@ -851,7 +859,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
     setMessage("");
     try {
       if (surface === "operation") {
-        await signInWithEmailPassword(email, password, rememberLogin);
+        await signInWithStaffPhonePassword(phone, password, rememberLogin);
         location.hash = "operacao";
       } else {
         await signInWithPhonePassword(phone, password, rememberLogin);
@@ -1043,26 +1051,26 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : loginMode === "password" && !registering
                 ? surface === "operation"
-                  ? "Use o e-mail autorizado da equipe e sua senha."
+                  ? "Use seu celular com DDD e a senha da operação."
                   : "Use seu celular com DDD e a senha criada no primeiro acesso."
                 : surface === "operation"
-                  ? "Use o e-mail autorizado da equipe para receber seu código de acesso."
+                  ? "Rubens ou Beth podem redefinir a senha da equipe quando necessário."
                   : "O código por e-mail será usado no primeiro acesso ou na recuperação da conta."}
           </p>
           {stage === "identify" ? (
             !registering && loginMode === "password" ? (
               <form onSubmit={submitPassword}>
                 <label>
-                  {surface === "operation" ? "E-mail da equipe" : "Celular com DDD"}
+                  Celular com DDD
                   <div className="input-icon">
-                    {surface === "operation" ? <Mail /> : <Smartphone />}
+                    <Smartphone />
                     <input
-                      value={surface === "operation" ? email : phone}
-                      onChange={(event) => surface === "operation" ? setEmail(event.target.value) : setPhone(event.target.value)}
-                      inputMode={surface === "operation" ? "email" : "tel"}
-                      type={surface === "operation" ? "email" : "tel"}
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      inputMode="tel"
+                      type="tel"
                       autoComplete="username"
-                      placeholder={surface === "operation" ? "equipe@adocebrigaderia.com.br" : "(85) 99999-9999"}
+                      placeholder="(85) 99999-9999"
                       required
                     />
                   </div>
@@ -1320,6 +1328,7 @@ function CustomerHome({ session }: { session: Session }) {
   const [profilePhone, setProfilePhone] = useState("");
   const [profileWhatsAppVerified, setProfileWhatsAppVerified] = useState(false);
   const [securityUpgradeRequired, setSecurityUpgradeRequired] = useState<boolean | null>(null);
+  const [forcedPasswordChange, setForcedPasswordChange] = useState(false);
   const [passwordRecoveryRequested, setPasswordRecoveryRequested] = useState(
     () => sessionStorage.getItem(passwordRecoveryStorageKey) === "true",
   );
@@ -1355,7 +1364,7 @@ function CustomerHome({ session }: { session: Session }) {
     ] = await Promise.all([
       supabase
         .from("profiles")
-        .select("full_name,member_code,phone_e164,whatsapp_verified_at,auth_upgraded_at,account_status")
+        .select("full_name,member_code,phone_e164,whatsapp_verified_at,auth_upgraded_at,account_status,must_change_password")
         .eq("id", session.user.id)
         .single(),
       supabase
@@ -1383,6 +1392,7 @@ function CustomerHome({ session }: { session: Session }) {
     setProfilePhone(profile?.phone_e164 || "");
     setProfileWhatsAppVerified(Boolean(profile?.whatsapp_verified_at));
     setSecurityUpgradeRequired(!profile?.auth_upgraded_at);
+    setForcedPasswordChange(Boolean(profile?.must_change_password));
     setAccountStatus(profile?.account_status || "active");
     const nameForForm =
       databaseName && databaseName !== "Cliente Adoce"
@@ -1738,7 +1748,7 @@ function CustomerHome({ session }: { session: Session }) {
     setBusy(true);
     setMessage("");
     try {
-      if (securityUpgradeRequired) {
+      if (securityUpgradeRequired && !forcedPasswordChange) {
         await upgradeCustomerSecurity(session.access_token, profilePhone, securityPassword);
         await requireSupabase().auth.refreshSession();
       } else {
@@ -1747,7 +1757,12 @@ function CustomerHome({ session }: { session: Session }) {
         });
         if (passwordError) throw passwordError;
       }
+      const { error: completionError } = await requireSupabase().rpc(
+        "complete_forced_password_change",
+      );
+      if (completionError) throw completionError;
       setSecurityUpgradeRequired(false);
+      setForcedPasswordChange(false);
       setPasswordRecoveryRequested(false);
       sessionStorage.removeItem(passwordRecoveryStorageKey);
       setSecurityPassword("");
@@ -1983,7 +1998,7 @@ function CustomerHome({ session }: { session: Session }) {
         </section>
       </main>
     );
-  if (securityUpgradeRequired || passwordRecoveryRequested)
+  if (securityUpgradeRequired || forcedPasswordChange || passwordRecoveryRequested)
     return (
       <main className="club-onboarding">
         <header><Brand label="Clube Adoce" /><button onClick={() => void signOut()}><LogOut /> Sair</button></header>
@@ -1991,9 +2006,11 @@ function CustomerHome({ session }: { session: Session }) {
           <div className="club-onboarding-copy">
             <KeyRound />
             <span>Proteção do seu cadastro</span>
-            <h1>{securityUpgradeRequired ? "Crie seu acesso definitivo." : "Crie uma nova senha."}</h1>
+            <h1>{forcedPasswordChange ? "Escolha uma senha só sua." : securityUpgradeRequired ? "Crie seu acesso definitivo." : "Crie uma nova senha."}</h1>
             <p>
-              {securityUpgradeRequired
+              {forcedPasswordChange
+                ? "A Adoce redefiniu seu acesso com uma senha temporária. Crie uma nova senha antes de continuar."
+                : securityUpgradeRequired
                 ? "Depois desta etapa, o código por e-mail fica reservado para recuperação. Seu acesso normal será pelo celular e senha."
                 : "Seu e-mail já foi confirmado. Agora escolha uma nova senha para voltar a entrar pelo celular."}
             </p>
@@ -2048,7 +2065,9 @@ function CustomerHome({ session }: { session: Session }) {
             <button className="access-primary" disabled={busy}>
               {busy
                 ? "Protegendo cadastro..."
-                : securityUpgradeRequired
+                : forcedPasswordChange
+                  ? "Salvar minha nova senha"
+                  : securityUpgradeRequired
                   ? "Criar meu acesso seguro"
                   : "Salvar nova senha"} <ArrowRight />
             </button>
@@ -2555,11 +2574,19 @@ function CustomerHome({ session }: { session: Session }) {
 function OperationHome({ session }: { session: Session }) {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [role, setRole] = useState("");
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [newStaffPassword, setNewStaffPassword] = useState("");
+  const [newStaffPasswordConfirm, setNewStaffPasswordConfirm] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CustomerSearchResult[]>([]);
   const [selected, setSelected] = useState<CustomerSnapshot | null>(null);
   const [generatedAccess, setGeneratedAccess] =
     useState<StaffAccessCode | null>(null);
+  const [passwordResetNotice, setPasswordResetNotice] = useState<{
+    targetUserId: string;
+    fullName: string;
+    temporaryPassword: string;
+  } | null>(null);
   const [qty, setQty] = useState(1);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -2602,6 +2629,8 @@ function OperationHome({ session }: { session: Session }) {
               ? "settings"
               : "agenda",
   );
+  const [contentTab, setContentTab] =
+    useState<OperationContentTab>("catalog");
   const [movements, setMovements] = useState<Movement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -2910,14 +2939,113 @@ function OperationHome({ session }: { session: Session }) {
     void (async () => {
       const { data } = await requireSupabase()
         .from("staff_members")
-        .select("role,active")
+        .select("role,active,must_change_password")
         .eq("user_id", session.user.id)
         .maybeSingle();
       setAuthorized(Boolean(data?.active));
       setRole(data?.role || "");
+      setMustChangePassword(Boolean(data?.must_change_password));
       if (data?.active) await search("");
     })();
   }, [session.user.id]);
+  const completeStaffPasswordChange = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (newStaffPassword !== newStaffPasswordConfirm) {
+      setMessage("As duas senhas precisam ser iguais.");
+      return;
+    }
+    if (
+      newStaffPassword.length < 10 ||
+      !/[a-z]/.test(newStaffPassword) ||
+      !/[A-Z]/.test(newStaffPassword) ||
+      !/\d/.test(newStaffPassword)
+    ) {
+      setMessage(
+        "Use no mínimo 10 caracteres, com maiúscula, minúscula e número.",
+      );
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    try {
+      const supabase = requireSupabase();
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password: newStaffPassword,
+      });
+      if (passwordError) throw passwordError;
+      const { error: completionError } = await supabase.rpc(
+        "complete_forced_password_change",
+      );
+      if (completionError) throw completionError;
+      setMustChangePassword(false);
+      setNewStaffPassword("");
+      setNewStaffPasswordConfirm("");
+      setMessage("Senha atualizada. Seu acesso à operação está liberado.");
+    } catch (passwordChangeError) {
+      setMessage(
+        passwordChangeError instanceof Error
+          ? passwordChangeError.message
+          : "Não foi possível atualizar a senha.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const resetAccessPassword = async (
+    targetUserId: string,
+    targetKind: "staff" | "customer",
+    fullName: string,
+  ) => {
+    if (!["owner", "manager"].includes(role)) return;
+    const confirmed = window.confirm(
+      `Redefinir a senha de ${fullName}?\n\nA senha temporária será 123456@adoce e a pessoa será obrigada a criar uma nova senha no próximo acesso.`,
+    );
+    if (!confirmed) return;
+    setBusy(true);
+    setMessage("");
+    setPasswordResetNotice(null);
+    try {
+      const result = await resetUserPasswordByManager(
+        session.access_token,
+        targetUserId,
+        targetKind,
+      );
+      const temporaryPassword =
+        result.temporaryPassword || "123456@adoce";
+      setPasswordResetNotice({
+        targetUserId,
+        fullName: result.fullName || fullName,
+        temporaryPassword,
+      });
+      if (targetKind === "staff") {
+        setTeam((currentTeam) =>
+          currentTeam.map((member) =>
+            member.user_id === targetUserId
+              ? { ...member, must_change_password: true }
+              : member,
+          ),
+        );
+      }
+      setMessage(
+        `Senha temporária criada para ${result.fullName || fullName}. A troca será obrigatória no próximo acesso.`,
+      );
+    } catch (resetError) {
+      setMessage(
+        resetError instanceof Error
+          ? resetError.message
+          : "Não foi possível redefinir a senha.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copyTemporaryPassword = async () => {
+    if (!passwordResetNotice) return;
+    await navigator.clipboard.writeText(
+      `Acesso temporário Adoce\nUsuário: celular cadastrado\nSenha temporária: ${passwordResetNotice.temporaryPassword}\nAo entrar, crie uma nova senha.`,
+    );
+    setMessage("Acesso temporário copiado.");
+  };
   const refreshSelected = async () => {
     if (selected) await openCustomer(selected);
   };
@@ -2986,7 +3114,7 @@ function OperationHome({ session }: { session: Session }) {
       const supabase = requireSupabase();
       const { data, error } = await supabase
         .from("staff_members")
-        .select("user_id,role,active")
+        .select("user_id,role,active,must_change_password")
         .order("created_at");
       if (error) {
         setMessage(error.message);
@@ -3150,6 +3278,75 @@ function OperationHome({ session }: { session: Session }) {
         <button onClick={() => void signOut()}>Sair</button>
       </main>
     );
+  if (mustChangePassword)
+    return (
+      <main className="club-onboarding">
+        <header>
+          <Brand label="Adoce Operação" />
+          <button onClick={() => void signOut()}>
+            <LogOut /> Sair
+          </button>
+        </header>
+        <section className="club-onboarding-shell">
+          <div className="club-onboarding-copy">
+            <KeyRound />
+            <span>Primeiro acesso após redefinição</span>
+            <h1>Crie uma senha só sua.</h1>
+            <p>
+              A senha temporária serviu apenas para abrir este acesso. Ela deixa
+              de funcionar assim que você salvar a nova senha.
+            </p>
+            <div>
+              <ShieldCheck />
+              <strong>Acesso protegido</strong>
+              <small>Ninguém da equipe precisa conhecer sua nova senha.</small>
+            </div>
+          </div>
+          <form
+            className="club-onboarding-form"
+            onSubmit={completeStaffPasswordChange}
+          >
+            <h2>Nova senha da operação</h2>
+            <label>
+              Nova senha
+              <input
+                value={newStaffPassword}
+                onChange={(event) => setNewStaffPassword(event.target.value)}
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                required
+              />
+              <small>
+                Mínimo de 10 caracteres, com maiúscula, minúscula e número.
+              </small>
+            </label>
+            <label>
+              Confirmar nova senha
+              <input
+                value={newStaffPasswordConfirm}
+                onChange={(event) =>
+                  setNewStaffPasswordConfirm(event.target.value)
+                }
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                required
+              />
+            </label>
+            <button className="access-primary" disabled={busy}>
+              {busy ? "Salvando..." : "Salvar e entrar na operação"}
+              <ArrowRight />
+            </button>
+            {message && (
+              <div className="access-message" role="status">
+                {message}
+              </div>
+            )}
+          </form>
+        </section>
+      </main>
+    );
   const customerList = (
     <div className="operation-results">
       {results.map((customer) => (
@@ -3265,7 +3462,10 @@ function OperationHome({ session }: { session: Session }) {
           {(role === "owner" || role === "manager") && (
             <button
               className={view === "content" ? "active" : ""}
-              onClick={() => void openView("content")}
+              onClick={() => {
+                setContentTab("today");
+                void openView("content");
+              }}
             >
               <Settings2 /> Disponibilidade, horários e site
             </button>
@@ -3321,6 +3521,11 @@ function OperationHome({ session }: { session: Session }) {
                   }
                   if (destination === "catalog") {
                     void openView("catalog");
+                    return;
+                  }
+                  if (destination === "content") {
+                    setContentTab("operation");
+                    void openView("content");
                     return;
                   }
                   openCommercial(destination);
@@ -3498,6 +3703,45 @@ function OperationHome({ session }: { session: Session }) {
                           <p>Excluir remove definitivamente o acesso e os dados pessoais, mas preserva carimbos, pedidos e auditoria sem identificação pessoal.</p>
                         </span>
                       </div>
+                      <div className="password-reset-row">
+                        <span>
+                          <small>Acesso do cliente</small>
+                          <strong>Redefinir senha pelo celular</strong>
+                          <p>
+                            Cria a senha temporária 123456@adoce e exige que o
+                            cliente escolha uma nova senha ao entrar.
+                          </p>
+                        </span>
+                        <button
+                          type="button"
+                          className="access-secondary"
+                          onClick={() =>
+                            void resetAccessPassword(
+                              selected.profile_id,
+                              "customer",
+                              selected.full_name,
+                            )
+                          }
+                          disabled={busy}
+                        >
+                          <KeyRound /> Redefinir senha
+                        </button>
+                      </div>
+                      {passwordResetNotice?.targetUserId ===
+                        selected.profile_id && (
+                        <div className="password-reset-result" role="status">
+                          <strong>Senha temporária criada</strong>
+                          <code>
+                            {passwordResetNotice.temporaryPassword}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => void copyTemporaryPassword()}
+                          >
+                            <Copy /> Copiar instruções
+                          </button>
+                        </div>
+                      )}
                       <label>
                         Ação
                         <select value={accountAction} onChange={(event) => setAccountAction(event.target.value as CustomerAccountAction)}>
@@ -3720,16 +3964,65 @@ function OperationHome({ session }: { session: Session }) {
                             ? "Gerente"
                             : "Atendimento"}
                       </small>
+                      {member.must_change_password && (
+                        <small>Troca de senha obrigatória no próximo acesso</small>
+                      )}
                     </span>
-                    <b>{member.active ? "Ativo" : "Inativo"}</b>
+                    <div className="team-member-actions">
+                      <b>{member.active ? "Ativo" : "Inativo"}</b>
+                      {["owner", "manager"].includes(role) &&
+                        member.active && (
+                          <button
+                            type="button"
+                            className="access-secondary"
+                            onClick={() =>
+                              void resetAccessPassword(
+                                member.user_id,
+                                "staff",
+                                member.display_name || "Membro da equipe",
+                              )
+                            }
+                            disabled={busy}
+                          >
+                            <KeyRound /> Redefinir senha
+                          </button>
+                        )}
+                    </div>
                   </article>
                 ))}
               </div>
+              {passwordResetNotice &&
+                team.some(
+                  (member) =>
+                    member.user_id === passwordResetNotice.targetUserId,
+                ) && (
+                  <div className="password-reset-result" role="status">
+                    <strong>
+                      Acesso temporário de {passwordResetNotice.fullName}
+                    </strong>
+                    <code>{passwordResetNotice.temporaryPassword}</code>
+                    <span>
+                      A pessoa entrará com o celular cadastrado e deverá criar
+                      uma nova senha.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void copyTemporaryPassword()}
+                    >
+                      <Copy /> Copiar instruções
+                    </button>
+                  </div>
+                )}
             </>
           )}
           {view === "content" && (
             <Suspense fallback={<p>Carregando administração...</p>}>
-              <OperationContentAdmin session={session} role={role} />
+              <OperationContentAdmin
+                key={contentTab}
+                session={session}
+                role={role}
+                initialTab={contentTab}
+              />
             </Suspense>
           )}
           {view === "orders" && (role === "owner" || role === "manager") && (

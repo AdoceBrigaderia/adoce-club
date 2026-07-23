@@ -100,6 +100,66 @@ export async function signInWithEmailPassword(
   return data;
 }
 
+export async function signInWithStaffPhonePassword(
+  phone: string,
+  password: string,
+  remember = true,
+) {
+  setRememberLogin(remember);
+  const response = await fetch("/api/staff-phone-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      phone: normalizeBrazilPhone(phone),
+      password,
+    }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    access_token?: string;
+    refresh_token?: string;
+    must_change_password?: boolean;
+    error?: string;
+  };
+  if (!response.ok || !payload.access_token || !payload.refresh_token)
+    throw new Error(payload.error || "Não foi possível entrar agora.");
+  const { data, error } = await requireSupabase().auth.setSession({
+    access_token: payload.access_token,
+    refresh_token: payload.refresh_token,
+  });
+  if (error) throw error;
+  return {
+    ...data,
+    mustChangePassword: Boolean(payload.must_change_password),
+  };
+}
+
+export async function resetUserPasswordByManager(
+  accessToken: string,
+  targetUserId: string,
+  targetKind: "staff" | "customer",
+) {
+  const response = await fetch("/api/admin-reset-user-password", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ targetUserId, targetKind }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    reset?: boolean;
+    fullName?: string;
+    temporaryPassword?: string;
+    mustChangePassword?: boolean;
+    error?: string;
+  };
+  if (!response.ok || !payload.reset)
+    throw new Error(
+      payload.error || "Não foi possível redefinir a senha.",
+    );
+  return payload;
+}
+
 export async function upgradeCustomerSecurity(
   accessToken: string,
   phone: string,

@@ -12,10 +12,8 @@
 .operation-dashboard-priority small { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; }
 .operation-dashboard-priority strong { color: #ff746e; font: 700 2rem/1 Georgia, serif; }
 .operation-dashboard-priority p { margin: 0; color: #f5d9d0; }
-.operation-dashboard-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid #ead1c3; border-radius: 1.25rem; overflow: hidden; background: #fffdfb; }
-.operation-dashboard-metrics button { min-height: 7.5rem; border: 0; border-right: 1px solid #ead1c3; border-bottom: 1px solid #ead1c3; background: transparent; color: #3b160f; padding: 1.1rem; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .8rem; text-align: left; }
-.operation-dashboard-metrics button:nth-child(3n) { border-right: 0; }
-.operation-dashboard-metrics button:nth-child(n+4) { border-bottom: 0; }
+.operation-dashboard-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.operation-dashboard-metrics button { min-height: 7.5rem; border: 1px solid #ead1c3; border-radius: 1.1rem; background: #fffdfb; color: #3b160f; padding: 1.1rem; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: .8rem; text-align: left; }
 .operation-dashboard-metrics button:hover { background: #fff6ef; }
 .operation-dashboard-metrics button.is-warning { background: #fff0e9; }
 .operation-dashboard-metrics span { display: grid; gap: .25rem; }
@@ -28,10 +26,6 @@
 .operation-dashboard-shortcuts button:hover { border-color: #ef6763; transform: translateY(-1px); }
 @media (max-width: 1050px) {
   .operation-dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .operation-dashboard-metrics button:nth-child(3n) { border-right: 1px solid #ead1c3; }
-  .operation-dashboard-metrics button:nth-child(2n) { border-right: 0; }
-  .operation-dashboard-metrics button:nth-child(n+4) { border-bottom: 1px solid #ead1c3; }
-  .operation-dashboard-metrics button:nth-child(n+5) { border-bottom: 0; }
   .operation-dashboard-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .operation-dashboard-shortcuts > div { grid-column: 1 / -1; }
 }
@@ -39,7 +33,5 @@
   .operation-dashboard-heading, .operation-dashboard-priority { align-items: flex-start; flex-direction: column; }
   .operation-dashboard-heading button { width: 100%; justify-content: center; }
   .operation-dashboard-metrics, .operation-dashboard-shortcuts { grid-template-columns: 1fr; }
-  .operation-dashboard-metrics button { border-right: 0 !important; border-bottom: 1px solid #ead1c3 !important; }
-  .operation-dashboard-metrics button:last-child { border-bottom: 0 !important; }
   .operation-dashboard-shortcuts > div { grid-column: auto; }
 }

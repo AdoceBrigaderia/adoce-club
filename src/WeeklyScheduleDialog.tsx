@@ -19,6 +19,9 @@ export type WeeklyMenuItem = {
   flavor_id: string;
   quantity_planned: number | null;
   quantity_reserved: number;
+  quantity_released?: number;
+  released_at?: string | null;
+  released_by?: string | null;
   status: "published" | "sold_out" | "hidden";
   note: string | null;
 };

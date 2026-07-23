@@ -317,12 +317,55 @@
 .weekly-menu-scope strong,
 .weekly-menu-scope small { display: block; text-transform: capitalize; }
 .weekly-menu-scope small { color: #8c6253; }
+.weekly-production-release {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #f0d6c7;
+  border-radius: 16px;
+}
+.weekly-production-release > div {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+  min-width: 0;
+}
+.weekly-production-release > div > svg { flex: none; }
+.weekly-production-release strong,
+.weekly-production-release small { display: block; }
+.weekly-production-release small {
+  margin-top: .2rem;
+  color: #7d5a4e;
+  line-height: 1.4;
+}
+.weekly-production-release.is-pending {
+  border-color: #efb36e;
+  background: #fff7e9;
+}
+.weekly-production-release.is-pending > div > svg { color: #b96418; }
+.weekly-production-release.is-complete {
+  border-color: #bfe1cf;
+  background: #eff9f3;
+}
+.weekly-production-release.is-complete > div > svg { color: #2f7a56; }
+.weekly-production-release .admin-primary {
+  width: auto;
+  white-space: nowrap;
+}
 .weekly-menu-list { display: grid; }
 .weekly-menu-list article { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto auto; gap: .8rem; align-items: center; padding: .8rem 0; border-bottom: 1px solid #f0ddd1; }
 .weekly-menu-list img { width: 58px; aspect-ratio: 1; object-fit: cover; border-radius: 11px; }
 .weekly-menu-list strong,
 .weekly-menu-list small { display: block; }
 .weekly-menu-list small { color: #947064; }
+.weekly-menu-list .weekly-menu-release-status {
+  margin-top: .22rem;
+  color: #9b5b32;
+  font-weight: 800;
+}
 .weekly-menu-list em { padding: .35rem .55rem; border-radius: 999px; background: #fff1e8; color: #9d5346; font-size: .68rem; font-style: normal; font-weight: 900; }
 .weekly-menu-notice { display: flex; gap: .5rem; align-items: center; margin-top: .75rem; padding: .75rem; border-radius: 12px; background: #effaf4; color: #28764e; font-weight: 800; }
 .weekly-menu-notice svg { width: 18px; }
@@ -546,6 +589,11 @@
     grid-template-columns: 1fr 1fr;
   }
   .weekly-menu-form { grid-template-columns: 1fr; }
+  .weekly-production-release { grid-template-columns: 1fr; }
+  .weekly-production-release .admin-primary {
+    width: 100%;
+    white-space: normal;
+  }
   .weekly-menu-list article { grid-template-columns: 50px minmax(0, 1fr) auto; }
   .weekly-menu-list img { width: 50px; }
   .weekly-menu-list em { grid-column: 2; justify-self: start; }

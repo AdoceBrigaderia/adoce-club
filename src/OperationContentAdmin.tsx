@@ -28,7 +28,7 @@ import ClipboardImageInput from "./ClipboardImageInput";
 import WeeklyMenuAdmin from "./WeeklyMenuAdmin";
 import "./content-admin.css";
 
-type AdminTab =
+export type AdminTab =
   "catalog" | "today" | "operation" | "promotions" | "notifications";
 type Flavor = {
   id: string;
@@ -201,11 +201,13 @@ function todayInFortaleza() {
 
 export default function OperationContentAdmin({
   session,
+  initialTab = "catalog",
 }: {
   session: Session;
   role: string;
+  initialTab?: AdminTab;
 }) {
-  const [tab, setTab] = useState<AdminTab>("catalog");
+  const [tab, setTab] = useState<AdminTab>(initialTab);
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);

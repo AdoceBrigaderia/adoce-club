@@ -2462,11 +2462,53 @@
 .customer-account-admin textarea { min-height: 72px; resize: vertical; }
 .customer-account-admin > label:nth-of-type(3) { grid-column: 1 / -1; }
 .customer-account-admin > button { justify-self: start; }
+.customer-account-admin .password-reset-row {
+  padding: 1rem;
+  border: 1px solid #efd8ca;
+  border-radius: 14px;
+  background: #fff;
+  align-items: center;
+  justify-content: space-between;
+}
+.password-reset-result {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 1rem;
+  border: 1px solid #b9dac4;
+  border-radius: 14px;
+  background: #edf8f1;
+  color: #204f34;
+}
+.password-reset-result code {
+  padding: .45rem .7rem;
+  border-radius: 9px;
+  background: #fff;
+  color: #32170f;
+  font-size: .92rem;
+  font-weight: 850;
+}
+.password-reset-result button,
+.team-member-actions button { min-height: 40px; }
+.team-member-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .65rem;
+}
 @media (max-width: 760px) {
   .customer-account-admin { grid-template-columns: 1fr; }
   .customer-account-admin > div,
   .customer-account-admin > label:nth-of-type(3) { grid-column: auto; }
   .customer-account-admin > button { width: 100%; }
+  .customer-account-admin .password-reset-row,
+  .password-reset-result,
+  .team-member-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .password-reset-result button,
+  .team-member-actions button { width: 100%; }
 }
 
 /* Galaxy Tab A7 Lite e tablets compactos: navegação lateral curta, área útil
