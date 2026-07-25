@@ -5,7 +5,7 @@ import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
 import { requireSupabase } from "./lib/supabase";
-import { SITE_VISUAL_ASSETS, type SiteVisualAssetDefinition } from "./site-visual-assets";
+import { SITE_VISUAL_ASSETS, siteVisualAssetFormatLabel, siteVisualAssetSizeLabel, type SiteVisualAssetDefinition } from "./site-visual-assets";
 import "./operation-visual-settings.css";
 
 type StoredVisualAsset = {
@@ -126,7 +126,7 @@ export default function OperationVisualSettings({
       <div>
         <small>Central de imagens</small>
         <h2>Todas as fotos do site, no lugar certo</h2>
-        <p>Imagens institucionais são substituídas aqui. Sabores, produtos, categorias e carrosséis continuam com seus dados e editores próprios, acessíveis pelos atalhos abaixo.</p>
+        <p>Este painel reúne as imagens institucionais e os padrões usados quando uma foto oficial ainda não existe. Cada item informa onde aparece, proporção e tamanho recomendados. Sabores, produtos e galerias permanecem acessíveis pelos atalhos enquanto a unificação completa é concluída.</p>
       </div>
       <Images />
     </header>
@@ -157,7 +157,9 @@ export default function OperationVisualSettings({
             <div className="operation-visual-copy">
               <strong>{definition.label}</strong>
               <p>{definition.description}</p>
-              <small>Corte recomendado: {definition.aspectWidth}:{definition.aspectHeight}</small>
+              <small>Uso: {definition.usage || definition.description}</small>
+              <small>Recomendado: {siteVisualAssetSizeLabel(definition)} · proporção {definition.aspectWidth}:{definition.aspectHeight}</small>
+              <small>Formatos: {siteVisualAssetFormatLabel(definition)}</small>
             </div>
             <div className="operation-visual-actions">
               <label className="operation-visual-file">
