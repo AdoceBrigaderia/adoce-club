@@ -1,9 +1,21 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { SITE_VISUAL_ASSETS } from "./site-visual-assets";
+import {
+  SITE_VISUAL_ASSETS,
+  siteVisualAssetFormatLabel,
+  siteVisualAssetOutputHeight,
+  siteVisualAssetSizeLabel,
+} from "./site-visual-assets";
+
+const placeholderKeys = [
+  "/site/placeholder-produto-sem-foto.svg",
+  "/site/placeholder-sabor-sem-foto.svg",
+  "/site/placeholder-torta-sem-foto.svg",
+  "/site/placeholder-campanha-sem-arte.svg",
+];
 
 describe("central de imagens institucionais", () => {
-  it("não repete chaves e descreve corte e destino", () => {
+  it("não repete chaves e descreve corte, tamanho e destino", () => {
     const keys = SITE_VISUAL_ASSETS.map((asset) => asset.key);
     expect(new Set(keys).size).toBe(keys.length);
     SITE_VISUAL_ASSETS.forEach((asset) => {
@@ -12,6 +24,10 @@ describe("central de imagens institucionais", () => {
       expect(asset.description.length).toBeGreaterThan(10);
       expect(asset.aspectWidth).toBeGreaterThan(0);
       expect(asset.aspectHeight).toBeGreaterThan(0);
+      expect(asset.outputWidth).toBeGreaterThan(0);
+      expect(siteVisualAssetOutputHeight(asset)).toBeGreaterThan(0);
+      expect(siteVisualAssetSizeLabel(asset)).toMatch(/^\d+ × \d+ px$/);
+      expect(siteVisualAssetFormatLabel(asset)).toContain("JPG");
     });
   });
 
@@ -27,6 +43,11 @@ describe("central de imagens institucionais", () => {
       "/site/adoce-hoje-barraquinha-ilustracao.webp",
       "/site/politica-de-pedidos.jpeg",
     ].forEach((key) => expect(keys.has(key), key).toBe(true));
+  });
+
+  it("inclui os placeholders oficiais na central", () => {
+    const keys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));
+    placeholderKeys.forEach((key) => expect(keys.has(key), key).toBe(true));
   });
 
   it("mantém RLS e escrita restrita a gerentes na migração", () => {
