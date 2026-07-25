@@ -1,4 +1,5 @@
 import type { CommercialSegment } from "./commercial";
+import { resolvePublicImageSource } from "./public-image-fallbacks";
 
 export type CommercialMediaItem = {
   id: string;
@@ -33,5 +34,5 @@ export function instagramEmbedUrl(value: string) {
 }
 
 export function mediaPoster(item: CommercialMediaItem, fallback?: string | null) {
-  return item.image_url || fallback || null;
+  return resolvePublicImageSource(item.image_url || fallback, item.alt_text);
 }
