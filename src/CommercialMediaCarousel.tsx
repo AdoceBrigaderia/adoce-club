@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, Play, X } from "lucide-react";
 import { instagramEmbedUrl, mediaPoster, type CommercialMediaItem } from "./commercial-media";
+import { resolvePublicImageSource } from "./public-image-fallbacks";
 import "./commercial-media-carousel.css";
 
 export default function CommercialMediaCarousel({
@@ -14,22 +15,27 @@ export default function CommercialMediaCarousel({
   fallbackAlt: string;
   label: string;
 }) {
-  const slides = items.length ? items : fallbackImage ? [{
+  const safeFallback = resolvePublicImageSource(fallbackImage, fallbackAlt || label);
+  const slides = items.length ? items : [{
     id: `fallback-${label}`,
+    segment: null,
+    product_id: null,
     media_type: "image" as const,
-    image_url: fallbackImage,
+    image_url: safeFallback,
+    original_image_url: null,
     external_url: null,
     alt_text: fallbackAlt,
-    caption: "",
-  }] : [];
+    caption: "Imagem oficial ainda não cadastrada.",
+    sort_order: 0,
+    active: true,
+  }];
   const [index, setIndex] = useState(0);
   const [openedReel, setOpenedReel] = useState<string | null>(null);
   const [touchX, setTouchX] = useState<number | null>(null);
   const itemKey = items.map((item) => item.id).join("|");
   useEffect(() => setIndex(0), [label, itemKey]);
-  if (!slides.length) return null;
   const current = slides[Math.min(index, slides.length - 1)];
-  const poster = mediaPoster(current as CommercialMediaItem, fallbackImage);
+  const poster = mediaPoster(current as CommercialMediaItem, safeFallback);
   const previous = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
   const next = () => setIndex((value) => (value + 1) % slides.length);
 
@@ -47,7 +53,7 @@ export default function CommercialMediaCarousel({
       }}
     >
       <div className="commercial-media-stage">
-        {poster ? <img src={poster} alt={current.alt_text || fallbackAlt} loading="lazy" /> : <div className="commercial-media-reel-placeholder"><Play /></div>}
+        <img src={poster} alt={current.alt_text || fallbackAlt} loading="lazy" />
         {current.media_type === "instagram" && current.external_url ? (
           <button className="commercial-media-play" type="button" onClick={() => setOpenedReel(current.external_url)}>
             <Play /> Assistir ao Reel
