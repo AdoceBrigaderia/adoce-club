@@ -6,6 +6,7 @@ import OperationManualSale from "./OperationManualSale";
 import "./operation-instant-orders.css";
 import "./operation-instant-orders-enhancements.css";
 import "./operation-print.css";
+import { printOperation } from "./lib/operation-print";
 
 type InstantOrderStatus = "awaiting_confirmation" | "reserved" | "awaiting_payment" | "paid" | "preparing" | "ready" | "completed" | "cancelled" | "expired";
 type InstantOrder = {
@@ -411,7 +412,10 @@ export default function OperationInstantOrders() {
       <aside className="print-scope" role="dialog" aria-modal="true" aria-label={`Pedido ${selected.order_number}`}>
         <button className="drawer-close" onClick={() => setSelected(null)} aria-label="Fechar"><X /></button>
         <small>{selected.order_number}</small><h2>{selected.customer_name}</h2>
-        <button type="button" className="drawer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
+        <div className="operation-print-actions">
+          <button type="button" className="drawer-print" onClick={() => printOperation("thermal")}><Printer /> Imprimir cupom 58 mm</button>
+          <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
+        </div>
         <p>{selected.customer_phone} · {labels[selected.status]}</p>
         <ol className="instant-order-status-track" aria-label="Andamento do pedido">
           {operationalSteps.map((step, index) => {

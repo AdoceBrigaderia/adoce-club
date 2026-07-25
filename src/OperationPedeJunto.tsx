@@ -6,6 +6,7 @@ import { operationWhatsAppUrl } from "./operation-whatsapp";
 import "./operation-pede-junto.css";
 import "./operation-pede-junto-enhancements.css";
 import "./operation-print.css";
+import { printOperation } from "./lib/operation-print";
 
 type Item = { id: string; flavor_name: string; quantity: number; unit_price: number; status: string };
 type Participant = { id: string; name: string; phone_e164: string; status: string; payment_url: string | null; payment_expires_at: string | null; pede_junto_items: Item[] };
@@ -100,7 +101,10 @@ export default function OperationPedeJunto() {
       {selected ? <article className="op-pede-detail print-scope">
         <div className="op-pede-detail-head"><div><small>{selected.public_code}</small><h3>{selected.name}</h3><p>{selected.delivery_address}{selected.delivery_reference ? ` · ${selected.delivery_reference}` : ""}</p></div><span className={totalSlices(selected) >= 5 ? "unlocked" : ""}><strong>{totalSlices(selected)}</strong><small>fatias</small></span></div>
         <p className="op-pede-created"><Clock3 /> Pedido criado em {dateTime(selected.created_at)}</p>
-        <button type="button" className="op-pede-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
+        <div className="operation-print-actions">
+          <button type="button" className="op-pede-print" onClick={() => printOperation("thermal")}><Printer /> Imprimir cupom 58 mm</button>
+          <button type="button" className="op-pede-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
+        </div>
         {selected.status === "completed" && selected.pede_junto_participants.some((participant) => participant.status !== "paid" && !["removed", "cancelled"].includes(participant.status)) ? <p className="op-pede-inconsistency">Este registro antigo foi concluído com pagamento pendente. Revise antes de usar os dados como venda confirmada.</p> : null}
         <div className="op-pede-benefit"><PackageCheck /><span><strong>{totalSlices(selected) >= 5 ? "Entrega grátis liberada" : `Faltam ${5 - totalSlices(selected)} para liberar`}</strong><small>O grupo pode receber quantas fatias quiser.</small></span><b>{money(totalValue(selected))}</b></div>
         <div className="op-pede-participants">

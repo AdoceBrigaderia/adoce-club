@@ -1,0 +1,7 @@
+﻿fonte-oficial/portal-adoce-2026-07-25
+[16:13:56] Branch atual: fonte-oficial/portal-adoce-2026-07-25
+[16:13:56] Verificando arquivos muito grandes.
+[16:13:57] Configurando o repositorio privado como remoto.
+error: No such remote 'fonte-oficial'
+[16:13:57] Remoto configurado.
+[16:13:57] Preparando arquivos para commit.

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import "./operation-print.css";
+import { printOperation } from "./lib/operation-print";
 import {
   uploadEditedProductImage,
   type EditedProductImage,
@@ -1412,7 +1413,10 @@ export default function OperationCommercialAdmin({
           <aside className="operation-request-drawer print-scope" role="dialog" aria-modal="true" aria-label={`Solicitação ${selectedRequest.request_number}`}>
             <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={closeRequest}>×</button>
             <small>{selectedRequest.request_number}</small><h2>{selectedRequest.customer_name}</h2>
-            <button type="button" className="drawer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
+            <div className="operation-print-actions">
+              <button type="button" className="drawer-print" onClick={() => printOperation("thermal")}><Printer /> Imprimir ficha 58 mm</button>
+              <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
+            </div>
             <p>{selectedRequest.commercial_products?.name} · {dateTime(selectedRequest.desired_start)}</p>
             <dl>
               <div><dt>WhatsApp</dt><dd>{selectedRequest.customer_phone}</dd></div>
@@ -1463,7 +1467,10 @@ export default function OperationCommercialAdmin({
           <aside className="operation-request-drawer print-scope" role="dialog" aria-modal="true" aria-label={`Compromisso ${selectedBlock.title}`}>
             <button autoFocus className="drawer-close" aria-label="Fechar detalhes" onClick={() => setSelectedBlock(null)}>×</button>
             <small>Compromisso da agenda</small><h2>{selectedBlock.title}</h2>
-            <button type="button" className="drawer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
+            <div className="operation-print-actions">
+              <button type="button" className="drawer-print" onClick={() => printOperation("thermal")}><Printer /> Imprimir ficha 58 mm</button>
+              <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
+            </div>
             <p>{dateTime(selectedBlock.starts_at)} até {dateTime(selectedBlock.ends_at)}</p>
             <dl><div><dt>Tipo</dt><dd>{selectedBlock.block_kind}</dd></div><div><dt>Status</dt><dd>{selectedBlock.status}</dd></div><div><dt>Recurso</dt><dd>{selectedBlock.resource_key || "Não informado"}</dd></div></dl>
             {selectedBlock.notes ? <div className="drawer-block-notes"><strong>Observações</strong><p>{selectedBlock.notes}</p></div> : null}

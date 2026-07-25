@@ -3,6 +3,7 @@ import { CalendarRange, CircleDollarSign, Printer, RefreshCw, WalletCards } from
 import { requireSupabase } from "./lib/supabase";
 import "./operation-commerce-tools.css";
 import "./operation-print.css";
+import { printOperation } from "./lib/operation-print";
 
 type SummaryRow = { code?: string; label?: string; sale_date?: string; orders: number; gross: number; fees: number; net: number };
 type Summary = { from: string; to: string; orders: number; gross: number; fees: number; net: number; by_method: SummaryRow[]; by_day: SummaryRow[] };
@@ -27,7 +28,7 @@ export default function OperationFinance() {
   const average = useMemo(() => summary?.orders ? summary.gross / summary.orders : 0, [summary]);
 
   return <section className="commerce-finance-page print-scope">
-    <header className="commerce-tool-heading"><div><small>Vendas e recebimentos</small><h2>Financeiro</h2><p>Faturamento bruto, taxas e valor líquido no período escolhido.</p></div><button onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button></header>
+    <header className="commerce-tool-heading"><div><small>Vendas e recebimentos</small><h2>Financeiro</h2><p>Faturamento bruto, taxas e valor líquido no período escolhido.</p></div><button onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button></header>
     <div className="commerce-period-filter"><label><CalendarRange /> De<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label><label>Até<input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label><button onClick={() => void load()} disabled={busy}><RefreshCw /> Atualizar</button></div>
     {notice ? <p className="operation-commercial-notice">{notice}</p> : null}
     {summary ? <>

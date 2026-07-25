@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import "./operation-print.css";
+import { printOperation } from "./lib/operation-print";
 import {
   beginWhatsAppVerification,
   getWhatsAppVerificationStatus,
@@ -3591,7 +3592,7 @@ function OperationHome({ session }: { session: Session }) {
                   >
                     ← Voltar à busca
                   </button>
-                  <button type="button" className="drawer-print customer-print" onClick={() => window.print()}><Printer /> Imprimir ou salvar em PDF</button>
+                  <button type="button" className="drawer-print customer-print" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
                   <div className="customer-top">
                     <span className="avatar">{selected.full_name[0]}</span>
                     <div>

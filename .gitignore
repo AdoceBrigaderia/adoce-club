@@ -18,3 +18,36 @@ marketing-assets/**/*.zip
 .netlify
 .env.local
 .env.*.local
+
+# Segredos e configuracoes locais
+!.env.example
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cer
+
+# Dependencias e builds
+.netlify/
+
+# Logs e temporarios
+*.err
+*.out
+*.tmp
+*.bak
+*.cache
+
+# Pacotes locais de auditoria e backup
+ADOCE_AUDITORIA_*/
+ADOCE_AUDITORIA_*.zip
+BACKUP_FONTE_OFICIAL_*.zip
+FONTE_OFICIAL_DIAGNOSTICO_*.txt
+
+
+
+
+
+
+
+
