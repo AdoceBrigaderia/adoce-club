@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import AppErrorBoundary from "./AppErrorBoundary";
 import { installBrowserBootstrap } from "./browser-bootstrap";
+import { installCustomerNameNormalization } from "./customer-name-normalization";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import {
@@ -10,11 +11,17 @@ import {
   recoveryTimestamp,
   shouldRecoverPreloadError,
 } from "./runtime-recovery";
+import "./customer-name-normalization.css";
 import "./styles.css";
 import "./theme.css";
 
 const removeBrowserBootstrap = installBrowserBootstrap();
-if (import.meta.hot) import.meta.hot.dispose(removeBrowserBootstrap);
+const removeCustomerNameNormalization = installCustomerNameNormalization();
+if (import.meta.hot)
+  import.meta.hot.dispose(() => {
+    removeBrowserBootstrap();
+    removeCustomerNameNormalization();
+  });
 
 window.addEventListener("vite:preloadError", (event) => {
   event.preventDefault();
