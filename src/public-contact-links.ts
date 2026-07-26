@@ -20,7 +20,6 @@ export function shouldShowPublicContactDock(hostname: string, hash: string) {
     "#operacao-demo",
     "#membro-demo",
     "#restauracao-demo",
-    "#prototipo",
     "#campanha-",
     "#lancamento-",
     "#entrar",
