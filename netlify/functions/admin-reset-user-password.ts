@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { generateTemporaryPassword } from "./_shared/password-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -17,11 +18,25 @@ const json = (body: unknown, status = 200) =>
     },
   });
 
-const temporaryPassword = "123456@adoce";
+const allowedOrigin = (request: Request) => {
+  const origin = request.headers.get("origin");
+  if (!origin) return true;
+  const configured = env("SITE_URL")?.replace(/\/$/, "");
+  return new Set([
+    configured,
+    "https://www.adocebrigaderia.com.br",
+    "https://clube.adocebrigaderia.com.br",
+    "https://operacao.adocebrigaderia.com.br",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+  ].filter(Boolean)).has(origin);
+};
 
 export default async (request: Request) => {
   if (request.method !== "POST")
     return json({ error: "Método não permitido." }, 405);
+  if (!allowedOrigin(request))
+    return json({ error: "Origem não autorizada." }, 403);
 
   const accessToken = (request.headers.get("authorization") || "")
     .replace(/^Bearer\s+/i, "")
@@ -124,6 +139,7 @@ export default async (request: Request) => {
       500,
     );
 
+  const temporaryPassword = generateTemporaryPassword();
   const { error: passwordError } = await admin.auth.admin.updateUserById(
     targetUserId,
     { password: temporaryPassword },
@@ -152,6 +168,7 @@ export default async (request: Request) => {
       target_kind: targetKind,
       force_change: true,
       temporary_password_disclosed_to_actor: true,
+      temporary_password_generated_randomly: true,
     },
   });
 
