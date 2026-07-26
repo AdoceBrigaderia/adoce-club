@@ -1,10 +1,12 @@
 begin;
 
 alter table public.profiles
+  add column if not exists must_change_password boolean not null default false,
   add column if not exists temporary_password_issued_at timestamptz,
   add column if not exists temporary_password_expires_at timestamptz;
 
 alter table public.staff_members
+  add column if not exists must_change_password boolean not null default false,
   add column if not exists temporary_password_issued_at timestamptz,
   add column if not exists temporary_password_expires_at timestamptz;
 
