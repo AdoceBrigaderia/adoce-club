@@ -32,10 +32,11 @@ const operationStyles = readFileSync(
 );
 
 describe("fluxo NFC invertido e QR", () => {
-  it("possui rota pública própria antes da rota de login", () => {
+  it("possui rota pública própria antes do gateway de login do cliente", () => {
     expect(app).toContain('location.hash.startsWith("#check-in")');
+    expect(app).toContain("<PasskeyClientGateway />");
     expect(app.indexOf("<CustomerCheckInPage />")).toBeLessThan(
-      app.indexOf('<AccessApp surface="client" />'),
+      app.indexOf("<PasskeyClientGateway />"),
     );
   });
 
