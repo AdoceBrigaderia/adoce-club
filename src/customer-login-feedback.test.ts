@@ -13,10 +13,14 @@ describe("acesso do cliente por celular e senha", () => {
 
   it("mantém a identificação interna fora da resposta de erro", () => {
     const endpoint = source("../netlify/functions/customer-phone-login.ts");
-    expect(endpoint).toContain('select("id,active,account_status,auth_upgraded_at")');
+    expect(endpoint).toContain('.from("profiles")');
+    expect(endpoint).toContain("id,active,account_status,auth_upgraded_at");
+    expect(endpoint).toContain("must_change_password");
+    expect(endpoint).toContain("temporary_password_expires_at");
     expect(endpoint).toContain("auth.admin.getUserById");
     expect(endpoint).toContain("/auth/v1/token?grant_type=password");
     expect(endpoint).toContain('json({ error: "Celular ou senha incorretos." }, 401)');
+    expect(endpoint).toContain("temporary_password_expired");
   });
 });
 
