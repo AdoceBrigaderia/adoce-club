@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
+import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
 export default function OperationBusinessHub() {
@@ -34,7 +35,12 @@ export default function OperationBusinessHub() {
     return <p className="operation-dashboard-notice" role="status">{error}</p>;
   }
   if (!session) {
-    return <p className="operation-dashboard-notice">Carregando lojas, caixas e equipe…</p>;
+    return <p className="operation-dashboard-notice">Carregando operação rápida…</p>;
   }
-  return <OperationBusinessStructureBff userId={session.user.id} />;
+  return (
+    <>
+      <OperationQuickLoyalty />
+      <OperationBusinessStructureBff userId={session.user.id} />
+    </>
+  );
 }
