@@ -9,6 +9,7 @@ const manager = readFileSync(
   new URL("./PasskeyManager.tsx", import.meta.url),
   "utf8",
 );
+const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
 const main = readFileSync(new URL("./main.tsx", import.meta.url), "utf8");
 const styles = readFileSync(
   new URL("./passkey-operation-gateway.css", import.meta.url),
@@ -16,9 +17,11 @@ const styles = readFileSync(
 );
 
 describe("gateway operacional seguro", () => {
-  it("assume a rota operacional sem alterar produção", () => {
+  it("assume a rota operacional pelo roteador principal", () => {
     expect(gateway).toContain('location.hash.startsWith("#operacao")');
-    expect(main).toContain("<PasskeyOperationGateway />");
+    expect(app).toContain('lazy(() => import("./PasskeyOperationGateway"))');
+    expect(app).toContain("<PasskeyOperationGateway />");
+    expect(main).not.toContain("PasskeyOperationGateway");
     expect(gateway).toContain("<OperationBusinessHub />");
   });
 
