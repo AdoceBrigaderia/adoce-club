@@ -10,6 +10,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "manager_set_staff_capability",
   "manager_update_staff_member",
   "staff_create_manual_sale_in_cash",
+  "staff_get_quick_sale_catalog",
   "staff_financial_sales_summary",
   "staff_get_commerce_settings",
   "staff_search_customers",
