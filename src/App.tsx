@@ -11,6 +11,7 @@ const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const AccessApp = lazy(() => import("./AccessApp"));
+const CustomerCheckInPage = lazy(() => import("./CustomerCheckInPage"));
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
 const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 
@@ -31,6 +32,7 @@ const loading = <main className="access-loading"><p>Abrindo a experiência Adoce
 
 export function titleForRoute(hash: string) {
   if (hash.startsWith("#operacao")) return "Adoce Operação";
+  if (hash.startsWith("#check-in")) return "Check-in · Clube Adoce";
   if (hash.startsWith("#adoce-hoje")) return "Adoce Hoje · Adoce Brigaderia";
   if (hash.startsWith("#cadastro")) return "Cadastro · Clube Adoce";
   if (hash.startsWith("#docinhos")) return "Docinhos · Adoce Brigaderia";
@@ -75,6 +77,7 @@ export default function App() {
   if (import.meta.env.DEV && OperationDemo && location.hash.startsWith("#operacao-demo")) return <Suspense fallback={loading}><OperationDemo /></Suspense>;
   if (import.meta.env.DEV && ProductionRollbackDemo && location.hash.startsWith("#restauracao-demo")) return <Suspense fallback={loading}><ProductionRollbackDemo /></Suspense>;
 
+  if (location.hash.startsWith("#check-in")) return <Suspense fallback={loading}><CustomerCheckInPage /></Suspense>;
   if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation" /></Suspense>;
   if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client" /></Suspense>;
   if (location.hash.startsWith("#adoce-hoje")) return <Suspense fallback={loading}><AdoceHoje /></Suspense>;
