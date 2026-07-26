@@ -59,7 +59,7 @@ export default function OperationDynamicImageAssetHistory({
       setErrorMessage(error.message);
       return;
     }
-    setVersions((data || []) as DynamicImageAssetVersion[]);
+    setVersions((data || []) as unknown as DynamicImageAssetVersion[]);
   }, [assetKey]);
 
   useEffect(() => {
@@ -97,34 +97,22 @@ export default function OperationDynamicImageAssetHistory({
       <span><strong>Histórico da imagem</strong><small>Ver alterações e restaurar versões anteriores</small></span>
       <span>{open ? "Fechar" : "Abrir"}</span>
     </button>
-
     {open ? <div className="operation-visual-history-panel">
-      {loading ? <p className="operation-visual-loading">Carregando histórico…</p> : null}
-      {errorMessage ? <p className="operation-commercial-notice" role="alert">{errorMessage}</p> : null}
-      {!loading && !errorMessage && versions.length === 0
-        ? <p className="operation-visual-history-empty">Esta imagem ainda não possui alterações registradas.</p>
-        : null}
-      {!loading && versions.length > 0 ? <div className="operation-visual-history-list">
-        {versions.map((version) => {
-          const isCurrent = dynamicImageAssetVersionIsCurrent(version, asset.currentUrl);
-          const working = busyVersionId === version.id;
-          return <article key={version.id} className="operation-visual-history-version">
-            <img src={version.image_url} alt={`Versão anterior de ${asset.label}`} />
-            <div>
-              <strong>{dynamicImageAssetChangeLabel(version.change_type)}</strong>
-              <span><Clock3 /> {dynamicImageAssetVersionDate(version.changed_at)}</span>
-              <span><UserRound /> {version.changed_by_name || "Usuário não identificado"}</span>
-            </div>
-            <button
-              type="button"
-              disabled={isCurrent || working}
-              onClick={() => void restore(version)}
-            >
-              <RotateCcw /> {isCurrent ? "Versão atual" : working ? "Restaurando…" : "Restaurar"}
-            </button>
-          </article>;
-        })}
-      </div> : null}
+      {loading ? <p>Carregando histórico…</p> : null}
+      {errorMessage ? <p className="operation-visual-history-error">{errorMessage}</p> : null}
+      {!loading && !errorMessage && versions.length === 0 ? <p>Nenhuma alteração registrada.</p> : null}
+      {versions.map((version) => {
+        const current = dynamicImageAssetVersionIsCurrent(version, asset.currentUrl);
+        return <article key={version.id}>
+          <img src={version.image_url} alt="" />
+          <div>
+            <strong>{dynamicImageAssetChangeLabel(version.change_type)}</strong>
+            <small><Clock3 /> {dynamicImageAssetVersionDate(version.changed_at)}</small>
+            <small><UserRound /> {version.changed_by_name || "Sistema Adoce"}</small>
+          </div>
+          {current ? <span className="operation-visual-history-current">Versão atual</span> : <button type="button" disabled={Boolean(busyVersionId)} onClick={() => void restore(version)}><RotateCcw /> {busyVersionId === version.id ? "Restaurando…" : "Restaurar"}</button>}
+        </article>;
+      })}
     </div> : null}
   </section>;
 }
