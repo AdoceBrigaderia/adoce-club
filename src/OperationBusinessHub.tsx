@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
+import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
@@ -40,6 +41,7 @@ export default function OperationBusinessHub() {
   return (
     <>
       <OperationQuickLoyalty />
+      <OperationQuickCash />
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
   );
