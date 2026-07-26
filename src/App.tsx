@@ -26,9 +26,6 @@ const OperationV2Demo = import.meta.env.DEV
 const ProductionRollbackDemo = import.meta.env.DEV
   ? lazy(() => import("./ProductionRollbackPanel").then((module) => ({ default: module.ProductionRollbackDemo })))
   : null;
-const LegacyPrototype = import.meta.env.DEV
-  ? lazy(() => import("./LegacyPrototype"))
-  : null;
 
 const loading = <main className="access-loading"><p>Abrindo a experiência Adoce...</p></main>;
 
@@ -77,7 +74,6 @@ export default function App() {
   if (import.meta.env.DEV && OperationV2Demo && location.hash.startsWith("#operacao-v2")) return <Suspense fallback={loading}><OperationV2Demo /></Suspense>;
   if (import.meta.env.DEV && OperationDemo && location.hash.startsWith("#operacao-demo")) return <Suspense fallback={loading}><OperationDemo /></Suspense>;
   if (import.meta.env.DEV && ProductionRollbackDemo && location.hash.startsWith("#restauracao-demo")) return <Suspense fallback={loading}><ProductionRollbackDemo /></Suspense>;
-  if (import.meta.env.DEV && LegacyPrototype && location.hash.startsWith("#prototipo")) return <Suspense fallback={loading}><LegacyPrototype /></Suspense>;
 
   if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation" /></Suspense>;
   if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client" /></Suspense>;
