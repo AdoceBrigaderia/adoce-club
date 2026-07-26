@@ -24,7 +24,7 @@ describe("ajuste manual de fidelidade", () => {
 
   it("protege prêmios já resgatados durante remoções", () => {
     expect(migration).toContain("reward.status = 'redeemed'");
-    expect(migration).toContain("reward.status = 'reversed'");
+    expect(migration).toContain("set status = 'reversed'");
     expect(migration).toContain("Os premios vinculados nao permitem");
   });
 
