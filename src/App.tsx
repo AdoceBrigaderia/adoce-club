@@ -12,6 +12,7 @@ const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const AccessApp = lazy(() => import("./AccessApp"));
 const CustomerCheckInPage = lazy(() => import("./CustomerCheckInPage"));
+const CustomerRegistrationPage = lazy(() => import("./CustomerRegistrationPage"));
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
 const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 
@@ -78,8 +79,9 @@ export default function App() {
   if (import.meta.env.DEV && ProductionRollbackDemo && location.hash.startsWith("#restauracao-demo")) return <Suspense fallback={loading}><ProductionRollbackDemo /></Suspense>;
 
   if (location.hash.startsWith("#check-in")) return <Suspense fallback={loading}><CustomerCheckInPage /></Suspense>;
+  if (location.hash.startsWith("#cadastro")) return <Suspense fallback={loading}><CustomerRegistrationPage /></Suspense>;
   if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation" /></Suspense>;
-  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client" /></Suspense>;
+  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client" /></Suspense>;
   if (location.hash.startsWith("#adoce-hoje")) return <Suspense fallback={loading}><AdoceHoje /></Suspense>;
   if (location.hash.startsWith("#encomendas")) return <Suspense fallback={loading}><CommercialCatalog initialSegment="cakes" /></Suspense>;
   if (location.hash.startsWith("#docinhos")) return <Suspense fallback={loading}><CommercialCatalog initialSegment="sweets" /></Suspense>;
