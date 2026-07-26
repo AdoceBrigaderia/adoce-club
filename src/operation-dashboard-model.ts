@@ -7,6 +7,14 @@ export type DashboardDestination =
   | "catalog"
   | "content";
 
+export type DashboardSource =
+  | "sales"
+  | "requests"
+  | "members"
+  | "staff"
+  | "availability"
+  | "production";
+
 export type DashboardData = {
   activeSales: number;
   awaitingPayment: number;
@@ -43,6 +51,15 @@ export type DashboardPriority = {
   tone: "warning" | "urgent";
 };
 
+const dashboardSourceLabels: Record<DashboardSource, string> = {
+  sales: "vendas",
+  requests: "pedidos",
+  members: "clientes",
+  staff: "equipe",
+  availability: "estoque",
+  production: "produção",
+};
+
 export const emptyDashboardData: DashboardData = {
   activeSales: 0,
   awaitingPayment: 0,
@@ -58,6 +75,31 @@ export function operationTodayKey(date = new Date()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Fortaleza",
   }).format(date);
+}
+
+export function dashboardCustomerCount(
+  profileCount: number | null | undefined,
+  activeStaffCount: number | null | undefined,
+) {
+  const profiles = Number.isFinite(Number(profileCount)) ? Number(profileCount) : 0;
+  const staff = Number.isFinite(Number(activeStaffCount)) ? Number(activeStaffCount) : 0;
+  return Math.max(profiles - staff, 0);
+}
+
+export function dashboardLoadMessage(
+  failedSources: DashboardSource[],
+  online = true,
+) {
+  if (!online) {
+    return "Sem conexão com a internet. Os atalhos continuam disponíveis e os números serão atualizados quando a conexão voltar.";
+  }
+  if (!failedSources.length) return "";
+  const unique = [...new Set(failedSources)];
+  const labels = unique.map((source) => dashboardSourceLabels[source]);
+  if (unique.length === Object.keys(dashboardSourceLabels).length) {
+    return "Não foi possível atualizar os números da operação agora. Tente novamente; os atalhos continuam disponíveis.";
+  }
+  return `Atualização parcial: não foi possível consultar ${labels.join(", ")}. Os demais números estão atualizados.`;
 }
 
 export function buildDashboardData(input: DashboardInput): DashboardData {
