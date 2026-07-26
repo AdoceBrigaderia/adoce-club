@@ -1,5 +1,36 @@
 begin;
 
+create or replace function private.capitalize_name_word(raw_word text)
+returns text
+language plpgsql
+immutable
+security invoker
+set search_path = ''
+as $$
+declare
+  source text := pg_catalog.lower(coalesce(raw_word, ''));
+  result text := '';
+  character text;
+  position integer;
+  capitalize_next boolean := true;
+begin
+  if source = '' then return ''; end if;
+  for position in 1..pg_catalog.char_length(source) loop
+    character := pg_catalog.substr(source, position, 1);
+    if character in ('-', '''', '’') then
+      result := result || character;
+      capitalize_next := true;
+    elsif capitalize_next then
+      result := result || pg_catalog.upper(character);
+      capitalize_next := false;
+    else
+      result := result || character;
+    end if;
+  end loop;
+  return result;
+end;
+$$;
+
 create or replace function private.normalize_person_name(raw_name text)
 returns text
 language plpgsql
@@ -31,7 +62,7 @@ begin
         then pg_catalog.upper(current_word)
       when word_index > 1 and current_word in ('da','das','de','do','dos','e')
         then current_word
-      else pg_catalog.initcap(current_word)
+      else private.capitalize_name_word(current_word)
     end;
     normalized_words := pg_catalog.array_append(normalized_words, normalized_word);
   end loop;
@@ -108,6 +139,7 @@ begin
 end;
 $$;
 
+revoke all on function private.capitalize_name_word(text) from public, anon;
 revoke all on function private.normalize_person_name(text) from public, anon;
 revoke all on function private.normalize_profile_full_name() from public, anon;
 
