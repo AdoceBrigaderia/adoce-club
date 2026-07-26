@@ -38,7 +38,7 @@ function creationOptions(input: Record<string, unknown>) {
       ...item,
       id: fromBase64Url(item.id),
     })),
-  } as PublicKeyCredentialCreationOptions;
+  } as unknown as PublicKeyCredentialCreationOptions;
 }
 
 function requestOptions(input: Record<string, unknown>) {
@@ -50,7 +50,7 @@ function requestOptions(input: Record<string, unknown>) {
       ...item,
       id: fromBase64Url(item.id),
     })),
-  } as PublicKeyCredentialRequestOptions;
+  } as unknown as PublicKeyCredentialRequestOptions;
 }
 
 function serializeCredential(credential: PublicKeyCredential) {
