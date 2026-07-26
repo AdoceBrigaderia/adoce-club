@@ -6,6 +6,7 @@ import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
 import OperationDynamicImageLibrary from "./OperationDynamicImageLibrary";
 import OperationGalleryImageLibrary from "./OperationGalleryImageLibrary";
+import OperationVisualAssetHistory from "./OperationVisualAssetHistory";
 import { requireSupabase } from "./lib/supabase";
 import { SITE_VISUAL_ASSETS, siteVisualAssetFormatLabel, siteVisualAssetSizeLabel, type SiteVisualAssetDefinition } from "./site-visual-assets";
 import "./operation-visual-settings.css";
@@ -189,6 +190,17 @@ export default function OperationVisualSettings({
                 <RotateCcw /> Restaurar original
               </button> : null}
             </div>
+            <OperationVisualAssetHistory
+              assetKey={definition.key}
+              label={definition.label}
+              currentUrl={currentUrl}
+              session={session}
+              onRestored={async (message) => {
+                setNotice(message);
+                await load();
+                window.dispatchEvent(new Event("adoce-site-visual-assets-changed"));
+              }}
+            />
           </article>;
         })}
       </div>
