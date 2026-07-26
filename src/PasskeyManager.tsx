@@ -7,6 +7,7 @@ import {
   renamePasskeyBff,
   type BffPasskey,
 } from "./services/bff-passkeys";
+import type { BffAuthSurface } from "./services/bff-auth";
 import "./passkey-manager.css";
 
 const dateTime = new Intl.DateTimeFormat("pt-BR", {
@@ -14,7 +15,13 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
 });
 
-export default function PasskeyManager({ onClose }: { onClose: () => void }) {
+export default function PasskeyManager({
+  onClose,
+  surface = "operation",
+}: {
+  onClose: () => void;
+  surface?: BffAuthSurface;
+}) {
   const [passkeys, setPasskeys] = useState<BffPasskey[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -37,7 +44,7 @@ export default function PasskeyManager({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setMessage("");
     try {
-      await registerPasskeyBff("operation");
+      await registerPasskeyBff(surface);
       setMessage("Biometria ou chave de acesso cadastrada neste aparelho.");
       await load();
     } catch (error) {
