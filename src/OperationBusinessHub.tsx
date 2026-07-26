@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
+import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
@@ -43,6 +44,7 @@ export default function OperationBusinessHub() {
     <>
       <OperationCustomerCheckIns />
       <OperationQuickLoyalty />
+      <OperationCustomer360 />
       <OperationQuickCash />
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
