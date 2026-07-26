@@ -114,12 +114,20 @@ export default async (request: Request) => {
       409,
     );
 
-  const now = new Date().toISOString();
+  const now = new Date();
+  const issuedAt = now.toISOString();
+  const temporaryPasswordExpiresAt = new Date(
+    now.getTime() + 2 * 60 * 60 * 1000,
+  ).toISOString();
   let flagError: { message?: string } | null = null;
   if (targetKind === "staff") {
     const { error } = await admin
       .from("staff_members")
-      .update({ must_change_password: true })
+      .update({
+        must_change_password: true,
+        temporary_password_issued_at: issuedAt,
+        temporary_password_expires_at: temporaryPasswordExpiresAt,
+      })
       .eq("user_id", targetUserId);
     flagError = error;
   } else {
@@ -127,8 +135,10 @@ export default async (request: Request) => {
       .from("profiles")
       .update({
         must_change_password: true,
-        auth_upgraded_at: now,
-        updated_at: now,
+        auth_upgraded_at: issuedAt,
+        temporary_password_issued_at: issuedAt,
+        temporary_password_expires_at: temporaryPasswordExpiresAt,
+        updated_at: issuedAt,
       })
       .eq("id", targetUserId);
     flagError = error;
@@ -148,12 +158,21 @@ export default async (request: Request) => {
     if (targetKind === "staff") {
       await admin
         .from("staff_members")
-        .update({ must_change_password: false })
+        .update({
+          must_change_password: false,
+          temporary_password_issued_at: null,
+          temporary_password_expires_at: null,
+        })
         .eq("user_id", targetUserId);
     } else {
       await admin
         .from("profiles")
-        .update({ must_change_password: false, updated_at: now })
+        .update({
+          must_change_password: false,
+          temporary_password_issued_at: null,
+          temporary_password_expires_at: null,
+          updated_at: issuedAt,
+        })
         .eq("id", targetUserId);
     }
     return json({ error: "Não foi possível redefinir a senha." }, 502);
@@ -169,6 +188,9 @@ export default async (request: Request) => {
       force_change: true,
       temporary_password_disclosed_to_actor: true,
       temporary_password_generated_randomly: true,
+      temporary_password_issued_at: issuedAt,
+      temporary_password_expires_at: temporaryPasswordExpiresAt,
+      temporary_password_ttl_minutes: 120,
     },
   });
 
@@ -176,6 +198,7 @@ export default async (request: Request) => {
     reset: true,
     fullName: targetProfile.full_name,
     temporaryPassword,
+    temporaryPasswordExpiresAt,
     mustChangePassword: true,
   });
 };
