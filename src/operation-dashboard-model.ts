@@ -103,7 +103,7 @@ export function buildDashboardData(input: DashboardInput): DashboardData {
 }
 
 export function dashboardPriorities(data: DashboardData): DashboardPriority[] {
-  return [
+  const priorities: DashboardPriority[] = [
     {
       id: "payment",
       label: "Pagamentos pendentes",
@@ -138,7 +138,9 @@ export function dashboardPriorities(data: DashboardData): DashboardPriority[] {
       destination: "catalog",
       tone: "warning",
     },
-  ].filter((item) => item.count > 0);
+  ];
+
+  return priorities.filter((item) => item.count > 0);
 }
 
 export function dashboardAttentionCount(data: DashboardData) {
