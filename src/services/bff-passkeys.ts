@@ -1,5 +1,12 @@
 import { readBffCsrfToken, type BffAuthSurface, type BffSession } from "./bff-auth";
 
+export type BffPasskey = {
+  id: string;
+  friendly_name?: string;
+  created_at?: string;
+  last_used_at?: string | null;
+};
+
 type StartPayload = {
   challengeId: string;
   options: Record<string, unknown>;
@@ -9,7 +16,7 @@ type StartPayload = {
 
 type RegistrationResult = {
   registered: true;
-  passkey: { id: string; friendly_name?: string; created_at?: string };
+  passkey: BffPasskey;
 };
 
 const fromBase64Url = (value: string) => {
@@ -135,6 +142,23 @@ async function finish<T>(
   return json<T>(response);
 }
 
+async function managePasskey<T>(body?: Record<string, unknown>) {
+  const csrf = readBffCsrfToken();
+  const response = await fetch("/api/auth-bff-passkeys", {
+    method: body ? "POST" : "GET",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+      ...(body ? {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrf,
+      } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  return json<T>(response);
+}
+
 export function passkeysSupported() {
   return window.isSecureContext &&
     "PublicKeyCredential" in window &&
@@ -166,4 +190,24 @@ export async function registerPasskeyBff(surface: BffAuthSurface) {
   if (!(credential instanceof PublicKeyCredential))
     throw new Error("O cadastro da chave de acesso foi cancelado.");
   return finish<RegistrationResult>(challenge, credential);
+}
+
+export async function listPasskeysBff() {
+  const result = await managePasskey<{ passkeys: BffPasskey[] }>();
+  return result.passkeys;
+}
+
+export async function renamePasskeyBff(passkeyId: string, friendlyName: string) {
+  return managePasskey<{ updated: true; passkey: BffPasskey }>({
+    action: "rename",
+    passkeyId,
+    friendlyName,
+  });
+}
+
+export async function deletePasskeyBff(passkeyId: string) {
+  return managePasskey<{ deleted: true; passkeyId: string }>({
+    action: "delete",
+    passkeyId,
+  });
 }
