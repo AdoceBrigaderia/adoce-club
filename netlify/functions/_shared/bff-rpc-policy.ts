@@ -22,6 +22,8 @@ export const OPERATION_RPC_ALLOWLIST = [
 
 export const CLIENT_RPC_ALLOWLIST = [
   "customer_create_store_checkin",
+  "customer_get_account_workspace",
+  "issue_customer_qr",
 ] as const;
 
 export type OperationBffRpcName = (typeof OPERATION_RPC_ALLOWLIST)[number];
