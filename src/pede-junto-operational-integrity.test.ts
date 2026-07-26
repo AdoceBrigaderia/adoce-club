@@ -25,9 +25,11 @@ describe("integridade operacional do Pede Junto", () => {
     expect(operation).toContain("Cancelar e preservar no histórico");
   });
 
-  it("mostra data e hora e oferece impressão ou PDF", () => {
+  it("mostra data e hora e oferece cupom ou PDF", () => {
     expect(operation).toContain("Pedido criado em");
-    expect(operation).toContain("Imprimir ou salvar em PDF");
-    expect(operation).toContain("window.print()");
+    expect(operation).toContain("Imprimir cupom 58 mm");
+    expect(operation).toContain("A4 ou salvar em PDF");
+    expect(operation).toContain('printOperation("thermal")');
+    expect(operation).toContain('printOperation("a4")');
   });
 });
