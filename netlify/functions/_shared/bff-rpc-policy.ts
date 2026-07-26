@@ -7,8 +7,13 @@ export const OPERATION_RPC_ALLOWLIST = [
   "manager_upsert_store",
   "manager_upsert_cash_register",
   "manager_set_staff_store_assignment",
+  "manager_set_staff_capability",
   "manager_update_staff_member",
   "staff_create_manual_sale_in_cash",
+  "staff_financial_sales_summary",
+  "staff_get_commerce_settings",
+  "staff_search_customers",
+  "staff_lookup_customer_by_qr",
 ] as const;
 
 export type OperationBffRpcName = (typeof OPERATION_RPC_ALLOWLIST)[number];
