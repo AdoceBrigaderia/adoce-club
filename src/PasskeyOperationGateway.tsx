@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Fingerprint, KeyRound, LogOut, ShieldCheck, Smartphone } from "lucide-react";
 import OperationBusinessHub from "./OperationBusinessHub";
+import PasskeyManager from "./PasskeyManager";
 import { bffLogout, bffPasswordLogin, getBffSession, type BffSession } from "./services/bff-auth";
-import { passkeysSupported, registerPasskeyBff, signInWithPasskeyBff } from "./services/bff-passkeys";
+import { passkeysSupported, signInWithPasskeyBff } from "./services/bff-passkeys";
 import "./passkey-operation-gateway.css";
 
 const operationRoute = () =>
@@ -18,6 +19,7 @@ export default function PasskeyOperationGateway() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [passkeyReady, setPasskeyReady] = useState(false);
+  const [managePasskeys, setManagePasskeys] = useState(false);
 
   const refresh = useCallback(async () => {
     const next = await getBffSession().catch(() => null);
@@ -69,21 +71,7 @@ export default function PasskeyOperationGateway() {
       setSession(next);
     } catch (error) {
       const text = error instanceof Error ? error.message : "Não foi possível usar a biometria.";
-      setMessage(text.includes("cancel") ? "A biometria foi cancelada." : text);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const registerThisDevice = async () => {
-    if (busy) return;
-    setBusy(true);
-    setMessage("");
-    try {
-      const result = await registerPasskeyBff("operation");
-      setMessage(`Chave de acesso cadastrada${result.passkey.friendly_name ? `: ${result.passkey.friendly_name}` : " neste aparelho"}.`);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível cadastrar este aparelho.");
+      setMessage(text.toLocaleLowerCase("pt-BR").includes("cancel") ? "A biometria foi cancelada." : text);
     } finally {
       setBusy(false);
     }
@@ -96,6 +84,7 @@ export default function PasskeyOperationGateway() {
       await bffLogout();
     } finally {
       setSession(null);
+      setManagePasskeys(false);
       setBusy(false);
       setMessage("");
     }
@@ -111,8 +100,8 @@ export default function PasskeyOperationGateway() {
         {session ? (
           <div className="passkey-operation-session-actions">
             {passkeyReady ? (
-              <button type="button" onClick={() => void registerThisDevice()} disabled={busy}>
-                <Fingerprint /> Ativar biometria neste aparelho
+              <button type="button" onClick={() => setManagePasskeys(true)} disabled={busy}>
+                <Fingerprint /> Gerenciar biometria
               </button>
             ) : null}
             <button type="button" onClick={() => void logout()} disabled={busy}>
@@ -133,6 +122,7 @@ export default function PasskeyOperationGateway() {
           </div>
           {message ? <p className="passkey-operation-message" role="status">{message}</p> : null}
           <OperationBusinessHub />
+          {managePasskeys ? <PasskeyManager onClose={() => setManagePasskeys(false)} /> : null}
         </section>
       ) : (
         <section className="passkey-operation-login">
