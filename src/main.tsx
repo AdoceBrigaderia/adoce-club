@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import AppErrorBoundary from "./AppErrorBoundary";
+import { installBrowserBootstrap } from "./browser-bootstrap";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import {
@@ -11,6 +12,9 @@ import {
 } from "./runtime-recovery";
 import "./styles.css";
 import "./theme.css";
+
+const removeBrowserBootstrap = installBrowserBootstrap();
+if (import.meta.hot) import.meta.hot.dispose(removeBrowserBootstrap);
 
 window.addEventListener("vite:preloadError", (event) => {
   event.preventDefault();
