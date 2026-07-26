@@ -27,6 +27,20 @@ const normalizePhone = (value: string) => {
   return national.length === 10 || national.length === 11 ? `+55${national}` : null;
 };
 
+async function revokeSession(
+  supabaseUrl: string,
+  publishableKey: string,
+  accessToken: string,
+) {
+  await fetch(`${supabaseUrl}/auth/v1/logout?scope=global`, {
+    method: "POST",
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }).catch(() => undefined);
+}
+
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
   if (!allowedOrigin(request)) return json({ error: "Origem não autorizada." }, 403);
@@ -47,7 +61,9 @@ export default async (request: Request) => {
   });
   const { data: profile } = await admin
     .from("profiles")
-    .select("id,active,account_status,auth_upgraded_at")
+    .select(
+      "id,active,account_status,auth_upgraded_at,must_change_password,temporary_password_expires_at",
+    )
     .eq("phone_e164", phone)
     .maybeSingle();
 
@@ -74,7 +90,34 @@ export default async (request: Request) => {
     return json({ error: "Celular ou senha incorretos." }, 401);
   }
 
-  return json(payload);
+  const expiresAt = profile.temporary_password_expires_at
+    ? Date.parse(profile.temporary_password_expires_at)
+    : Number.NaN;
+  if (
+    profile.must_change_password &&
+    (!Number.isFinite(expiresAt) || expiresAt <= Date.now())
+  ) {
+    const accessToken = typeof payload.access_token === "string"
+      ? payload.access_token
+      : "";
+    if (accessToken)
+      await revokeSession(supabaseUrl, publishableKey, accessToken);
+    return json(
+      {
+        error:
+          "A senha temporária expirou. Solicite uma nova redefinição ao responsável pela conta.",
+        code: "temporary_password_expired",
+      },
+      403,
+    );
+  }
+
+  return json({
+    ...payload,
+    must_change_password: Boolean(profile.must_change_password),
+    temporary_password_expires_at:
+      profile.temporary_password_expires_at || null,
+  });
 };
 
 export const config = { path: "/api/customer-phone-login" };
