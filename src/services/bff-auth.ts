@@ -17,6 +17,23 @@ export type BffSession = {
   rotated?: boolean;
 };
 
+export type BffRegistrationResult = {
+  authenticated: true;
+  completed: true;
+  user: BffUser;
+  registration: {
+    completed: true;
+    profile_id: string;
+    full_name: string;
+    phone_e164: string;
+    whatsapp_verified_at: string | null;
+    marketing_consent: boolean;
+    referral_status: string;
+  };
+  csrfToken: string;
+  expiresIn: number;
+};
+
 const csrfCookieName = "__Host-adoce-csrf";
 
 export function readBffCsrfToken(cookieHeader = document.cookie) {
@@ -56,6 +73,44 @@ export async function bffPasswordLogin(input: {
     body: JSON.stringify(input),
   });
   return payload<BffSession & { csrfToken: string; expiresIn: number }>(response);
+}
+
+export async function bffRequestRegistrationEmailCode(input: {
+  email: string;
+  fullName: string;
+}) {
+  const response = await fetch("/api/auth-bff-registration-request", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  return payload<{ accepted: true }>(response);
+}
+
+export async function bffCompleteRegistration(input: {
+  email: string;
+  token: string;
+  fullName: string;
+  phone: string;
+  marketingAccepted: boolean;
+  whatsappChallengeId?: string | null;
+  referralCode?: string | null;
+  remember?: boolean;
+}) {
+  const response = await fetch("/api/auth-bff-registration-complete", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  return payload<BffRegistrationResult>(response);
 }
 
 export async function getBffSession() {
