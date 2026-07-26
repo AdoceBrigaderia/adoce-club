@@ -109,14 +109,19 @@ export default function OperationGalleryMediaHistory({
       {versions.map((version) => {
         const current = galleryMediaVersionIsCurrent(version, item);
         const source = galleryMediaVersionSource(version);
+        const isInstagram = version.media_type === "instagram";
         return <article key={version.id}>
-          {version.media_type === "reel" ? <div className="operation-gallery-history-reel"><Video /> Reel</div> : <img src={source} alt="" />}
+          {isInstagram
+            ? <div className="operation-gallery-history-reel"><Video /> Reel</div>
+            : source
+              ? <img src={source} alt="" />
+              : <div className="operation-gallery-history-reel"><Video /> Sem prévia</div>}
           <div>
             <strong>{galleryMediaChangeLabel(version.change_type)}</strong>
             <small><Clock3 /> {galleryMediaVersionDate(version.changed_at)}</small>
             <small><UserRound /> {version.changed_by_name || "Sistema Adoce"}</small>
           </div>
-          {version.media_type === "reel" && source ? <a href={source} target="_blank" rel="noreferrer"><ExternalLink /> Abrir</a> : null}
+          {isInstagram && source ? <a href={source || undefined} target="_blank" rel="noreferrer"><ExternalLink /> Abrir</a> : null}
           {current ? <span className="operation-visual-history-current">Atual</span> : <button type="button" disabled={Boolean(busyVersionId)} onClick={() => void restore(version)}><RotateCcw /> {busyVersionId === version.id ? "Restaurando…" : "Restaurar"}</button>}
         </article>;
       })}
