@@ -6,6 +6,15 @@ import { fileURLToPath } from "node:url";
 const distIndex = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
 const netlifyConfig = readFileSync(new URL("../netlify.toml", import.meta.url), "utf8");
 const distDirectory = fileURLToPath(new URL("../dist", import.meta.url));
+const browserSupabase = readFileSync(
+  new URL("../src/lib/supabase.ts", import.meta.url),
+  "utf8",
+);
+const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
+const registrationSource = readFileSync(
+  new URL("../src/CustomerRegistrationBffPage.tsx", import.meta.url),
+  "utf8",
+);
 
 const cspMatch = netlifyConfig.match(/Content-Security-Policy\s*=\s*"([^"]+)"/);
 if (!cspMatch) throw new Error("CSP ausente no netlify.toml.");
@@ -31,6 +40,24 @@ if (csp.includes("'unsafe-eval'")) throw new Error("CSP permite unsafe-eval.");
 const scriptDirective = csp.match(/script-src [^;]+/)?.[0] || "";
 if (scriptDirective.includes("'unsafe-inline'")) {
   throw new Error("script-src ainda permite JavaScript inline.");
+}
+
+if (/localStorage|sessionStorage/.test(browserSupabase)) {
+  throw new Error("Cliente Supabase do navegador ainda acessa armazenamento persistente.");
+}
+if (!browserSupabase.includes("persistSession: false")) {
+  throw new Error("Cliente Supabase do navegador ainda pode persistir sessão.");
+}
+if (!browserSupabase.includes("autoRefreshToken: false")) {
+  throw new Error("Cliente Supabase do navegador ainda renova tokens diretamente.");
+}
+if (!appSource.includes('import("./CustomerRegistrationBffPage")')) {
+  throw new Error("Cadastro público real não está roteado para o BFF.");
+}
+for (const marker of ["requireSupabase", "auth.setSession", "Authorization"]) {
+  if (registrationSource.includes(marker)) {
+    throw new Error(`Cadastro BFF contém acesso proibido no navegador: ${marker}`);
+  }
 }
 
 const scripts = [...distIndex.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
@@ -68,13 +95,18 @@ const forbiddenLegacyMarkers = [
   "contas de demonstração",
   "#prototipo",
   "LegacyPrototype",
+  "adoce-remember-login",
+  "/api/customer-phone-login",
+  "/api/staff-phone-login",
 ];
 
 for (const file of javascriptFiles) {
   const source = readFileSync(file, "utf8");
   for (const marker of forbiddenLegacyMarkers) {
     if (source.includes(marker)) {
-      throw new Error(`Bundle produtivo contém marcador do protótipo legado: ${marker} em ${file.slice(dirname(distDirectory).length)}`);
+      throw new Error(
+        `Bundle produtivo contém marcador proibido: ${marker} em ${file.slice(dirname(distDirectory).length)}`,
+      );
     }
   }
 }
@@ -83,4 +115,6 @@ if (productionFiles.some((file) => /LegacyPrototype/i.test(file))) {
   throw new Error("Build produtivo gerou chunk do protótipo legado.");
 }
 
-console.log("Gate de segurança do build aprovado: CSP, headers, scripts e isolamento do protótipo validados.");
+console.log(
+  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro BFF e ausência de persistência de tokens validados.",
+);
