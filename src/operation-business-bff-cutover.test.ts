@@ -13,7 +13,7 @@ describe("corte BFF da estrutura operacional", () => {
     expect(hub).toContain('next.user.surface !== "operation"');
     expect(hub).not.toContain("requireSupabase");
     expect(hub).not.toContain("auth.getSession");
-    expect(hub).not.toContain("Session");
+    expect(hub).not.toContain("@supabase/supabase-js");
   });
 
   it("executa todas as operações do caixa pelo proxy BFF", () => {
