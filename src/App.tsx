@@ -10,9 +10,10 @@ const OrderPolicyPage = lazy(() => import("./OrderPolicyPage"));
 const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
-const AccessApp = lazy(() => import("./AccessApp"));
 const CustomerCheckInPage = lazy(() => import("./CustomerCheckInPage"));
 const CustomerRegistrationPage = lazy(() => import("./CustomerRegistrationPage"));
+const PasskeyClientGateway = lazy(() => import("./PasskeyClientGateway"));
+const PasskeyOperationGateway = lazy(() => import("./PasskeyOperationGateway"));
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
 const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 
@@ -80,8 +81,8 @@ export default function App() {
 
   if (location.hash.startsWith("#check-in")) return <Suspense fallback={loading}><CustomerCheckInPage /></Suspense>;
   if (location.hash.startsWith("#cadastro")) return <Suspense fallback={loading}><CustomerRegistrationPage /></Suspense>;
-  if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation" /></Suspense>;
-  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client" /></Suspense>;
+  if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><PasskeyOperationGateway /></Suspense>;
+  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><PasskeyClientGateway /></Suspense>;
   if (location.hash.startsWith("#adoce-hoje")) return <Suspense fallback={loading}><AdoceHoje /></Suspense>;
   if (location.hash.startsWith("#encomendas")) return <Suspense fallback={loading}><CommercialCatalog initialSegment="cakes" /></Suspense>;
   if (location.hash.startsWith("#docinhos")) return <Suspense fallback={loading}><CommercialCatalog initialSegment="sweets" /></Suspense>;
