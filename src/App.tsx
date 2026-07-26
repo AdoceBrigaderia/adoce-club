@@ -11,7 +11,9 @@ const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const CustomerCheckInPage = lazy(() => import("./CustomerCheckInPage"));
-const CustomerRegistrationPage = lazy(() => import("./CustomerRegistrationPage"));
+const CustomerRegistrationPage = lazy(() =>
+  import("./CustomerRegistrationBffPage"),
+);
 const PasskeyClientGateway = lazy(() => import("./PasskeyClientGateway"));
 const PasskeyOperationGateway = lazy(() => import("./PasskeyOperationGateway"));
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
