@@ -16,7 +16,7 @@ declare
   word_index integer := 0;
 begin
   cleaned := pg_catalog.regexp_replace(
-    pg_catalog.btrim(pg_catalog.coalesce(raw_name, '')),
+    pg_catalog.btrim(coalesce(raw_name, '')),
     '\s+',
     ' ',
     'g'
