@@ -39,6 +39,20 @@ const normalizePhone = (value: string) => {
     : null;
 };
 
+async function revokeSession(
+  supabaseUrl: string,
+  publishableKey: string,
+  accessToken: string,
+) {
+  await fetch(`${supabaseUrl}/auth/v1/logout?scope=global`, {
+    method: "POST",
+    headers: {
+      apikey: publishableKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }).catch(() => undefined);
+}
+
 export default async (request: Request) => {
   if (request.method !== "POST")
     return json({ error: "Método não permitido." }, 405);
@@ -76,7 +90,9 @@ export default async (request: Request) => {
 
   const { data: staff } = await admin
     .from("staff_members")
-    .select("active,must_change_password")
+    .select(
+      "active,must_change_password,temporary_password_expires_at",
+    )
     .eq("user_id", profile.id)
     .maybeSingle();
   if (!staff?.active)
@@ -117,9 +133,33 @@ export default async (request: Request) => {
     return json({ error: "Celular ou senha incorretos." }, 401);
   }
 
+  const expiresAt = staff.temporary_password_expires_at
+    ? Date.parse(staff.temporary_password_expires_at)
+    : Number.NaN;
+  if (
+    staff.must_change_password &&
+    (!Number.isFinite(expiresAt) || expiresAt <= Date.now())
+  ) {
+    const accessToken = typeof payload.access_token === "string"
+      ? payload.access_token
+      : "";
+    if (accessToken)
+      await revokeSession(supabaseUrl, publishableKey, accessToken);
+    return json(
+      {
+        error:
+          "A senha temporária expirou. Solicite uma nova redefinição ao responsável pela conta.",
+        code: "temporary_password_expired",
+      },
+      403,
+    );
+  }
+
   return json({
     ...payload,
     must_change_password: Boolean(staff.must_change_password),
+    temporary_password_expires_at:
+      staff.temporary_password_expires_at || null,
   });
 };
 
