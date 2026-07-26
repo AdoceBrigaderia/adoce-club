@@ -4,6 +4,7 @@ import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
+import OperationReports from "./OperationReports";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
 export default function OperationBusinessHub() {
@@ -46,6 +47,7 @@ export default function OperationBusinessHub() {
       <OperationQuickLoyalty />
       <OperationCustomer360 />
       <OperationQuickCash />
+      <OperationReports />
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
   );
