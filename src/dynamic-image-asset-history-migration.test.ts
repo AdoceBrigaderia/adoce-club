@@ -43,8 +43,9 @@ describe("histórico das capas dinâmicas", () => {
   });
 
   it("faz backfill idempotente dos registros existentes", () => {
-    expect(migration.match(/where not exists/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(migration.match(/not exists \(/g)?.length).toBeGreaterThanOrEqual(4);
     expect(migration).toContain("'flavor:' || f.id::text || ':cover'");
+    expect(migration).toContain("'flavor:' || f.id::text || ':whole-cake'");
     expect(migration).toContain("'product:' || p.id::text || ':cover'");
     expect(migration).toContain("'segment:' || s.segment || ':cover'");
   });
