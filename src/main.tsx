@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import AppErrorBoundary from "./AppErrorBoundary";
 import { installBrowserBootstrap } from "./browser-bootstrap";
+import { installCustomerCheckInReturn } from "./customer-checkin-return";
 import { installCustomerNameNormalization } from "./customer-name-normalization";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
@@ -16,10 +17,12 @@ import "./styles.css";
 import "./theme.css";
 
 const removeBrowserBootstrap = installBrowserBootstrap();
+const removeCustomerCheckInReturn = installCustomerCheckInReturn();
 const removeCustomerNameNormalization = installCustomerNameNormalization();
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     removeBrowserBootstrap();
+    removeCustomerCheckInReturn();
     removeCustomerNameNormalization();
   });
 
