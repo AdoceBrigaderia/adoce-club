@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { ImagePlus, RefreshCw, Search } from "lucide-react";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
+import OperationDynamicImageAssetHistory from "./OperationDynamicImageAssetHistory";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
 import {
   buildDynamicImageAssets,
@@ -251,6 +252,16 @@ export default function OperationDynamicImageLibrary({
                 onImage={(file: File) => setPending({ asset, file })}
               />
             </div>
+            <OperationDynamicImageAssetHistory
+              asset={asset}
+              session={session}
+              onRestored={async (message) => {
+                setNotice(message);
+                await load();
+                onChanged?.();
+                window.dispatchEvent(new Event("adoce-site-visual-assets-changed"));
+              }}
+            />
           </article>;
         })}
       </div>
