@@ -34,8 +34,20 @@ jobs:
       - name: Instalar dependências
         run: npm ci --prefer-offline --no-audit
 
-      - name: Executar verificação completa
-        run: npm run verify
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes Vitest
+        run: npm run test
+
+      - name: Testar auditoria da biblioteca
+        run: npm run test:image-library-audit
+
+      - name: Auditar referências de imagens
+        run: npm run audit:image-library
+
+      - name: Gerar build de homologação
+        run: npm run build
 
       - name: Preservar build para inspeção
         if: success()
