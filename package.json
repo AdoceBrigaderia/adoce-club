@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "lint": "tsc -b --pretty false",
+    "verify:fast": "npm run lint && npm run test",
+    "verify": "npm run lint && npm run test && npm run test:image-library-audit && npm run audit:image-library && npm run build",
     "test:image-library-audit": "node --test scripts/image-library-audit-core.test.mjs",
     "audit:image-library": "node scripts/audit-image-library.mjs",
     "audit:image-library:strict": "node scripts/audit-image-library.mjs --strict",
