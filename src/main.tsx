@@ -5,6 +5,7 @@ import AppErrorBoundary from "./AppErrorBoundary";
 import { installBrowserBootstrap } from "./browser-bootstrap";
 import { installCustomerCheckInReturn } from "./customer-checkin-return";
 import { installCustomerNameNormalization } from "./customer-name-normalization";
+import PasskeyOperationGateway from "./PasskeyOperationGateway";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import {
@@ -40,6 +41,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <SiteVisualOverrides>
         <App />
         <PublicContactDock />
+        <PasskeyOperationGateway />
       </SiteVisualOverrides>
     </AppErrorBoundary>
   </React.StrictMode>,
