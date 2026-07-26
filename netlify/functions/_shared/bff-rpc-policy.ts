@@ -16,12 +16,24 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_get_commerce_settings",
   "staff_search_customers",
   "staff_lookup_customer_by_qr",
+  "staff_list_active_customer_checkins",
+  "staff_apply_customer_checkin_stamps",
+] as const;
+
+export const CLIENT_RPC_ALLOWLIST = [
+  "customer_create_store_checkin",
 ] as const;
 
 export type OperationBffRpcName = (typeof OPERATION_RPC_ALLOWLIST)[number];
+export type ClientBffRpcName = (typeof CLIENT_RPC_ALLOWLIST)[number];
 
 const allowedOperationRpcs = new Set<string>(OPERATION_RPC_ALLOWLIST);
+const allowedClientRpcs = new Set<string>(CLIENT_RPC_ALLOWLIST);
 
 export function isAllowedOperationRpc(value: unknown): value is OperationBffRpcName {
   return typeof value === "string" && allowedOperationRpcs.has(value);
+}
+
+export function isAllowedClientRpc(value: unknown): value is ClientBffRpcName {
+  return typeof value === "string" && allowedClientRpcs.has(value);
 }
