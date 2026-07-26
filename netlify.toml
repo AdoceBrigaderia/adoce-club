@@ -24,10 +24,15 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-iM/T+llxmr196C6iZBFGkmgpiADXCG9kHLds++vU8fg='; script-src-attr 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://*.supabase.in https://*.cdninstagram.com https://*.fbcdn.net; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.supabase.in wss://*.supabase.in; frame-src https://www.instagram.com; media-src 'self' blob: https://*.supabase.co https://*.supabase.in; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
+    X-Permitted-Cross-Domain-Policies = "none"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(self), microphone=(), geolocation=()"
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=(), payment=(), usb=(), serial=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-site"
 
 [[headers]]
   for = "/assets/*"
