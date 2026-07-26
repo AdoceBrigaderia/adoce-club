@@ -18,6 +18,9 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_lookup_customer_by_qr",
   "staff_list_active_customer_checkins",
   "staff_apply_customer_checkin_stamps",
+  "staff_get_customer_360",
+  "staff_add_customer_crm_note",
+  "staff_set_customer_crm_tag",
 ] as const;
 
 export const CLIENT_RPC_ALLOWLIST = [
