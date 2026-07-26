@@ -71,7 +71,7 @@ export default function OperationGalleryMediaHistory({
       setErrorMessage(error.message);
       return;
     }
-    setVersions((data || []) as GalleryMediaVersion[]);
+    setVersions((data || []) as unknown as GalleryMediaVersion[]);
   }, [mediaKey]);
 
   useEffect(() => {
@@ -98,51 +98,28 @@ export default function OperationGalleryMediaHistory({
     }
   };
 
-  return <section className="operation-visual-history operation-gallery-media-history">
-    <button
-      type="button"
-      className="operation-visual-history-toggle"
-      aria-expanded={open}
-      onClick={() => setOpen((value) => !value)}
-    >
-      <History />
-      <span><strong>Histórico da mídia</strong><small>Alterações, remoções e versões anteriores</small></span>
-      <span>{open ? "Fechar" : "Abrir"}</span>
+  return <section className="operation-gallery-media-history">
+    <button type="button" className="operation-gallery-media-history-toggle" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <History /> Histórico
     </button>
-
-    {open ? <div className="operation-visual-history-panel">
-      {loading ? <p className="operation-visual-loading">Carregando histórico…</p> : null}
-      {errorMessage ? <p className="operation-commercial-notice" role="alert">{errorMessage}</p> : null}
-      {!loading && !errorMessage && versions.length === 0
-        ? <p className="operation-visual-history-empty">Esta mídia ainda não possui alterações registradas.</p>
-        : null}
-      {!loading && versions.length > 0 ? <div className="operation-visual-history-list">
-        {versions.map((version) => {
-          const isCurrent = galleryMediaVersionIsCurrent(version, item);
-          const working = busyVersionId === version.id;
-          const source = galleryMediaVersionSource(version);
-          return <article key={version.id} className="operation-visual-history-version">
-            {version.media_type === "image" && source
-              ? <img src={source} alt={`Versão anterior de ${owner.label}`} />
-              : <div className="operation-visual-history-reel"><Video /><span>Reel</span></div>}
-            <div>
-              <strong>{galleryMediaChangeLabel(version.change_type)}</strong>
-              <span><Clock3 /> {galleryMediaVersionDate(version.changed_at)}</span>
-              <span><UserRound /> {version.changed_by_name || "Usuário não identificado"}</span>
-              {version.media_type === "instagram" && source
-                ? <a href={source} target="_blank" rel="noreferrer"><ExternalLink /> Abrir Reel</a>
-                : null}
-            </div>
-            <button
-              type="button"
-              disabled={isCurrent || working}
-              onClick={() => void restore(version)}
-            >
-              <RotateCcw /> {isCurrent ? "Versão atual" : working ? "Restaurando…" : "Restaurar"}
-            </button>
-          </article>;
-        })}
-      </div> : null}
+    {open ? <div className="operation-gallery-media-history-panel">
+      {loading ? <p>Carregando histórico…</p> : null}
+      {errorMessage ? <p className="operation-visual-history-error">{errorMessage}</p> : null}
+      {!loading && !errorMessage && versions.length === 0 ? <p>Nenhuma alteração registrada.</p> : null}
+      {versions.map((version) => {
+        const current = galleryMediaVersionIsCurrent(version, item);
+        const source = galleryMediaVersionSource(version);
+        return <article key={version.id}>
+          {version.media_type === "reel" ? <div className="operation-gallery-history-reel"><Video /> Reel</div> : <img src={source} alt="" />}
+          <div>
+            <strong>{galleryMediaChangeLabel(version.change_type)}</strong>
+            <small><Clock3 /> {galleryMediaVersionDate(version.changed_at)}</small>
+            <small><UserRound /> {version.changed_by_name || "Sistema Adoce"}</small>
+          </div>
+          {version.media_type === "reel" && source ? <a href={source} target="_blank" rel="noreferrer"><ExternalLink /> Abrir</a> : null}
+          {current ? <span className="operation-visual-history-current">Atual</span> : <button type="button" disabled={Boolean(busyVersionId)} onClick={() => void restore(version)}><RotateCcw /> {busyVersionId === version.id ? "Restaurando…" : "Restaurar"}</button>}
+        </article>;
+      })}
     </div> : null}
   </section>;
 }
