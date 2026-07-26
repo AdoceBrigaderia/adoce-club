@@ -4,21 +4,26 @@ import {
   ArrowRight,
   CalendarDays,
   CircleDollarSign,
+  Clock3,
   PackageCheck,
   QrCode,
   RefreshCw,
   ShoppingCart,
   Users,
+  WifiOff,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import {
   buildDashboardData,
   dashboardAttentionCount,
+  dashboardCustomerCount,
+  dashboardLoadMessage,
   dashboardPriorities,
   emptyDashboardData,
   operationTodayKey,
   type DashboardData,
   type DashboardDestination,
+  type DashboardSource,
 } from "./operation-dashboard-model";
 import "./operation-dashboard.css";
 
@@ -31,6 +36,11 @@ const priorityIcons = {
   stock: AlertTriangle,
 } as const;
 
+const timeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export default function OperationDashboard({
   onNavigate,
 }: {
@@ -39,11 +49,19 @@ export default function OperationDashboard({
   const [data, setData] = useState<DashboardData>(emptyDashboardData);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [online, setOnline] = useState(() => navigator.onLine);
 
   const load = useCallback(async () => {
+    if (!navigator.onLine) {
+      setOnline(false);
+      setNotice(dashboardLoadMessage([], false));
+      return;
+    }
+
     setBusy(true);
     const supabase = requireSupabase();
-    const [orders, requests, members, availability, plannedProduction] =
+    const [orders, requests, members, staff, availability, plannedProduction] =
       await Promise.all([
         supabase
           .from("instant_orders")
@@ -54,6 +72,10 @@ export default function OperationDashboard({
           .select("status")
           .not("status", "in", '("completed","cancelled","expired")'),
         supabase.from("profiles").select("id", { count: "exact", head: true }),
+        supabase
+          .from("staff_members")
+          .select("user_id", { count: "exact", head: true })
+          .eq("active", true),
         supabase
           .from("flavor_availability")
           .select("quantity_available,quantity_reserved,status")
@@ -66,35 +88,56 @@ export default function OperationDashboard({
           .eq("status", "published"),
       ]);
 
-    const firstError =
-      orders.error ||
-      requests.error ||
-      members.error ||
-      availability.error ||
-      plannedProduction.error;
+    const failedSources: DashboardSource[] = [];
+    if (orders.error) failedSources.push("sales");
+    if (requests.error) failedSources.push("requests");
+    if (members.error) failedSources.push("members");
+    if (staff.error) failedSources.push("staff");
+    if (availability.error) failedSources.push("availability");
+    if (plannedProduction.error) failedSources.push("production");
 
-    setBusy(false);
-    if (firstError) {
-      setNotice(
-        "Alguns números não puderam ser atualizados agora. Os atalhos da operação continuam disponíveis.",
+    if (failedSources.length < 6) {
+      setData(
+        buildDashboardData({
+          sales: orders.error ? [] : orders.data || [],
+          requests: requests.error ? [] : requests.data || [],
+          members: dashboardCustomerCount(
+            members.error ? 0 : members.count,
+            staff.error ? 0 : staff.count,
+          ),
+          availability: availability.error ? [] : availability.data || [],
+          production: plannedProduction.error
+            ? []
+            : plannedProduction.data || [],
+        }),
       );
-      return;
+      setLastUpdatedAt(new Date());
     }
 
-    setData(
-      buildDashboardData({
-        sales: orders.data || [],
-        requests: requests.data || [],
-        members: members.count || 0,
-        availability: availability.data || [],
-        production: plannedProduction.data || [],
-      }),
-    );
-    setNotice("");
+    setOnline(true);
+    setNotice(dashboardLoadMessage(failedSources));
+    setBusy(false);
   }, []);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setOnline(true);
+      void load();
+    };
+    const handleOffline = () => {
+      setOnline(false);
+      setNotice(dashboardLoadMessage([], false));
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
   }, [load]);
 
   const priorities = useMemo(() => dashboardPriorities(data), [data]);
@@ -104,7 +147,7 @@ export default function OperationDashboard({
   );
 
   return (
-    <section className="operation-dashboard">
+    <section className="operation-dashboard" aria-busy={busy}>
       <header className="operation-dashboard-heading">
         <div>
           <span>Visão do dia</span>
@@ -113,15 +156,24 @@ export default function OperationDashboard({
             Venda, acompanhe pedidos, localize clientes e resolva pendências sem
             procurar em vários menus.
           </p>
+          <small className="operation-dashboard-updated">
+            {online ? <Clock3 /> : <WifiOff />}
+            {lastUpdatedAt
+              ? `Última atualização às ${timeFormatter.format(lastUpdatedAt)}`
+              : online
+                ? "Preparando os números da operação"
+                : "Aguardando conexão"}
+          </small>
         </div>
-        <button type="button" onClick={() => void load()} disabled={busy}>
+        <button type="button" onClick={() => void load()} disabled={busy || !online}>
           <RefreshCw /> {busy ? "Atualizando…" : "Atualizar"}
         </button>
       </header>
 
       {notice ? (
         <p className="operation-dashboard-notice" role="status">
-          {notice}
+          {online ? <AlertTriangle /> : <WifiOff />}
+          <span>{notice}</span>
         </p>
       ) : null}
 
@@ -252,6 +304,14 @@ export default function OperationDashboard({
           </button>
         </div>
       </section>
+
+      <nav className="operation-dashboard-mobile-dock" aria-label="Atalhos rápidos da operação">
+        <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span>Vender</span></button>
+        <button type="button" onClick={() => onNavigate("requests")}><CalendarDays /><span>Pedidos</span></button>
+        <button type="button" onClick={() => onNavigate("customers")}><QrCode /><span>Cliente</span></button>
+        <button type="button" onClick={() => onNavigate("content")}><PackageCheck /><span>Produção</span></button>
+        <button type="button" onClick={() => onNavigate("finance")}><CircleDollarSign /><span>Financeiro</span></button>
+      </nav>
     </section>
   );
 }
