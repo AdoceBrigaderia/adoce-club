@@ -21,6 +21,7 @@ type ReportsData = {
   period: { from: string; to: string; store_id: string | null };
   summary: {
     orders: number;
+    approved_orders: number;
     gross: number;
     fees: number;
     net: number;
