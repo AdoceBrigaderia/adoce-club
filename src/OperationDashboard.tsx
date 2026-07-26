@@ -159,8 +159,8 @@ export default function OperationDashboard({
           <span>
             <strong>Produção do dia</strong>
             <small>
-              {data.productionPending
-                ? `${data.productionPending} item(ns) aguardando liberação`
+              {data.productionPendingUnits
+                ? `${data.productionPendingUnits} fatias aguardam liberação`
                 : "Liberar sabores e conferir disponibilidade"}
             </small>
           </span>
