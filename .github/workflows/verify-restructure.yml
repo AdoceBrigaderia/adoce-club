@@ -1,0 +1,44 @@
+name: Verificar reestruturação
+
+on:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+  workflow_dispatch:
+
+concurrency:
+  group: verify-restructure-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, testes e build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Executar verificação completa
+        run: npm run verify
+
+      - name: Preservar build para inspeção
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-adoce-reestruturacao
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
