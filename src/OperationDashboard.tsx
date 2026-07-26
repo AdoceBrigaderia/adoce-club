@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -26,6 +26,8 @@ import {
   type DashboardSource,
 } from "./operation-dashboard-model";
 import "./operation-dashboard.css";
+
+const OperationBusinessHub = lazy(() => import("./OperationBusinessHub"));
 
 export type { DashboardDestination } from "./operation-dashboard-model";
 
@@ -263,6 +265,10 @@ export default function OperationDashboard({
           </div>
         ) : null}
       </section>
+
+      <Suspense fallback={<p className="operation-dashboard-notice">Carregando lojas, caixas e equipe…</p>}>
+        <OperationBusinessHub />
+      </Suspense>
 
       <section className="operation-dashboard-summary" aria-label="Resumo da operação">
         <header>
