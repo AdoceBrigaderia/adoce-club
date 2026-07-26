@@ -1,0 +1,103 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import {
+  ACCESS_COOKIE,
+  CSRF_COOKIE,
+  REFRESH_COOKIE,
+  clearedSessionCookies,
+  sessionCookies,
+  validCsrf,
+} from "../netlify/functions/_shared/session-security";
+import { readBffCsrfToken } from "./services/bff-auth";
+
+const loginSource = readFileSync(
+  new URL("../netlify/functions/auth-bff-login.ts", import.meta.url),
+  "utf8",
+);
+const sessionSource = readFileSync(
+  new URL("../netlify/functions/auth-bff-session.ts", import.meta.url),
+  "utf8",
+);
+const logoutSource = readFileSync(
+  new URL("../netlify/functions/auth-bff-logout.ts", import.meta.url),
+  "utf8",
+);
+
+describe("sessão BFF protegida", () => {
+  it("emite tokens somente em cookies HttpOnly Secure", () => {
+    const issued = sessionCookies(
+      {
+        access_token: "access-secret",
+        refresh_token: "refresh-secret",
+        expires_in: 3600,
+      },
+      "operation",
+      true,
+      "a".repeat(64),
+    );
+    const access = issued.values.find((value) => value.startsWith(`${ACCESS_COOKIE}=`));
+    const refresh = issued.values.find((value) => value.startsWith(`${REFRESH_COOKIE}=`));
+    const csrf = issued.values.find((value) => value.startsWith(`${CSRF_COOKIE}=`));
+
+    expect(access).toContain("HttpOnly");
+    expect(refresh).toContain("HttpOnly");
+    expect(access).toContain("Secure");
+    expect(refresh).toContain("SameSite=Lax");
+    expect(csrf).toContain("SameSite=Strict");
+    expect(csrf).not.toContain("HttpOnly");
+    expect(issued.values.join("\n")).not.toContain("Domain=");
+  });
+
+  it("exige double-submit CSRF no logout", () => {
+    const token = "b".repeat(64);
+    const valid = new Request("https://operacao.adocebrigaderia.com.br/api/auth-bff-logout", {
+      method: "POST",
+      headers: {
+        Cookie: `${CSRF_COOKIE}=${token}`,
+        "X-CSRF-Token": token,
+      },
+    });
+    const invalid = new Request("https://operacao.adocebrigaderia.com.br/api/auth-bff-logout", {
+      method: "POST",
+      headers: {
+        Cookie: `${CSRF_COOKIE}=${token}`,
+        "X-CSRF-Token": "c".repeat(64),
+      },
+    });
+    expect(validCsrf(valid)).toBe(true);
+    expect(validCsrf(invalid)).toBe(false);
+  });
+
+  it("remove integralmente os cookies no logout", () => {
+    const cleared = clearedSessionCookies();
+    expect(cleared).toHaveLength(4);
+    cleared.forEach((value) => {
+      expect(value).toContain("Max-Age=0");
+      expect(value).toContain("Secure");
+      expect(value).toContain("Path=/");
+    });
+  });
+
+  it("o cliente lê apenas o token CSRF, nunca o token de sessão", () => {
+    expect(readBffCsrfToken(`${CSRF_COOKIE}=${"d".repeat(64)}; outro=1`)).toBe(
+      "d".repeat(64),
+    );
+    expect(readBffCsrfToken("outro=1")).toBe("");
+  });
+
+  it("não devolve access token ou refresh token no corpo do login BFF", () => {
+    expect(loginSource).not.toContain("...tokenPayload");
+    expect(loginSource).not.toContain("access_token: tokenPayload");
+    expect(loginSource).not.toContain("refresh_token: tokenPayload");
+    expect(loginSource).toContain("sessionCookies(");
+    expect(loginSource).toContain("temporary_password_expired");
+  });
+
+  it("restaura, rotaciona e revoga sessões no servidor", () => {
+    expect(sessionSource).toContain("grant_type=refresh_token");
+    expect(sessionSource).toContain("clearedSessionCookies()");
+    expect(logoutSource).toContain("validCsrf(request)");
+    expect(logoutSource).toContain("logout?scope=global");
+    expect(logoutSource).toContain("clearedSessionCookies()");
+  });
+});
