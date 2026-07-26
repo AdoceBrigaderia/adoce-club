@@ -1,6 +1,6 @@
 begin;
 
--- SECURITY DEFINER functions are executable by PUBLIC by default.  The
+-- SECURITY DEFINER functions are executable by PUBLIC by default. The
 -- operational API must never inherit that default: only explicitly granted
 -- roles may invoke staff, manager and owner routines.
 do $$
@@ -28,7 +28,7 @@ begin
 end;
 $$;
 
--- The pilot RPC surface belonged to the retired local prototype.  Keep the
+-- The pilot RPC surface belonged to the retired local prototype. Keep the
 -- historical database objects for rollback/audit, but make them unreachable
 -- from both public and signed-in browser clients.
 do $$
@@ -56,7 +56,8 @@ end;
 $$;
 
 -- Regression guard: abort the migration if a sensitive SECURITY DEFINER RPC
--- remains callable anonymously.
+-- remains callable anonymously. Passing the function OID avoids ambiguity
+-- caused by named arguments in pg_get_function_identity_arguments().
 do $$
 declare
   exposed_count integer;
@@ -68,11 +69,7 @@ begin
   where n.nspname = 'public'
     and p.prosecdef
     and p.proname ~ '^(staff_|manager_|owner_|record_owner_)'
-    and has_function_privilege(
-      'anon',
-      format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)),
-      'EXECUTE'
-    );
+    and has_function_privilege('anon', p.oid, 'EXECUTE');
 
   if exposed_count <> 0 then
     raise exception '% sensitive functions remain executable by anon', exposed_count;
