@@ -84,8 +84,8 @@ begin
     );
   end if;
 
-  digits := pg_catalog.regexp_replace(pg_catalog.coalesce(raw_phone, ''), '\D', '', 'g');
-  national := case when digits like '55%' then pg_catalog.substring(digits from 3) else digits end;
+  digits := pg_catalog.regexp_replace(coalesce(raw_phone, ''), '\D', '', 'g');
+  national := case when digits like '55%' then substring(digits from 3) else digits end;
   if pg_catalog.length(national) not in (10, 11) then
     raise exception 'Telefone inválido' using errcode = '22023';
   end if;
@@ -104,7 +104,7 @@ begin
   if requested_ip_hash !~ '^[a-f0-9]{64}$' then
     raise exception 'Hash de origem inválido' using errcode = '22023';
   end if;
-  if pg_catalog.char_length(pg_catalog.coalesce(requested_idempotency_key, '')) < 12 then
+  if pg_catalog.char_length(coalesce(requested_idempotency_key, '')) < 12 then
     raise exception 'Chave de idempotência inválida' using errcode = '22023';
   end if;
   if requested_expires_at <= now() or requested_expires_at > now() + interval '15 minutes' then
@@ -150,7 +150,7 @@ begin
     requested_idempotency_key,
     requested_ip_hash,
     requested_expires_at,
-    pg_catalog.coalesce(requested_metadata, '{}'::jsonb)
+    coalesce(requested_metadata, '{}'::jsonb)
   ) returning * into created;
 
   return jsonb_build_object(
@@ -186,16 +186,17 @@ security definer
 set search_path = ''
 as $$
 begin
-  if pg_catalog.char_length(pg_catalog.coalesce(provider_message_id, '')) < 8 then
+  if pg_catalog.char_length(coalesce(provider_message_id, '')) < 8 then
     raise exception 'Identificador do provedor inválido';
   end if;
-  update public.whatsapp_auth_challenges
+  update public.whatsapp_auth_challenges challenge
   set status = 'sent',
       provider_message_id = server_mark_whatsapp_auth_sent.provider_message_id,
       sent_at = now(),
       provider_error_code = null,
       provider_error_title = null
-  where id = challenge_id and status = 'created';
+  where challenge.id = server_mark_whatsapp_auth_sent.challenge_id
+    and challenge.status = 'created';
   if not found then raise exception 'Desafio indisponível'; end if;
 end;
 $$;
@@ -211,12 +212,13 @@ security definer
 set search_path = ''
 as $$
 begin
-  update public.whatsapp_auth_challenges
+  update public.whatsapp_auth_challenges challenge
   set status = 'failed',
       failed_at = now(),
-      provider_error_code = pg_catalog.left(pg_catalog.coalesce(error_code, ''), 80),
-      provider_error_title = pg_catalog.left(pg_catalog.coalesce(error_title, ''), 500)
-  where id = challenge_id and status in ('created','sent');
+      provider_error_code = pg_catalog.left(coalesce(error_code, ''), 80),
+      provider_error_title = pg_catalog.left(coalesce(error_title, ''), 500)
+  where challenge.id = server_mark_whatsapp_auth_failed.challenge_id
+    and challenge.status in ('created','sent');
 end;
 $$;
 
@@ -242,12 +244,12 @@ begin
         when requested_status = 'deleted' then 'failed'
         else requested_status
       end,
-      sent_at = case when requested_status = 'sent' then pg_catalog.coalesce(challenge.sent_at, provider_timestamp) else challenge.sent_at end,
+      sent_at = case when requested_status = 'sent' then coalesce(challenge.sent_at, provider_timestamp) else challenge.sent_at end,
       delivered_at = case when requested_status = 'delivered' then provider_timestamp else challenge.delivered_at end,
       read_at = case when requested_status = 'read' then provider_timestamp else challenge.read_at end,
       failed_at = case when requested_status in ('failed','deleted') then provider_timestamp else challenge.failed_at end,
-      provider_error_code = case when requested_status in ('failed','deleted') then pg_catalog.left(pg_catalog.coalesce(error_code, ''), 80) else challenge.provider_error_code end,
-      provider_error_title = case when requested_status in ('failed','deleted') then pg_catalog.left(pg_catalog.coalesce(error_title, ''), 500) else challenge.provider_error_title end
+      provider_error_code = case when requested_status in ('failed','deleted') then pg_catalog.left(coalesce(error_code, ''), 80) else challenge.provider_error_code end,
+      provider_error_title = case when requested_status in ('failed','deleted') then pg_catalog.left(coalesce(error_title, ''), 500) else challenge.provider_error_title end
   where challenge.provider_message_id = requested_provider_message_id
     and challenge.status <> 'verified'
     and (
@@ -273,8 +275,8 @@ declare
   next_attempts smallint;
 begin
   select * into challenge
-  from public.whatsapp_auth_challenges
-  where id = challenge_id
+  from public.whatsapp_auth_challenges row_to_lock
+  where row_to_lock.id = server_verify_whatsapp_auth_challenge.challenge_id
   for update;
 
   if challenge.id is null then
@@ -307,7 +309,7 @@ begin
     return jsonb_build_object(
       'verified', false,
       'reason', case when next_attempts >= challenge.max_attempts then 'blocked' else 'invalid' end,
-      'attempts_remaining', pg_catalog.greatest(challenge.max_attempts - next_attempts, 0)
+      'attempts_remaining', greatest(challenge.max_attempts - next_attempts, 0)
     );
   end if;
 
@@ -316,6 +318,14 @@ begin
       status = 'verified',
       verified_at = now()
   where id = challenge.id;
+
+  if challenge.profile_id is not null then
+    update public.profiles
+    set whatsapp_verified_at = now(),
+        updated_at = now()
+    where id = challenge.profile_id
+      and phone_e164 = challenge.phone_e164;
+  end if;
 
   insert into public.audit_events(actor_user_id, action, entity_type, entity_id, payload)
   values (
