@@ -34,26 +34,83 @@ jobs:
       - name: Instalar dependências
         run: npm ci --prefer-offline --no-audit
 
-      - name: Validar TypeScript
-        run: npm run lint
+      - name: Preparar diagnósticos
+        run: mkdir -p artifacts
 
-      - name: Executar testes Vitest
-        run: npm run test
+      - id: lint
+        name: Validar TypeScript
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee artifacts/typescript.log
 
-      - name: Testar auditoria da biblioteca
-        run: npm run test:image-library-audit
+      - id: tests
+        name: Executar testes Vitest
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test 2>&1 | tee artifacts/vitest.log
 
-      - name: Auditar referências de imagens
-        run: npm run audit:image-library
+      - id: audit_tests
+        name: Testar auditoria da biblioteca
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:image-library-audit 2>&1 | tee artifacts/image-audit-tests.log
 
-      - name: Gerar build de homologação
-        run: npm run build
+      - id: audit
+        name: Auditar referências de imagens
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run audit:image-library 2>&1 | tee artifacts/image-audit.log
+
+      - id: build
+        name: Gerar build de homologação
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee artifacts/build.log
+
+      - name: Preservar diagnósticos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnosticos-reestruturacao-${{ github.run_number }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Preservar build para inspeção
-        if: success()
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: portal-adoce-reestruturacao
           path: dist
           if-no-files-found: error
           retention-days: 7
+
+      - name: Consolidar resultado
+        if: always()
+        env:
+          LINT_RESULT: ${{ steps.lint.outcome }}
+          TEST_RESULT: ${{ steps.tests.outcome }}
+          AUDIT_TEST_RESULT: ${{ steps.audit_tests.outcome }}
+          AUDIT_RESULT: ${{ steps.audit.outcome }}
+          BUILD_RESULT: ${{ steps.build.outcome }}
+        run: |
+          echo "TypeScript: $LINT_RESULT"
+          echo "Vitest: $TEST_RESULT"
+          echo "Testes da auditoria: $AUDIT_TEST_RESULT"
+          echo "Auditoria: $AUDIT_RESULT"
+          echo "Build: $BUILD_RESULT"
+          test "$LINT_RESULT" = success
+          test "$TEST_RESULT" = success
+          test "$AUDIT_TEST_RESULT" = success
+          test "$AUDIT_RESULT" = success
+          test "$BUILD_RESULT" = success
