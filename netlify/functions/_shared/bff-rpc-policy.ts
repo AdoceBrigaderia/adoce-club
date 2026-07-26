@@ -21,6 +21,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_get_customer_360",
   "staff_add_customer_crm_note",
   "staff_set_customer_crm_tag",
+  "staff_get_operational_reports",
 ] as const;
 
 export const CLIENT_RPC_ALLOWLIST = [
