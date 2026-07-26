@@ -5,6 +5,7 @@ import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
 import OperationDynamicImageLibrary from "./OperationDynamicImageLibrary";
+import OperationGalleryImageLibrary from "./OperationGalleryImageLibrary";
 import { requireSupabase } from "./lib/supabase";
 import { SITE_VISUAL_ASSETS, siteVisualAssetFormatLabel, siteVisualAssetSizeLabel, type SiteVisualAssetDefinition } from "./site-visual-assets";
 import "./operation-visual-settings.css";
@@ -127,23 +128,24 @@ export default function OperationVisualSettings({
       <div>
         <small>Central de imagens</small>
         <h2>Todas as fotos do site, no lugar certo</h2>
-        <p>Este painel reúne imagens institucionais, capas de sabores, tortas, produtos, categorias e os padrões usados quando uma foto oficial ainda não existe. Cada item informa onde aparece, proporção e tamanho recomendados.</p>
+        <p>Este painel reúne imagens institucionais, capas, galerias e carrosséis de sabores, tortas, produtos e categorias. Cada item informa onde aparece, proporção e tamanho recomendados.</p>
       </div>
       <Images />
     </header>
 
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
 
+    <OperationDynamicImageLibrary session={session} onChanged={() => void load()} />
+    <OperationGalleryImageLibrary session={session} onChanged={() => void load()} />
+
     <div className="operation-visual-shortcuts">
       <button type="button" onClick={onOpenFlavorImages}>
-        <Images /><span><strong>Galerias de fatias e tortas</strong><small>Administrar fotos adicionais de cada sabor</small></span><ArrowRight />
+        <Images /><span><strong>Configurações avançadas de sabores</strong><small>Legenda, ordem, disponibilidade e outras propriedades</small></span><ArrowRight />
       </button>
       <button type="button" onClick={onOpenProductImages}>
-        <Images /><span><strong>Galerias e carrosséis comerciais</strong><small>Administrar mídias adicionais de produtos e serviços</small></span><ArrowRight />
+        <Images /><span><strong>Configurações avançadas comerciais</strong><small>Reels, ordem dos carrosséis e informações de produtos</small></span><ArrowRight />
       </button>
     </div>
-
-    <OperationDynamicImageLibrary session={session} onChanged={() => void load()} />
 
     {groups.map(([section, assets]) => <section className="operation-visual-group" key={section}>
       <h3>{section}</h3>
