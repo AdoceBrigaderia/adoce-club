@@ -5,6 +5,10 @@ const gateway = readFileSync(
   new URL("./PasskeyOperationGateway.tsx", import.meta.url),
   "utf8",
 );
+const manager = readFileSync(
+  new URL("./PasskeyManager.tsx", import.meta.url),
+  "utf8",
+);
 const main = readFileSync(new URL("./main.tsx", import.meta.url), "utf8");
 const styles = readFileSync(
   new URL("./passkey-operation-gateway.css", import.meta.url),
@@ -26,12 +30,15 @@ describe("gateway operacional seguro", () => {
     expect(gateway).not.toContain("Authorization");
   });
 
-  it("permite cadastrar biometria somente depois do login", () => {
-    expect(gateway).toContain("registerPasskeyBff");
-    expect(gateway).toContain("Ativar biometria neste aparelho");
+  it("abre a gestão de biometria somente depois do login", () => {
+    expect(gateway).toContain("<PasskeyManager");
+    expect(gateway).toContain("Gerenciar biometria");
     expect(gateway.indexOf("session ? (")).toBeLessThan(
-      gateway.indexOf("Ativar biometria neste aparelho"),
+      gateway.indexOf("Gerenciar biometria"),
     );
+    expect(manager).toContain("registerPasskeyBff");
+    expect(manager).toContain("deletePasskeyBff");
+    expect(manager).toContain("renamePasskeyBff");
   });
 
   it("mantém áreas de toque grandes", () => {
