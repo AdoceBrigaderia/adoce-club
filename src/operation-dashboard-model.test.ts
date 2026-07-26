@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildDashboardData,
   dashboardAttentionCount,
+  dashboardCustomerCount,
+  dashboardLoadMessage,
   dashboardPriorities,
   operationTodayKey,
 } from "./operation-dashboard-model";
@@ -38,6 +40,30 @@ describe("central da operação", () => {
       productionPending: 1,
       productionPendingUnits: 5,
     });
+  });
+
+  it("não conta funcionários como clientes", () => {
+    expect(dashboardCustomerCount(128, 3)).toBe(125);
+    expect(dashboardCustomerCount(2, 4)).toBe(0);
+    expect(dashboardCustomerCount(null, undefined)).toBe(0);
+  });
+
+  it("explica atualização parcial e falta de conexão", () => {
+    expect(dashboardLoadMessage([])).toBe("");
+    expect(dashboardLoadMessage(["sales", "availability"])).toContain(
+      "vendas, estoque",
+    );
+    expect(dashboardLoadMessage([], false)).toContain("Sem conexão");
+    expect(
+      dashboardLoadMessage([
+        "sales",
+        "requests",
+        "members",
+        "staff",
+        "availability",
+        "production",
+      ]),
+    ).toContain("Não foi possível atualizar");
   });
 
   it("ordena as pendências em ações objetivas", () => {
