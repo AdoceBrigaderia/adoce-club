@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { ExternalLink, ImagePlus, RefreshCw, Search, Trash2, Video } from "lucide-react";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
+import OperationGalleryMediaHistory from "./OperationGalleryMediaHistory";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
 import {
   buildGalleryOwners,
@@ -286,6 +287,16 @@ export default function OperationGalleryImageLibrary({
                       <Trash2 /> Remover
                     </button>
                   </div>
+                  <OperationGalleryMediaHistory
+                    owner={owner}
+                    item={item}
+                    session={session}
+                    onRestored={async (message) => {
+                      setNotice(message);
+                      await load();
+                      onChanged?.();
+                    }}
+                  />
                 </article>;
               })}
               {owner.items.length === 0 ? <p className="operation-gallery-empty">Nenhuma mídia cadastrada. A primeira foto adicionada será a capa.</p> : null}
