@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const distIndex = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
 const netlifyConfig = readFileSync(new URL("../netlify.toml", import.meta.url), "utf8");
+const distDirectory = fileURLToPath(new URL("../dist", import.meta.url));
 
 const cspMatch = netlifyConfig.match(/Content-Security-Policy\s*=\s*"([^"]+)"/);
 if (!cspMatch) throw new Error("CSP ausente no netlify.toml.");
@@ -51,4 +54,33 @@ if (externalExecutableScript) {
   throw new Error("Build carrega script executável de origem externa.");
 }
 
-console.log("Gate de segurança do build aprovado: CSP, headers e scripts validados.");
+function filesInside(directory) {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const target = join(directory, entry.name);
+    return entry.isDirectory() ? filesInside(target) : [target];
+  });
+}
+
+const productionFiles = filesInside(distDirectory);
+const javascriptFiles = productionFiles.filter((file) => file.endsWith(".js"));
+const forbiddenLegacyMarkers = [
+  "adoce-fidelidade-v1",
+  "contas de demonstração",
+  "#prototipo",
+  "LegacyPrototype",
+];
+
+for (const file of javascriptFiles) {
+  const source = readFileSync(file, "utf8");
+  for (const marker of forbiddenLegacyMarkers) {
+    if (source.includes(marker)) {
+      throw new Error(`Bundle produtivo contém marcador do protótipo legado: ${marker} em ${file.slice(dirname(distDirectory).length)}`);
+    }
+  }
+}
+
+if (productionFiles.some((file) => /LegacyPrototype/i.test(file))) {
+  throw new Error("Build produtivo gerou chunk do protótipo legado.");
+}
+
+console.log("Gate de segurança do build aprovado: CSP, headers, scripts e isolamento do protótipo validados.");
