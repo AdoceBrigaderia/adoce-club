@@ -17,16 +17,17 @@ describe("normalização de nomes no banco", () => {
     expect(migration).toContain("before insert or update of full_name");
   });
 
-  it("mantém partículas brasileiras em minúsculas", () => {
+  it("mantém partículas brasileiras e trata nomes compostos", () => {
     expect(migration).toContain("('da','das','de','do','dos','e')");
-    expect(migration).toContain("pg_catalog.initcap(current_word)");
+    expect(migration).toContain("private.capitalize_name_word(current_word)");
+    expect(migration).toContain("character in ('-', '''', '’')");
   });
 
   it("registra relatório antes de corrigir dados existentes", () => {
     expect(migration).toContain("customer_name_normalization_audit");
-    expect(migration.indexOf("insert into public.customer_name_normalization_audit")).toBeLessThan(
-      migration.indexOf("update public.profiles profile"),
-    );
+    expect(
+      migration.indexOf("insert into public.customer_name_normalization_audit"),
+    ).toBeLessThan(migration.indexOf("update public.profiles profile"));
     expect(migration).toContain("normalization_batch");
   });
 
