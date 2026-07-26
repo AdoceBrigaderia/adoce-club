@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ImagePlus, RefreshCw } from "lucide-react";
+import { ImagePlus, RefreshCw, Search } from "lucide-react";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
@@ -14,6 +14,14 @@ import {
 } from "./image-library-dynamic";
 import { requireSupabase } from "./lib/supabase";
 
+function normalized(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
+}
+
 export default function OperationDynamicImageLibrary({
   session,
   onChanged,
@@ -26,6 +34,9 @@ export default function OperationDynamicImageLibrary({
   const [busyKey, setBusyKey] = useState("");
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [query, setQuery] = useState("");
+  const [section, setSection] = useState("all");
+  const [status, setStatus] = useState<"all" | "placeholder" | "official">("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -62,15 +73,32 @@ export default function OperationDynamicImageLibrary({
 
   useEffect(() => { void load(); }, [load]);
 
+  const sections = useMemo(
+    () => [...new Set(assets.map((asset) => asset.section))],
+    [assets],
+  );
+
+  const filteredAssets = useMemo(() => {
+    const text = normalized(query);
+    return assets.filter((asset) => {
+      const placeholder = asset.currentUrl.includes("/placeholder-");
+      if (section !== "all" && asset.section !== section) return false;
+      if (status === "placeholder" && !placeholder) return false;
+      if (status === "official" && placeholder) return false;
+      if (!text) return true;
+      return normalized(`${asset.label} ${asset.section} ${asset.description} ${asset.usage}`).includes(text);
+    });
+  }, [assets, query, section, status]);
+
   const groups = useMemo(() => {
     const result = new Map<string, DynamicImageAsset[]>();
-    assets.forEach((asset) => {
+    filteredAssets.forEach((asset) => {
       const items = result.get(asset.section) || [];
       items.push(asset);
       result.set(asset.section, items);
     });
     return [...result.entries()];
-  }, [assets]);
+  }, [filteredAssets]);
 
   const apply = async (edited: EditedProductImage) => {
     if (!pending) return;
@@ -149,21 +177,44 @@ export default function OperationDynamicImageLibrary({
     <header className="operation-dynamic-images-header">
       <div>
         <h3>Produtos, sabores, tortas e categorias</h3>
-        <p>As capas principais agora podem ser substituídas aqui, sem procurar em outras telas. Galerias com várias fotos continuam nos atalhos acima.</p>
+        <p>As capas principais podem ser substituídas aqui, sem procurar em outras telas. Use a busca e os filtros para localizar rapidamente qualquer item pelo celular.</p>
       </div>
       <button type="button" onClick={() => void load()} disabled={loading}>
         <RefreshCw /> {loading ? "Atualizando…" : "Atualizar lista"}
       </button>
     </header>
 
+    <div className="operation-image-library-toolbar" role="search">
+      <label className="operation-image-search">
+        <Search />
+        <input
+          type="search"
+          value={query}
+          onChange={(event: { target: HTMLInputElement }) => setQuery(event.target.value)}
+          placeholder="Buscar produto, sabor, torta ou categoria"
+          aria-label="Buscar capas"
+        />
+      </label>
+      <select value={section} onChange={(event: { target: HTMLSelectElement }) => setSection(event.target.value)} aria-label="Filtrar seção">
+        <option value="all">Todas as seções</option>
+        {sections.map((item) => <option value={item} key={item}>{item}</option>)}
+      </select>
+      <select value={status} onChange={(event: { target: HTMLSelectElement }) => setStatus(event.target.value as typeof status)} aria-label="Filtrar situação da foto">
+        <option value="all">Todas as fotos</option>
+        <option value="placeholder">Aguardando foto oficial</option>
+        <option value="official">Com foto cadastrada</option>
+      </select>
+      <span>{filteredAssets.length} de {assets.length} imagens</span>
+    </div>
+
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
     {loading ? <p className="operation-visual-loading">Carregando imagens de produtos e sabores…</p> : null}
-    {!loading && assets.length === 0
-      ? <p className="operation-visual-loading">Nenhum produto ou sabor ativo foi encontrado.</p>
+    {!loading && filteredAssets.length === 0
+      ? <p className="operation-visual-loading">Nenhuma imagem corresponde aos filtros escolhidos.</p>
       : null}
 
-    {groups.map(([section, items]) => <section className="operation-visual-group" key={section}>
-      <h3>{section}</h3>
+    {groups.map(([groupSection, items]) => <section className="operation-visual-group" key={groupSection}>
+      <h3>{groupSection}</h3>
       <div className="operation-visual-grid">
         {items.map((asset) => {
           const working = busyKey === asset.id;
