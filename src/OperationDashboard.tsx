@@ -126,6 +126,10 @@ export default function OperationDashboard({
       ) : null}
 
       <section className="operation-dashboard-primary" aria-label="Ações principais">
+        <header>
+          <small>Acesso rápido</small>
+          <h2>O que você quer fazer agora?</h2>
+        </header>
         <button type="button" onClick={() => onNavigate("sales")}>
           <ShoppingCart />
           <span>
@@ -154,7 +158,11 @@ export default function OperationDashboard({
           <PackageCheck />
           <span>
             <strong>Produção do dia</strong>
-            <small>Liberar sabores e conferir disponibilidade</small>
+            <small>
+              {data.productionPending
+                ? `${data.productionPending} item(ns) aguardando liberação`
+                : "Liberar sabores e conferir disponibilidade"}
+            </small>
           </span>
           <ArrowRight />
         </button>
