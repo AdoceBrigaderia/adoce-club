@@ -80,10 +80,14 @@ jobs:
           test -n "$NETLIFY_AUTH_TOKEN"
           npx --yes netlify-cli@26.2.0 link --id "$NETLIFY_HOMOLOGATION_SITE_ID"
 
-      - name: Validar cofre e gerar build de homologação
+      - name: Gerar pré-flight redigido, validar cofre e gerar build
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+          ADOCE_PREFLIGHT_COMMIT: ${{ inputs.expected_commit }}
         run: |
+          mkdir -p artifacts
+          npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" npm run report:homologation-preflight
           npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" npm run gate:homologation-environment
           npx --yes netlify-cli@26.2.0 build --context "$NETLIFY_CONTEXT"
 
@@ -167,6 +171,8 @@ jobs:
         with:
           name: homologacao-publicada-${{ github.run_number }}
           path: |
+            artifacts/homologation-preflight.json
+            artifacts/homologation-preflight.md
             artifacts/netlify-homologation-deploy.json
             artifacts/homologation-deploy-url.txt
             artifacts/homologation-readiness.json
