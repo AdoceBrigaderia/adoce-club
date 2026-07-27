@@ -22,6 +22,7 @@ export default function FeedbackPage() {
     email: "",
     phone: "",
     category: initialFeedbackCategory(),
+    privacy_type: "access",
     message: "",
   });
   const [operationKey] = useState(() => crypto.randomUUID());
@@ -45,6 +46,10 @@ export default function FeedbackPage() {
       setError(
         "Para solicitações de privacidade, informe um e-mail ou celular para retorno.",
       );
+      return;
+    }
+    if (privacyRequest && !form.privacy_type) {
+      setError("Escolha o tipo da solicitação de privacidade.");
       return;
     }
     setBusy(true);
@@ -137,6 +142,28 @@ export default function FeedbackPage() {
                 </option>
               </select>
             </label>
+            {privacyRequest ? (
+              <label>
+                O que você precisa sobre seus dados?
+                <select
+                  required
+                  value={form.privacy_type}
+                  onChange={(event) =>
+                    setForm({ ...form, privacy_type: event.target.value })
+                  }
+                >
+                  <option value="access">Consultar os dados que a Adoce possui</option>
+                  <option value="correction">Corrigir ou atualizar meus dados</option>
+                  <option value="deletion">Excluir ou anonimizar meus dados</option>
+                  <option value="consent">Alterar ou retirar um consentimento</option>
+                  <option value="other">Outro assunto de privacidade</option>
+                </select>
+                <small>
+                  Essa classificação ajuda a equipe a tratar sua solicitação com
+                  prioridade e rastreabilidade.
+                </small>
+              </label>
+            ) : null}
             <div>
               <label>
                 E-mail{" "}
@@ -173,7 +200,7 @@ export default function FeedbackPage() {
                 }
                 placeholder={
                   privacyRequest
-                    ? "Exemplo: quero corrigir, consultar ou excluir meus dados do Clube Adoce."
+                    ? "Explique quais dados, cadastro ou consentimento precisam ser consultados, corrigidos ou excluídos."
                     : "Diga em qual página estava, o que tentou fazer e o que apareceu."
                 }
               />
