@@ -43,6 +43,8 @@ artifacts/image-library-audit.json
 artifacts/image-library-audit.md
 artifacts/browser-security-audit.json
 artifacts/browser-security-audit.md
+artifacts/homologation-preflight.json
+artifacts/homologation-preflight.md
 
 # Pacotes locais de auditoria e backup
 ADOCE_AUDITORIA_*/
