@@ -18,6 +18,7 @@ import {
   type VisualReviewStatus,
   type VisualValidationRouteId,
 } from "./homologation-visual-review";
+import "./homologation-visual-route-notes.css";
 
 export function isVisualNavigatorEnabled(value: string | undefined) {
   return value === "visual";
