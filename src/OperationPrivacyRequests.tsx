@@ -12,6 +12,7 @@ import { bffRpc } from "./services/bff-rpc";
 import "./operation-privacy-requests.css";
 
 type PrivacyStatus = "new" | "reviewing" | "resolved" | "closed";
+type PrivacyIdentityStatus = "pending" | "verified" | "rejected";
 type PrivacyRequestType =
   | "access"
   | "correction"
@@ -33,6 +34,9 @@ type PrivacyRequest = {
   privacy_due_at: string;
   privacy_resolved_at: string | null;
   privacy_closed_at: string | null;
+  privacy_identity_status: PrivacyIdentityStatus;
+  privacy_identity_checked_at: string | null;
+  privacy_identity_notes: string | null;
   overdue: boolean;
   created_at: string;
   updated_at: string;
@@ -53,6 +57,12 @@ const statusLabel: Record<PrivacyStatus, string> = {
   closed: "Fechada",
 };
 
+const identityLabel: Record<PrivacyIdentityStatus, string> = {
+  pending: "Identidade pendente",
+  verified: "Identidade confirmada",
+  rejected: "Identidade não confirmada",
+};
+
 const privacyTypeLabel: Record<PrivacyRequestType, string> = {
   access: "Consulta de dados",
   correction: "Correção de dados",
@@ -60,6 +70,13 @@ const privacyTypeLabel: Record<PrivacyRequestType, string> = {
   consent: "Consentimento",
   other: "Outro assunto",
 };
+
+const identityRequiredTypes = new Set<PrivacyRequestType>([
+  "access",
+  "correction",
+  "deletion",
+  "consent",
+]);
 
 const dateTime = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -102,7 +119,9 @@ export default function OperationPrivacyRequests() {
       setNotes((current) => {
         const updated = { ...current };
         next.forEach((item) => {
-          if (!(item.id in updated)) updated[item.id] = item.internal_notes || "";
+          if (!(item.id in updated)) {
+            updated[item.id] = item.internal_notes || item.privacy_identity_notes || "";
+          }
         });
         return updated;
       });
@@ -159,6 +178,32 @@ export default function OperationPrivacyRequests() {
     }
   };
 
+  const verifyIdentity = async (
+    item: PrivacyRequest,
+    nextStatus: PrivacyIdentityStatus,
+  ) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    setNotice("");
+    try {
+      await bffRpc("staff_verify_privacy_request_identity", {
+        target_feedback_id: item.id,
+        requested_identity_status: nextStatus,
+        requested_verification_notes: notes[item.id] || "",
+      });
+      setNotice(`${item.protocol}: ${identityLabel[nextStatus].toLocaleLowerCase("pt-BR")}.`);
+      await load();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível registrar a verificação de identidade.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+
   if (hidden) return null;
 
   return (
@@ -171,8 +216,8 @@ export default function OperationPrivacyRequests() {
           <small>Dados pessoais</small>
           <h2>Solicitações de privacidade</h2>
           <p>
-            Consulte protocolos, registre o andamento e preserve a rastreabilidade
-            das respostas ao cliente.
+            Consulte protocolos, confirme a identidade do solicitante e preserve a
+            rastreabilidade das respostas ao cliente.
           </p>
         </div>
         <span className={overdueCount ? "has-overdue" : ""}>
@@ -222,6 +267,9 @@ export default function OperationPrivacyRequests() {
           const busy = busyId === item.id;
           const requestType =
             privacyTypeLabel[item.privacy_request_type] || privacyTypeLabel.other;
+          const identityStatus = item.privacy_identity_status || "pending";
+          const identityRequired = identityRequiredTypes.has(item.privacy_request_type);
+          const canResolve = !identityRequired || identityStatus === "verified";
           return (
             <details
               key={item.id}
@@ -259,6 +307,16 @@ export default function OperationPrivacyRequests() {
                       <strong>Prazo interno</strong>
                       {dateTime.format(new Date(item.privacy_due_at))}
                     </span>
+                    <span>
+                      <strong>Identidade</strong>
+                      {identityLabel[identityStatus]}
+                    </span>
+                    {item.privacy_identity_checked_at ? (
+                      <span>
+                        <strong>Conferida em</strong>
+                        {dateTime.format(new Date(item.privacy_identity_checked_at))}
+                      </span>
+                    ) : null}
                     {item.privacy_resolved_at ? (
                       <span>
                         <strong>Resolvida em</strong>
@@ -294,10 +352,48 @@ export default function OperationPrivacyRequests() {
                         [item.id]: event.target.value,
                       }))
                     }
-                    placeholder="Registre o que foi verificado, respondido ou executado."
+                    placeholder="Registre como a identidade foi conferida e o que foi respondido ou executado."
                     disabled={busy}
                   />
                 </label>
+
+                <section>
+                  <h4>Confirmação de identidade</h4>
+                  <p>
+                    Antes de consultar, corrigir, excluir dados ou alterar consentimentos,
+                    confirme que o contato pertence ao titular. Não registre documentos ou
+                    códigos completos nesta anotação.
+                  </p>
+                  <div className="operation-privacy-actions">
+                    <button
+                      type="button"
+                      onClick={() => void verifyIdentity(item, "pending")}
+                      disabled={busy || identityStatus === "pending"}
+                    >
+                      Manter pendente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void verifyIdentity(item, "verified")}
+                      disabled={busy || identityStatus === "verified"}
+                    >
+                      Identidade confirmada
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void verifyIdentity(item, "rejected")}
+                      disabled={busy || identityStatus === "rejected"}
+                    >
+                      Não confirmada
+                    </button>
+                  </div>
+                  {!canResolve ? (
+                    <p className="operation-privacy-notice" role="status">
+                      <AlertTriangle /> Este tipo de solicitação só pode ser marcado como
+                      resolvido depois da confirmação de identidade.
+                    </p>
+                  ) : null}
+                </section>
 
                 <div className="operation-privacy-actions">
                   <button
@@ -310,7 +406,7 @@ export default function OperationPrivacyRequests() {
                   <button
                     type="button"
                     onClick={() => void update(item, "resolved")}
-                    disabled={busy || item.status === "resolved"}
+                    disabled={busy || item.status === "resolved" || !canResolve}
                   >
                     Marcar resolvida
                   </button>
