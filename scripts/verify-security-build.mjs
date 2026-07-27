@@ -15,6 +15,14 @@ const registrationSource = readFileSync(
   new URL("../src/CustomerRegistrationBffPage.tsx", import.meta.url),
   "utf8",
 );
+const instantOrderSource = readFileSync(
+  new URL("../src/InstantOrderPanel.tsx", import.meta.url),
+  "utf8",
+);
+const instantOrderClient = readFileSync(
+  new URL("../src/services/public-instant-order.ts", import.meta.url),
+  "utf8",
+);
 
 const cspMatch = netlifyConfig.match(/Content-Security-Policy\s*=\s*"([^"]+)"/);
 if (!cspMatch) throw new Error("CSP ausente no netlify.toml.");
@@ -58,6 +66,22 @@ for (const marker of ["requireSupabase", "auth.setSession", "Authorization"]) {
   if (registrationSource.includes(marker)) {
     throw new Error(`Cadastro BFF contém acesso proibido no navegador: ${marker}`);
   }
+}
+for (const marker of [
+  "requireSupabase",
+  "auth.getSession",
+  '.rpc("submit_instant_order_v5"',
+  "Authorization",
+]) {
+  if (instantOrderSource.includes(marker)) {
+    throw new Error(`Pedido público contém acesso proibido no navegador: ${marker}`);
+  }
+}
+if (!instantOrderSource.includes("submitPublicInstantOrder")) {
+  throw new Error("Pedido público real não usa o cliente BFF seguro.");
+}
+if (!instantOrderClient.includes('fetch("/api/public-instant-order"')) {
+  throw new Error("Cliente do pedido público não aponta para o endpoint BFF oficial.");
 }
 
 const scripts = [...distIndex.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
@@ -116,5 +140,5 @@ if (productionFiles.some((file) => /LegacyPrototype/i.test(file))) {
 }
 
 console.log(
-  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro BFF e ausência de persistência de tokens validados.",
+  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro e pedidos públicos pelo BFF, além da ausência de persistência de tokens validados.",
 );
