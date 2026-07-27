@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import {
+  attachPrivacyReviewWindow,
+  privacyReviewIsFresh,
+  type PrivacyReviewWindow,
+} from "./privacy-anonymization-review";
 import { getBffSession } from "./services/bff-auth";
 import { bffRpc } from "./services/bff-rpc";
 import "./operation-privacy-anonymization.css";
@@ -37,12 +42,7 @@ type AnonymizationPlan = {
   confirmation_required: string;
 };
 
-type ReviewedAnonymizationPlan = AnonymizationPlan & {
-  reviewed_at: string;
-  expires_at: string;
-};
-
-const REVIEW_VALIDITY_MS = 5 * 60 * 1000;
+type ReviewedAnonymizationPlan = AnonymizationPlan & PrivacyReviewWindow;
 
 const dateTime = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -52,9 +52,6 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
   timeZone: "America/Fortaleza",
 });
-
-const planIsFresh = (plan: ReviewedAnonymizationPlan | undefined) =>
-  Boolean(plan && Date.parse(plan.expires_at) > Date.now());
 
 export default function OperationPrivacyAnonymization() {
   const [owner, setOwner] = useState<boolean | null>(null);
@@ -121,12 +118,7 @@ export default function OperationPrivacyAnonymization() {
         "staff_get_privacy_anonymization_plan",
         { target_feedback_id: item.id },
       );
-      const reviewedAt = Date.now();
-      const reviewedPlan: ReviewedAnonymizationPlan = {
-        ...plan,
-        reviewed_at: new Date(reviewedAt).toISOString(),
-        expires_at: new Date(reviewedAt + REVIEW_VALIDITY_MS).toISOString(),
-      };
+      const reviewedPlan = attachPrivacyReviewWindow(plan);
       setPlans((current) => ({ ...current, [item.id]: reviewedPlan }));
       setConfirmations((current) => ({ ...current, [item.id]: "" }));
       setAcknowledged((current) => ({ ...current, [item.id]: false }));
@@ -148,7 +140,7 @@ export default function OperationPrivacyAnonymization() {
 
   const anonymize = async (item: DeletionRequest) => {
     const plan = plans[item.id];
-    const fresh = planIsFresh(plan);
+    const fresh = privacyReviewIsFresh(plan);
     if (
       busyId ||
       item.privacy_identity_status !== "verified" ||
@@ -239,7 +231,7 @@ export default function OperationPrivacyAnonymization() {
           const plan = plans[item.id];
           const busy = busyId === item.id;
           const identityVerified = item.privacy_identity_status === "verified";
-          const fresh = planIsFresh(plan);
+          const fresh = privacyReviewIsFresh(plan);
           const confirmationMatches =
             Boolean(plan) && confirmations[item.id] === plan?.confirmation_required;
           const confirmationId = `privacy-anonymization-confirmation-${item.id}`;
