@@ -32,6 +32,11 @@
   background: #f8dce5;
 }
 
+.operation-privacy-requests > header > span.has-overdue {
+  background: #ffe2d8;
+  color: #8a2f1f;
+}
+
 .operation-privacy-requests > header > span svg {
   width: 1.4rem;
 }
@@ -107,6 +112,11 @@
   background: #fff;
 }
 
+.operation-privacy-list details.overdue {
+  border-color: rgba(176, 67, 42, 0.42);
+  box-shadow: 0 0 0 2px rgba(176, 67, 42, 0.08);
+}
+
 .operation-privacy-list summary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -168,6 +178,28 @@
   background: #ececec;
 }
 
+.privacy-kind {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0.25rem 0;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: #f5edf0;
+  color: #6a3043;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.privacy-due {
+  margin-top: 0.35rem;
+  color: #5f5960;
+  font-weight: 600;
+}
+
+.privacy-due.overdue {
+  color: #a13f2d;
+}
+
 .operation-privacy-body {
   display: grid;
   gap: 1rem;
@@ -178,6 +210,27 @@
 .operation-privacy-body h4,
 .operation-privacy-body p {
   margin: 0;
+}
+
+.operation-privacy-metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0.75rem 0;
+}
+
+.operation-privacy-metadata span {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem;
+  border-radius: 0.8rem;
+  background: #faf3f5;
+  font-size: 0.85rem;
+}
+
+.operation-privacy-metadata span.overdue {
+  background: #fff0ea;
+  color: #963b29;
 }
 
 .operation-privacy-contact,
@@ -241,6 +294,10 @@
 
   .operation-privacy-list summary > strong {
     justify-self: start;
+  }
+
+  .operation-privacy-metadata {
+    grid-template-columns: 1fr;
   }
 
   .operation-privacy-actions {
