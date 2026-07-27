@@ -19,16 +19,17 @@ const hasAutomaticPullRequest = (workflow: string) =>
   /\n\s{2}pull_request:\s*\n/.test(workflow);
 
 describe("consumo controlado do GitHub Actions", () => {
-  it("mantém apenas um gate automático por atualização do PR", () => {
-    expect(hasAutomaticPush(qualityGate)).toBe(false);
-    expect(hasAutomaticPullRequest(qualityGate)).toBe(true);
+  it("mantém apenas um gate automático por commit real da branch", () => {
+    expect(hasAutomaticPush(qualityGate)).toBe(true);
+    expect(hasAutomaticPullRequest(qualityGate)).toBe(false);
+    expect(qualityGate).toContain(
+      "reestruturacao/ux-crm-operacao-imagens-v1",
+    );
     expect(qualityGate).toContain("workflow_dispatch:");
-    expect(qualityGate).toContain('paths-ignore:');
+    expect(qualityGate).toContain("paths-ignore:");
     expect(qualityGate).toContain('- "docs/**"');
     expect(qualityGate).toContain('- "**/*.md"');
-    expect(qualityGate).toContain(
-      "portal-quality-${{ github.event.pull_request.number || github.ref_name }}",
-    );
+    expect(qualityGate).toContain("portal-quality-${{ github.ref_name }}");
     expect(qualityGate).toContain("cancel-in-progress: true");
   });
 
