@@ -22,6 +22,108 @@
   flex: 0 0 auto;
 }
 
+.homologation-visual-navigator {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 9999;
+  width: min(390px, calc(100vw - 2rem));
+  overflow: hidden;
+  border: 1px solid rgba(100, 47, 37, 0.2);
+  border-radius: 20px;
+  background: rgba(255, 250, 247, 0.98);
+  color: #4f2c27;
+  box-shadow: 0 18px 48px rgba(67, 34, 28, 0.22);
+  backdrop-filter: blur(14px);
+}
+
+.homologation-visual-navigator-trigger {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 76px;
+  padding: 0.65rem 0.85rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.homologation-visual-navigator-trigger img {
+  width: 54px;
+  height: 54px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: #f7dfe5;
+}
+
+.homologation-visual-navigator-trigger span {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.homologation-visual-navigator-trigger strong {
+  font-size: 0.98rem;
+}
+
+.homologation-visual-navigator-trigger small,
+.homologation-visual-navigator-content small {
+  color: #77544d;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.homologation-visual-navigator-content {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0 0.85rem 0.9rem;
+  border-top: 1px solid rgba(100, 47, 37, 0.12);
+}
+
+.homologation-visual-navigator-content > p {
+  margin: 0.85rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.homologation-visual-navigator-content nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.homologation-visual-navigator-content a {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(100, 47, 37, 0.14);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #5b2f2a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.homologation-visual-navigator-content a:focus-visible,
+.homologation-visual-navigator-content a:hover {
+  border-color: rgba(100, 47, 37, 0.38);
+  background: #fff1f4;
+}
+
+.homologation-visual-navigator-content a svg {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+}
+
 @media (max-width: 640px) {
   .homologation-validation-banner {
     position: relative;
@@ -30,5 +132,23 @@
     gap: 0.2rem;
     padding: 0.65rem 0.85rem;
     text-align: left;
+  }
+
+  .homologation-visual-navigator {
+    right: 0.65rem;
+    bottom: 0.65rem;
+    width: calc(100vw - 1.3rem);
+    border-radius: 18px;
+  }
+
+  .homologation-visual-navigator-trigger {
+    min-height: 72px;
+  }
+
+  .homologation-visual-navigator-content nav {
+    grid-template-columns: 1fr;
+    max-height: 43vh;
+    overflow-y: auto;
+    padding-right: 0.15rem;
   }
 }
