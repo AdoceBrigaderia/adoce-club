@@ -8,6 +8,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const defaultsMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260727161000_privacy_identity_defaults.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const operation = readFileSync(
   new URL("./OperationPrivacyRequests.tsx", import.meta.url),
   "utf8",
@@ -28,6 +35,16 @@ describe("verificação de identidade em solicitações de privacidade", () => {
     expect(migration).toContain("site_feedback_privacy_identity_check");
     expect(migration).toContain("category <> 'privacy'");
     expect(migration).toContain("privacy_identity_status is null");
+  });
+
+  it("inicia novas solicitações como pendentes e limpa campos fora da privacidade", () => {
+    expect(defaultsMigration.trimStart()).toMatch(/^begin;/);
+    expect(defaultsMigration.trimEnd()).toMatch(/commit;$/);
+    expect(defaultsMigration).toContain("normalize_site_feedback_privacy_identity");
+    expect(defaultsMigration).toContain("coalesce(new.privacy_identity_status, 'pending')");
+    expect(defaultsMigration).toContain("new.privacy_identity_status := null");
+    expect(defaultsMigration).toContain("before insert or update of category, privacy_identity_status");
+    expect(defaultsMigration).toContain("security invoker");
   });
 
   it("exige capacidade interna, bloqueia navegador anônimo e audita a conferência", () => {
