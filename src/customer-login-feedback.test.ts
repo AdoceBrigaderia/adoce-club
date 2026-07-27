@@ -8,7 +8,8 @@ describe("acesso do cliente por celular e senha", () => {
     expect(existsSync(new URL("./services/auth.ts", import.meta.url))).toBe(false);
     const gateway = source("./PasskeyClientGateway.tsx");
     const bffAuth = source("./services/bff-auth.ts");
-    expect(gateway).toContain("loginWithBffPassword");
+    expect(gateway).toContain("bffPasswordLogin");
+    expect(gateway).toContain('surface: "client"');
     expect(bffAuth).toContain('fetch("/api/auth-bff-login"');
     expect(bffAuth).toContain('credentials: "same-origin"');
     expect(bffAuth).not.toContain("auth.setSession");
