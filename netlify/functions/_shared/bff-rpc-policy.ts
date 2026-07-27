@@ -27,6 +27,8 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_set_customer_crm_tag",
   "staff_get_operational_reports",
   "manager_get_whatsapp_otp_metrics",
+  "staff_list_privacy_requests",
+  "staff_update_privacy_request",
 ] as const;
 
 export const CLIENT_RPC_ALLOWLIST = [
