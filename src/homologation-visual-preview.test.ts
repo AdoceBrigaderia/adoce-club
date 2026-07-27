@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const main = readFileSync("src/main.tsx", "utf8");
 const banner = readFileSync("src/HomologationValidationBanner.tsx", "utf8");
+const navigator = readFileSync("src/HomologationVisualNavigator.tsx", "utf8");
 const styles = readFileSync("src/homologation-validation.css", "utf8");
 const workflow = readFileSync(
   ".github/workflows/homologation-visual-preview.yml",
@@ -17,6 +18,19 @@ describe("preview de validação visual da homologação", () => {
     expect(main).toContain("<HomologationValidationBanner />");
     expect(main).toContain("VITE_ADOCE_VALIDATION_MODE");
     expect(styles).toContain(".homologation-validation-banner");
+  });
+
+  it("oferece roteiro touch com identidade oficial apenas no preview", () => {
+    expect(navigator).toContain('value === "visual"');
+    expect(navigator).toContain('src="/site/logo.webp"');
+    expect(navigator).toContain("Logo oficial da Adoce Brigaderia");
+    expect(navigator).toContain("Roteiro de validação");
+    expect(navigator).toContain("Cadastro simplificado");
+    expect(navigator).toContain("Operação");
+    expect(navigator).toContain("Identidade visual carregada diretamente");
+    expect(main).toContain("<HomologationVisualNavigator />");
+    expect(styles).toContain(".homologation-visual-navigator");
+    expect(styles).toContain("min-height: 48px");
   });
 
   it("não registra service worker no preview visual", () => {
