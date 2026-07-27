@@ -3,7 +3,7 @@ begin;
 do $$
 declare
   actor_id uuid;
-  profile_id uuid;
+  target_profile_id uuid;
   original_name text;
   correction_id uuid;
   consent_id uuid;
@@ -28,13 +28,13 @@ begin
   end if;
 
   select profile.id, profile.full_name
-  into profile_id, original_name
+  into target_profile_id, original_name
   from public.profiles profile
   where coalesce(profile.active, true)
   order by profile.created_at
   limit 1;
 
-  if profile_id is null then
+  if target_profile_id is null then
     raise exception 'Homologação precisa de ao menos um cadastro ativo para o ensaio';
   end if;
 
@@ -70,7 +70,7 @@ begin
     actor_id,
     'Identidade confirmada no ensaio transacional.'
   from public.profiles profile
-  where profile.id = profile_id
+  where profile.id = target_profile_id
   returning id into correction_id;
 
   insert into public.site_feedback(
@@ -105,7 +105,7 @@ begin
     actor_id,
     'Identidade confirmada no ensaio transacional.'
   from public.profiles profile
-  where profile.id = profile_id
+  where profile.id = target_profile_id
   returning id into consent_id;
 
   perform set_config('request.jwt.claim.sub', actor_id::text, true);
@@ -123,7 +123,7 @@ begin
   select profile.full_name
   into corrected_name
   from public.profiles profile
-  where profile.id = profile_id;
+  where profile.id = target_profile_id;
 
   if corrected_name is distinct from 'Maria da Silva' then
     raise exception 'Nome não foi normalizado corretamente: %', corrected_name;
@@ -143,7 +143,7 @@ begin
   select event.granted
   into latest_marketing
   from public.consent_events event
-  where event.profile_id = profile_id
+  where event.profile_id = target_profile_id
     and event.consent_type::text = 'marketing'
   order by event.created_at desc
   limit 1;
@@ -151,7 +151,7 @@ begin
   select preference.*
   into preference_record
   from public.notification_preferences preference
-  where preference.profile_id = profile_id;
+  where preference.profile_id = target_profile_id;
 
   if latest_marketing is distinct from false then
     raise exception 'Revogação de marketing não foi registrada';
