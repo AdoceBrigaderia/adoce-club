@@ -6,20 +6,52 @@ import {
   isAuditableSource,
 } from "./browser-security-audit-core.mjs";
 
-test("ignora testes, protótipos e arquivos sem código", () => {
+test("ignora testes, declarações, protótipos e arquivos sem código", () => {
   assert.equal(isAuditableSource("src/example.test.ts"), false);
+  assert.equal(isAuditableSource("scripts/example.d.mts"), false);
   assert.equal(isAuditableSource("src/LegacyPrototype.tsx"), false);
   assert.equal(isAuditableSource("src/styles.css"), false);
   assert.equal(isAuditableSource("src/OperationBusinessHub.tsx"), true);
 });
 
-test("bloqueia sessão Supabase manipulada no navegador", () => {
+test("bloqueia sessão Supabase manipulada em superfície real", () => {
   const findings = auditBrowserSource(
     "src/PasskeyClientGateway.tsx",
     "await supabase.auth.setSession({ access_token, refresh_token });",
   );
-  assert.ok(findings.some((item) => item.id === "browser-session-api"));
-  assert.ok(findings.some((item) => item.id === "token-response-shape"));
+  assert.ok(
+    findings.some(
+      (item) => item.id === "browser-session-api" && item.severity === "critical",
+    ),
+  );
+  assert.ok(
+    findings.some(
+      (item) => item.id === "token-response-shape" && item.severity === "critical",
+    ),
+  );
+});
+
+test("inventaria autenticação antiga de AccessApp sem confundir rota DEV com produção", () => {
+  const findings = auditBrowserSource(
+    "src/AccessApp.tsx",
+    "await supabase.auth.setSession({ access_token, refresh_token });",
+  );
+  assert.ok(findings.length >= 3);
+  assert.ok(findings.every((item) => item.severity === "warning"));
+  assert.ok(findings.every((item) => item.developmentOnly === true));
+});
+
+test("segredos permanecem críticos mesmo dentro de módulo exclusivo de desenvolvimento", () => {
+  const findings = auditBrowserSource(
+    "src/AccessApp.tsx",
+    "const secret = import.meta.env.VITE_META_APP_SECRET;",
+  );
+  assert.ok(
+    findings.some(
+      (item) =>
+        item.id === "client-secret-environment" && item.severity === "critical",
+    ),
+  );
 });
 
 test("bloqueia armazenamento persistente em contexto de autenticação", () => {
@@ -27,7 +59,20 @@ test("bloqueia armazenamento persistente em contexto de autenticação", () => {
     "src/CustomerAccess.tsx",
     'localStorage.setItem("auth-token", token);',
   );
-  assert.ok(findings.some((item) => item.id === "persistent-auth-storage"));
+  assert.ok(
+    findings.some(
+      (item) =>
+        item.id === "persistent-auth-storage" && item.severity === "critical",
+    ),
+  );
+});
+
+test("não confunde sessionStorage operacional com sessão de autenticação", () => {
+  const findings = auditBrowserSource(
+    "src/CustomerCheckInPage.tsx",
+    'sessionStorage.setItem("checkin-operation-key", crypto.randomUUID());',
+  );
+  assert.equal(findings.length, 0);
 });
 
 test("não bloqueia localStorage usado somente para preferência visual", () => {
@@ -51,7 +96,11 @@ test("bloqueia cabeçalho Bearer manual em superfície do navegador", () => {
     "src/services/customer.ts",
     'fetch("/api/example", { headers: { Authorization: `Bearer ${token}` } });',
   );
-  assert.ok(findings.some((item) => item.id === "bearer-token-in-browser"));
+  assert.ok(
+    findings.some(
+      (item) => item.id === "bearer-token-in-browser" && item.severity === "critical",
+    ),
+  );
 });
 
 test("SDK Supabase direto gera alerta, mas o adaptador central é permitido", () => {
@@ -73,9 +122,13 @@ test("relatório só reprova quando há achado crítico", () => {
       path: "src/PublicCatalog.ts",
       source: 'import { createClient } from "@supabase/supabase-js";',
     },
+    {
+      path: "src/services/auth.ts",
+      source: "await client.auth.getSession();",
+    },
   ]);
   assert.equal(warningOnly.passed, true);
-  assert.equal(warningOnly.warnings.length, 1);
+  assert.equal(warningOnly.warnings.length, 2);
 
   const blocked = auditBrowserFiles([
     {
