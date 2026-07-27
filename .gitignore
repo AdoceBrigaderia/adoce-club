@@ -47,6 +47,8 @@ artifacts/homologation-preflight.json
 artifacts/homologation-preflight.md
 artifacts/migration-integrity.json
 artifacts/migration-integrity.md
+artifacts/migration-reconciliation.json
+artifacts/migration-reconciliation.md
 
 # Pacotes locais de auditoria e backup
 ADOCE_AUDITORIA_*/
