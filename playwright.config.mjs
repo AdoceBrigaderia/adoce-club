@@ -1,5 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
+const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim().replace(/\/+$/, "");
+const localBaseURL = "http://127.0.0.1:4173";
+
 export default defineConfig({
   testDir: "./tests/e2e",
   testMatch: "**/*.e2e.mjs",
@@ -11,18 +14,20 @@ export default defineConfig({
     ? [["line"], ["html", { outputFolder: "artifacts/playwright-report", open: "never" }]]
     : "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: externalBaseURL || localBaseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
     serviceWorkers: "block",
   },
-  webServer: {
-    command: "npx vite preview --host 127.0.0.1 --port 4173 --strictPort",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
-  },
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: "npx vite preview --host 127.0.0.1 --port 4173 --strictPort",
+        url: localBaseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 60_000,
+      },
   projects: [
     {
       name: "celular-android",
