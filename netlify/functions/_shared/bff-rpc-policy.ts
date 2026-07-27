@@ -34,6 +34,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_mark_privacy_response_delivered",
   "staff_apply_privacy_name_correction",
   "staff_apply_privacy_consent_change",
+  "staff_review_privacy_anonymization",
 ] as const;
 
 export const CLIENT_RPC_ALLOWLIST = [
