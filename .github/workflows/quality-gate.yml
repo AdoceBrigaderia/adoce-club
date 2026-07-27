@@ -47,7 +47,7 @@ jobs:
         run: |
           set -o pipefail
           npm run test 2>&1 | tee artifacts/ci/tests.log
-      - name: Audit core tests
+      - name: Audit and preflight core tests
         shell: bash
         run: |
           set -o pipefail
@@ -55,6 +55,7 @@ jobs:
             npm run test:image-library-audit
             npm run test:browser-security-audit
             npm run test:homologation-environment
+            npm run test:homologation-preflight
           } 2>&1 | tee artifacts/ci/audit-tests.log
       - name: Runtime audits
         shell: bash
