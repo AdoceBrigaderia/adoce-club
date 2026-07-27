@@ -8,6 +8,7 @@ import { installCustomerNameNormalization } from "./customer-name-normalization"
 import HomologationValidationBanner, {
   isVisualValidationMode,
 } from "./HomologationValidationBanner";
+import HomologationVisualNavigator from "./HomologationVisualNavigator";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import {
@@ -47,6 +48,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <SiteVisualOverrides>
         <HomologationValidationBanner />
         <App />
+        <HomologationVisualNavigator />
         <PublicContactDock />
       </SiteVisualOverrides>
     </AppErrorBoundary>
