@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
@@ -8,8 +8,12 @@ const migration = readFileSync(
   ),
   "utf8",
 );
-const rollbackFunction = readFileSync(
-  new URL("../netlify/functions/production-rollback.ts", import.meta.url),
+const productionApproval = readFileSync(
+  new URL("../scripts/production-approval-core.mjs", import.meta.url),
+  "utf8",
+);
+const productionRunbook = readFileSync(
+  new URL("../docs/publicacao-producao-controlada.md", import.meta.url),
   "utf8",
 );
 const memberArea = readFileSync(
@@ -59,19 +63,27 @@ describe("Código do membro", () => {
   });
 });
 
-describe("restauração protegida de produção", () => {
-  it("exige proprietário, confirmação e mantém o token fora do navegador", () => {
-    expect(rollbackFunction).toContain('staff.role !== "owner"');
-    expect(rollbackFunction).toContain(
-      'body.confirmation !== "RESTAURAR PRODUCAO"',
-    );
-    expect(rollbackFunction).toContain('env("NETLIFY_AUTH_TOKEN")');
-    expect(rollbackFunction).not.toContain("VITE_NETLIFY_AUTH_TOKEN");
+describe("publicação e rollback protegidos", () => {
+  it("não mantém endpoint remoto de rollback exposto", () => {
+    expect(
+      existsSync(new URL("../netlify/functions/production-rollback.ts", import.meta.url)),
+    ).toBe(false);
   });
 
-  it("restaura um deploy seguro fixado e registra auditoria", () => {
-    expect(rollbackFunction).toContain('env("NETLIFY_SAFE_DEPLOY_ID")');
-    expect(rollbackFunction).toContain("/restore`");
-    expect(rollbackFunction).toContain("record_owner_production_rollback");
+  it("exige aprovação expressa, commit exato, backup e rollback confirmados", () => {
+    expect(productionApproval).toContain("PRODUCAO_APROVADA_EXPRESSAMENTE");
+    expect(productionApproval).toContain("ADOCE_PRODUCTION_BACKUP_CONFIRMED");
+    expect(productionApproval).toContain("ADOCE_PRODUCTION_ROLLBACK_CONFIRMED");
+    expect(productionApproval).toContain("ADOCE_PRODUCTION_SMOKE_PLAN_CONFIRMED");
+    expect(productionApproval).toContain(
+      "commit aprovado não corresponde ao commit atual",
+    );
+    expect(productionApproval).toContain("24 * 60 * 60 * 1000");
+  });
+
+  it("mantém procedimento humano de restauração e smoke tests", () => {
+    expect(productionRunbook).toContain("Confirmar o procedimento de rollback");
+    expect(productionRunbook).toContain("Reverter caso qualquer smoke test crítico falhe");
+    expect(productionRunbook).toContain("produção somente após aprovação expressa");
   });
 });
