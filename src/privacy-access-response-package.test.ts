@@ -8,6 +8,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const membershipFix = readFileSync(
+  new URL(
+    "../supabase/migrations/20260727172000_privacy_access_response_membership_order_fix.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const policy = readFileSync(
   new URL("../netlify/functions/_shared/bff-rpc-policy.ts", import.meta.url),
   "utf8",
@@ -57,6 +64,15 @@ describe("pacote auditado para consulta de dados", () => {
     expect(migration).toContain("privacy_response_delivery_channel = normalized_channel");
     expect(migration).toContain("'privacy_request.response_delivered'");
     expect(migration).toContain("status = 'resolved'");
+  });
+
+  it("usa ordenação determinística compatível com o vínculo real", () => {
+    expect(membershipFix.trimStart()).toMatch(/^begin;/);
+    expect(membershipFix.trimEnd()).toMatch(/commit;$/);
+    expect(membershipFix).toContain(
+      "order by membership.is_primary desc, membership.account_id",
+    );
+    expect(membershipFix).not.toContain("membership.created_at");
   });
 
   it("expõe os dois RPCs somente pela allowlist da operação", () => {
