@@ -50,6 +50,13 @@ describe("publicação manual e isolada da homologação", () => {
     expect(workflow).not.toContain('SMOKE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}');
   });
 
+  it("gera e preserva pré-flight redigido antes do deploy", () => {
+    expect(workflow).toContain("report:homologation-preflight");
+    expect(workflow).toContain("ADOCE_PREFLIGHT_COMMIT");
+    expect(workflow).toContain("artifacts/homologation-preflight.json");
+    expect(workflow).toContain("artifacts/homologation-preflight.md");
+  });
+
   it("lê variáveis do cofre Netlify e verifica readiness antes do smoke", () => {
     expect(workflow).toContain("dev:exec --context");
     expect(workflow).toContain("gate:homologation-environment");
