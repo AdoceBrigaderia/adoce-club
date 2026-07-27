@@ -22,7 +22,7 @@ permissions:
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
   NETLIFY_CONTEXT: branch-deploy
-  SMOKE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}
+  EXPECTED_SITE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}
   PRODUCTION_SITE_ID: ${{ vars.NETLIFY_PRODUCTION_SITE_ID }}
 
 jobs:
@@ -53,11 +53,11 @@ jobs:
           test -n "$HOMOLOGATION_SITE_ID"
           test -n "$PRODUCTION_SITE_ID"
           test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"
-          case "$SMOKE_URL" in
+          case "$EXPECTED_SITE_URL" in
             https://*.netlify.app) ;;
             *) echo "URL de homologação inválida" >&2; exit 1 ;;
           esac
-          case "$SMOKE_URL" in
+          case "$EXPECTED_SITE_URL" in
             *adocebrigaderia.com.br*) echo "Domínio de produção proibido" >&2; exit 1 ;;
           esac
 
@@ -109,15 +109,37 @@ jobs:
           const deploy = JSON.parse(fs.readFileSync('artifacts/netlify-homologation-deploy.json', 'utf8'));
           if (!deploy.deploy_id && !deploy.id) throw new Error('Deploy sem identificador.');
           if (deploy.is_prod === true) throw new Error('Deploy produtivo foi rejeitado.');
+
+          const deployUrl = deploy.deploy_url || deploy.ssl_url || deploy.url;
+          if (!deployUrl) throw new Error('Deploy sem URL HTTPS.');
+          const deployed = new URL(deployUrl);
+          const expected = new URL(process.env.EXPECTED_SITE_URL);
+          const expectedHost = expected.hostname.toLowerCase();
+          const deployedHost = deployed.hostname.toLowerCase();
+          const belongsToHomologationSite =
+            deployedHost === expectedHost || deployedHost.endsWith(`--${expectedHost}`);
+          if (deployed.protocol !== 'https:' || !deployedHost.endsWith('.netlify.app')) {
+            throw new Error('URL do deploy não pertence à Netlify HTTPS.');
+          }
+          if (!belongsToHomologationSite) {
+            throw new Error('URL do deploy não pertence ao site reservado de homologação.');
+          }
+          if (deployedHost.includes('adocebrigaderia.com.br')) {
+            throw new Error('Domínio produtivo rejeitado no deploy.');
+          }
+
+          fs.writeFileSync('artifacts/homologation-deploy-url.txt', `${deployed.origin}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `HOMOLOGATION_DEPLOY_URL=${deployed.origin}\n`);
           NODE
 
-      - name: Validar readiness do preview
+      - name: Validar readiness do deploy exato
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$HOMOLOGATION_DEPLOY_URL"
           status="000"
           for attempt in $(seq 1 18); do
-            status="$(curl -sS -o artifacts/homologation-readiness.json -w '%{http_code}' "$SMOKE_URL/api/homologation-readiness" || true)"
+            status="$(curl -sS -o artifacts/homologation-readiness.json -w '%{http_code}' "$HOMOLOGATION_DEPLOY_URL/api/homologation-readiness" || true)"
             [ "$status" = "200" ] && break
             sleep 5
           done
@@ -127,17 +149,17 @@ jobs:
           const payload = JSON.parse(fs.readFileSync('artifacts/homologation-readiness.json', 'utf8'));
           if (payload.environment !== 'homologation') throw new Error('Ambiente incorreto.');
           if (payload.coreReady !== true) throw new Error('Núcleo da homologação não está pronto.');
+          if (payload.security?.configured !== true) throw new Error('Segredos de proteção do núcleo estão incompletos.');
           if (payload.site?.productionDomainRejected !== true) throw new Error('Domínio de produção não foi rejeitado.');
           if (payload.supabase?.isolated !== true) throw new Error('Supabase não está isolado.');
           NODE
 
-      - name: Executar Playwright no preview
-        env:
-          PLAYWRIGHT_BASE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}
+      - name: Executar Playwright no deploy exato
         run: |
+          test -n "$HOMOLOGATION_DEPLOY_URL"
           npm install --no-save --no-package-lock @playwright/test@1.61.1
           npx playwright install --with-deps chromium
-          npx playwright test
+          PLAYWRIGHT_BASE_URL="$HOMOLOGATION_DEPLOY_URL" npx playwright test
 
       - name: Preservar evidências
         if: always()
@@ -146,6 +168,7 @@ jobs:
           name: homologacao-publicada-${{ github.run_number }}
           path: |
             artifacts/netlify-homologation-deploy.json
+            artifacts/homologation-deploy-url.txt
             artifacts/homologation-readiness.json
             artifacts/playwright-report
             test-results
