@@ -1,4 +1,8 @@
 import {
+  consumePublicRateLimits,
+  ipRateLimitRule,
+} from "./_shared/public-rate-limit";
+import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
   allowedOrigin,
@@ -63,6 +67,7 @@ export default async (request: Request) => {
   const name = clean(body.name, 120);
   const email = clean(body.email, 200).toLowerCase();
   const phone = clean(body.phone, 24);
+  const phoneDigits = phone.replace(/\D/g, "");
   const category = clean(body.category, 20);
   const message = clean(body.message, 3_000);
   const pageUrl = clean(body.page_url, 500);
@@ -84,6 +89,41 @@ export default async (request: Request) => {
     env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !publishableKey || !secretKey)
     return secureJson({ error: "Canal temporariamente indisponível." }, 503);
+
+  const contactSubject = phoneDigits
+    ? `phone:${phoneDigits}`
+    : email
+      ? `email:${email}`
+      : `name:${name.toLocaleLowerCase("pt-BR")}`;
+  const rateLimit = await consumePublicRateLimits({
+    supabaseUrl,
+    secretKey,
+    pepper:
+      env("PUBLIC_RATE_LIMIT_PEPPER") ||
+      env("WHATSAPP_OTP_PEPPER") ||
+      secretKey,
+    rules: [
+      ipRateLimitRule(request, "feedback:ip", 3600, 10),
+      {
+        bucket: "feedback:contact",
+        subject: contactSubject,
+        windowSeconds: 3600,
+        maxRequests: 5,
+      },
+    ],
+  });
+  if (!rateLimit.allowed) {
+    return secureJson(
+      {
+        error: rateLimit.failed
+          ? "Canal temporariamente indisponível."
+          : "Muitas mensagens em pouco tempo. Aguarde antes de tentar novamente.",
+        code: rateLimit.failed ? "rate_limit_unavailable" : "rate_limited",
+        retry_after_seconds: rateLimit.retryAfterSeconds,
+      },
+      rateLimit.failed ? 503 : 429,
+    );
+  }
 
   const profileId = await optionalClientProfile(
     request,
