@@ -1,22 +1,30 @@
 name: Portal quality gate
 
 on:
-  push:
-    branches:
-      - reestruturacao/ux-crm-operacao-imagens-v1
   pull_request:
+    branches:
+      - fonte-oficial/portal-adoce-2026-07-25
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".github/ISSUE_TEMPLATE/**"
   workflow_dispatch:
 
 concurrency:
-  group: portal-quality-${{ github.ref }}
+  group: portal-quality-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: true
 
 jobs:
   verify:
+    name: Gate automático da branch
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
