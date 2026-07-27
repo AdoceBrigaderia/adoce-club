@@ -83,7 +83,9 @@ describe("publicação e rollback protegidos", () => {
 
   it("mantém procedimento humano de restauração e smoke tests", () => {
     expect(productionRunbook).toContain("Confirmar o procedimento de rollback");
-    expect(productionRunbook).toContain("Reverter caso qualquer smoke test crítico falhe");
-    expect(productionRunbook).toContain("produção somente após aprovação expressa");
+    expect(productionRunbook).toContain(
+      "Reverter caso qualquer smoke test crítico falhe",
+    );
+    expect(productionRunbook).toContain("aprovação expressa do responsável");
   });
 });
