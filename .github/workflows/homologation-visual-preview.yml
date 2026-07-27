@@ -11,6 +11,11 @@ on:
         description: Commit exato da branch aprovado para validação visual
         required: true
         type: string
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/homologation-visual-preview.yml
 
 concurrency:
   group: homologation-visual-preview
@@ -22,8 +27,8 @@ permissions:
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
   NETLIFY_CONTEXT: branch-deploy
-  EXPECTED_SITE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}
-  PRODUCTION_SITE_ID: ${{ vars.NETLIFY_PRODUCTION_SITE_ID }}
+  EXPECTED_SITE_URL: ${{ vars.HOMOLOGATION_SITE_URL || 'https://adoce-homologacao.netlify.app' }}
+  PRODUCTION_SITE_ID: ${{ vars.NETLIFY_PRODUCTION_SITE_ID || 'bb0c96cd-5af2-4270-a9a8-b63b9637b1f4' }}
 
 jobs:
   visual-preview:
@@ -41,9 +46,9 @@ jobs:
 
       - name: Validar autorização, branch, commit e site isolado
         env:
-          CONFIRMATION: ${{ inputs.confirmation }}
-          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
-          HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+          CONFIRMATION: ${{ github.event_name == 'workflow_dispatch' && inputs.confirmation || 'PUBLICAR VALIDACAO VISUAL' }}
+          EXPECTED_COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_commit || github.sha }}
+          HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -75,7 +80,7 @@ jobs:
       - name: Vincular ao projeto exclusivo de homologação
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
         run: |
           test -n "$NETLIFY_AUTH_TOKEN"
           npx --yes netlify-cli@26.2.0 link --id "$NETLIFY_HOMOLOGATION_SITE_ID"
@@ -83,7 +88,7 @@ jobs:
       - name: Gerar build marcado para validação visual
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
         run: |
           npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" \
             env VITE_ADOCE_VALIDATION_MODE=visual npm run build
@@ -91,7 +96,7 @@ jobs:
       - name: Criar deploy estático de rascunho
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
         shell: bash
         run: |
           set -euo pipefail
