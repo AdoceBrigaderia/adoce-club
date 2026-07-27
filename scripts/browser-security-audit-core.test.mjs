@@ -21,12 +21,14 @@ test("bloqueia sessão Supabase manipulada em superfície real", () => {
   );
   assert.ok(
     findings.some(
-      (item) => item.id === "browser-session-api" && item.severity === "critical",
+      (item) =>
+        item.id === "browser-session-api" && item.severity === "critical",
     ),
   );
   assert.ok(
     findings.some(
-      (item) => item.id === "token-response-shape" && item.severity === "critical",
+      (item) =>
+        item.id === "token-response-shape" && item.severity === "critical",
     ),
   );
 });
@@ -75,6 +77,14 @@ test("não confunde sessionStorage operacional com sessão de autenticação", (
   assert.equal(findings.length, 0);
 });
 
+test("não confunde recuperação de chunk Vite com recuperação de senha", () => {
+  const findings = auditBrowserSource(
+    "src/main.tsx",
+    'const lastReload = recoveryTimestamp(sessionStorage); sessionStorage.setItem(PRELOAD_RECOVERY_STORAGE_KEY, String(Date.now()));',
+  );
+  assert.equal(findings.length, 0);
+});
+
 test("não bloqueia localStorage usado somente para preferência visual", () => {
   const findings = auditBrowserSource(
     "src/ThemePreference.ts",
@@ -98,7 +108,8 @@ test("bloqueia cabeçalho Bearer manual em superfície do navegador", () => {
   );
   assert.ok(
     findings.some(
-      (item) => item.id === "bearer-token-in-browser" && item.severity === "critical",
+      (item) =>
+        item.id === "bearer-token-in-browser" && item.severity === "critical",
     ),
   );
 });
