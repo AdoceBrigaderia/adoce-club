@@ -15,17 +15,23 @@ const contactDock = readFileSync(
   new URL("./PublicContactDock.tsx", import.meta.url),
   "utf8",
 );
+const contactsSource = readFileSync(
+  new URL("./business-contacts.ts", import.meta.url),
+  "utf8",
+);
 const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+const emailRunbook = readFileSync(
+  new URL("../docs/business-email-groups.md", import.meta.url),
+  "utf8",
+);
 
-const expected = {
+const expectedPublic = {
   atendimento: "atendimento@adocebrigaderia.com.br",
-  financeiro: "financeiro@adocebrigaderia.com.br",
-  alertas: "alertas@adocebrigaderia.com.br",
   privacidade: "privacidade@adocebrigaderia.com.br",
 } as const;
 
 describe("canais oficiais da Adoce", () => {
-  it("centraliza os quatro grupos corporativos no domínio oficial", () => {
+  it("centraliza somente os canais que podem aparecer no navegador", () => {
     expect(
       Object.fromEntries(
         Object.entries(BUSINESS_CONTACTS).map(([key, value]) => [
@@ -33,11 +39,18 @@ describe("canais oficiais da Adoce", () => {
           value.email,
         ]),
       ),
-    ).toEqual(expected);
-    expect(new Set(Object.values(expected)).size).toBe(4);
-    Object.values(expected).forEach((email) => {
+    ).toEqual(expectedPublic);
+    expect(new Set(Object.values(expectedPublic)).size).toBe(2);
+    Object.values(expectedPublic).forEach((email) => {
       expect(email).toMatch(/^[a-z-]+@adocebrigaderia\.com\.br$/);
     });
+  });
+
+  it("não inclui financeiro ou alertas no módulo carregado pelo browser", () => {
+    expect(contactsSource).not.toContain("financeiro@adocebrigaderia.com.br");
+    expect(contactsSource).not.toContain("alertas@adocebrigaderia.com.br");
+    expect(emailRunbook).toContain("financeiro@adocebrigaderia.com.br");
+    expect(emailRunbook).toContain("alertas@adocebrigaderia.com.br");
   });
 
   it("gera mailto com assunto codificado sem expor credenciais", () => {
@@ -72,8 +85,10 @@ describe("canais oficiais da Adoce", () => {
   it("publica atendimento e privacidade nos dados estruturados", () => {
     expect(indexHtml).toContain('"contactType": "customer service"');
     expect(indexHtml).toContain('"contactType": "privacy"');
-    expect(indexHtml).toContain(expected.atendimento);
-    expect(indexHtml).toContain(expected.privacidade);
+    expect(indexHtml).toContain(expectedPublic.atendimento);
+    expect(indexHtml).toContain(expectedPublic.privacidade);
     expect(indexHtml).not.toContain("fcorbz@gmail.com");
+    expect(indexHtml).not.toContain("financeiro@adocebrigaderia.com.br");
+    expect(indexHtml).not.toContain("alertas@adocebrigaderia.com.br");
   });
 });
