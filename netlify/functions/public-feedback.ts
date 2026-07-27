@@ -26,6 +26,13 @@ const categories = new Set([
   "compliment",
   "privacy",
 ]);
+const privacyTypes = new Set([
+  "access",
+  "correction",
+  "deletion",
+  "consent",
+  "other",
+]);
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -75,6 +82,7 @@ export default async (request: Request) => {
   const phone = clean(body.phone, 24);
   const phoneDigits = phone.replace(/\D/g, "");
   const category = clean(body.category, 20);
+  const privacyType = clean(body.privacy_type, 24).toLowerCase();
   const message = clean(body.message, 3_000);
   const pageUrl = clean(body.page_url, 500);
 
@@ -93,6 +101,11 @@ export default async (request: Request) => {
         error:
           "Para solicitações de privacidade, informe um e-mail ou celular para retorno.",
       },
+      400,
+    );
+  if (category === "privacy" && !privacyTypes.has(privacyType))
+    return secureJson(
+      { error: "Escolha o tipo da solicitação de privacidade." },
       400,
     );
 
@@ -164,6 +177,7 @@ export default async (request: Request) => {
           requested_customer_phone: phone || null,
           requested_page_url: pageUrl,
           requested_message: message,
+          requested_privacy_type: category === "privacy" ? privacyType : null,
         }),
       },
     );
