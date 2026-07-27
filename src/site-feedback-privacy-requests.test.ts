@@ -15,12 +15,14 @@ const migration = readFileSync(
 );
 
 describe("solicitações de privacidade pela Escuta Adoce", () => {
-  it("oferece a opção pública e exige um canal de retorno", () => {
+  it("oferece a opção pública, deep link e exige um canal de retorno", () => {
     expect(page).toContain('value="privacy"');
     expect(page).toContain("Quero falar sobre meus dados e privacidade");
     expect(page).toContain('form.category === "privacy"');
     expect(page).toContain("!form.email.trim() && !form.phone.trim()");
-    expect(page).toContain('fallbackContact, fallbackSubject');
+    expect(page).toContain("new URLSearchParams(query)");
+    expect(page).toContain('.get("tipo") === "privacy"');
+    expect(page).toContain("fallbackContact, fallbackSubject");
   });
 
   it("valida a categoria e o contato novamente no BFF", () => {
@@ -37,9 +39,7 @@ describe("solicitações de privacidade pela Escuta Adoce", () => {
     expect(migration).toContain("'business.privacidade'");
     expect(migration).toContain("'business.atendimento'");
     expect(migration).toContain("to service_role");
-    expect(migration).toContain(
-      "from public, anon, authenticated",
-    );
+    expect(migration).toContain("from public, anon, authenticated");
     expect(migration).not.toContain("@adocebrigaderia.com.br");
   });
 
