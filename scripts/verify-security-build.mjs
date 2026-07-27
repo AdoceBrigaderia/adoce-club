@@ -125,7 +125,7 @@ for (const { path, source } of liveBffSources) {
   }
 }
 
-if (!operationHub.includes("<OperationManualSale />")) {
+if (!operationHub.includes("<OperationManualSale")) {
   throw new Error("A operação real não expõe a venda rápida.");
 }
 if (!customerGateway.includes("<CustomerGoogleWalletButton")) {
