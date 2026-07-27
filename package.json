@@ -22,7 +22,7 @@
     "docs:build": "node scripts/generate-docs.mjs",
     "release:check": "node scripts/release-check.mjs",
     "release:preview": "npm run release:check && npx --yes netlify-cli@26.2.0 deploy --alias=homologacao-adoce --skip-functions-cache",
-    "release:prod": "npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --skip-functions-cache",
+    "release:prod": "node scripts/production-approval-gate.mjs && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --skip-functions-cache",
     "prebuild": "npm run generate:pwa-icons && npm run docs:build",
     "launch:build": "node scripts/generate-launch-page-v3.mjs",
     "launch:verify": "node scripts/verify-launch-v3.cjs"
