@@ -47,6 +47,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Solicitações de privacidade são classificadas em consulta, correção, exclusão/anonimização, consentimento ou outro assunto, com validação repetida no BFF e no banco.
 - A fila de privacidade usa alvo operacional interno de 15 dias, prioriza solicitações vencidas e registra resolução, fechamento, notas e auditoria sem apresentar o alvo como prazo legal automático.
 - A migration de tipos e prazo foi aplicada somente no Supabase de homologação. Dois ensaios vivos com `ROLLBACK` validaram idempotência, tipo, cálculo do prazo, roteamento da outbox, atualização de status e bloqueio dos RPCs ao navegador.
+- Pedidos de acesso, correção, exclusão e consentimento agora exigem identidade confirmada antes da resolução. A conferência registra estado, responsável, horário e auditoria sem armazenar documento ou código completo.
+- Novas solicitações de privacidade iniciam automaticamente com identidade pendente; mensagens de outras categorias têm os campos de identidade limpos por trigger `SECURITY INVOKER`.
+- O ensaio vivo da privacidade foi repetido na homologação com `ROLLBACK`, comprovando bloqueio da resolução antes da identidade, confirmação posterior, auditoria e ausência de acesso anônimo aos RPCs.
 
 ### Homologação e automação
 
@@ -95,6 +98,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `supabase/migrations/20260727124000_lock_retired_direct_rpcs.sql`
 - `supabase/migrations/20260727125000_lock_unrouted_authenticated_rpcs.sql`
 - `supabase/migrations/20260727153000_privacy_request_types_and_sla.sql`
+- `supabase/migrations/20260727160000_privacy_identity_verification.sql`
+- `supabase/migrations/20260727161000_privacy_identity_defaults.sql`
 - `docs/permission-matrix-live-runbook.md`
 - `docs/homologation-runbook.md`
 - `src/legacy-surfaces-removed.test.ts`
@@ -106,6 +111,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `src/public-service-request-bff-security.test.ts`
 - `src/site-feedback-bff-hardening.test.ts`
 - `src/privacy-request-types-sla.test.ts`
+- `src/privacy-identity-verification.test.ts`
 - `src/staff-permission-owner-guard.test.ts`
 - Workflows `Portal quality gate`, `Verificar reestruturação` e `Playwright mobile e tablet`
 
