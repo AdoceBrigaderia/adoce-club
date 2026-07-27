@@ -46,8 +46,8 @@ describe("operação protegida de anonimização", () => {
 
   it("bloqueia revisão sem identidade e exige plano recente", () => {
     expect(panel).toContain('item.privacy_identity_status !== "verified"');
-    expect(panel).toContain("REVIEW_VALIDITY_MS = 5 * 60 * 1000");
-    expect(panel).toContain("planIsFresh(plan)");
+    expect(panel).toContain("attachPrivacyReviewWindow(plan)");
+    expect(panel).toContain("privacyReviewIsFresh(plan)");
     expect(panel).toContain("a revisão expirou");
     expect(panel).toContain("disabled={busy || !identityVerified}");
   });
