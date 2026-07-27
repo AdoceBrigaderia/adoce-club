@@ -4,7 +4,7 @@ do $$
 declare
   actor_id uuid;
   target_profile_id uuid;
-  request_id uuid;
+  target_request_id uuid;
   review_result jsonb;
   stored_ready boolean;
   stored_blockers jsonb;
@@ -74,7 +74,7 @@ begin
     'Identidade confirmada no ensaio transacional.'
   from public.profiles profile
   where profile.id = target_profile_id
-  returning id into request_id;
+  returning id into target_request_id;
 
   perform set_config('request.jwt.claim.sub', actor_id::text, true);
   perform set_config(
@@ -83,7 +83,7 @@ begin
     true
   );
 
-  review_result := public.staff_review_privacy_anonymization(request_id);
+  review_result := public.staff_review_privacy_anonymization(target_request_id);
 
   if jsonb_typeof(review_result->'blockers') is distinct from 'array' then
     raise exception 'Revisão não retornou lista estruturada de bloqueadores';
@@ -100,7 +100,7 @@ begin
     feedback.privacy_deletion_blockers
   into stored_ready, stored_blockers
   from public.site_feedback feedback
-  where feedback.id = request_id;
+  where feedback.id = target_request_id;
 
   if stored_ready is null
      or jsonb_typeof(coalesce(stored_blockers, '[]'::jsonb)) is distinct from 'array' then
@@ -111,7 +111,7 @@ begin
     select 1
     from public.audit_events event
     where event.action = 'privacy_request.anonymization_reviewed'
-      and event.entity_id = request_id::text
+      and event.entity_id = target_request_id::text
       and event.payload->>'profile_id' = target_profile_id::text
   ) into audit_exists;
 
