@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Check,
+  Flame,
   LockKeyhole,
   Minus,
   Plus,
   Search,
   ShoppingBag,
+  Star,
   X,
 } from "lucide-react";
 import { resolvePublicImageSource } from "./public-image-fallbacks";
 import { bffRpc } from "./services/bff-rpc";
 import "./operation-commerce-tools.css";
+import "./operation-quick-sale-ranking.css";
 
 type Flavor = {
   id: string;
@@ -18,6 +21,8 @@ type Flavor = {
   base_price: number;
   image_path: string | null;
   remaining: number;
+  is_favorite: boolean;
+  sales_count_30d: number;
 };
 type Method = { code: string; label: string; active: boolean };
 type OpenCashSession = {
@@ -39,6 +44,7 @@ type QuickSaleCatalog = {
   flavors?: Flavor[];
   payment_methods?: Method[];
 };
+type CatalogView = "all" | "favorites" | "popular";
 
 const dateKey = () =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(
@@ -57,6 +63,8 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
   const [method, setMethod] = useState("pix");
   const [notes, setNotes] = useState("");
   const [query, setQuery] = useState("");
+  const [catalogView, setCatalogView] = useState<CatalogView>("all");
+  const [favoriteBusy, setFavoriteBusy] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
@@ -79,6 +87,8 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
         ...flavor,
         base_price: Number(flavor.base_price),
         remaining: Number(flavor.remaining),
+        is_favorite: Boolean(flavor.is_favorite),
+        sales_count_30d: Number(flavor.sales_count_30d || 0),
       }));
       const activeMethods = (catalog.payment_methods || []).filter(
         (item) => item.active,
@@ -122,11 +132,18 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
 
   const filteredFlavors = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("pt-BR");
-    if (!normalized) return flavors;
-    return flavors.filter((flavor) =>
-      flavor.name.toLocaleLowerCase("pt-BR").includes(normalized),
-    );
-  }, [flavors, query]);
+    return flavors.filter((flavor) => {
+      if (
+        normalized &&
+        !flavor.name.toLocaleLowerCase("pt-BR").includes(normalized)
+      ) {
+        return false;
+      }
+      if (catalogView === "favorites") return flavor.is_favorite;
+      if (catalogView === "popular") return flavor.sales_count_30d > 0;
+      return true;
+    });
+  }, [catalogView, flavors, query]);
 
   const items = useMemo(
     () =>
@@ -151,12 +168,52 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
       ),
     [flavors, quantities],
   );
+  const favoritesCount = useMemo(
+    () => flavors.filter((flavor) => flavor.is_favorite).length,
+    [flavors],
+  );
+  const popularCount = useMemo(
+    () => flavors.filter((flavor) => flavor.sales_count_30d > 0).length,
+    [flavors],
+  );
 
   const setQuantity = (flavor: Flavor, value: number) =>
     setQuantities((current) => ({
       ...current,
       [flavor.id]: Math.max(0, Math.min(flavor.remaining, value)),
     }));
+
+  const toggleFavorite = async (flavor: Flavor) => {
+    if (favoriteBusy) return;
+    const nextFavorite = !flavor.is_favorite;
+    setFavoriteBusy(flavor.id);
+    setFlavors((current) =>
+      current.map((item) =>
+        item.id === flavor.id ? { ...item, is_favorite: nextFavorite } : item,
+      ),
+    );
+    try {
+      await bffRpc("staff_set_quick_sale_favorite", {
+        target_flavor_id: flavor.id,
+        favorite: nextFavorite,
+      });
+    } catch (error) {
+      setFlavors((current) =>
+        current.map((item) =>
+          item.id === flavor.id
+            ? { ...item, is_favorite: flavor.is_favorite }
+            : item,
+        ),
+      );
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar o favorito.",
+      );
+    } finally {
+      setFavoriteBusy("");
+    }
+  };
 
   const cashSessionLabel = (cash: OpenCashSession) => {
     const register = registers.find((item) => item.id === cash.register_id);
@@ -233,7 +290,10 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
             </button>
             <small>Atendimento em poucos toques</small>
             <h2>Venda rápida</h2>
-            <p>Toque no produto para adicionar uma unidade. O botão final registra venda, pagamento, estoque e caixa de uma vez.</p>
+            <p>
+              Favoritos e mais vendidos aparecem primeiro. Toque no produto para
+              adicionar uma unidade e conclua tudo no botão final.
+            </p>
 
             {notice ? (
               <p className="operation-commercial-notice" role="status">
@@ -273,6 +333,33 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
               </label>
             </div>
 
+            <div className="quick-sale-ranking-filters" aria-label="Organizar produtos">
+              <button
+                type="button"
+                className={catalogView === "all" ? "active" : ""}
+                aria-pressed={catalogView === "all"}
+                onClick={() => setCatalogView("all")}
+              >
+                <ShoppingBag /> Todos
+              </button>
+              <button
+                type="button"
+                className={catalogView === "favorites" ? "active" : ""}
+                aria-pressed={catalogView === "favorites"}
+                onClick={() => setCatalogView("favorites")}
+              >
+                <Star /> Favoritos ({favoritesCount})
+              </button>
+              <button
+                type="button"
+                className={catalogView === "popular" ? "active" : ""}
+                aria-pressed={catalogView === "popular"}
+                onClick={() => setCatalogView("popular")}
+              >
+                <Flame /> Mais vendidos ({popularCount})
+              </button>
+            </div>
+
             {!cashSessions.length ? (
               <div className="manual-sale-cash-warning">
                 <LockKeyhole />
@@ -286,15 +373,32 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
             <div className="manual-sale-product-grid" aria-busy={loading}>
               {loading ? <p>Carregando produtos…</p> : null}
               {!loading && !filteredFlavors.length ? (
-                <p>Nenhum produto disponível para esta busca.</p>
+                <p className="quick-sale-filter-empty">
+                  Nenhum produto disponível neste filtro. Marque a estrela de um
+                  produto para deixá-lo sempre à mão.
+                </p>
               ) : null}
               {filteredFlavors.map((flavor) => {
                 const quantity = quantities[flavor.id] || 0;
                 return (
                   <article
-                    className={`manual-sale-product-card${quantity ? " selected" : ""}`}
+                    className={`manual-sale-product-card${quantity ? " selected" : ""}${flavor.is_favorite ? " favorite" : ""}`}
                     key={flavor.id}
                   >
+                    <button
+                      type="button"
+                      className={`quick-sale-favorite-toggle${flavor.is_favorite ? " active" : ""}`}
+                      onClick={() => void toggleFavorite(flavor)}
+                      disabled={favoriteBusy === flavor.id}
+                      aria-pressed={flavor.is_favorite}
+                      aria-label={
+                        flavor.is_favorite
+                          ? `Remover ${flavor.name} dos favoritos`
+                          : `Adicionar ${flavor.name} aos favoritos`
+                      }
+                    >
+                      <Star fill={flavor.is_favorite ? "currentColor" : "none"} />
+                    </button>
                     <button
                       type="button"
                       className="manual-sale-product-main"
@@ -310,7 +414,14 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
                       />
                       <span>
                         <strong>{flavor.name}</strong>
-                        <small>{money(flavor.base_price)} · {flavor.remaining} disponível(is)</small>
+                        <small>
+                          {money(flavor.base_price)} · {flavor.remaining} disponível(is)
+                        </small>
+                        {flavor.sales_count_30d > 0 ? (
+                          <small className="manual-sale-popularity">
+                            <Flame /> {flavor.sales_count_30d} vendida(s) em 30 dias
+                          </small>
+                        ) : null}
                       </span>
                       {quantity ? <b>{quantity}</b> : <Plus />}
                     </button>
