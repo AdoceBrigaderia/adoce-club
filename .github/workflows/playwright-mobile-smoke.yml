@@ -34,14 +34,14 @@ jobs:
       - name: Instalar dependências do portal
         run: npm ci --prefer-offline --no-audit
 
+      - name: Gerar build inspecionável
+        run: npm run build
+
       - name: Instalar Playwright isoladamente
         run: npm install --no-save --no-package-lock @playwright/test@1.61.1
 
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium
-
-      - name: Gerar build inspecionável
-        run: npm run build
 
       - name: Executar smoke mobile, tablet e desktop
         run: npx playwright test
