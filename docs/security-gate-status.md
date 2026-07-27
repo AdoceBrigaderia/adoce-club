@@ -24,10 +24,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Os endpoints legados de atualização de segurança por Bearer e restauração remota de produção foram removidos das Netlify Functions.
 - Adoce Hoje, pré-reservas comerciais, Pede Junto, analytics e feedback público passam por Functions same-origin.
 - RPCs de escrita pública correspondentes foram retirados de `anon`/`authenticated` e limitados ao `service_role` do servidor.
-- RPCs aposentados de consulta de pedido, verificação antiga do WhatsApp, claim antigo de cadastro e auditoria do rollback remoto foram bloqueados para `anon` e `authenticated` na homologação.
-- Dezenove RPCs autenticados sem rota na aplicação atual foram retirados de `authenticated`; ficaram disponíveis apenas para manutenção controlada por `service_role`.
-- A allowlist viva dos `SECURITY DEFINER` autenticados foi executada na homologação sem divergências e falha caso uma função inesperada seja exposta.
-- O advisor de segurança deixou de apresentar função `SECURITY DEFINER` executável por usuário anônimo; os avisos autenticados restantes correspondem à superfície controlada e continuam protegidos pela identidade do usuário e autorização interna.
+- RPCs aposentados e rotas autenticadas não utilizadas foram retirados das funções acessíveis pelo navegador.
+- A allowlist viva dos `SECURITY DEFINER` autenticados foi executada na homologação e falha caso uma função inesperada seja exposta.
 - Pré-reservas e feedback possuem chave idempotente e trava transacional contra duplicidade.
 - Endpoints públicos sensíveis possuem rate limit transacional por IP e contato com identificadores anonimizados antes do armazenamento.
 - Tabelas exclusivamente internas têm RLS, privilégios diretos revogados e política explícita de negação.
@@ -42,17 +40,30 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Matriz por loja cobre venda, caixa, estoque, financeiro, clientes, pedidos, produção, relatórios e configurações.
 - Mudanças de papel e capacidade geram auditoria; gerente não altera proprietário/gestor e o último proprietário ativo não pode ser removido.
 - Valores públicos de pedidos e upgrade de recompensa são recalculados no banco.
-- O ensaio vivo transacional da matriz de permissões foi executado no Supabase de homologação com `ROLLBACK`, validando cashier, production, isolamento entre lojas, auditoria de capacidade e bloqueios de owner/manager sem persistir os dados temporários.
+- O ensaio vivo da matriz de permissões foi executado no Supabase de homologação com `ROLLBACK`, validando funções e isolamento entre lojas sem persistir dados temporários.
 - O rate limit foi testado ao vivo em transação: duas solicitações permitidas, terceira bloqueada e tempo de nova tentativa retornado, com `ROLLBACK` ao final.
-- Solicitações de privacidade são classificadas em consulta, correção, exclusão/anonimização, consentimento ou outro assunto, com validação repetida no BFF e no banco.
-- A fila de privacidade usa alvo operacional interno de 15 dias, prioriza solicitações vencidas e registra resolução, fechamento, notas e auditoria sem apresentar o alvo como prazo legal automático.
-- A migration de tipos e prazo foi aplicada somente no Supabase de homologação. Dois ensaios vivos com `ROLLBACK` validaram idempotência, tipo, cálculo do prazo, roteamento da outbox, atualização de status e bloqueio dos RPCs ao navegador.
-- Pedidos de acesso, correção, exclusão e consentimento agora exigem identidade confirmada antes da resolução. A conferência registra estado, responsável, horário e auditoria sem armazenar documento ou código completo.
-- Novas solicitações de privacidade iniciam automaticamente com identidade pendente; mensagens de outras categorias têm os campos de identidade limpos por trigger `SECURITY INVOKER`.
-- O ensaio vivo da privacidade foi repetido na homologação com `ROLLBACK`, comprovando bloqueio da resolução antes da identidade, confirmação posterior, auditoria e ausência de acesso anônimo aos RPCs.
-- Solicitações de consulta de dados agora podem gerar um pacote JSON versionado somente após identidade confirmada e vínculo explícito ao cadastro. O pacote inclui cadastro, consentimentos, preferências, fidelidade, pedidos e check-ins, sem notas internas, etiquetas, controles antifraude, segredos técnicos ou dados de terceiros.
-- A preparação do pacote grava somente versão, horário, responsável e contagens na auditoria; o conteúdo completo não é persistido em logs ou eventos. A entrega por e-mail ou WhatsApp é registrada separadamente e resolve o protocolo de forma auditada.
-- As migrations do pacote foram aplicadas somente na homologação. O primeiro ensaio vivo encontrou uma coluna inexistente na ordenação do vínculo, a função foi corrigida e o ensaio repetido com sucesso e `ROLLBACK`, validando pacote, fila, entrega, auditoria e bloqueio ao usuário anônimo.
+
+### Privacidade e direitos do cliente
+
+- Solicitações de privacidade são classificadas em consulta, correção, exclusão/anonimização, consentimento ou outro assunto, com validação no BFF e no banco.
+- A fila usa alvo operacional interno de 15 dias, prioriza solicitações vencidas e registra resolução, fechamento, notas e auditoria sem apresentar o alvo como prazo legal automático.
+- Pedidos de acesso, correção, exclusão e consentimento exigem identidade confirmada antes da execução. A conferência registra estado, responsável, horário e auditoria sem armazenar documento ou código completo.
+- Novas solicitações de privacidade iniciam automaticamente com identidade pendente; mensagens de outras categorias têm os campos de identidade limpos.
+- Solicitações de consulta de dados geram pacote JSON versionado somente após identidade confirmada e vínculo explícito ao cadastro.
+- O pacote de consulta inclui cadastro, consentimentos, preferências, fidelidade, pedidos e check-ins; notas internas, etiquetas, controles antifraude, segredos técnicos e dados de terceiros ficam fora.
+- A preparação do pacote grava somente versão, horário, responsável e contagens na auditoria. O conteúdo completo não é persistido em logs ou eventos.
+- A entrega do pacote por e-mail ou WhatsApp é registrada separadamente e resolve o protocolo de forma auditada.
+- Correções de nome passam pela normalização oficial do backend e registram valor anterior, novo valor e protocolo na auditoria.
+- Alterações de consentimento gravam novo evento. Quando marketing é revogado, WhatsApp, e-mail e preferências promocionais são desligados no backend, mesmo que o navegador envie canais marcados.
+- O status genérico não pode resolver consulta sem entrega, correção/consentimento sem ação aplicada ou exclusão sem o procedimento protegido específico.
+- A exclusão/anonimização é exclusiva do proprietário e exige identidade confirmada, cadastro vinculado, plano de impacto sem bloqueios, aceite explícito e digitação do protocolo exato.
+- O plano bloqueia anonimização de perfil da equipe, pedidos ou atendimentos em aberto e contas de fidelidade compartilhadas.
+- A anonimização revoga sessões, passkeys, QR e Wallet; desativa conta e fidelidade; reverte recompensas disponíveis; remove CRM, check-ins e preferências; e anonimiza contatos em pedidos e serviços preservando registros financeiros e de auditoria.
+- O procedimento não registra nome, telefone ou e-mail originais no evento final de auditoria.
+- Cadastros sem e-mail são bloqueados para revisão manual, evitando associação ampla por contato vazio.
+- As migrations de privacidade foram aplicadas somente no Supabase de homologação.
+- Ensaios vivos com `ROLLBACK` validaram pacote e entrega, correção de nome, revogação de marketing, guardas de resolução e anonimização integral.
+- Os ensaios encontraram e corrigiram diferenças reais do esquema: coluna inexistente em vínculo, variável ambígua no teste, e-mail gerado em `auth.identities` e imutabilidade do código de membro.
 
 ### Homologação e automação
 
@@ -61,23 +72,23 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `SUPABASE_SECRET_KEY`, `WHATSAPP_OTP_PEPPER` e `PUBLIC_RATE_LIMIT_PEPPER` são obrigatórios no cofre da Netlify; os peppers precisam ser distintos.
 - O endpoint de readiness compara a origem real da requisição com `SITE_URL`, exige os segredos do núcleo e nunca devolve seus valores.
 - Migrations desta reestruturação são aplicadas somente ao Supabase de homologação.
-- Playwright executa as rotas reais em celular, tablet e computador, verificando identidade, cadastro, login BFF, toque mínimo, overflow e ausência de módulos de demonstração.
-- Workflows executam TypeScript, Vitest, auditoria de imagens, auditoria do navegador, isolamento do ambiente, build e verificação dos headers.
-- Build e diagnósticos são preservados como artefatos para inspeção.
+- Playwright cobre rotas reais em celular, tablet e computador, incluindo identidade, cadastro, login BFF, toque mínimo, overflow e ausência de módulos de demonstração.
+- Workflows executam TypeScript, Vitest, auditoria de imagens, auditoria do navegador, isolamento do ambiente, build e verificação de headers.
+- Build e diagnósticos são preservados como artefatos para inspeção quando os runners chegam às etapas.
 - O deploy de homologação é manual, exige branch e commit exatos, confirmação textual e site Netlify diferente da produção.
-- O workflow extrai a URL do deploy, valida que pertence ao projeto isolado e executa readiness e Playwright na origem canônica do alias fixo.
-- O workflow de ensaios vivos passou a executar também o pacote e a entrega de consulta de dados com rollback integral.
+- O workflow extrai a URL do deploy, valida que pertence ao projeto isolado e executa readiness e Playwright no deploy exato.
+- O workflow de ensaios vivos inclui matriz de permissões, rate limit, allowlist de RPCs e todos os fluxos de privacidade com rollback integral.
 - O deploy de produção não possui endpoint remoto de restauração e exige gate temporário com aprovação expressa, SHA exato, backup, rollback e plano de smoke tests.
 
 ## Parcial — não considerar resolvido
 
-- Passkeys precisam de ensaio em aparelhos reais e RP ID/origens definitivos do domínio de homologação.
+- Passkeys precisam de ensaio em aparelhos reais e RP ID/origens definitivos da homologação.
 - Meta WhatsApp Cloud API está implementada com adapter, webhook, OTP e painel, mas o envio real depende das credenciais e do template aprovados para homologação.
 - Google Wallet está preparado no BFF e banco, porém a emissão real depende da conta de emissor e da chave de serviço.
-- O preview público de homologação ainda deve receber as variáveis e segredos exclusivos, ser publicado no alias fixo e passar pelo roteiro funcional completo.
+- O preview público de homologação ainda deve receber variáveis e segredos exclusivos, ser publicado no alias fixo e passar pelo roteiro funcional completo.
 - A proteção contra senhas vazadas deve ser habilitada no Supabase Auth de homologação quando a configuração estiver disponível.
-- O head atual ainda precisa de uma execução normal dos três pipelines principais; as tentativas recentes encerraram antes de fornecer etapas ou logs utilizáveis.
-- Correção de dados, alteração de consentimento e exclusão/anonimização ainda precisam dos respectivos procedimentos transacionais e ensaios vivos completos.
+- O head atual ainda precisa de uma execução normal dos três pipelines principais; tentativas recentes encerraram antes de fornecer etapas ou logs utilizáveis.
+- O painel de anonimização está integrado à operação, mas ainda precisa de validação visual no preview publicado e teste touch real em tablet.
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
@@ -92,7 +103,6 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `scripts/audit-browser-security.mjs`
 - `scripts/browser-security-audit-core.mjs`
 - `scripts/homologation-environment-gate.mjs`
-- `scripts/homologation-environment-core.test.mjs`
 - `scripts/verify-security-build.mjs`
 - `tests/e2e/public-mobile-smoke.e2e.mjs`
 - `supabase/tests/permission_matrix_live.sql`
@@ -101,30 +111,23 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `supabase/tests/privacy_request_operation_live.sql`
 - `supabase/tests/privacy_request_types_sla_live.sql`
 - `supabase/tests/privacy_access_response_live.sql`
-- `supabase/migrations/20260727124000_lock_retired_direct_rpcs.sql`
-- `supabase/migrations/20260727125000_lock_unrouted_authenticated_rpcs.sql`
-- `supabase/migrations/20260727153000_privacy_request_types_and_sla.sql`
-- `supabase/migrations/20260727160000_privacy_identity_verification.sql`
-- `supabase/migrations/20260727161000_privacy_identity_defaults.sql`
+- `supabase/tests/privacy_correction_consent_live.sql`
+- `supabase/tests/privacy_resolution_guard_live.sql`
+- `supabase/tests/privacy_profile_anonymization_live.sql`
 - `supabase/migrations/20260727170000_privacy_access_response_package.sql`
-- `supabase/migrations/20260727171000_privacy_response_status_list.sql`
-- `supabase/migrations/20260727172000_privacy_access_response_membership_order_fix.sql`
-- `docs/permission-matrix-live-runbook.md`
-- `docs/homologation-runbook.md`
-- `src/legacy-surfaces-removed.test.ts`
-- `src/retired-direct-rpc-lockdown.test.ts`
-- `src/unrouted-authenticated-rpc-lockdown.test.ts`
-- `src/bff-session-security.test.ts`
-- `src/homologation-readiness.test.ts`
-- `src/homologation-deploy-workflow.test.ts`
-- `src/public-service-request-bff-security.test.ts`
-- `src/site-feedback-bff-hardening.test.ts`
-- `src/privacy-request-types-sla.test.ts`
-- `src/privacy-identity-verification.test.ts`
+- `supabase/migrations/20260727173000_privacy_correction_consent_actions.sql`
+- `supabase/migrations/20260727175000_privacy_resolution_outcome_guard.sql`
+- `supabase/migrations/20260727180000_privacy_profile_anonymization.sql`
+- `supabase/migrations/20260727181000_privacy_anonymization_null_email_guard.sql`
+- `supabase/migrations/20260727182000_privacy_anonymization_generated_identity_email_fix.sql`
+- `supabase/migrations/20260727183000_privacy_anonymization_preserve_member_code.sql`
 - `src/privacy-access-response-package.test.ts`
 - `src/privacy-access-response-operation.test.ts`
-- `src/staff-permission-owner-guard.test.ts`
-- Workflows `Portal quality gate`, `Verificar reestruturação` e `Playwright mobile e tablet`
+- `src/privacy-correction-consent-actions.test.ts`
+- `src/privacy-correction-consent-operation.test.ts`
+- `src/privacy-profile-anonymization.test.ts`
+- `src/privacy-anonymization-operation.test.ts`
+- Workflows `Portal quality gate`, `Verificar reestruturação`, `Playwright mobile e tablet` e `Testar segurança viva na homologação`
 
 ## Produção
 
