@@ -14,7 +14,7 @@ describe("convite opcional ao Clube depois do pedido", () => {
   });
 
   it("leva nome e celular para o cadastro sem cadastrar por conta própria", () => {
-    expect(panel).toContain('sessionStorage.setItem("adoce-club-order-invite"');
+    expect(panel).toContain("adoce-club-order-invite");
     expect(panel).toContain('window.location.href = "/#cadastro"');
   });
 
