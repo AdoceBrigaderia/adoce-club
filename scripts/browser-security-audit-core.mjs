@@ -69,6 +69,7 @@ const RULES = [
     description: "Módulo do navegador importa o SDK Supabase diretamente.",
     pattern: /from\s+["']@supabase\/supabase-js["']/g,
     exceptPaths: new Set(["src/lib/supabase.ts"]),
+    ignoreTypeOnlyImport: true,
   },
 ];
 
@@ -94,6 +95,11 @@ function sourceLineAt(source, index) {
   const endCandidate = source.indexOf("\n", index);
   const end = endCandidate === -1 ? source.length : endCandidate;
   return source.slice(start, end).trim().slice(0, 240);
+}
+
+function isTypeOnlyImport(source, index) {
+  const line = sourceLineAt(source, index);
+  return /^import\s+type\b/.test(line);
 }
 
 function storageViolations(path, source) {
@@ -128,6 +134,9 @@ export function auditBrowserSource(path, source) {
   for (const rule of RULES) {
     if (rule.exceptPaths?.has(normalizedPath)) continue;
     for (const match of source.matchAll(rule.pattern)) {
+      if (rule.ignoreTypeOnlyImport && isTypeOnlyImport(source, match.index)) {
+        continue;
+      }
       findings.push({
         id: rule.id,
         severity: rule.severity,
