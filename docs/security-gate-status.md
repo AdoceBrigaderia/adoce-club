@@ -50,6 +50,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Pedidos de acesso, correção, exclusão e consentimento agora exigem identidade confirmada antes da resolução. A conferência registra estado, responsável, horário e auditoria sem armazenar documento ou código completo.
 - Novas solicitações de privacidade iniciam automaticamente com identidade pendente; mensagens de outras categorias têm os campos de identidade limpos por trigger `SECURITY INVOKER`.
 - O ensaio vivo da privacidade foi repetido na homologação com `ROLLBACK`, comprovando bloqueio da resolução antes da identidade, confirmação posterior, auditoria e ausência de acesso anônimo aos RPCs.
+- Solicitações de consulta de dados agora podem gerar um pacote JSON versionado somente após identidade confirmada e vínculo explícito ao cadastro. O pacote inclui cadastro, consentimentos, preferências, fidelidade, pedidos e check-ins, sem notas internas, etiquetas, controles antifraude, segredos técnicos ou dados de terceiros.
+- A preparação do pacote grava somente versão, horário, responsável e contagens na auditoria; o conteúdo completo não é persistido em logs ou eventos. A entrega por e-mail ou WhatsApp é registrada separadamente e resolve o protocolo de forma auditada.
+- As migrations do pacote foram aplicadas somente na homologação. O primeiro ensaio vivo encontrou uma coluna inexistente na ordenação do vínculo, a função foi corrigida e o ensaio repetido com sucesso e `ROLLBACK`, validando pacote, fila, entrega, auditoria e bloqueio ao usuário anônimo.
 
 ### Homologação e automação
 
@@ -63,6 +66,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Build e diagnósticos são preservados como artefatos para inspeção.
 - O deploy de homologação é manual, exige branch e commit exatos, confirmação textual e site Netlify diferente da produção.
 - O workflow extrai a URL do deploy, valida que pertence ao projeto isolado e executa readiness e Playwright na origem canônica do alias fixo.
+- O workflow de ensaios vivos passou a executar também o pacote e a entrega de consulta de dados com rollback integral.
 - O deploy de produção não possui endpoint remoto de restauração e exige gate temporário com aprovação expressa, SHA exato, backup, rollback e plano de smoke tests.
 
 ## Parcial — não considerar resolvido
@@ -73,6 +77,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - O preview público de homologação ainda deve receber as variáveis e segredos exclusivos, ser publicado no alias fixo e passar pelo roteiro funcional completo.
 - A proteção contra senhas vazadas deve ser habilitada no Supabase Auth de homologação quando a configuração estiver disponível.
 - O head atual ainda precisa de uma execução normal dos três pipelines principais; as tentativas recentes encerraram antes de fornecer etapas ou logs utilizáveis.
+- Correção de dados, alteração de consentimento e exclusão/anonimização ainda precisam dos respectivos procedimentos transacionais e ensaios vivos completos.
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
@@ -95,11 +100,15 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `supabase/tests/authenticated_rpc_allowlist_live.sql`
 - `supabase/tests/privacy_request_operation_live.sql`
 - `supabase/tests/privacy_request_types_sla_live.sql`
+- `supabase/tests/privacy_access_response_live.sql`
 - `supabase/migrations/20260727124000_lock_retired_direct_rpcs.sql`
 - `supabase/migrations/20260727125000_lock_unrouted_authenticated_rpcs.sql`
 - `supabase/migrations/20260727153000_privacy_request_types_and_sla.sql`
 - `supabase/migrations/20260727160000_privacy_identity_verification.sql`
 - `supabase/migrations/20260727161000_privacy_identity_defaults.sql`
+- `supabase/migrations/20260727170000_privacy_access_response_package.sql`
+- `supabase/migrations/20260727171000_privacy_response_status_list.sql`
+- `supabase/migrations/20260727172000_privacy_access_response_membership_order_fix.sql`
 - `docs/permission-matrix-live-runbook.md`
 - `docs/homologation-runbook.md`
 - `src/legacy-surfaces-removed.test.ts`
@@ -112,6 +121,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `src/site-feedback-bff-hardening.test.ts`
 - `src/privacy-request-types-sla.test.ts`
 - `src/privacy-identity-verification.test.ts`
+- `src/privacy-access-response-package.test.ts`
+- `src/privacy-access-response-operation.test.ts`
 - `src/staff-permission-owner-guard.test.ts`
 - Workflows `Portal quality gate`, `Verificar reestruturação` e `Playwright mobile e tablet`
 
