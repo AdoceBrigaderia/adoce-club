@@ -51,9 +51,13 @@ describe("preview de validação visual da homologação", () => {
     expect(workflow).toContain("Domínio de produção proibido");
   });
 
-  it("publica a URL somente no issue de acompanhamento", () => {
+  it("publica URL ou bloqueio objetivo somente no issue de acompanhamento", () => {
     expect(workflow).toContain("issues: write");
     expect(workflow).toContain("repos/${GITHUB_REPOSITORY}/issues/3/comments");
+    expect(workflow).toContain("Preview visual publicado");
+    expect(workflow).toContain("Preview visual bloqueado");
+    expect(workflow).toContain("NETLIFY_AUTH_TOKEN não está configurado");
+    expect(workflow).toContain("actions/runs/${GITHUB_RUN_ID}");
     expect(workflow).toContain("Produção: não alterada");
     expect(workflow).not.toContain("pulls/10/merge");
   });
