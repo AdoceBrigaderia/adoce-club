@@ -23,6 +23,10 @@ const serviceRequest = readFileSync(
   new URL("../netlify/functions/public-service-request.ts", import.meta.url),
   "utf8",
 );
+const analytics = readFileSync(
+  new URL("../netlify/functions/public-analytics-event.ts", import.meta.url),
+  "utf8",
+);
 
 describe("rate limit dos endpoints públicos", () => {
   it("serializa contadores no banco e autoriza somente service_role", () => {
@@ -66,11 +70,24 @@ describe("rate limit dos endpoints públicos", () => {
     expect(feedback).toContain("retry_after_seconds");
   });
 
-  it("falha fechado quando o serviço de limite não responde", () => {
+  it("limita telemetria por IP sem quebrar a navegação pública", () => {
+    const limiter = analytics.indexOf("consumePublicRateLimits");
+    const write = analytics.indexOf("record_site_analytics_event");
+    expect(limiter).toBeGreaterThan(-1);
+    expect(write).toBeGreaterThan(limiter);
+    expect(analytics).toContain('"analytics:ip"');
+    expect(analytics).toContain("maxRequests: 300");
+    expect(analytics).toContain("rate_limited: !rateLimit.failed");
+    expect(analytics).toContain("202");
+  });
+
+  it("falha fechado em escrita e degrada telemetria quando o limite não responde", () => {
     expect(helper).toContain(
       "return { allowed: false, retryAfterSeconds: 60, failed: true }",
     );
     expect(feedback).toContain("rateLimit.failed ? 503 : 429");
     expect(serviceRequest).toContain("rateLimit.failed ? 503 : 429");
+    expect(analytics).toContain("return secureJson(");
+    expect(analytics).toContain("accepted: false");
   });
 });
