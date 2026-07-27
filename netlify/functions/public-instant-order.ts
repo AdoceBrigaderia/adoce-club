@@ -15,7 +15,8 @@ const env = (name: string) =>
   (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
   process.env[name];
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PAYMENT_CODE = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 
 type Action = "options" | "loyalty_preview" | "quote" | "submit";
@@ -32,7 +33,8 @@ function text(value: unknown, maxLength: number) {
 }
 
 function normalizeItems(value: unknown): OrderItem[] | null {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 60) return null;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 60)
+    return null;
   let total = 0;
   const result: OrderItem[] = [];
   for (const raw of value) {
@@ -40,7 +42,12 @@ function normalizeItems(value: unknown): OrderItem[] | null {
     const item = raw as JsonObject;
     const flavorId = text(item.flavor_id, 36);
     const quantity = Number(item.quantity);
-    if (!UUID.test(flavorId) || !Number.isInteger(quantity) || quantity < 1 || quantity > 30) {
+    if (
+      !UUID.test(flavorId) ||
+      !Number.isInteger(quantity) ||
+      quantity < 1 ||
+      quantity > 30
+    ) {
       return null;
     }
     total += quantity;
@@ -48,19 +55,35 @@ function normalizeItems(value: unknown): OrderItem[] | null {
 
     let sauces: OrderItem["sauces"];
     if (item.sauces !== undefined) {
-      if (!Array.isArray(item.sauces) || item.sauces.length > quantity) return null;
+      if (!Array.isArray(item.sauces) || item.sauces.length > quantity)
+        return null;
       sauces = [];
       for (const rawSauce of item.sauces) {
-        if (!rawSauce || typeof rawSauce !== "object" || Array.isArray(rawSauce)) return null;
+        if (
+          !rawSauce ||
+          typeof rawSauce !== "object" ||
+          Array.isArray(rawSauce)
+        )
+          return null;
         const sauce = rawSauce as JsonObject;
         const unitNumber = Number(sauce.unit_number);
-        const sauceId = sauce.sauce_id === null ? null : text(sauce.sauce_id, 36);
-        if (!Number.isInteger(unitNumber) || unitNumber < 1 || unitNumber > quantity) return null;
+        const sauceId =
+          sauce.sauce_id === null ? null : text(sauce.sauce_id, 36);
+        if (
+          !Number.isInteger(unitNumber) ||
+          unitNumber < 1 ||
+          unitNumber > quantity
+        )
+          return null;
         if (sauceId !== null && !UUID.test(sauceId)) return null;
         sauces.push({ unit_number: unitNumber, sauce_id: sauceId });
       }
     }
-    result.push({ flavor_id: flavorId, quantity, ...(sauces ? { sauces } : {}) });
+    result.push({
+      flavor_id: flavorId,
+      quantity,
+      ...(sauces ? { sauces } : {}),
+    });
   }
   return result;
 }
@@ -70,7 +93,8 @@ function normalizeReward(value: unknown): RewardChoice | null | undefined {
   if (typeof value !== "object" || Array.isArray(value)) return undefined;
   const reward = value as JsonObject;
   const flavorId = text(reward.flavor_id, 36);
-  const sauceId = reward.sauce_id === null ? null : text(reward.sauce_id, 36);
+  const sauceId =
+    reward.sauce_id === null ? null : text(reward.sauce_id, 36);
   if (!UUID.test(flavorId)) return undefined;
   if (sauceId !== null && !UUID.test(sauceId)) return undefined;
   return { flavor_id: flavorId, sauce_id: sauceId };
@@ -91,9 +115,9 @@ function upstreamError(value: unknown, fallback: string) {
   return source?.message || source?.error || fallback;
 }
 
-function supabaseHeaders(publishableKey: string, bearer: string) {
+function supabaseHeaders(apiKey: string, bearer: string) {
   return {
-    apikey: publishableKey,
+    apikey: apiKey,
     Authorization: `Bearer ${bearer}`,
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -102,23 +126,20 @@ function supabaseHeaders(publishableKey: string, bearer: string) {
 
 async function rpc(
   supabaseUrl: string,
-  publishableKey: string,
+  apiKey: string,
   bearer: string,
   name: string,
   params: JsonObject,
 ) {
   return fetch(`${supabaseUrl}/rest/v1/rpc/${name}`, {
     method: "POST",
-    headers: supabaseHeaders(publishableKey, bearer),
+    headers: supabaseHeaders(apiKey, bearer),
     body: JSON.stringify(params),
   });
 }
 
-async function options(
-  supabaseUrl: string,
-  publishableKey: string,
-) {
-  const headers = supabaseHeaders(publishableKey, publishableKey);
+async function options(supabaseUrl: string, secretKey: string) {
+  const headers = supabaseHeaders(secretKey, secretKey);
   const [saucesResponse, methodsResponse] = await Promise.all([
     fetch(
       `${supabaseUrl}/rest/v1/order_sauces?select=id,name&active=eq.true&order=sort_order.asc,name.asc`,
@@ -126,8 +147,8 @@ async function options(
     ),
     rpc(
       supabaseUrl,
-      publishableKey,
-      publishableKey,
+      secretKey,
+      secretKey,
       "get_checkout_payment_methods",
       {},
     ),
@@ -154,8 +175,13 @@ export default async (request: Request) => {
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
     env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
-  if (!supabaseUrl || !publishableKey)
-    return secureJson({ error: "Pedidos temporariamente indisponíveis." }, 503);
+  const secretKey =
+    env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !publishableKey || !secretKey)
+    return secureJson(
+      { error: "Pedidos temporariamente indisponíveis." },
+      503,
+    );
 
   const body = (await request.json().catch(() => ({}))) as JsonObject;
   const action = text(body.action, 32) as Action;
@@ -165,19 +191,26 @@ export default async (request: Request) => {
   const cookies = parseCookies(request);
   const clientSession = cookies.get(SURFACE_COOKIE) === "client";
   const accessToken = clientSession ? cookies.get(ACCESS_COOKIE) || "" : "";
-  const bearer = accessToken || publishableKey;
+  const apiKey = accessToken ? publishableKey : secretKey;
+  const bearer = accessToken || secretKey;
 
   try {
     if (action === "options") {
-      return secureJson({ data: await options(supabaseUrl, publishableKey) });
+      return secureJson({ data: await options(supabaseUrl, secretKey) });
     }
 
     if (action === "loyalty_preview") {
       if (!accessToken) return secureJson({ data: { recognized: false } });
       const phone = text(body.requested_phone, 32);
       const quantity = Number(body.requested_quantity);
-      if (phone.replace(/\D/g, "").length < 10 || !Number.isInteger(quantity))
-        return secureJson({ error: "Dados inválidos para consultar o Clube." }, 400);
+      if (
+        phone.replace(/\D/g, "").length < 10 ||
+        !Number.isInteger(quantity)
+      )
+        return secureJson(
+          { error: "Dados inválidos para consultar o Clube." },
+          400,
+        );
       const upstream = await rpc(
         supabaseUrl,
         publishableKey,
@@ -210,7 +243,7 @@ export default async (request: Request) => {
     if (action === "quote") {
       const upstream = await rpc(
         supabaseUrl,
-        publishableKey,
+        apiKey,
         bearer,
         "public_quote_instant_order",
         { requested_items: items, requested_reward: reward },
@@ -223,7 +256,9 @@ export default async (request: Request) => {
         );
       if (!upstream.ok)
         return secureJson(
-          { error: upstreamError(data, "Não foi possível recalcular o pedido.") },
+          {
+            error: upstreamError(data, "Não foi possível recalcular o pedido."),
+          },
           upstream.status,
         );
       return secureJson({ data });
@@ -236,14 +271,17 @@ export default async (request: Request) => {
     const customerPhone = text(body.requested_customer_phone, 32);
     const notes = text(body.requested_notes, 2000);
     const paymentMethod = text(body.requested_payment_method, 40);
-    if (customerName.length < 3 || customerPhone.replace(/\D/g, "").length < 10)
+    if (
+      customerName.length < 3 ||
+      customerPhone.replace(/\D/g, "").length < 10
+    )
       return secureJson({ error: "Informe nome e WhatsApp válidos." }, 400);
     if (!PAYMENT_CODE.test(paymentMethod))
       return secureJson({ error: "Forma de pagamento inválida." }, 400);
 
     const upstream = await rpc(
       supabaseUrl,
-      publishableKey,
+      apiKey,
       bearer,
       "submit_instant_order_v5",
       {
