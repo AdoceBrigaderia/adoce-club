@@ -10,12 +10,18 @@ const workflow = readFileSync(
 );
 
 describe("privacidade nos ensaios vivos da homologação", () => {
-  it("executa o SQL com rollback e preserva evidências", () => {
+  it("executa os fluxos público e operacional com rollback e preserva evidências", () => {
     expect(workflow).toContain(
       "supabase/tests/site_feedback_privacy_live.sql",
     );
     expect(workflow).toContain(
       "artifacts/security-live/site-feedback-privacy.log",
+    );
+    expect(workflow).toContain(
+      "supabase/tests/privacy_request_operation_live.sql",
+    );
+    expect(workflow).toContain(
+      "artifacts/security-live/privacy-request-operation.log",
     );
     expect(workflow).toContain('grep -Eiq "ROLLBACK"');
     expect(workflow).toContain("SUPABASE_HOMOLOGATION_DB_URL");
