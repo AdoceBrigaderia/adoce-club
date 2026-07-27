@@ -19,6 +19,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 
 - O cliente Supabase está com `persistSession`, `autoRefreshToken` e `detectSessionInUrl` desativados.
 - Uma auditoria recursiva falha o pipeline se uma superfície real voltar a usar tokens, `auth.setSession/getSession`, Bearer manual, chave privada ou segredo `VITE_*`.
+- As antigas superfícies `AccessApp`, `PilotApp`, `ProductionRollbackPanel`, cadastro direto e auxiliares de autenticação por token foram removidas da árvore ativa.
+- Rotas de demonstração, festival legado e rollback deixaram de existir no roteador real e não podem ser reintroduzidas sem reprovar os testes e a auditoria.
 - Adoce Hoje, pré-reservas comerciais, Pede Junto, analytics e feedback público passam por Functions same-origin.
 - RPCs de escrita pública correspondentes foram retirados de `anon`/`authenticated` e limitados ao `service_role` do servidor.
 - Pré-reservas e feedback possuem chave idempotente e trava transacional contra duplicidade.
@@ -42,10 +44,10 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Playwright executa as rotas reais em celular, tablet e computador, verificando identidade, cadastro, login BFF, toque mínimo, overflow e ausência de módulos de demonstração.
 - Workflows executam TypeScript, Vitest, auditoria de imagens, auditoria do navegador, isolamento do ambiente, build e verificação dos headers.
 - Build e diagnósticos são preservados como artefatos para inspeção.
+- O deploy de homologação é manual, exige branch e commit exatos, confirmação textual e site Netlify diferente da produção.
 
 ## Parcial — não considerar resolvido
 
-- Módulos antigos usados apenas por rotas `import.meta.env.DEV` ainda existem no repositório e aparecem como alertas inventariados. As rotas reais não os carregam, mas a remoção física continua pendente.
 - Passkeys precisam de ensaio em aparelhos reais e RP ID/origens definitivos do domínio de homologação.
 - Meta WhatsApp Cloud API está implementada com adapter, webhook, OTP e painel, mas o envio real depende das credenciais e do template aprovados para homologação.
 - Google Wallet está preparado no BFF e banco, porém a emissão real depende da conta de emissor e da chave de serviço.
@@ -54,19 +56,20 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
-1. Remover ou arquivar os módulos DEV legados ainda inventariados pela auditoria.
-2. Criar usuários de teste para cada papel e executar testes vivos de escalada, acesso entre lojas e revogação.
-3. Executar testes reais de passkey em Android, iPhone e Windows.
-4. Configurar Meta WhatsApp e Google Wallet no cofre do ambiente de homologação.
-5. Publicar um preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
-6. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
+1. Criar usuários de teste para cada papel e executar testes vivos de escalada, acesso entre lojas e revogação.
+2. Executar testes reais de passkey em Android, iPhone e Windows.
+3. Configurar Meta WhatsApp e Google Wallet no cofre do ambiente de homologação.
+4. Publicar um preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
+5. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
 
 ## Evidências principais
 
 - `scripts/audit-browser-security.mjs`
+- `scripts/browser-security-audit-core.mjs`
 - `scripts/homologation-environment-gate.mjs`
 - `scripts/verify-security-build.mjs`
 - `tests/e2e/public-mobile-smoke.e2e.mjs`
+- `src/legacy-surfaces-removed.test.ts`
 - `src/bff-session-security.test.ts`
 - `src/public-service-request-bff-security.test.ts`
 - `src/site-feedback-bff-hardening.test.ts`
