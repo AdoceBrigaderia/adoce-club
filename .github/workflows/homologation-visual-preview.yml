@@ -67,6 +67,17 @@ jobs:
             *adocebrigaderia.com.br*) echo "Domínio de produção proibido" >&2; exit 1 ;;
           esac
 
+      - name: Validar credencial de publicação da Netlify
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "NETLIFY_AUTH_TOKEN não está configurado no environment homologation." >&2
+            exit 1
+          fi
+
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
@@ -83,7 +94,6 @@ jobs:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
         run: |
-          test -n "$NETLIFY_AUTH_TOKEN"
           npx --yes netlify-cli@26.2.0 link --id "$NETLIFY_HOMOLOGATION_SITE_ID"
 
       - name: Gerar build marcado para validação visual
@@ -162,6 +172,26 @@ jobs:
           - URL: ${HOMOLOGATION_VISUAL_URL}
           - Escopo: validação visual em celular, tablet e computador.
           - Limite: ações transacionais e integrações externas podem estar indisponíveis neste preview estático.
+          - Produção: não alterada.
+          EOF
+          )
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/issues/3/comments" \
+            -f body="$body"
+
+      - name: Registrar bloqueio do preview visual
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=$(cat <<EOF
+          ## Preview visual bloqueado
+
+          - Commit: \`${GITHUB_SHA}\`
+          - Execução: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+          - Ação: revisar a primeira etapa com falha; se for `Validar credencial de publicação da Netlify`, configurar `NETLIFY_AUTH_TOKEN` no environment `homologation`.
           - Produção: não alterada.
           EOF
           )
