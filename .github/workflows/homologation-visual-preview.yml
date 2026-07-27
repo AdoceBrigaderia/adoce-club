@@ -100,9 +100,12 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
+          VITE_ADOCE_VALIDATION_MODE: visual
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.sha }}
         run: |
-          npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" \
-            env VITE_ADOCE_VALIDATION_MODE=visual npm run build
+          set -euo pipefail
+          export VITE_ADOCE_PREVIEW_BUILT_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" npm run build
 
       - name: Criar deploy estático de rascunho
         env:
@@ -171,6 +174,7 @@ jobs:
           - Commit: \`${GITHUB_SHA}\`
           - URL: ${HOMOLOGATION_VISUAL_URL}
           - Escopo: validação visual em celular, tablet e computador.
+          - Roteiro: checklist guiado, status por tela, observações e relatório copiável.
           - Limite: ações transacionais e integrações externas podem estar indisponíveis neste preview estático.
           - Produção: não alterada.
           EOF
@@ -191,7 +195,7 @@ jobs:
 
           - Commit: \`${GITHUB_SHA}\`
           - Execução: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-          - Ação: revisar a primeira etapa com falha; se for `Validar credencial de publicação da Netlify`, configurar `NETLIFY_AUTH_TOKEN` no environment `homologation`.
+          - Ação: revisar a primeira etapa com falha; se for \`Validar credencial de publicação da Netlify\`, configurar \`NETLIFY_AUTH_TOKEN\` no environment \`homologation\`.
           - Produção: não alterada.
           EOF
           )
