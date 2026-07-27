@@ -16,6 +16,7 @@ import {
   visualReviewProgress,
   visualValidationRoutes,
   type VisualReviewStatus,
+  type VisualValidationRouteId,
 } from "./homologation-visual-review";
 
 export function isVisualNavigatorEnabled(value: string | undefined) {
@@ -31,6 +32,11 @@ function readStoredReview() {
   } catch {
     return createEmptyVisualReview();
   }
+}
+
+function readViewport() {
+  if (typeof window === "undefined") return "não informado";
+  return `${window.innerWidth}x${window.innerHeight} @${window.devicePixelRatio.toFixed(2)}x`;
 }
 
 function copyWithFallback(text: string) {
@@ -56,6 +62,7 @@ export default function HomologationVisualNavigator() {
   );
   const [open, setOpen] = useState(false);
   const [review, setReview] = useState(readStoredReview);
+  const [viewport, setViewport] = useState(readViewport);
   const [copyFeedback, setCopyFeedback] = useState("");
   const progress = useMemo(() => visualReviewProgress(review), [review]);
   const report = useMemo(
@@ -64,8 +71,9 @@ export default function HomologationVisualNavigator() {
         commit: import.meta.env.VITE_ADOCE_PREVIEW_COMMIT,
         builtAt: import.meta.env.VITE_ADOCE_PREVIEW_BUILT_AT,
         url: typeof window === "undefined" ? undefined : window.location.origin,
+        viewport,
       }),
-    [review],
+    [review, viewport],
   );
 
   useEffect(() => {
@@ -76,12 +84,31 @@ export default function HomologationVisualNavigator() {
     );
   }, [enabled, review]);
 
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    const updateViewport = () => setViewport(readViewport());
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, [enabled]);
+
   if (!enabled) return null;
 
-  const updateStatus = (id: string, status: VisualReviewStatus) => {
+  const updateStatus = (
+    id: VisualValidationRouteId,
+    status: VisualReviewStatus,
+  ) => {
     setReview((current) => ({
       ...current,
       statuses: { ...current.statuses, [id]: status },
+      updatedAt: new Date().toISOString(),
+    }));
+    setCopyFeedback("");
+  };
+
+  const updateRouteNote = (id: VisualValidationRouteId, note: string) => {
+    setReview((current) => ({
+      ...current,
+      routeNotes: { ...current.routeNotes, [id]: note.slice(0, 800) },
       updatedAt: new Date().toISOString(),
     }));
     setCopyFeedback("");
@@ -130,7 +157,7 @@ export default function HomologationVisualNavigator() {
         >
           <p>
             Abra cada tela, valide aparência e experiência touch e marque o resultado.
-            O progresso permanece nesta aba durante a revisão.
+            Ao escolher Ajustar, descreva o problema naquela própria tela.
           </p>
 
           <div className="homologation-visual-review-progress" aria-live="polite">
@@ -142,6 +169,7 @@ export default function HomologationVisualNavigator() {
           <nav aria-label="Telas para validar">
             {visualValidationRoutes.map(({ id, label, href }) => {
               const status = review.statuses[id];
+              const routeNote = review.routeNotes[id];
               return (
                 <article className={`homologation-visual-route is-${status}`} key={id}>
                   <a href={href} onClick={() => setOpen(false)}>
@@ -170,6 +198,18 @@ export default function HomologationVisualNavigator() {
                       Ajustar
                     </button>
                   </div>
+                  {status === "adjust" || routeNote ? (
+                    <label className="homologation-visual-route-note">
+                      <span>O que precisa mudar em {label}?</span>
+                      <textarea
+                        value={routeNote}
+                        maxLength={800}
+                        placeholder="Ex.: aumentar botão, corrigir texto, trocar foto ou simplificar este passo."
+                        onChange={(event) => updateRouteNote(id, event.target.value)}
+                      />
+                      <small>{routeNote.length}/800</small>
+                    </label>
+                  ) : null}
                 </article>
               );
             })}
@@ -180,7 +220,7 @@ export default function HomologationVisualNavigator() {
             <textarea
               value={review.notes}
               maxLength={4000}
-              placeholder="Ex.: botão pequeno no celular, texto confuso ou imagem incorreta."
+              placeholder="Registre aqui apenas observações que se aplicam ao Portal inteiro."
               onChange={(event) =>
                 setReview((current) => ({
                   ...current,
@@ -205,7 +245,7 @@ export default function HomologationVisualNavigator() {
           {copyFeedback ? <p className="homologation-visual-copy-feedback">{copyFeedback}</p> : null}
 
           <small>
-            Identidade visual carregada diretamente dos assets oficiais do Portal.
+            Relatório identificado por commit, build e tamanho atual da tela.
             Fluxos externos podem permanecer em contingência neste preview.
           </small>
         </div>
