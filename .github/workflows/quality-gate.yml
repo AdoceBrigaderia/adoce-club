@@ -30,28 +30,60 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
+      - name: Prepare diagnostics
+        run: mkdir -p artifacts/ci
+
       - name: TypeScript
-        run: npm run lint
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee artifacts/ci/typescript.log
 
       - name: Unit and contract tests
-        run: npm run test
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test 2>&1 | tee artifacts/ci/tests.log
 
       - name: Audit core tests
+        shell: bash
         run: |
-          npm run test:image-library-audit
-          npm run test:browser-security-audit
-          npm run test:homologation-environment
+          set -o pipefail
+          {
+            npm run test:image-library-audit
+            npm run test:browser-security-audit
+            npm run test:homologation-environment
+          } 2>&1 | tee artifacts/ci/audit-tests.log
 
       - name: Runtime audits
+        shell: bash
         run: |
-          npm run audit:image-library
-          npm run audit:browser-security
+          set -o pipefail
+          {
+            npm run audit:image-library
+            npm run audit:browser-security
+          } 2>&1 | tee artifacts/ci/runtime-audits.log
 
       - name: Build
-        run: npm run build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee artifacts/ci/build.log
 
       - name: Security build gate
-        run: npm run verify:security-build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run verify:security-build 2>&1 | tee artifacts/ci/security-build.log
+
+      - name: Save diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adoce-ci-diagnostics-${{ github.sha }}
+          path: artifacts/ci
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Save homologation build
         if: success()
