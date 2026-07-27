@@ -39,17 +39,32 @@ describe("publicação manual e isolada da homologação", () => {
     expect(workflow).not.toContain("release:prod");
   });
 
+  it("usa a URL devolvida pelo deploy e não um endereço estático antigo", () => {
+    expect(workflow).toContain(
+      "const deployUrl = deploy.deploy_url || deploy.ssl_url || deploy.url",
+    );
+    expect(workflow).toContain("HOMOLOGATION_DEPLOY_URL=");
+    expect(workflow).toContain("belongsToHomologationSite");
+    expect(workflow).toContain("deployedHost.endsWith(`--${expectedHost}`)");
+    expect(workflow).toContain("artifacts/homologation-deploy-url.txt");
+    expect(workflow).not.toContain('SMOKE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}');
+  });
+
   it("lê variáveis do cofre Netlify e verifica readiness antes do smoke", () => {
     expect(workflow).toContain("dev:exec --context");
     expect(workflow).toContain("gate:homologation-environment");
-    expect(workflow).toContain("/api/homologation-readiness");
+    expect(workflow).toContain(
+      '"$HOMOLOGATION_DEPLOY_URL/api/homologation-readiness"',
+    );
     expect(workflow).toContain("payload.coreReady !== true");
+    expect(workflow).toContain("payload.security?.configured !== true");
     expect(workflow).toContain("payload.supabase?.isolated !== true");
   });
 
-  it("executa Playwright diretamente contra o preview publicado", () => {
-    expect(workflow).toContain("PLAYWRIGHT_BASE_URL");
-    expect(workflow).toContain("npx playwright test");
+  it("executa Playwright diretamente contra o deploy exato publicado", () => {
+    expect(workflow).toContain(
+      'PLAYWRIGHT_BASE_URL="$HOMOLOGATION_DEPLOY_URL" npx playwright test',
+    );
     expect(playwright).toContain("process.env.PLAYWRIGHT_BASE_URL");
     expect(playwright).toContain("webServer: externalBaseURL");
   });
@@ -59,5 +74,7 @@ describe("publicação manual e isolada da homologação", () => {
     expect(workflow).not.toContain("META_WA_APP_SECRET");
     expect(workflow).not.toContain("GOOGLE_WALLET_PRIVATE_KEY");
     expect(workflow).not.toContain("SUPABASE_SECRET_KEY");
+    expect(workflow).not.toContain("WHATSAPP_OTP_PEPPER");
+    expect(workflow).not.toContain("PUBLIC_RATE_LIMIT_PEPPER");
   });
 });
