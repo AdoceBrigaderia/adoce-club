@@ -50,4 +50,11 @@ describe("preview de validação visual da homologação", () => {
     expect(workflow).not.toContain("--functions");
     expect(workflow).toContain("Domínio de produção proibido");
   });
+
+  it("publica a URL somente no issue de acompanhamento", () => {
+    expect(workflow).toContain("issues: write");
+    expect(workflow).toContain("repos/${GITHUB_REPOSITORY}/issues/3/comments");
+    expect(workflow).toContain("Produção: não alterada");
+    expect(workflow).not.toContain("pulls/10/merge");
+  });
 });
