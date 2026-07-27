@@ -4,6 +4,7 @@ import "./feedback-page.css";
 
 export default function FeedbackPage() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", category: "problem", message: "" });
+  const [operationKey] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [protocol, setProtocol] = useState("");
@@ -11,10 +12,15 @@ export default function FeedbackPage() {
     event.preventDefault();
     setBusy(true);
     setError("");
-    const response = await fetch("/api/site-feedback", {
+    const response = await fetch("/api/public-feedback", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, page_url: document.referrer || location.href }),
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        operation_key: operationKey,
+        ...form,
+        page_url: document.referrer || location.href,
+      }),
     });
     const payload = (await response.json().catch(() => ({}))) as { protocol?: string; error?: string };
     setBusy(false);
