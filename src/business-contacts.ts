@@ -3,14 +3,6 @@ export const BUSINESS_CONTACTS = {
     email: "atendimento@adocebrigaderia.com.br",
     label: "Atendimento Adoce",
   },
-  financeiro: {
-    email: "financeiro@adocebrigaderia.com.br",
-    label: "Financeiro Adoce",
-  },
-  alertas: {
-    email: "alertas@adocebrigaderia.com.br",
-    label: "Alertas do Sistema Adoce",
-  },
   privacidade: {
     email: "privacidade@adocebrigaderia.com.br",
     label: "Privacidade Adoce",
