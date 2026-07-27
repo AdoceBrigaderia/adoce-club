@@ -77,8 +77,7 @@ export default async (request: Request) => {
   if (!wallet.configured)
     return secureJson(
       {
-        error:
-          "A Carteira do Google ainda não foi ativada neste ambiente.",
+        error: "A Carteira do Google ainda não foi ativada neste ambiente.",
         code: "google_wallet_not_configured",
         missing: wallet.missing,
       },
@@ -138,7 +137,6 @@ export default async (request: Request) => {
       currentProgress: Number(prepared.current_progress || 0),
       availableRewards: Number(prepared.available_rewards || 0),
       objectSuffix: prepared.object_suffix,
-      logoUri: new URL("/site/logo.webp", origin).toString(),
       accountUri: new URL("/#minha-conta", origin).toString(),
     });
 
@@ -159,8 +157,7 @@ export default async (request: Request) => {
     });
     return secureJson(
       {
-        error:
-          "Não foi possível assinar o cartão para a Carteira do Google.",
+        error: "Não foi possível assinar o cartão para a Carteira do Google.",
         code: "google_wallet_signing_failed",
       },
       503,
