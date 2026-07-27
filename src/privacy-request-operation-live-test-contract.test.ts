@@ -5,6 +5,17 @@ const liveTest = readFileSync(
   new URL("../supabase/tests/privacy_request_operation_live.sql", import.meta.url),
   "utf8",
 );
+const typesLiveTest = readFileSync(
+  new URL("../supabase/tests/privacy_request_types_sla_live.sql", import.meta.url),
+  "utf8",
+);
+const workflow = readFileSync(
+  new URL(
+    "../.github/workflows/permission-matrix-live-homologation.yml",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("ensaio vivo da operação de privacidade", () => {
   it("usa identidade de homologação, valida listagem, atualização e auditoria", () => {
@@ -12,8 +23,29 @@ describe("ensaio vivo da operação de privacidade", () => {
     expect(liveTest).toContain("staff_list_privacy_requests");
     expect(liveTest).toContain("staff_update_privacy_request");
     expect(liveTest).toContain("privacy_request.updated");
+    expect(liveTest).toContain("privacy_request_type");
+    expect(liveTest).toContain("privacy_due_at");
+    expect(liveTest).toContain("privacy_resolved_at");
     expect(liveTest).toContain("has_function_privilege");
     expect(liveTest).toContain("'anon'");
+  });
+
+  it("valida idempotência, tipo, prazo, outbox e bloqueio ao navegador", () => {
+    expect(typesLiveTest).toContain("repeated_result");
+    expect(typesLiveTest).toContain("'access'");
+    expect(typesLiveTest).toContain("interval '15 days'");
+    expect(typesLiveTest).toContain("'business.privacidade'");
+    expect(typesLiveTest).toContain("'unknown'");
+    expect(typesLiveTest).toContain("has_function_privilege");
+    expect(typesLiveTest).toContain("'authenticated'");
+  });
+
+  it("inclui os dois ensaios no workflow protegido de homologação", () => {
+    expect(workflow).toContain("privacy_request_operation_live.sql");
+    expect(workflow).toContain("privacy_request_types_sla_live.sql");
+    expect(workflow).toContain("environment: homologation");
+    expect(workflow).toContain("TESTAR SOMENTE HOMOLOGACAO");
+    expect(workflow).toContain('grep -Eiq "ROLLBACK"');
   });
 
   it("não fixa usuário e desfaz todos os dados temporários", () => {
@@ -24,5 +56,7 @@ describe("ensaio vivo da operação de privacidade", () => {
     );
     expect(liveTest.trimStart()).toMatch(/^begin;/);
     expect(liveTest.trimEnd()).toMatch(/rollback;$/);
+    expect(typesLiveTest.trimStart()).toMatch(/^begin;/);
+    expect(typesLiveTest.trimEnd()).toMatch(/rollback;$/);
   });
 });
