@@ -7,6 +7,7 @@ import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
+import OperationWhatsAppHealth from "./OperationWhatsAppHealth";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
 export default function OperationBusinessHub() {
@@ -51,6 +52,7 @@ export default function OperationBusinessHub() {
       <OperationContingencySale />
       <OperationCashReconciliation />
       <OperationQuickCash />
+      <OperationWhatsAppHealth />
       <OperationReports />
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
