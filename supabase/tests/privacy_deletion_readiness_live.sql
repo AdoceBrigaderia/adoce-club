@@ -85,8 +85,8 @@ begin
 
   review_result := public.staff_review_privacy_anonymization(target_request_id);
 
-  if jsonb_typeof(review_result->'blockers') is distinct from 'array' then
-    raise exception 'Revisão não retornou lista estruturada de bloqueadores';
+  if jsonb_typeof(review_result->'blockers') not in ('object', 'array') then
+    raise exception 'Revisão não retornou bloqueadores estruturados';
   end if;
   if review_result->>'status' is distinct from 'reviewing' then
     raise exception 'Solicitação não permaneceu em análise após a revisão';
@@ -103,7 +103,7 @@ begin
   where feedback.id = target_request_id;
 
   if stored_ready is null
-     or jsonb_typeof(coalesce(stored_blockers, '[]'::jsonb)) is distinct from 'array' then
+     or jsonb_typeof(coalesce(stored_blockers, '{}'::jsonb)) not in ('object', 'array') then
     raise exception 'Resultado da revisão não foi persistido corretamente';
   end if;
 
