@@ -82,11 +82,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/permission_matrix_live.sql \
-            2>&1 | tee artifacts/security-live/permission-matrix.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/permission_matrix_live.sql 2>&1 | tee artifacts/security-live/permission-matrix.log
           grep -Eiq "ROLLBACK" artifacts/security-live/permission-matrix.log
 
       - name: Executar rate limit público com rollback
@@ -96,11 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/public_endpoint_rate_limit_live.sql \
-            2>&1 | tee artifacts/security-live/public-rate-limit.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/public_endpoint_rate_limit_live.sql 2>&1 | tee artifacts/security-live/public-rate-limit.log
           grep -Eiq "ROLLBACK" artifacts/security-live/public-rate-limit.log
 
       - name: Validar allowlist dos RPCs autenticados
@@ -110,11 +102,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/authenticated_rpc_allowlist_live.sql \
-            2>&1 | tee artifacts/security-live/authenticated-rpc-allowlist.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/authenticated_rpc_allowlist_live.sql 2>&1 | tee artifacts/security-live/authenticated-rpc-allowlist.log
           grep -Eiq "ROLLBACK" artifacts/security-live/authenticated-rpc-allowlist.log
 
       - name: Validar solicitações de privacidade com rollback
@@ -124,11 +112,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/site_feedback_privacy_live.sql \
-            2>&1 | tee artifacts/security-live/site-feedback-privacy.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/site_feedback_privacy_live.sql 2>&1 | tee artifacts/security-live/site-feedback-privacy.log
           grep -Eiq "ROLLBACK" artifacts/security-live/site-feedback-privacy.log
 
       - name: Validar operação de privacidade com rollback
@@ -138,11 +122,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/privacy_request_operation_live.sql \
-            2>&1 | tee artifacts/security-live/privacy-request-operation.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_request_operation_live.sql 2>&1 | tee artifacts/security-live/privacy-request-operation.log
           grep -Eiq "ROLLBACK" artifacts/security-live/privacy-request-operation.log
 
       - name: Validar tipos e prazo de privacidade com rollback
@@ -152,11 +132,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/privacy_request_types_sla_live.sql \
-            2>&1 | tee artifacts/security-live/privacy-request-types-sla.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_request_types_sla_live.sql 2>&1 | tee artifacts/security-live/privacy-request-types-sla.log
           grep -Eiq "ROLLBACK" artifacts/security-live/privacy-request-types-sla.log
 
       - name: Validar pacote de consulta e entrega com rollback
@@ -166,11 +142,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/privacy_access_response_live.sql \
-            2>&1 | tee artifacts/security-live/privacy-access-response.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_access_response_live.sql 2>&1 | tee artifacts/security-live/privacy-access-response.log
           grep -Eiq "ROLLBACK" artifacts/security-live/privacy-access-response.log
 
       - name: Validar correção e consentimento com rollback
@@ -180,12 +152,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/privacy_correction_consent_live.sql \
-            2>&1 | tee artifacts/security-live/privacy-correction-consent.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_correction_consent_live.sql 2>&1 | tee artifacts/security-live/privacy-correction-consent.log
           grep -Eiq "ROLLBACK" artifacts/security-live/privacy-correction-consent.log
+
+      - name: Validar guard de resultado específico com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_resolution_guard_live.sql 2>&1 | tee artifacts/security-live/privacy-resolution-guard.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/privacy-resolution-guard.log
 
       - name: Validar revisão de anonimização com rollback
         env:
@@ -194,12 +172,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
-            --no-psqlrc \
-            --set=ON_ERROR_STOP=1 \
-            --file=supabase/tests/privacy_deletion_readiness_live.sql \
-            2>&1 | tee artifacts/security-live/privacy-deletion-readiness.log
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_deletion_readiness_live.sql 2>&1 | tee artifacts/security-live/privacy-deletion-readiness.log
           grep -Eiq "ROLLBACK" artifacts/security-live/privacy-deletion-readiness.log
+
+      - name: Validar anonimização integral com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --file=supabase/tests/privacy_profile_anonymization_live.sql 2>&1 | tee artifacts/security-live/privacy-profile-anonymization.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/privacy-profile-anonymization.log
 
       - name: Preservar evidências sem credenciais
         if: always()
