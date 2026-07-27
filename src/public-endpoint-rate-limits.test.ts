@@ -76,7 +76,9 @@ describe("rate limit dos endpoints públicos", () => {
     expect(limiter).toBeGreaterThan(-1);
     expect(write).toBeGreaterThan(limiter);
     expect(analytics).toContain('"analytics:ip"');
-    expect(analytics).toContain("maxRequests: 300");
+    expect(analytics).toContain(
+      'ipRateLimitRule(request, "analytics:ip", 3600, 300)',
+    );
     expect(analytics).toContain("rate_limited: !rateLimit.failed");
     expect(analytics).toContain("202");
   });
