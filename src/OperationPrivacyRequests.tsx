@@ -24,6 +24,7 @@ type PrivacyRequestType =
   | "consent"
   | "other";
 type PrivacyDeliveryChannel = "email" | "whatsapp" | "in_person" | "other";
+type ConsentOptions = { marketing: boolean; whatsapp: boolean; email: boolean };
 
 type PrivacyRequest = {
   id: string;
@@ -47,6 +48,9 @@ type PrivacyRequest = {
   privacy_response_delivered_at: string | null;
   privacy_response_delivery_channel: PrivacyDeliveryChannel | null;
   privacy_response_delivery_notes: string | null;
+  privacy_action_applied_at: string | null;
+  privacy_action_type: "correction" | "consent" | null;
+  privacy_action_summary: string | null;
   overdue: boolean;
   created_at: string;
   updated_at: string;
@@ -139,6 +143,10 @@ export default function OperationPrivacyRequests() {
   const [filter, setFilter] = useState<"all" | PrivacyStatus>("new");
   const [requests, setRequests] = useState<PrivacyRequest[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [correctionNames, setCorrectionNames] = useState<Record<string, string>>({});
+  const [consentOptions, setConsentOptions] = useState<Record<string, ConsentOptions>>(
+    {},
+  );
   const [accessPackages, setAccessPackages] = useState<
     Record<string, PrivacyAccessPackage>
   >({});
@@ -166,6 +174,22 @@ export default function OperationPrivacyRequests() {
           if (!(item.id in updated)) {
             updated[item.id] =
               item.internal_notes || item.privacy_identity_notes || "";
+          }
+        });
+        return updated;
+      });
+      setCorrectionNames((current) => {
+        const updated = { ...current };
+        next.forEach((item) => {
+          if (!(item.id in updated)) updated[item.id] = item.customer_name || "";
+        });
+        return updated;
+      });
+      setConsentOptions((current) => {
+        const updated = { ...current };
+        next.forEach((item) => {
+          if (!(item.id in updated)) {
+            updated[item.id] = { marketing: false, whatsapp: false, email: false };
           }
         });
         return updated;
@@ -283,7 +307,9 @@ export default function OperationPrivacyRequests() {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(packageJson(value));
-      setNotice(`Pacote de ${item.protocol} copiado. Revise o destinatário antes de enviar.`);
+      setNotice(
+        `Pacote de ${item.protocol} copiado. Revise o destinatário antes de enviar.`,
+      );
     } catch {
       setNotice("O navegador não permitiu copiar. Use o download do arquivo JSON.");
     }
@@ -292,14 +318,18 @@ export default function OperationPrivacyRequests() {
   const downloadAccessPackage = (item: PrivacyRequest) => {
     const value = accessPackages[item.id];
     if (!value) return;
-    const blob = new Blob([packageJson(value)], { type: "application/json;charset=utf-8" });
+    const blob = new Blob([packageJson(value)], {
+      type: "application/json;charset=utf-8",
+    });
     const href = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = href;
     anchor.download = `adoce-privacidade-${item.protocol}.json`;
     anchor.click();
     URL.revokeObjectURL(href);
-    setNotice(`Arquivo de ${item.protocol} gerado localmente. Confirme o destinatário antes do envio.`);
+    setNotice(
+      `Arquivo de ${item.protocol} gerado localmente. Confirme o destinatário antes do envio.`,
+    );
   };
 
   const markDelivered = async (
@@ -324,6 +354,66 @@ export default function OperationPrivacyRequests() {
         error instanceof Error
           ? error.message
           : "Não foi possível registrar a entrega da resposta.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const applyCorrection = async (item: PrivacyRequest) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    setNotice("");
+    try {
+      const result = await bffRpc<{ full_name?: string }>(
+        "staff_apply_privacy_name_correction",
+        {
+          target_feedback_id: item.id,
+          requested_full_name: correctionNames[item.id] || "",
+        },
+      );
+      setNotice(
+        `${item.protocol}: nome corrigido para ${result.full_name || correctionNames[item.id]}.`,
+      );
+      await load();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível corrigir o nome do cadastro.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const applyConsent = async (item: PrivacyRequest) => {
+    if (busyId) return;
+    const options = consentOptions[item.id] || {
+      marketing: false,
+      whatsapp: false,
+      email: false,
+    };
+    setBusyId(item.id);
+    setNotice("");
+    try {
+      await bffRpc("staff_apply_privacy_consent_change", {
+        target_feedback_id: item.id,
+        requested_marketing: options.marketing,
+        requested_whatsapp: options.marketing && options.whatsapp,
+        requested_email: options.marketing && options.email,
+      });
+      setNotice(
+        options.marketing
+          ? `${item.protocol}: consentimento e canais autorizados foram atualizados.`
+          : `${item.protocol}: marketing revogado e canais promocionais desativados.`,
+      );
+      await load();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível alterar o consentimento.",
       );
     } finally {
       setBusyId("");
@@ -397,12 +487,25 @@ export default function OperationPrivacyRequests() {
           const identityRequired = identityRequiredTypes.has(
             item.privacy_request_type,
           );
-          const canResolve = !identityRequired || identityStatus === "verified";
+          const identityReady = !identityRequired || identityStatus === "verified";
+          const outcomeReady =
+            item.privacy_request_type === "access"
+              ? Boolean(item.privacy_response_delivered_at)
+              : item.privacy_request_type === "correction" ||
+                  item.privacy_request_type === "consent"
+                ? Boolean(item.privacy_action_applied_at)
+                : item.privacy_request_type === "deletion"
+                  ? false
+                  : true;
+          const canResolve = identityReady && outcomeReady;
           const accessPackage = accessPackages[item.id];
-          const canPrepareAccess =
-            item.privacy_request_type === "access" &&
-            identityStatus === "verified" &&
-            Boolean(item.profile_id);
+          const canApply = identityStatus === "verified" && Boolean(item.profile_id);
+          const consent = consentOptions[item.id] || {
+            marketing: false,
+            whatsapp: false,
+            email: false,
+          };
+
           return (
             <details
               key={item.id}
@@ -464,6 +567,15 @@ export default function OperationPrivacyRequests() {
                         {dateTime.format(new Date(item.privacy_response_delivered_at))}
                         {item.privacy_response_delivery_channel
                           ? ` · ${deliveryChannelLabel[item.privacy_response_delivery_channel]}`
+                          : ""}
+                      </span>
+                    ) : null}
+                    {item.privacy_action_applied_at ? (
+                      <span>
+                        <strong>Ação executada</strong>
+                        {dateTime.format(new Date(item.privacy_action_applied_at))}
+                        {item.privacy_action_summary
+                          ? ` · ${item.privacy_action_summary}`
                           : ""}
                       </span>
                     ) : null}
@@ -537,10 +649,10 @@ export default function OperationPrivacyRequests() {
                       Não confirmada
                     </button>
                   </div>
-                  {!canResolve ? (
+                  {!identityReady ? (
                     <p className="operation-privacy-notice" role="status">
-                      <AlertTriangle /> Este tipo de solicitação só pode ser marcado como
-                      resolvido depois da confirmação de identidade.
+                      <AlertTriangle /> Este tipo de solicitação exige confirmação de
+                      identidade antes da execução.
                     </p>
                   ) : null}
                 </section>
@@ -563,7 +675,7 @@ export default function OperationPrivacyRequests() {
                       <button
                         type="button"
                         onClick={() => void prepareAccessPackage(item)}
-                        disabled={busy || !canPrepareAccess}
+                        disabled={busy || !canApply}
                       >
                         <FileJson /> Preparar pacote seguro
                       </button>
@@ -630,6 +742,142 @@ export default function OperationPrivacyRequests() {
                       </div>
                     ) : null}
                   </section>
+                ) : null}
+
+                {item.privacy_request_type === "correction" ? (
+                  <section>
+                    <h4>Correção do nome do cadastro</h4>
+                    <p>
+                      Digite o nome correto. O servidor remove espaços duplicados, corrige
+                      caixa alta e preserva partículas brasileiras em minúsculas.
+                    </p>
+                    <label>
+                      Nome completo corrigido
+                      <input
+                        value={correctionNames[item.id] || ""}
+                        maxLength={160}
+                        onChange={(event) =>
+                          setCorrectionNames((current) => ({
+                            ...current,
+                            [item.id]: event.target.value,
+                          }))
+                        }
+                        disabled={busy || Boolean(item.privacy_action_applied_at)}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => void applyCorrection(item)}
+                      disabled={
+                        busy ||
+                        !canApply ||
+                        Boolean(item.privacy_action_applied_at) ||
+                        (correctionNames[item.id] || "").trim().length < 5
+                      }
+                    >
+                      <ShieldCheck /> Aplicar correção auditada
+                    </button>
+                  </section>
+                ) : null}
+
+                {item.privacy_request_type === "consent" ? (
+                  <section>
+                    <h4>Alteração de consentimento</h4>
+                    <p>
+                      Marketing fica desmarcado por padrão. Ao revogar, todos os canais
+                      promocionais são desativados no backend.
+                    </p>
+                    <div className="operation-privacy-actions">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={consent.marketing}
+                          onChange={(event) =>
+                            setConsentOptions((current) => ({
+                              ...current,
+                              [item.id]: {
+                                ...consent,
+                                marketing: event.target.checked,
+                                whatsapp: event.target.checked
+                                  ? consent.whatsapp
+                                  : false,
+                                email: event.target.checked ? consent.email : false,
+                              },
+                            }))
+                          }
+                          disabled={busy || Boolean(item.privacy_action_applied_at)}
+                        />
+                        Autorizar marketing
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={consent.whatsapp}
+                          onChange={(event) =>
+                            setConsentOptions((current) => ({
+                              ...current,
+                              [item.id]: {
+                                ...consent,
+                                whatsapp: event.target.checked,
+                              },
+                            }))
+                          }
+                          disabled={
+                            busy ||
+                            !consent.marketing ||
+                            Boolean(item.privacy_action_applied_at)
+                          }
+                        />
+                        WhatsApp
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={consent.email}
+                          onChange={(event) =>
+                            setConsentOptions((current) => ({
+                              ...current,
+                              [item.id]: {
+                                ...consent,
+                                email: event.target.checked,
+                              },
+                            }))
+                          }
+                          disabled={
+                            busy ||
+                            !consent.marketing ||
+                            Boolean(item.privacy_action_applied_at)
+                          }
+                        />
+                        E-mail
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void applyConsent(item)}
+                      disabled={busy || !canApply || Boolean(item.privacy_action_applied_at)}
+                    >
+                      <ShieldCheck />
+                      {consent.marketing
+                        ? "Salvar consentimento e canais"
+                        : "Revogar marketing e canais"}
+                    </button>
+                  </section>
+                ) : null}
+
+                {item.privacy_request_type === "deletion" ? (
+                  <p className="operation-privacy-notice" role="status">
+                    <AlertTriangle /> Exclusão ou anonimização permanece bloqueada até o
+                    procedimento específico validar fidelidade, financeiro, auditoria e
+                    obrigações de retenção.
+                  </p>
+                ) : null}
+
+                {!canResolve && identityReady ? (
+                  <p className="operation-privacy-notice" role="status">
+                    <AlertTriangle /> Execute e registre o resultado específico antes de
+                    resolver esta solicitação.
+                  </p>
                 ) : null}
 
                 <div className="operation-privacy-actions">
