@@ -5,6 +5,10 @@ const panel = readFileSync(
   new URL("./OperationPrivacyAnonymization.tsx", import.meta.url),
   "utf8",
 );
+const styles = readFileSync(
+  new URL("./operation-privacy-anonymization.css", import.meta.url),
+  "utf8",
+);
 const hub = readFileSync(
   new URL("./OperationBusinessHub.tsx", import.meta.url),
   "utf8",
@@ -28,20 +32,47 @@ describe("operação protegida de anonimização", () => {
     expect(migration).toContain("private.current_staff_role()::text <> 'owner'");
   });
 
-  it("revisa bloqueios e impacto antes de executar", () => {
+  it("revisa todos os bloqueios e impactos antes de executar", () => {
     expect(panel).toContain('"staff_get_privacy_anonymization_plan"');
     expect(panel).toContain("open_orders");
     expect(panel).toContain("open_service_requests");
     expect(panel).toContain("shared_loyalty_accounts");
+    expect(panel).toContain("loyalty_accounts");
     expect(panel).toContain("orders_to_anonymize");
+    expect(panel).toContain("service_requests_to_anonymize");
     expect(panel).toContain("available_rewards_to_reverse");
+    expect(panel).toContain("checkins_to_remove");
   });
 
-  it("exige protocolo exato e aceite explícito", () => {
-    expect(panel).toContain("confirmations[item.id] !== item.protocol");
+  it("bloqueia revisão sem identidade e exige plano recente", () => {
+    expect(panel).toContain('item.privacy_identity_status !== "verified"');
+    expect(panel).toContain("REVIEW_VALIDITY_MS = 5 * 60 * 1000");
+    expect(panel).toContain("planIsFresh(plan)");
+    expect(panel).toContain("a revisão expirou");
+    expect(panel).toContain("disabled={busy || !identityVerified}");
+  });
+
+  it("usa a confirmação devolvida pelo backend e aceite explícito", () => {
+    expect(panel).toContain(
+      "confirmations[item.id] !== plan.confirmation_required",
+    );
     expect(panel).toContain("!acknowledged[item.id]");
     expect(panel).toContain("Esta ação é irreversível");
-    expect(panel).toContain("Revisei os bloqueios, o impacto e confirmei o titular correto");
+    expect(panel).toContain("plan.confirmation_required");
+    expect(panel).toContain(
+      "Revisei os bloqueios, o impacto e confirmei o titular correto",
+    );
+  });
+
+  it("mantém confirmação acessível e adequada ao toque", () => {
+    expect(panel).toContain("htmlFor={confirmationId}");
+    expect(panel).toContain("aria-describedby={confirmationHelpId}");
+    expect(panel).toContain('autoCapitalize="characters"');
+    expect(panel).toContain("spellCheck={false}");
+    expect(styles).toContain("min-height:46px");
+    expect(styles).toContain("min-height:48px");
+    expect(styles).toContain("input[type=checkbox]{width:1.25rem");
+    expect(styles).toContain(":focus-visible");
   });
 
   it("executa somente pelo BFF e atualiza a fila", () => {
