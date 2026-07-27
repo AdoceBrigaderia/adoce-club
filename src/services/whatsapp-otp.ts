@@ -1,6 +1,3 @@
-import { requireSupabase } from "../lib/supabase";
-import { normalizeBrazilPhone } from "./auth";
-
 export type WhatsAppOtpPurpose =
   | "registration"
   | "recovery"
@@ -19,6 +16,15 @@ export type WhatsAppOtpVerification = {
   purpose: WhatsAppOtpPurpose | null;
   profileId: string | null;
 };
+
+function normalizeBrazilPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  const withoutCountry = digits.startsWith("55") ? digits.slice(2) : digits;
+  if (withoutCountry.length < 10 || withoutCountry.length > 11) {
+    throw new Error("Informe um celular válido com DDD.");
+  }
+  return `+55${withoutCountry}`;
+}
 
 async function readPayload<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => ({}))) as T & {
@@ -74,18 +80,4 @@ export async function verifyAutomaticWhatsAppOtp(
     }),
   });
   return readPayload<WhatsAppOtpVerification>(response);
-}
-
-export async function claimVerifiedWhatsAppRegistration(challengeId: string) {
-  const { data, error } = await requireSupabase().rpc(
-    "customer_claim_verified_whatsapp_registration",
-    { challenge_id: challengeId },
-  );
-  if (error) throw error;
-  return data as {
-    claimed: true;
-    profile_id: string;
-    phone_e164: string;
-    whatsapp_verified_at: string;
-  };
 }
