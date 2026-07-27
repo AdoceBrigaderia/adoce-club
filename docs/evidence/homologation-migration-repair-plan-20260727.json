@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "project_id": "vazozolhbehnriytzcdc",
+  "created_at": "2026-07-27T16:18:00-03:00",
+  "status": "planned_not_applied",
+  "production_forbidden": true,
+  "decisions": [
+    {
+      "name": "backend_only_tables_explicit_deny",
+      "keep_version": "20260727035116",
+      "revert_versions": ["20260727035059"],
+      "local_file": "20260727093000_backend_only_tables_explicit_deny.sql",
+      "target_file": "20260727035116_backend_only_tables_explicit_deny.sql",
+      "evidence": "As duas aplicações são semanticamente equivalentes após remover comentários e espaços. A versão preservada corresponde ao arquivo local completo, incluindo documentação e transação explícita."
+    },
+    {
+      "name": "operational_foreign_key_indexes",
+      "keep_version": "20260727035246",
+      "revert_versions": ["20260727035343"],
+      "local_file": "20260727095000_operational_foreign_key_indexes.sql",
+      "target_file": "20260727035246_operational_foreign_key_indexes.sql",
+      "evidence": "As duas aplicações criam o mesmo conjunto de 17 índices. A versão preservada corresponde ao arquivo local após remover somente comentários e espaços e mantém transação explícita."
+    },
+    {
+      "name": "public_analytics_bff_only",
+      "keep_version": "20260727035513",
+      "revert_versions": ["20260727040533"],
+      "local_file": "20260727101000_public_analytics_bff_only.sql",
+      "target_file": "20260727035513_public_analytics_bff_only.sql",
+      "evidence": "As duas aplicações executam o mesmo revoke e grant. A versão preservada corresponde ao arquivo local e mantém transação explícita."
+    }
+  ],
+  "required_before_apply": [
+    "exportar backup redigido do histórico de supabase_migrations.schema_migrations",
+    "confirmar que o projeto vinculado é exclusivamente a homologação",
+    "executar supabase migration repair somente para as versões listadas em revert_versions",
+    "reler o histórico remoto e gerar um novo snapshot",
+    "não alterar objetos de negócio nem dados de clientes durante o repair"
+  ],
+  "required_after_apply": [
+    "executar report:migration-reconciliation com snapshot atualizado",
+    "renomear arquivos locais somente conforme o plano validado",
+    "executar supabase migration list --linked",
+    "executar supabase db push --linked --dry-run",
+    "validar reset em branch de banco descartável antes de publicar homologação"
+  ]
+}
