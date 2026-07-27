@@ -44,6 +44,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Valores públicos de pedidos e upgrade de recompensa são recalculados no banco.
 - O ensaio vivo transacional da matriz de permissões foi executado no Supabase de homologação com `ROLLBACK`, validando cashier, production, isolamento entre lojas, auditoria de capacidade e bloqueios de owner/manager sem persistir os dados temporários.
 - O rate limit foi testado ao vivo em transação: duas solicitações permitidas, terceira bloqueada e tempo de nova tentativa retornado, com `ROLLBACK` ao final.
+- Solicitações de privacidade são classificadas em consulta, correção, exclusão/anonimização, consentimento ou outro assunto, com validação repetida no BFF e no banco.
+- A fila de privacidade usa alvo operacional interno de 15 dias, prioriza solicitações vencidas e registra resolução, fechamento, notas e auditoria sem apresentar o alvo como prazo legal automático.
+- A migration de tipos e prazo foi aplicada somente no Supabase de homologação. Dois ensaios vivos com `ROLLBACK` validaram idempotência, tipo, cálculo do prazo, roteamento da outbox, atualização de status e bloqueio dos RPCs ao navegador.
 
 ### Homologação e automação
 
@@ -66,6 +69,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Google Wallet está preparado no BFF e banco, porém a emissão real depende da conta de emissor e da chave de serviço.
 - O preview público de homologação ainda deve receber as variáveis e segredos exclusivos, ser publicado no alias fixo e passar pelo roteiro funcional completo.
 - A proteção contra senhas vazadas deve ser habilitada no Supabase Auth de homologação quando a configuração estiver disponível.
+- O head atual ainda precisa de uma execução normal dos três pipelines principais; as tentativas recentes encerraram antes de fornecer etapas ou logs utilizáveis.
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
@@ -86,8 +90,11 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `supabase/tests/permission_matrix_live.sql`
 - `supabase/tests/public_endpoint_rate_limit_live.sql`
 - `supabase/tests/authenticated_rpc_allowlist_live.sql`
+- `supabase/tests/privacy_request_operation_live.sql`
+- `supabase/tests/privacy_request_types_sla_live.sql`
 - `supabase/migrations/20260727124000_lock_retired_direct_rpcs.sql`
 - `supabase/migrations/20260727125000_lock_unrouted_authenticated_rpcs.sql`
+- `supabase/migrations/20260727153000_privacy_request_types_and_sla.sql`
 - `docs/permission-matrix-live-runbook.md`
 - `docs/homologation-runbook.md`
 - `src/legacy-surfaces-removed.test.ts`
@@ -98,6 +105,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `src/homologation-deploy-workflow.test.ts`
 - `src/public-service-request-bff-security.test.ts`
 - `src/site-feedback-bff-hardening.test.ts`
+- `src/privacy-request-types-sla.test.ts`
 - `src/staff-permission-owner-guard.test.ts`
 - Workflows `Portal quality gate`, `Verificar reestruturação` e `Playwright mobile e tablet`
 
