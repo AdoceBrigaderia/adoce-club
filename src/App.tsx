@@ -18,28 +18,6 @@ const PasskeyOperationGateway = lazy(() => import("./PasskeyOperationGateway"));
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
 const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 
-const PilotApp = import.meta.env.DEV ? lazy(() => import("./PilotApp")) : null;
-const MemberDemo = import.meta.env.DEV
-  ? lazy(() =>
-      import("./AccessApp").then((module) => ({ default: module.MemberDemo })),
-    )
-  : null;
-const OperationDemo = import.meta.env.DEV
-  ? lazy(() =>
-      import("./AccessApp").then((module) => ({ default: module.OperationDemo })),
-    )
-  : null;
-const OperationV2Demo = import.meta.env.DEV
-  ? lazy(() => import("./operation-v2/OperationV2Demo"))
-  : null;
-const ProductionRollbackDemo = import.meta.env.DEV
-  ? lazy(() =>
-      import("./ProductionRollbackPanel").then((module) => ({
-        default: module.ProductionRollbackDemo,
-      })),
-    )
-  : null;
-
 const loading = (
   <main className="access-loading">
     <p>Abrindo a experiência Adoce...</p>
@@ -131,57 +109,6 @@ export default function App() {
     return (
       <Suspense fallback={loading}>
         <LaunchCampaign format="feed" />
-      </Suspense>
-    );
-
-  if (
-    import.meta.env.DEV &&
-    MemberDemo &&
-    location.hash.startsWith("#membro-demo")
-  )
-    return (
-      <Suspense fallback={loading}>
-        <MemberDemo />
-      </Suspense>
-    );
-  if (
-    import.meta.env.DEV &&
-    OperationV2Demo &&
-    location.hash.startsWith("#operacao-v2")
-  )
-    return (
-      <Suspense fallback={loading}>
-        <OperationV2Demo />
-      </Suspense>
-    );
-  if (
-    import.meta.env.DEV &&
-    OperationDemo &&
-    location.hash.startsWith("#operacao-demo")
-  )
-    return (
-      <Suspense fallback={loading}>
-        <OperationDemo />
-      </Suspense>
-    );
-  if (
-    import.meta.env.DEV &&
-    ProductionRollbackDemo &&
-    location.hash.startsWith("#restauracao-demo")
-  )
-    return (
-      <Suspense fallback={loading}>
-        <ProductionRollbackDemo />
-      </Suspense>
-    );
-  if (
-    import.meta.env.DEV &&
-    PilotApp &&
-    location.hash.startsWith("#festival")
-  )
-    return (
-      <Suspense fallback={loading}>
-        <PilotApp />
       </Suspense>
     );
 
