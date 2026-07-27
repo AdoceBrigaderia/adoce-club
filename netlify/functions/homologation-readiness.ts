@@ -16,6 +16,8 @@ const variableNames = [
   "VITE_SUPABASE_PUBLISHABLE_KEY",
   "SUPABASE_SECRET_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
+  "WHATSAPP_OTP_PEPPER",
+  "PUBLIC_RATE_LIMIT_PEPPER",
   "PASSKEY_RP_ID",
   "PASSKEY_ALLOWED_ORIGINS",
   "META_WA_ACCESS_TOKEN",
@@ -48,7 +50,17 @@ export default async (request: Request) => {
   if (!new Set(["GET", "HEAD"]).has(request.method))
     return secureJson({ error: "Método não permitido." }, 405);
 
-  const readiness = buildHomologationReadiness(readEnvironment());
+  const requestOrigin = (() => {
+    try {
+      return new URL(request.url).origin;
+    } catch {
+      return "";
+    }
+  })();
+  const readiness = buildHomologationReadiness({
+    ...readEnvironment(),
+    READINESS_REQUEST_ORIGIN: requestOrigin,
+  });
   if (!readiness.exposed)
     return secureJson({ error: "Recurso não encontrado." }, 404);
 
