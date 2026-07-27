@@ -22,6 +22,7 @@ Rubens e Beth devem permanecer como proprietários dos grupos. O grupo de atendi
 - O endereço `financeiro@` não deve ser exposto em páginas públicas sem necessidade específica.
 - O endereço `privacidade@` deve permanecer visível na Política de Privacidade.
 - Todos os links públicos devem ser derivados de `src/business-contacts.ts`, evitando endereços pessoais espalhados pelo código.
+- Eventos internos usam chaves de rota como `business.atendimento`; o endereço real é resolvido apenas pelo worker server-side do provedor futuro.
 
 ## Situação implementada
 
@@ -29,11 +30,16 @@ Rubens e Beth devem permanecer como proprietários dos grupos. O grupo de atendi
 - Termos do Clube direcionam dúvidas para `atendimento@`.
 - O formulário de reclamações e sugestões oferece `atendimento@` como contingência quando a Function estiver indisponível.
 - O menu flutuante de contatos inclui o e-mail oficial de atendimento.
+- Dados estruturados Schema.org publicam somente atendimento e privacidade.
+- Novos eventos `site_feedback.created` recebem a rota interna `business.atendimento` no outbox.
+- Eventos antigos ainda pendentes recebem a mesma rota por backfill idempotente.
+- Nenhum endereço, token ou credencial do Workspace é gravado no payload do outbox.
 - Testes impedem a volta do endereço pessoal anteriormente utilizado.
 
 ## Pendências futuras
 
 - escolher e configurar o provedor de e-mail transacional;
+- implementar o worker server-side que consome o outbox e resolve as rotas corporativas;
 - definir remetente técnico em subdomínio próprio;
 - criar notificações de segurança e operação para `alertas@`;
 - criar notificações financeiras estritamente necessárias para `financeiro@`;
