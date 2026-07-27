@@ -12,6 +12,8 @@ const baseEnvironment = {
   SUPABASE_URL: "https://homolog-project.supabase.co",
   VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_example",
   SUPABASE_SECRET_KEY: "server-only-secret",
+  WHATSAPP_OTP_PEPPER: "otp-pepper",
+  PUBLIC_RATE_LIMIT_PEPPER: "rate-limit-pepper",
   PASSKEY_RP_ID: "adoce-homologacao.netlify.app",
   PASSKEY_ALLOWED_ORIGINS: "https://adoce-homologacao.netlify.app",
   META_WA_ACCESS_TOKEN: "configured",
@@ -38,10 +40,13 @@ describe("diagnóstico seguro da homologação", () => {
     expect(result.exposed).toBe(true);
     expect(result.coreReady).toBe(true);
     expect(result.supabase.projectRef).toBe("homolog-project");
+    expect(result.security.configured).toBe(true);
     expect(result.integrations.passkeys.configured).toBe(true);
     expect(result.integrations.metaWhatsApp.configured).toBe(true);
     expect(result.integrations.googleWallet.configured).toBe(true);
     expect(JSON.stringify(result)).not.toContain("server-only-secret");
+    expect(JSON.stringify(result)).not.toContain("otp-pepper");
+    expect(JSON.stringify(result)).not.toContain("rate-limit-pepper");
     expect(JSON.stringify(result)).not.toContain("META_WA_ACCESS_TOKEN\":\"configured");
   });
 
@@ -66,6 +71,20 @@ describe("diagnóstico seguro da homologação", () => {
     expect(result.site.validHomologationOrigin).toBe(false);
     expect(result.site.productionDomainRejected).toBe(false);
     expect(result.supabase.isolated).toBe(false);
+  });
+
+  it("bloqueia o núcleo quando peppers obrigatórios estão ausentes", () => {
+    const result = buildHomologationReadiness({
+      ...baseEnvironment,
+      WHATSAPP_OTP_PEPPER: "",
+      PUBLIC_RATE_LIMIT_PEPPER: "",
+    });
+    expect(result.coreReady).toBe(false);
+    expect(result.security.configured).toBe(false);
+    expect(result.security.missing).toEqual([
+      "WHATSAPP_OTP_PEPPER",
+      "PUBLIC_RATE_LIMIT_PEPPER",
+    ]);
   });
 
   it("distingue núcleo funcional de integrações ainda sem credenciais", () => {
