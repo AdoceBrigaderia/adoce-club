@@ -19,14 +19,23 @@ describe("Central real da operação", () => {
     expect(hub).toContain(
       'import OperationManualSale from "./OperationManualSale"',
     );
-    expect(hub).toContain("<OperationManualSale />");
+    expect(hub).toContain(
+      "<OperationManualSale onCreated={refreshBusinessViews} />",
+    );
+  });
+
+  it("atualiza caixa, CRM e relatórios depois da venda", () => {
+    expect(hub).toContain("setBusinessRevision((current) => current + 1)");
+    expect(hub).toContain('key={`customer-${businessRevision}`}');
+    expect(hub).toContain('key={`cash-${businessRevision}`}');
+    expect(hub).toContain('key={`reports-${businessRevision}`}');
   });
 
   it("prioriza atendimento rápido antes dos módulos gerenciais", () => {
     const checkIns = hub.indexOf("<OperationCustomerCheckIns />");
-    const sale = hub.indexOf("<OperationManualSale />");
+    const sale = hub.indexOf("<OperationManualSale");
     const loyalty = hub.indexOf("<OperationQuickLoyalty />");
-    const reports = hub.indexOf("<OperationReports />");
+    const reports = hub.indexOf("<OperationReports");
     const structure = hub.indexOf("<OperationBusinessStructureBff");
 
     expect(checkIns).toBeGreaterThan(-1);
