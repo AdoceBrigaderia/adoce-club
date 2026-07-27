@@ -38,9 +38,11 @@ marketing-assets/**/*.zip
 *.bak
 *.cache
 
-# Relatorios locais gerados pela auditoria de imagens
+# Relatorios locais gerados pelas auditorias
 artifacts/image-library-audit.json
 artifacts/image-library-audit.md
+artifacts/browser-security-audit.json
+artifacts/browser-security-audit.md
 
 # Pacotes locais de auditoria e backup
 ADOCE_AUDITORIA_*/
