@@ -94,7 +94,32 @@ Os valores sensíveis devem ser marcados como secretos. A ausência dessas crede
 
 A ausência dessas credenciais não impede o teste do núcleo, mas mantém a emissão real de passes como pendente.
 
-## 4. Publicação
+## 4. Pré-flight redigido antes da publicação
+
+O comando abaixo avalia o ambiente atual e gera um diagnóstico que pode ser executado localmente ou dentro do contexto Netlify:
+
+```bash
+npm run report:homologation-preflight
+```
+
+Ele cria:
+
+```text
+artifacts/homologation-preflight.json
+artifacts/homologation-preflight.md
+```
+
+O relatório separa três estados:
+
+1. **núcleo pronto**: ambiente, origem, Supabase, chave publicável, segredo server-only e peppers válidos;
+2. **preview pronto para publicação**: núcleo pronto mais credenciais de infraestrutura da Netlify presentes;
+3. **integrações completas**: preview pronto mais Meta WhatsApp e Google Wallet configurados.
+
+A falta de Meta ou Wallet não bloqueia o diagnóstico do núcleo. O relatório nunca inclui valores de tokens, chaves, peppers ou credenciais; registra somente estados booleanos e nomes de variáveis ausentes.
+
+O workflow manual executa esse pré-flight dentro do contexto `branch-deploy` antes do gate e preserva os dois arquivos como evidência.
+
+## 5. Publicação
 
 O workflow `Publicar homologação isolada v2` é exclusivamente manual e exige:
 
@@ -107,7 +132,7 @@ O workflow `Publicar homologação isolada v2` é exclusivamente manual e exige:
 
 O deploy usa alias de rascunho, nunca `--prod`. O workflow extrai a URL devolvida pela Netlify, confirma que ela pertence ao projeto reservado e usa exatamente essa URL no readiness e no Playwright. Ele não testa uma versão anterior por meio de endereço estático.
 
-## 5. Validações automáticas posteriores
+## 6. Validações automáticas posteriores
 
 Após publicar, o workflow:
 
@@ -118,15 +143,16 @@ Após publicar, o workflow:
 5. confirma presença dos peppers obrigatórios sem revelar seus valores;
 6. confirma ausência de chave secreta no frontend;
 7. executa Playwright em celular, tablet e computador no mesmo deploy;
-8. preserva relatório, screenshots, vídeos de falha, URL e JSON do deploy.
+8. preserva pré-flight, relatório, screenshots, vídeos de falha, URL e JSON do deploy.
 
 O endpoint de readiness retorna somente estados, nomes de variáveis ausentes e referências não secretas. Em produção, responde `404`.
 
-## 6. Critério de aprovação funcional
+## 7. Critério de aprovação funcional
 
 A homologação só fica pronta para avaliação do proprietário quando:
 
 - `coreReady=true`;
+- o pré-flight não apresenta bloqueios do núcleo;
 - a origem real do deploy corresponde à origem configurada;
 - os três workflows principais estão verdes;
 - migrations pendentes foram aplicadas somente no Supabase de homologação;
@@ -134,6 +160,6 @@ A homologação só fica pronta para avaliação do proprietário quando:
 - passkeys foram ensaiadas em aparelhos reais;
 - OTP da Meta e Google Wallet foram testados quando as credenciais estiverem disponíveis.
 
-## 7. Produção
+## 8. Produção
 
 A homologação não autoriza publicação produtiva. Produção exige outra aprovação expressa, commit exato, backup confirmado, migrations revisadas, rollback preparado e smoke tests posteriores.
