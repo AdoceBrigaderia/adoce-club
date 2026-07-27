@@ -14,6 +14,9 @@ const appSource = readSource("../src/App.tsx");
 const registrationSource = readSource("../src/CustomerRegistrationBffPage.tsx");
 const instantOrderSource = readSource("../src/InstantOrderPanel.tsx");
 const instantOrderClient = readSource("../src/services/public-instant-order.ts");
+const groupOrderSource = readSource("../src/GroupOrderPage.tsx");
+const groupOrderClient = readSource("../src/services/pede-junto-bff.ts");
+const groupOrderHelper = readSource("../src/pede-junto.ts");
 const operationHub = readSource("../src/OperationBusinessHub.tsx");
 const customerGateway = readSource("../src/PasskeyClientGateway.tsx");
 const googleWalletClient = readSource("../src/services/google-wallet.ts");
@@ -34,6 +37,9 @@ const liveBffSources = [
   "../src/OperationBusinessStructureBff.tsx",
   "../src/CustomerGoogleWalletButton.tsx",
   "../src/services/google-wallet.ts",
+  "../src/GroupOrderPage.tsx",
+  "../src/services/pede-junto-bff.ts",
+  "../src/pede-junto.ts",
 ].map((path) => ({ path, source: readSource(path) }));
 
 const cspMatch = netlifyConfig.match(/Content-Security-Policy\s*=\s*"([^"]+)"/);
@@ -104,6 +110,27 @@ if (!instantOrderClient.includes('fetch("/api/public-instant-order"')) {
   throw new Error(
     "Cliente do pedido público não aponta para o endpoint BFF oficial.",
   );
+}
+
+for (const marker of [
+  "requireSupabase",
+  "participant_token",
+  "organizer_token",
+  "localStorage",
+  "sessionStorage",
+  "Authorization",
+]) {
+  if (groupOrderSource.includes(marker) || groupOrderHelper.includes(marker)) {
+    throw new Error(
+      `Pede Junto público contém acesso proibido no navegador: ${marker}`,
+    );
+  }
+}
+if (!groupOrderClient.includes('fetch("/api/pede-junto"')) {
+  throw new Error("Pede Junto não aponta para o endpoint BFF oficial.");
+}
+if (!groupOrderClient.includes('credentials: "same-origin"')) {
+  throw new Error("Pede Junto não envia cookies seguros em modo same-origin.");
 }
 
 const forbiddenLiveBrowserMarkers = [
@@ -196,5 +223,5 @@ if (productionFiles.some((file) => /LegacyPrototype/i.test(file))) {
 }
 
 console.log(
-  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro, pedidos, operação real e Google Wallet pelo BFF, sem persistência de tokens ou segredos no bundle.",
+  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro, pedidos, Pede Junto, operação real e Google Wallet pelo BFF, sem persistência de tokens ou segredos no bundle.",
 );
