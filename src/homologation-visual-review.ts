@@ -1,4 +1,4 @@
-export const VISUAL_REVIEW_SESSION_KEY = "adoce:homologation-visual-review:v1";
+export const VISUAL_REVIEW_SESSION_KEY = "adoce:homologation-visual-review:v2";
 
 export const visualValidationRoutes = [
   { id: "inicio", label: "Início e identidade", href: "/#inicio" },
@@ -16,6 +16,7 @@ export type VisualReviewStatus = "pending" | "approved" | "adjust";
 
 export type VisualReviewState = {
   statuses: Record<VisualValidationRouteId, VisualReviewStatus>;
+  routeNotes: Record<VisualValidationRouteId, string>;
   notes: string;
   updatedAt: string | null;
 };
@@ -24,6 +25,7 @@ export type VisualReviewMetadata = {
   commit?: string;
   builtAt?: string;
   url?: string;
+  viewport?: string;
 };
 
 const validStatuses = new Set<VisualReviewStatus>([
@@ -32,11 +34,15 @@ const validStatuses = new Set<VisualReviewStatus>([
   "adjust",
 ]);
 
+const emptyRouteRecord = <T>(factory: () => T) =>
+  Object.fromEntries(
+    visualValidationRoutes.map(({ id }) => [id, factory()]),
+  ) as Record<VisualValidationRouteId, T>;
+
 export function createEmptyVisualReview(): VisualReviewState {
   return {
-    statuses: Object.fromEntries(
-      visualValidationRoutes.map(({ id }) => [id, "pending"]),
-    ) as Record<VisualValidationRouteId, VisualReviewStatus>,
+    statuses: emptyRouteRecord(() => "pending" as VisualReviewStatus),
+    routeNotes: emptyRouteRecord(() => ""),
     notes: "",
     updatedAt: null,
   };
@@ -51,6 +57,10 @@ export function normalizeVisualReview(value: unknown): VisualReviewState {
     candidate.statuses && typeof candidate.statuses === "object"
       ? candidate.statuses
       : {};
+  const sourceRouteNotes =
+    candidate.routeNotes && typeof candidate.routeNotes === "object"
+      ? candidate.routeNotes
+      : {};
 
   const statuses = Object.fromEntries(
     visualValidationRoutes.map(({ id }) => {
@@ -59,8 +69,16 @@ export function normalizeVisualReview(value: unknown): VisualReviewState {
     }),
   ) as Record<VisualValidationRouteId, VisualReviewStatus>;
 
+  const routeNotes = Object.fromEntries(
+    visualValidationRoutes.map(({ id }) => {
+      const note = (sourceRouteNotes as Record<string, unknown>)[id];
+      return [id, typeof note === "string" ? note.slice(0, 800) : ""];
+    }),
+  ) as Record<VisualValidationRouteId, string>;
+
   return {
     statuses,
+    routeNotes,
     notes: typeof candidate.notes === "string" ? candidate.notes.slice(0, 4000) : "",
     updatedAt:
       typeof candidate.updatedAt === "string" ? candidate.updatedAt.slice(0, 80) : null,
@@ -82,6 +100,10 @@ export function visualReviewProgress(review: VisualReviewState) {
   };
 }
 
+function compactNote(value: string) {
+  return value.trim().replace(/\s+/g, " ").slice(0, 800);
+}
+
 export function buildVisualReviewMarkdown(
   review: VisualReviewState,
   metadata: VisualReviewMetadata = {},
@@ -94,6 +116,12 @@ export function buildVisualReviewMarkdown(
   };
   const safe = (value: string | undefined, fallback: string) =>
     value?.trim() || fallback;
+  const routeLines = visualValidationRoutes.flatMap(({ id, label }) => {
+    const status = review.statuses[id];
+    const note = compactNote(review.routeNotes[id]);
+    const line = `- [${status === "approved" ? "x" : " "}] ${label}: ${statusLabel[status]}`;
+    return note ? [line, `  - Observação: ${note}`] : [line];
+  });
 
   const lines = [
     "# Validação visual — Portal Adoce",
@@ -101,6 +129,8 @@ export function buildVisualReviewMarkdown(
     `- Commit: ${safe(metadata.commit, "não informado")}`,
     `- Build: ${safe(metadata.builtAt, "não informado")}`,
     `- URL: ${safe(metadata.url, "não informada")}`,
+    `- Viewport: ${safe(metadata.viewport, "não informado")}`,
+    `- Última atualização: ${review.updatedAt || "não informada"}`,
     `- Progresso: ${progress.reviewed}/${progress.total} telas revisadas`,
     `- Aprovadas: ${progress.approved}`,
     `- Precisam ajustar: ${progress.adjust}`,
@@ -108,9 +138,7 @@ export function buildVisualReviewMarkdown(
     "",
     "## Telas",
     "",
-    ...visualValidationRoutes.map(
-      ({ id, label }) => `- [${review.statuses[id] === "approved" ? "x" : " "}] ${label}: ${statusLabel[review.statuses[id]]}`,
-    ),
+    ...routeLines,
     "",
     "## Observações gerais",
     "",
