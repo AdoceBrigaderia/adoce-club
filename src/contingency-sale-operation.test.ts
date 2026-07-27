@@ -43,17 +43,19 @@ describe("venda em contingencia e reconciliacao", () => {
   });
 
   it("permite reconciliar somente em caixa aberto da mesma loja", () => {
-    expect(reconciliation).toContain("item.status === \"open\"");
+    expect(reconciliation).toContain('item.status === "open"');
     expect(reconciliation).toContain("session.store_id === item.store_id");
     expect(reconciliation).toContain("manager_reconcile_cash_sale");
-    expect(reconciliation).toContain("cash-reconciliation:${crypto.randomUUID()}");
+    expect(reconciliation).toContain(
+      "cash-reconciliation:${crypto.randomUUID()}",
+    );
   });
 
   it("fica acessivel diretamente na central operacional", () => {
     expect(hub).toContain("<OperationContingencySale />");
     expect(hub).toContain("<OperationCashReconciliation />");
     expect(hub.indexOf("<OperationContingencySale />")).toBeLessThan(
-      hub.indexOf("<OperationQuickCash />"),
+      hub.indexOf("<OperationQuickCash"),
     );
   });
 
