@@ -14,6 +14,11 @@ const removedBrowserSurfaces = [
   "staff-access-code.ts",
 ] as const;
 
+const removedServerSurfaces = [
+  "../netlify/functions/customer-security-upgrade.ts",
+  "../netlify/functions/production-rollback.ts",
+] as const;
+
 describe("remoção definitiva das superfícies legadas", () => {
   it("não mantém rotas de demonstração ou rollback na aplicação", () => {
     expect(app).not.toContain("MemberDemo");
@@ -27,6 +32,10 @@ describe("remoção definitiva das superfícies legadas", () => {
   });
 
   it.each(removedBrowserSurfaces)("remove %s da árvore ativa", (path) => {
+    expect(existsSync(new URL(path, import.meta.url))).toBe(false);
+  });
+
+  it.each(removedServerSurfaces)("remove o endpoint legado %s", (path) => {
     expect(existsSync(new URL(path, import.meta.url))).toBe(false);
   });
 
