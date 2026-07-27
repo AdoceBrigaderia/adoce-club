@@ -1,0 +1,27 @@
+name: Diagnosticar disponibilidade do runner
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: runner-health-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Confirmar início do GitHub Actions
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Registrar disponibilidade
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "runner_started=true"
+          echo "repository=$GITHUB_REPOSITORY"
+          echo "ref=$GITHUB_REF_NAME"
+          echo "sha=$GITHUB_SHA"
+          date -u +"checked_at=%Y-%m-%dT%H:%M:%SZ"
