@@ -1,10 +1,14 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const page = readFileSync(new URL("./FeedbackPage.tsx", import.meta.url), "utf8");
 const endpoint = readFileSync(
   new URL("../netlify/functions/public-feedback.ts", import.meta.url),
   "utf8",
+);
+const legacyEndpoint = new URL(
+  "../netlify/functions/site-feedback.ts",
+  import.meta.url,
 );
 const migration = readFileSync(
   new URL(
@@ -21,6 +25,11 @@ describe("feedback público protegido pelo BFF", () => {
     expect(page).toContain('credentials: "same-origin"');
     expect(page).toContain("operation_key: operationKey");
     expect(page).not.toContain("/api/site-feedback");
+  });
+
+  it("remove o endpoint antigo que aceitava bearer do navegador", () => {
+    expect(existsSync(legacyEndpoint)).toBe(false);
+    expect(endpoint).not.toContain('request.headers.get("authorization")');
   });
 
   it("valida origem, tamanho, cookie de cliente e segredo apenas no servidor", () => {
