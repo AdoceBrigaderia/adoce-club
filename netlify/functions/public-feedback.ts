@@ -19,7 +19,13 @@ const env = (name: string) =>
   process.env[name];
 const clean = (value: unknown, max: number) =>
   String(value || "").trim().slice(0, max);
-const categories = new Set(["problem", "complaint", "suggestion", "compliment"]);
+const categories = new Set([
+  "problem",
+  "complaint",
+  "suggestion",
+  "compliment",
+  "privacy",
+]);
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -81,6 +87,14 @@ export default async (request: Request) => {
     );
   if (email && !/^\S+@\S+\.\S+$/.test(email))
     return secureJson({ error: "Informe um e-mail válido." }, 400);
+  if (category === "privacy" && !email && phoneDigits.length < 10)
+    return secureJson(
+      {
+        error:
+          "Para solicitações de privacidade, informe um e-mail ou celular para retorno.",
+      },
+      400,
+    );
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
