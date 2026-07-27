@@ -17,7 +17,6 @@ export type GoogleWalletCustomerPass = {
   currentProgress: number;
   availableRewards: number;
   objectSuffix: string;
-  logoUri: string;
   accountUri: string;
 };
 
@@ -37,10 +36,7 @@ function normalizePrivateKey(value: string) {
 }
 
 function normalizeOrigins(value: string | undefined, siteUrl: string | undefined) {
-  const entries = [
-    ...(value || "").split(","),
-    siteUrl || "",
-  ]
+  const entries = [...(value || "").split(","), siteUrl || ""]
     .map((entry) => entry.trim())
     .filter(Boolean)
     .map((entry) => {
@@ -56,7 +52,9 @@ function normalizeOrigins(value: string | undefined, siteUrl: string | undefined
 
 function normalizedClassId(issuerId: string, value: string) {
   const trimmed = value.trim();
-  return trimmed.includes(".") ? trimmed : `${issuerId}.${safeWalletIdPart(trimmed)}`;
+  return trimmed.includes(".")
+    ? trimmed
+    : `${issuerId}.${safeWalletIdPart(trimmed)}`;
 }
 
 export function readGoogleWalletConfig(
@@ -124,10 +122,15 @@ export function buildGoogleWalletObject(
   config: GoogleWalletConfig,
   customer: GoogleWalletCustomerPass,
 ) {
-  const progress = Math.max(0, Math.min(14, Number(customer.currentProgress || 0)));
+  const progress = Math.max(
+    0,
+    Math.min(14, Number(customer.currentProgress || 0)),
+  );
   const rewards = Math.max(0, Number(customer.availableRewards || 0));
   const memberCode = customer.memberCode.trim();
-  const objectSuffix = safeWalletIdPart(customer.objectSuffix || customer.profileId);
+  const objectSuffix = safeWalletIdPart(
+    customer.objectSuffix || customer.profileId,
+  );
 
   return {
     id: `${config.issuerId}.${objectSuffix}`,
@@ -135,12 +138,7 @@ export function buildGoogleWalletObject(
     state: "ACTIVE",
     cardTitle: localized("Clube Adoce"),
     header: localized(customer.fullName.trim() || "Cliente Adoce"),
-    subheader: localized("Cartão digital de fidelidade"),
     hexBackgroundColor: "#E99AB4",
-    logo: {
-      sourceUri: { uri: customer.logoUri },
-      contentDescription: localized("Logo da Adoce Brigaderia"),
-    },
     barcode: {
       type: "QR_CODE",
       value: `adoce-member:${memberCode}`,
@@ -156,11 +154,6 @@ export function buildGoogleWalletObject(
         id: "rewards",
         header: "FATIAS GRÁTIS",
         body: String(rewards),
-      },
-      {
-        id: "security",
-        header: "SEGURANÇA",
-        body: "O QR identifica o cadastro, mas não autoriza movimentações sem a equipe Adoce.",
       },
     ],
     linksModuleData: {
@@ -180,6 +173,7 @@ export function createGoogleWalletSaveUrl(
   customer: GoogleWalletCustomerPass,
   issuedAt = Math.floor(Date.now() / 1000),
 ) {
+  const walletObject = buildGoogleWalletObject(config, customer);
   const header = { alg: "RS256", typ: "JWT" };
   const payload = {
     iss: config.serviceAccountEmail,
@@ -188,7 +182,7 @@ export function createGoogleWalletSaveUrl(
     iat: issuedAt,
     origins: config.origins,
     payload: {
-      genericObjects: [buildGoogleWalletObject(config, customer)],
+      genericObjects: [walletObject],
     },
   };
   const signingInput = `${base64Url(JSON.stringify(header))}.${base64Url(
@@ -201,12 +195,14 @@ export function createGoogleWalletSaveUrl(
   const token = `${signingInput}.${base64Url(signature)}`;
 
   if (token.length > 1800)
-    throw new Error("O passe excedeu o tamanho seguro aceito pelo Google Wallet.");
+    throw new Error(
+      "O passe excedeu o tamanho seguro aceito pelo Google Wallet.",
+    );
 
   return {
     saveUrl: `https://pay.google.com/gp/v/save/${token}`,
     token,
-    objectId: buildGoogleWalletObject(config, customer).id,
+    objectId: walletObject.id,
   };
 }
 
