@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -21,8 +21,24 @@ export default function FeedbackPage() {
   const [error, setError] = useState("");
   const [protocol, setProtocol] = useState("");
 
+  const fallbackContact = useMemo(
+    () => (form.category === "privacy" ? "privacidade" : "atendimento"),
+    [form.category],
+  );
+  const fallbackSubject =
+    form.category === "privacy"
+      ? "Solicitação de privacidade pelo Portal Adoce"
+      : "Contato pelo Portal Adoce";
+  const privacyRequest = form.category === "privacy";
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (privacyRequest && !form.email.trim() && !form.phone.trim()) {
+      setError(
+        "Para solicitações de privacidade, informe um e-mail ou celular para retorno.",
+      );
+      return;
+    }
     setBusy(true);
     setError("");
 
@@ -68,8 +84,9 @@ export default function FeedbackPage() {
           <span>Escuta Adoce</span>
           <h1>Sua experiência ajuda a gente a cuidar melhor de cada detalhe.</h1>
           <p>
-            Conte se encontrou um erro, teve uma dificuldade ou imaginou uma
-            melhoria. Você recebe um protocolo para acompanhar a mensagem.
+            Conte se encontrou um erro, teve uma dificuldade, imaginou uma
+            melhoria ou precisa falar sobre seus dados. Você recebe um protocolo
+            para acompanhar a mensagem.
           </p>
         </div>
         {protocol ? (
@@ -83,7 +100,7 @@ export default function FeedbackPage() {
           </div>
         ) : (
           <form onSubmit={submit}>
-            <h2>Reclamação ou sugestão</h2>
+            <h2>Fale com a Adoce</h2>
             <label>
               Como podemos te chamar?
               <input
@@ -107,11 +124,15 @@ export default function FeedbackPage() {
                 <option value="complaint">Quero fazer uma reclamação</option>
                 <option value="suggestion">Tenho uma sugestão</option>
                 <option value="compliment">Quero deixar um elogio</option>
+                <option value="privacy">
+                  Quero falar sobre meus dados e privacidade
+                </option>
               </select>
             </label>
             <div>
               <label>
-                E-mail <small>(opcional)</small>
+                E-mail{" "}
+                <small>{privacyRequest ? "(informe um contato)" : "(opcional)"}</small>
                 <input
                   type="email"
                   value={form.email}
@@ -121,7 +142,8 @@ export default function FeedbackPage() {
                 />
               </label>
               <label>
-                Celular <small>(opcional)</small>
+                Celular{" "}
+                <small>{privacyRequest ? "(informe um contato)" : "(opcional)"}</small>
                 <input
                   inputMode="tel"
                   value={form.phone}
@@ -132,7 +154,7 @@ export default function FeedbackPage() {
               </label>
             </div>
             <label>
-              Conte o que aconteceu
+              {privacyRequest ? "Descreva sua solicitação" : "Conte o que aconteceu"}
               <textarea
                 required
                 minLength={10}
@@ -141,19 +163,18 @@ export default function FeedbackPage() {
                 onChange={(event) =>
                   setForm({ ...form, message: event.target.value })
                 }
-                placeholder="Diga em qual página estava, o que tentou fazer e o que apareceu."
+                placeholder={
+                  privacyRequest
+                    ? "Exemplo: quero corrigir, consultar ou excluir meus dados do Clube Adoce."
+                    : "Diga em qual página estava, o que tentou fazer e o que apareceu."
+                }
               />
             </label>
             {error ? (
               <p className="feedback-error" role="alert">
                 {error} Você também pode escrever para
-                <a
-                  href={businessMailto(
-                    "atendimento",
-                    "Contato pelo Portal Adoce",
-                  )}
-                >
-                  {` ${BUSINESS_CONTACTS.atendimento.email}`}
+                <a href={businessMailto(fallbackContact, fallbackSubject)}>
+                  {` ${BUSINESS_CONTACTS[fallbackContact].email}`}
                 </a>
                 .
               </p>
@@ -162,7 +183,8 @@ export default function FeedbackPage() {
               {busy ? "Enviando..." : "Enviar para a Adoce"} <Send />
             </button>
             <small>
-              Usaremos seus dados somente para entender e responder esta mensagem.
+              Usaremos seus dados somente para entender, encaminhar e responder
+              esta mensagem.
             </small>
           </form>
         )}
