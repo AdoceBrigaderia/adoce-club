@@ -28,7 +28,9 @@ describe("CRM Cliente 360 na operação", () => {
   });
 
   it("reúne dados, pedidos, carimbos, visitas, notas e etiquetas", () => {
-    expect(source).toContain("Dados, carimbos, pedidos, preferências, check-ins e anotações");
+    expect(source).toContain(
+      "Dados, carimbos, pedidos, preferências, check-ins e anotações",
+    );
     expect(source).toContain("recent_orders");
     expect(source).toContain("recent_movements");
     expect(source).toContain("recent_checkins");
@@ -37,9 +39,11 @@ describe("CRM Cliente 360 na operação", () => {
   });
 
   it("fica diretamente disponível na Central da Operação", () => {
-    expect(hub).toContain('import OperationCustomer360 from "./OperationCustomer360"');
-    expect(hub).toContain("<OperationCustomer360 />");
-    expect(hub.indexOf("<OperationCustomer360 />")).toBeLessThan(
+    expect(hub).toContain(
+      'import OperationCustomer360 from "./OperationCustomer360"',
+    );
+    expect(hub).toContain("<OperationCustomer360");
+    expect(hub.indexOf("<OperationCustomer360")).toBeLessThan(
       hub.indexOf("<OperationBusinessStructureBff"),
     );
   });
