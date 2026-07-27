@@ -75,7 +75,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - O endpoint de readiness compara a origem real da requisição com `SITE_URL`, exige os segredos do núcleo e nunca devolve seus valores.
 - Migrations desta reestruturação são aplicadas somente ao Supabase de homologação.
 - Playwright cobre rotas reais em celular, tablet e computador, incluindo identidade, cadastro, login BFF, toque mínimo, overflow e ausência de módulos de demonstração.
-- Workflows executam TypeScript, Vitest, auditoria de imagens, auditoria do navegador, isolamento do ambiente, build e verificação de headers.
+- O `Portal quality gate` é o único workflow automático da branch e roda uma vez por `push` relevante; alterações somente de documentação são ignoradas e execuções anteriores são canceladas.
+- O gate completo e o Playwright pesado exigem acionamento manual e o SHA exato do marco, evitando execuções redundantes em cada pequeno commit.
+- Testes contratuais impedem reintroduzir os gatilhos duplicados `push` + `pull_request` nos workflows pesados.
 - Build e diagnósticos são preservados como artefatos para inspeção quando os runners chegam às etapas.
 - O deploy de homologação é manual, exige branch e commit exatos, confirmação textual e site Netlify diferente da produção.
 - O workflow extrai a URL do deploy, valida que pertence ao projeto isolado e executa readiness e Playwright no deploy exato.
@@ -89,16 +91,17 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Google Wallet está preparado no BFF e banco, porém a emissão real depende da conta de emissor e da chave de serviço.
 - O preview público de homologação ainda deve receber variáveis e segredos exclusivos, ser publicado no alias fixo e passar pelo roteiro funcional completo.
 - A proteção contra senhas vazadas deve ser habilitada no Supabase Auth de homologação quando a configuração estiver disponível.
-- O head atual ainda precisa de uma execução normal dos três pipelines principais; tentativas recentes encerraram antes de fornecer etapas ou logs utilizáveis.
+- O novo gate automático ainda precisa de uma execução normal do runner; as tentativas anteriores encerraram antes de fornecer etapas ou logs utilizáveis.
 - O painel de anonimização está integrado à operação e protegido por testes de contrato e da janela de revisão, mas ainda precisa de validação visual no preview publicado e teste touch real em tablet.
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
-1. Alinhar no Netlify e GitHub a origem canônica `https://homologacao-adoce--adoce-homologacao.netlify.app` para SITE_URL, BFF, passkeys, Wallet e variável do workflow.
-2. Inserir diretamente no cofre da Netlify os segredos obrigatórios do núcleo, Meta e Wallet, sem enviá-los pelo chat ou GitHub.
-3. Executar testes reais de passkey em Android, iPhone e Windows.
-4. Publicar o preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
-5. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
+1. Confirmar ou liberar a cota/orçamento do GitHub Actions para que o novo gate econômico consiga iniciar o runner.
+2. Alinhar no Netlify e GitHub a origem canônica `https://homologacao-adoce--adoce-homologacao.netlify.app` para SITE_URL, BFF, passkeys, Wallet e variável do workflow.
+3. Inserir diretamente no cofre da Netlify os segredos obrigatórios do núcleo, Meta e Wallet, sem enviá-los pelo chat ou GitHub.
+4. Executar testes reais de passkey em Android, iPhone e Windows.
+5. Publicar o preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
+6. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
 
 ## Evidências principais
 
@@ -116,20 +119,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `supabase/tests/privacy_correction_consent_live.sql`
 - `supabase/tests/privacy_resolution_guard_live.sql`
 - `supabase/tests/privacy_profile_anonymization_live.sql`
-- `supabase/migrations/20260727170000_privacy_access_response_package.sql`
-- `supabase/migrations/20260727173000_privacy_correction_consent_actions.sql`
-- `supabase/migrations/20260727175000_privacy_resolution_outcome_guard.sql`
-- `supabase/migrations/20260727180000_privacy_profile_anonymization.sql`
-- `supabase/migrations/20260727181000_privacy_anonymization_null_email_guard.sql`
-- `supabase/migrations/20260727182000_privacy_anonymization_generated_identity_email_fix.sql`
-- `supabase/migrations/20260727183000_privacy_anonymization_preserve_member_code.sql`
-- `src/privacy-access-response-package.test.ts`
-- `src/privacy-access-response-operation.test.ts`
-- `src/privacy-correction-consent-actions.test.ts`
-- `src/privacy-correction-consent-operation.test.ts`
-- `src/privacy-profile-anonymization.test.ts`
-- `src/privacy-anonymization-operation.test.ts`
-- `src/privacy-anonymization-review.test.ts`
+- `src/ci-workflow-efficiency.test.ts`
+- `docs/ci-execution-strategy.md`
 - Workflows `Portal quality gate`, `Verificar reestruturação`, `Playwright mobile e tablet` e `Testar segurança viva na homologação`
 
 ## Produção
