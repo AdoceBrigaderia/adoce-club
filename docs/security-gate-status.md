@@ -81,6 +81,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Build e diagnósticos são preservados como artefatos para inspeção quando os runners chegam às etapas.
 - O deploy de homologação é manual, exige branch e commit exatos, confirmação textual e site Netlify diferente da produção.
 - O workflow extrai a URL do deploy, valida que pertence ao projeto isolado e executa readiness e Playwright no deploy exato.
+- Antes do deploy, um pré-flight independente gera relatórios JSON e Markdown redigidos com o estado do núcleo, infraestrutura, Meta e Wallet, listando apenas nomes de variáveis ausentes e nunca seus valores.
+- O pré-flight é protegido por testes de não exposição, integra o gate integral e fica preservado como evidência do deploy de homologação.
 - O workflow de ensaios vivos inclui matriz de permissões, rate limit, allowlist de RPCs e todos os fluxos de privacidade com rollback integral.
 - O deploy de produção não possui endpoint remoto de restauração e exige gate temporário com aprovação expressa, SHA exato, backup, rollback e plano de smoke tests.
 
@@ -108,6 +110,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `scripts/audit-browser-security.mjs`
 - `scripts/browser-security-audit-core.mjs`
 - `scripts/homologation-environment-gate.mjs`
+- `scripts/homologation-preflight-report.mjs`
+- `scripts/homologation-preflight-report.test.mjs`
 - `scripts/verify-security-build.mjs`
 - `tests/e2e/public-mobile-smoke.e2e.mjs`
 - `supabase/tests/permission_matrix_live.sql`
@@ -120,8 +124,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `supabase/tests/privacy_resolution_guard_live.sql`
 - `supabase/tests/privacy_profile_anonymization_live.sql`
 - `src/ci-workflow-efficiency.test.ts`
+- `src/homologation-deploy-workflow.test.ts`
 - `docs/ci-execution-strategy.md`
-- Workflows `Portal quality gate`, `Verificar reestruturação`, `Playwright mobile e tablet` e `Testar segurança viva na homologação`
+- Workflows `Portal quality gate`, `Verificar reestruturação`, `Playwright mobile e tablet`, `Diagnosticar disponibilidade do runner` e `Testar segurança viva na homologação`
 
 ## Produção
 
