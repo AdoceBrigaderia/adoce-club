@@ -8,8 +8,11 @@ declare
   requests jsonb;
   selected jsonb;
   updated jsonb;
+  verified jsonb;
   resolved jsonb;
   audit_found boolean;
+  identity_audit_found boolean;
+  resolution_blocked boolean := false;
 begin
   select member.user_id
   into actor_id
@@ -40,7 +43,7 @@ begin
     test_name,
     'privacy-operation@example.com',
     'https://homologacao-adoce--adoce-homologacao.netlify.app/#operacao',
-    'Solicitação temporária para validar listagem, atualização, prazo e auditoria operacional.',
+    'Solicitação temporária para validar listagem, identidade, atualização, prazo e auditoria operacional.',
     'access',
     now() + interval '15 days'
   );
@@ -66,6 +69,9 @@ begin
   if selected->>'privacy_request_type' is distinct from 'access' then
     raise exception 'Tipo da solicitação não foi preservado';
   end if;
+  if selected->>'privacy_identity_status' is distinct from 'pending' then
+    raise exception 'Nova solicitação não iniciou com identidade pendente';
+  end if;
   if coalesce((selected->>'overdue')::boolean, true) then
     raise exception 'Solicitação nova foi marcada como atrasada';
   end if;
@@ -83,10 +89,40 @@ begin
     raise exception 'Status não foi atualizado';
   end if;
 
+  begin
+    perform public.staff_update_privacy_request(
+      (selected->>'id')::uuid,
+      'resolved',
+      'Tentativa proposital antes da confirmação de identidade.'
+    );
+  exception
+    when others then
+      resolution_blocked := position(
+        'Confirme a identidade do solicitante' in sqlerrm
+      ) > 0;
+  end;
+
+  if not resolution_blocked then
+    raise exception 'Solicitação sensível foi resolvida sem identidade confirmada';
+  end if;
+
+  verified := public.staff_verify_privacy_request_identity(
+    (selected->>'id')::uuid,
+    'verified',
+    'Contato confirmado por resposta no canal previamente cadastrado.'
+  );
+
+  if verified->>'privacy_identity_status' is distinct from 'verified' then
+    raise exception 'Identidade não foi marcada como confirmada';
+  end if;
+  if verified->>'privacy_identity_checked_at' is null then
+    raise exception 'Momento da verificação de identidade não foi registrado';
+  end if;
+
   resolved := public.staff_update_privacy_request(
     (selected->>'id')::uuid,
     'resolved',
-    'Solicitação resolvida durante ensaio vivo com rollback.'
+    'Solicitação resolvida após confirmação de identidade, com rollback.'
   );
 
   if resolved->>'privacy_resolved_at' is null then
@@ -100,8 +136,18 @@ begin
       and event.entity_id = selected->>'id'
   ) into audit_found;
 
+  select exists(
+    select 1
+    from public.audit_events event
+    where event.action = 'privacy_request.identity_checked'
+      and event.entity_id = selected->>'id'
+  ) into identity_audit_found;
+
   if not audit_found then
     raise exception 'Auditoria da privacidade não foi registrada';
+  end if;
+  if not identity_audit_found then
+    raise exception 'Auditoria da identidade não foi registrada';
   end if;
 
   if has_function_privilege(
@@ -111,6 +157,10 @@ begin
   ) or has_function_privilege(
     'anon',
     'public.staff_update_privacy_request(uuid,text,text)'::regprocedure,
+    'EXECUTE'
+  ) or has_function_privilege(
+    'anon',
+    'public.staff_verify_privacy_request_identity(uuid,text,text)'::regprocedure,
     'EXECUTE'
   ) then
     raise exception 'RPC operacional de privacidade exposto ao anônimo';
