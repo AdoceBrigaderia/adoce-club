@@ -13,7 +13,8 @@ A nova estrutura mantém a cobertura técnica e reduz execuções duplicadas.
 
 ## Gate automático
 
-O workflow `Portal quality gate` é o único gate automático do PR. Ele executa:
+O workflow `Portal quality gate` é o único gate automático da branch. Ele é iniciado
+uma vez por `push` relevante e executa:
 
 - TypeScript;
 - testes unitários e contratuais;
@@ -23,8 +24,9 @@ O workflow `Portal quality gate` é o único gate automático do PR. Ele executa
 - build;
 - gate de segurança do build.
 
-Alterações restritas a documentação não iniciam o gate pesado. O workflow anterior
-do mesmo PR é cancelado quando chega um commit mais recente.
+O gatilho não usa `pull_request`, evitando duplicidade com o mesmo commit. Alterações
+restritas a documentação não iniciam o gate pesado, e a execução anterior da branch é
+cancelada quando chega um commit mais recente.
 
 ## Gate completo de marco
 
