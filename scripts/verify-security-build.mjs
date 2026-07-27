@@ -3,26 +3,38 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const distIndex = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
-const netlifyConfig = readFileSync(new URL("../netlify.toml", import.meta.url), "utf8");
+const readSource = (relativePath) =>
+  readFileSync(new URL(relativePath, import.meta.url), "utf8");
+
+const distIndex = readSource("../dist/index.html");
+const netlifyConfig = readSource("../netlify.toml");
 const distDirectory = fileURLToPath(new URL("../dist", import.meta.url));
-const browserSupabase = readFileSync(
-  new URL("../src/lib/supabase.ts", import.meta.url),
-  "utf8",
-);
-const appSource = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
-const registrationSource = readFileSync(
-  new URL("../src/CustomerRegistrationBffPage.tsx", import.meta.url),
-  "utf8",
-);
-const instantOrderSource = readFileSync(
-  new URL("../src/InstantOrderPanel.tsx", import.meta.url),
-  "utf8",
-);
-const instantOrderClient = readFileSync(
-  new URL("../src/services/public-instant-order.ts", import.meta.url),
-  "utf8",
-);
+const browserSupabase = readSource("../src/lib/supabase.ts");
+const appSource = readSource("../src/App.tsx");
+const registrationSource = readSource("../src/CustomerRegistrationBffPage.tsx");
+const instantOrderSource = readSource("../src/InstantOrderPanel.tsx");
+const instantOrderClient = readSource("../src/services/public-instant-order.ts");
+const operationHub = readSource("../src/OperationBusinessHub.tsx");
+const customerGateway = readSource("../src/PasskeyClientGateway.tsx");
+const googleWalletClient = readSource("../src/services/google-wallet.ts");
+
+const liveBffSources = [
+  "../src/PasskeyClientGateway.tsx",
+  "../src/PasskeyOperationGateway.tsx",
+  "../src/OperationBusinessHub.tsx",
+  "../src/OperationCustomerCheckIns.tsx",
+  "../src/OperationManualSale.tsx",
+  "../src/OperationQuickLoyalty.tsx",
+  "../src/OperationCustomer360.tsx",
+  "../src/OperationContingencySale.tsx",
+  "../src/OperationCashReconciliation.tsx",
+  "../src/OperationQuickCash.tsx",
+  "../src/OperationWhatsAppHealth.tsx",
+  "../src/OperationReports.tsx",
+  "../src/OperationBusinessStructureBff.tsx",
+  "../src/CustomerGoogleWalletButton.tsx",
+  "../src/services/google-wallet.ts",
+].map((path) => ({ path, source: readSource(path) }));
 
 const cspMatch = netlifyConfig.match(/Content-Security-Policy\s*=\s*"([^"]+)"/);
 if (!cspMatch) throw new Error("CSP ausente no netlify.toml.");
@@ -51,20 +63,26 @@ if (scriptDirective.includes("'unsafe-inline'")) {
 }
 
 if (/localStorage|sessionStorage/.test(browserSupabase)) {
-  throw new Error("Cliente Supabase do navegador ainda acessa armazenamento persistente.");
+  throw new Error(
+    "Cliente Supabase do navegador ainda acessa armazenamento persistente.",
+  );
 }
 if (!browserSupabase.includes("persistSession: false")) {
   throw new Error("Cliente Supabase do navegador ainda pode persistir sessão.");
 }
 if (!browserSupabase.includes("autoRefreshToken: false")) {
-  throw new Error("Cliente Supabase do navegador ainda renova tokens diretamente.");
+  throw new Error(
+    "Cliente Supabase do navegador ainda renova tokens diretamente.",
+  );
 }
 if (!appSource.includes('import("./CustomerRegistrationBffPage")')) {
   throw new Error("Cadastro público real não está roteado para o BFF.");
 }
 for (const marker of ["requireSupabase", "auth.setSession", "Authorization"]) {
   if (registrationSource.includes(marker)) {
-    throw new Error(`Cadastro BFF contém acesso proibido no navegador: ${marker}`);
+    throw new Error(
+      `Cadastro BFF contém acesso proibido no navegador: ${marker}`,
+    );
   }
 }
 for (const marker of [
@@ -74,14 +92,47 @@ for (const marker of [
   "Authorization",
 ]) {
   if (instantOrderSource.includes(marker)) {
-    throw new Error(`Pedido público contém acesso proibido no navegador: ${marker}`);
+    throw new Error(
+      `Pedido público contém acesso proibido no navegador: ${marker}`,
+    );
   }
 }
 if (!instantOrderSource.includes("submitPublicInstantOrder")) {
   throw new Error("Pedido público real não usa o cliente BFF seguro.");
 }
 if (!instantOrderClient.includes('fetch("/api/public-instant-order"')) {
-  throw new Error("Cliente do pedido público não aponta para o endpoint BFF oficial.");
+  throw new Error(
+    "Cliente do pedido público não aponta para o endpoint BFF oficial.",
+  );
+}
+
+const forbiddenLiveBrowserMarkers = [
+  "requireSupabase",
+  "@supabase/supabase-js",
+  "auth.setSession",
+  "auth.getSession",
+  "localStorage",
+  "sessionStorage",
+  "Authorization",
+];
+for (const { path, source } of liveBffSources) {
+  for (const marker of forbiddenLiveBrowserMarkers) {
+    if (source.includes(marker)) {
+      throw new Error(
+        `Fluxo real contém acesso proibido no navegador: ${marker} em ${path}`,
+      );
+    }
+  }
+}
+
+if (!operationHub.includes("<OperationManualSale />")) {
+  throw new Error("A operação real não expõe a venda rápida.");
+}
+if (!customerGateway.includes("<CustomerGoogleWalletButton")) {
+  throw new Error("O cartão real do cliente não oferece Google Wallet.");
+}
+if (!googleWalletClient.includes('fetch("/api/google-wallet-pass"')) {
+  throw new Error("Google Wallet não está isolado no endpoint BFF oficial.");
 }
 
 const scripts = [...distIndex.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)];
@@ -90,11 +141,14 @@ for (const [, attributes, body] of scripts) {
   if (/type=["']application\/ld\+json["']/.test(attributes)) {
     const digest = createHash("sha256").update(body).digest("base64");
     if (!csp.includes(`'sha256-${digest}'`)) {
-      throw new Error("O JSON-LD compilado não está autorizado pelo hash da CSP.");
+      throw new Error(
+        "O JSON-LD compilado não está autorizado pelo hash da CSP.",
+      );
     }
     continue;
   }
-  if (body.trim()) throw new Error("Build contém JavaScript executável inline.");
+  if (body.trim())
+    throw new Error("Build contém JavaScript executável inline.");
 }
 
 const externalExecutableScript = scripts.find(([, attributes]) => {
@@ -122,6 +176,8 @@ const forbiddenLegacyMarkers = [
   "adoce-remember-login",
   "/api/customer-phone-login",
   "/api/staff-phone-login",
+  "GOOGLE_WALLET_PRIVATE_KEY",
+  "BEGIN PRIVATE KEY",
 ];
 
 for (const file of javascriptFiles) {
@@ -140,5 +196,5 @@ if (productionFiles.some((file) => /LegacyPrototype/i.test(file))) {
 }
 
 console.log(
-  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro e pedidos públicos pelo BFF, além da ausência de persistência de tokens validados.",
+  "Gate de segurança aprovado: CSP, headers, scripts, isolamento do protótipo, cadastro, pedidos, operação real e Google Wallet pelo BFF, sem persistência de tokens ou segredos no bundle.",
 );
