@@ -26,7 +26,9 @@ describe("fundação segura dos pedidos imediatos", () => {
   });
 
   it("explica que a confirmação vem antes do pagamento", () => {
-    expect(publicPanel).toContain("Nenhum pagamento será solicitado antes da confirmação da disponibilidade.");
+    expect(publicPanel).toContain("Nenhum pagamento será");
+    expect(publicPanel).toContain("solicitado antes da confirmação da disponibilidade");
+    expect(publicPanel).toContain("O valor mostrado foi recalculado no servidor");
     expect(publicPanel).not.toContain("Pague agora");
   });
 
