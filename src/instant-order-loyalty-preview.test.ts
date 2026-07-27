@@ -43,8 +43,8 @@ describe("prévia segura do Clube no pedido de fatias", () => {
     expect(panel).toContain("Quero receber minha fatia-presente neste pedido");
     expect(panel).toContain("submitPublicInstantOrder");
     expect(panel).toContain("reward: selectedReward");
-    expect(service).toContain('action: "loyalty_preview"');
-    expect(service).toContain('action: "submit"');
+    expect(service).toContain('>("loyalty_preview", {');
+    expect(service).toContain('>("submit", {');
     expect(rewardMigration).toContain("created_order.profile_id is distinct from (select auth.uid())");
     expect(rewardMigration).toContain("status, is_reward");
     expect(rewardMigration).toContain("instant_order_item_sauces");
