@@ -1,0 +1,156 @@
+name: Publicar validação visual da homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite PUBLICAR VALIDACAO VISUAL
+        required: true
+        type: string
+      expected_commit:
+        description: Commit exato da branch aprovado para validação visual
+        required: true
+        type: string
+
+concurrency:
+  group: homologation-visual-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  NETLIFY_CONTEXT: branch-deploy
+  EXPECTED_SITE_URL: ${{ vars.HOMOLOGATION_SITE_URL }}
+  PRODUCTION_SITE_ID: ${{ vars.NETLIFY_PRODUCTION_SITE_ID }}
+
+jobs:
+  visual-preview:
+    name: Build e preview visual isolado
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: homologation
+    steps:
+      - name: Baixar somente a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, branch, commit e site isolado
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "PUBLICAR VALIDACAO VISUAL"
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test -n "$HOMOLOGATION_SITE_ID"
+          test -n "$PRODUCTION_SITE_ID"
+          test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"
+          case "$EXPECTED_SITE_URL" in
+            https://*.netlify.app) ;;
+            *) echo "URL de homologação inválida" >&2; exit 1 ;;
+          esac
+          case "$EXPECTED_SITE_URL" in
+            *adocebrigaderia.com.br*) echo "Domínio de produção proibido" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar e executar gate rápido
+        run: |
+          npm ci --prefer-offline --no-audit
+          npm run verify:fast
+
+      - name: Vincular ao projeto exclusivo de homologação
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+        run: |
+          test -n "$NETLIFY_AUTH_TOKEN"
+          npx --yes netlify-cli@26.2.0 link --id "$NETLIFY_HOMOLOGATION_SITE_ID"
+
+      - name: Gerar build marcado para validação visual
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+        run: |
+          npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" \
+            env VITE_ADOCE_VALIDATION_MODE=visual npm run build
+
+      - name: Criar deploy estático de rascunho
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npx --yes netlify-cli@26.2.0 deploy \
+            --site "$NETLIFY_HOMOLOGATION_SITE_ID" \
+            --context "$NETLIFY_CONTEXT" \
+            --alias validacao-visual-adoce \
+            --dir dist \
+            --no-build \
+            --json > artifacts/netlify-visual-preview.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const deploy = JSON.parse(fs.readFileSync('artifacts/netlify-visual-preview.json', 'utf8'));
+          if (!deploy.deploy_id && !deploy.id) throw new Error('Deploy sem identificador.');
+          if (deploy.is_prod === true) throw new Error('Deploy produtivo foi rejeitado.');
+          const deployUrl = deploy.deploy_url || deploy.ssl_url || deploy.url;
+          if (!deployUrl) throw new Error('Deploy sem URL HTTPS.');
+          const deployed = new URL(deployUrl);
+          const expected = new URL(process.env.EXPECTED_SITE_URL);
+          const expectedHost = expected.hostname.toLowerCase();
+          const deployedHost = deployed.hostname.toLowerCase();
+          const belongsToHomologationSite =
+            deployedHost === expectedHost || deployedHost.endsWith(`--${expectedHost}`);
+          if (deployed.protocol !== 'https:' || !deployedHost.endsWith('.netlify.app')) {
+            throw new Error('URL do deploy não pertence à Netlify HTTPS.');
+          }
+          if (!belongsToHomologationSite) {
+            throw new Error('URL do deploy não pertence ao site reservado de homologação.');
+          }
+          if (deployedHost.includes('adocebrigaderia.com.br')) {
+            throw new Error('Domínio produtivo rejeitado no deploy.');
+          }
+          fs.writeFileSync('artifacts/homologation-visual-url.txt', `${deployed.origin}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `HOMOLOGATION_VISUAL_URL=${deployed.origin}\n`);
+          NODE
+
+      - name: Validar navegação pública básica
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOMOLOGATION_VISUAL_URL"
+          status="000"
+          for attempt in $(seq 1 12); do
+            status="$(curl -sS -L -o artifacts/homologation-visual-index.html -w '%{http_code}' "$HOMOLOGATION_VISUAL_URL" || true)"
+            [ "$status" = "200" ] && break
+            sleep 5
+          done
+          test "$status" = "200"
+          grep -q 'id="root"' artifacts/homologation-visual-index.html
+
+      - name: Preservar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homologacao-visual-${{ github.run_number }}
+          path: |
+            artifacts/netlify-visual-preview.json
+            artifacts/homologation-visual-url.txt
+            artifacts/homologation-visual-index.html
+          if-no-files-found: warn
+          retention-days: 7
