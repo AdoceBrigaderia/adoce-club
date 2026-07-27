@@ -69,6 +69,14 @@ jobs:
           set -o pipefail
           npm run test:browser-security-audit 2>&1 | tee artifacts/browser-security-audit-tests.log
 
+      - id: homologation_gate_tests
+        name: Testar isolamento da homologação
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:homologation-environment 2>&1 | tee artifacts/homologation-environment-tests.log
+
       - id: audit
         name: Auditar referências de imagens
         continue-on-error: true
@@ -118,6 +126,7 @@ jobs:
           TEST_RESULT: ${{ steps.tests.outcome }}
           AUDIT_TEST_RESULT: ${{ steps.audit_tests.outcome }}
           BROWSER_AUDIT_TEST_RESULT: ${{ steps.browser_audit_tests.outcome }}
+          HOMOLOGATION_GATE_TEST_RESULT: ${{ steps.homologation_gate_tests.outcome }}
           AUDIT_RESULT: ${{ steps.audit.outcome }}
           BROWSER_AUDIT_RESULT: ${{ steps.browser_audit.outcome }}
           BUILD_RESULT: ${{ steps.build.outcome }}
@@ -126,6 +135,7 @@ jobs:
           echo "Vitest: $TEST_RESULT"
           echo "Testes da auditoria de imagens: $AUDIT_TEST_RESULT"
           echo "Testes da auditoria do navegador: $BROWSER_AUDIT_TEST_RESULT"
+          echo "Testes do isolamento de homologação: $HOMOLOGATION_GATE_TEST_RESULT"
           echo "Auditoria de imagens: $AUDIT_RESULT"
           echo "Auditoria do navegador: $BROWSER_AUDIT_RESULT"
           echo "Build: $BUILD_RESULT"
@@ -133,6 +143,7 @@ jobs:
           test "$TEST_RESULT" = success
           test "$AUDIT_TEST_RESULT" = success
           test "$BROWSER_AUDIT_TEST_RESULT" = success
+          test "$HOMOLOGATION_GATE_TEST_RESULT" = success
           test "$AUDIT_RESULT" = success
           test "$BROWSER_AUDIT_RESULT" = success
           test "$BUILD_RESULT" = success
