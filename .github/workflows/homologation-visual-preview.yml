@@ -23,6 +23,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
@@ -147,6 +148,26 @@ jobs:
           done
           test "$status" = "200"
           grep -q 'id="root"' artifacts/homologation-visual-index.html
+
+      - name: Registrar URL no issue de acompanhamento
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=$(cat <<EOF
+          ## Preview visual publicado
+
+          - Commit: \`${GITHUB_SHA}\`
+          - URL: ${HOMOLOGATION_VISUAL_URL}
+          - Escopo: validação visual em celular, tablet e computador.
+          - Limite: ações transacionais e integrações externas podem estar indisponíveis neste preview estático.
+          - Produção: não alterada.
+          EOF
+          )
+          gh api --method POST \
+            "repos/${GITHUB_REPOSITORY}/issues/3/comments" \
+            -f body="$body"
 
       - name: Preservar evidências
         if: always()
