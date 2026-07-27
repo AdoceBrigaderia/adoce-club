@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CheckCircle2,
   Clock3,
   Mail,
@@ -11,6 +12,12 @@ import { bffRpc } from "./services/bff-rpc";
 import "./operation-privacy-requests.css";
 
 type PrivacyStatus = "new" | "reviewing" | "resolved" | "closed";
+type PrivacyRequestType =
+  | "access"
+  | "correction"
+  | "deletion"
+  | "consent"
+  | "other";
 
 type PrivacyRequest = {
   id: string;
@@ -22,6 +29,11 @@ type PrivacyRequest = {
   message: string;
   status: PrivacyStatus;
   internal_notes: string;
+  privacy_request_type: PrivacyRequestType;
+  privacy_due_at: string;
+  privacy_resolved_at: string | null;
+  privacy_closed_at: string | null;
+  overdue: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -39,6 +51,14 @@ const statusLabel: Record<PrivacyStatus, string> = {
   reviewing: "Em análise",
   resolved: "Resolvida",
   closed: "Fechada",
+};
+
+const privacyTypeLabel: Record<PrivacyRequestType, string> = {
+  access: "Consulta de dados",
+  correction: "Correção de dados",
+  deletion: "Exclusão ou anonimização",
+  consent: "Consentimento",
+  other: "Outro assunto",
 };
 
 const dateTime = new Intl.DateTimeFormat("pt-BR", {
@@ -111,6 +131,10 @@ export default function OperationPrivacyRequests() {
     () => requests.filter((item) => item.status === "new").length,
     [requests],
   );
+  const overdueCount = useMemo(
+    () => requests.filter((item) => item.overdue).length,
+    [requests],
+  );
 
   const update = async (item: PrivacyRequest, nextStatus: PrivacyStatus) => {
     if (busyId) return;
@@ -151,10 +175,10 @@ export default function OperationPrivacyRequests() {
             das respostas ao cliente.
           </p>
         </div>
-        <span>
-          <ShieldCheck />
-          <strong>{pendingCount}</strong>
-          <small>nova(s)</small>
+        <span className={overdueCount ? "has-overdue" : ""}>
+          {overdueCount ? <AlertTriangle /> : <ShieldCheck />}
+          <strong>{overdueCount || pendingCount}</strong>
+          <small>{overdueCount ? "atrasada(s)" : "nova(s)"}</small>
         </span>
       </header>
 
@@ -196,8 +220,14 @@ export default function OperationPrivacyRequests() {
         {requests.map((item) => {
           const waUrl = whatsappUrl(item.customer_phone);
           const busy = busyId === item.id;
+          const requestType =
+            privacyTypeLabel[item.privacy_request_type] || privacyTypeLabel.other;
           return (
-            <details key={item.id} open={item.status === "new"}>
+            <details
+              key={item.id}
+              open={item.status === "new" || item.overdue}
+              className={item.overdue ? "overdue" : ""}
+            >
               <summary>
                 <span className={`status ${item.status}`}>
                   {statusLabel[item.status]}
@@ -207,7 +237,12 @@ export default function OperationPrivacyRequests() {
                     <Clock3 /> {dateTime.format(new Date(item.created_at))}
                   </small>
                   <h3>{item.customer_name}</h3>
+                  <span className="privacy-kind">{requestType}</span>
                   <p>{item.message}</p>
+                  <small className={item.overdue ? "privacy-due overdue" : "privacy-due"}>
+                    {item.overdue ? <AlertTriangle /> : <Clock3 />}
+                    Prazo interno: {dateTime.format(new Date(item.privacy_due_at))}
+                  </small>
                 </div>
                 <strong>{item.protocol}</strong>
               </summary>
@@ -215,6 +250,22 @@ export default function OperationPrivacyRequests() {
               <div className="operation-privacy-body">
                 <section>
                   <h4>Solicitação</h4>
+                  <div className="operation-privacy-metadata">
+                    <span>
+                      <strong>Tipo</strong>
+                      {requestType}
+                    </span>
+                    <span className={item.overdue ? "overdue" : ""}>
+                      <strong>Prazo interno</strong>
+                      {dateTime.format(new Date(item.privacy_due_at))}
+                    </span>
+                    {item.privacy_resolved_at ? (
+                      <span>
+                        <strong>Resolvida em</strong>
+                        {dateTime.format(new Date(item.privacy_resolved_at))}
+                      </span>
+                    ) : null}
+                  </div>
                   <p>{item.message}</p>
                   <div className="operation-privacy-contact">
                     {item.customer_email ? (
