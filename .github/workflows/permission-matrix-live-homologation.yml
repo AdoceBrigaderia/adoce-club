@@ -173,6 +173,20 @@ jobs:
             2>&1 | tee artifacts/security-live/privacy-access-response.log
           grep -Eiq "ROLLBACK" artifacts/security-live/privacy-access-response.log
 
+      - name: Validar correção e consentimento com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc \
+            --set=ON_ERROR_STOP=1 \
+            --file=supabase/tests/privacy_correction_consent_live.sql \
+            2>&1 | tee artifacts/security-live/privacy-correction-consent.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/privacy-correction-consent.log
+
       - name: Preservar evidências sem credenciais
         if: always()
         uses: actions/upload-artifact@v4
