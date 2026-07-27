@@ -4,6 +4,11 @@ const PRODUCTION_HOSTS = new Set([
   "clube.adocebrigaderia.com.br",
 ]);
 
+const CORE_SECURITY_VARIABLES = [
+  "WHATSAPP_OTP_PEPPER",
+  "PUBLIC_RATE_LIMIT_PEPPER",
+] as const;
+
 const META_VARIABLES = [
   "META_WA_ACCESS_TOKEN",
   "META_WA_PHONE_NUMBER_ID",
@@ -108,6 +113,7 @@ export function buildHomologationReadiness(
     value(environment, "SUPABASE_SECRET_KEY") ||
       value(environment, "SUPABASE_SERVICE_ROLE_KEY"),
   );
+  const coreSecurityMissing = missing(environment, CORE_SECURITY_VARIABLES);
   const metaMissing = missing(environment, META_VARIABLES);
   const walletMissing = missing(environment, WALLET_VARIABLES);
   const passkeyMissing = missing(environment, PASSKEY_VARIABLES);
@@ -123,7 +129,8 @@ export function buildHomologationReadiness(
       siteAllowed &&
       supabaseIsolated &&
       publishableKeyPresent &&
-      serverSecretPresent,
+      serverSecretPresent &&
+      coreSecurityMissing.length === 0,
   );
 
   return {
@@ -144,6 +151,10 @@ export function buildHomologationReadiness(
       ),
       publishableKeyPresent,
       serverSecretPresent,
+    },
+    security: {
+      configured: coreSecurityMissing.length === 0,
+      missing: coreSecurityMissing,
     },
     integrations: {
       passkeys: {
