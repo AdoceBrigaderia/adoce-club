@@ -14,6 +14,7 @@ import { getBffSession, type BffSession } from "./services/bff-auth";
 export default function OperationBusinessHub() {
   const [session, setSession] = useState<BffSession | null>(null);
   const [error, setError] = useState("");
+  const [businessRevision, setBusinessRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -53,17 +54,21 @@ export default function OperationBusinessHub() {
       </p>
     );
   }
+
+  const refreshBusinessViews = () =>
+    setBusinessRevision((current) => current + 1);
+
   return (
     <>
       <OperationCustomerCheckIns />
-      <OperationManualSale />
+      <OperationManualSale onCreated={refreshBusinessViews} />
       <OperationQuickLoyalty />
-      <OperationCustomer360 />
+      <OperationCustomer360 key={`customer-${businessRevision}`} />
       <OperationContingencySale />
       <OperationCashReconciliation />
-      <OperationQuickCash />
+      <OperationQuickCash key={`cash-${businessRevision}`} />
       <OperationWhatsAppHealth />
-      <OperationReports />
+      <OperationReports key={`reports-${businessRevision}`} />
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
   );
