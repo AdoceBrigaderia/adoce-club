@@ -25,7 +25,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Adoce Hoje, pré-reservas comerciais, Pede Junto, analytics e feedback público passam por Functions same-origin.
 - RPCs de escrita pública correspondentes foram retirados de `anon`/`authenticated` e limitados ao `service_role` do servidor.
 - RPCs aposentados de consulta de pedido, verificação antiga do WhatsApp, claim antigo de cadastro e auditoria do rollback remoto foram bloqueados para `anon` e `authenticated` na homologação.
-- O advisor de segurança deixou de apresentar função `SECURITY DEFINER` executável por usuário anônimo; os avisos restantes de `authenticated` estão em auditoria por allowlist e autorização interna.
+- Dezenove RPCs autenticados sem rota na aplicação atual foram retirados de `authenticated`; ficaram disponíveis apenas para manutenção controlada por `service_role`.
+- A allowlist viva dos `SECURITY DEFINER` autenticados foi executada na homologação sem divergências e falha caso uma função inesperada seja exposta.
+- O advisor de segurança deixou de apresentar função `SECURITY DEFINER` executável por usuário anônimo; os avisos autenticados restantes correspondem à superfície controlada e continuam protegidos pela identidade do usuário e autorização interna.
 - Pré-reservas e feedback possuem chave idempotente e trava transacional contra duplicidade.
 - Endpoints públicos sensíveis possuem rate limit transacional por IP e contato com identificadores anonimizados antes do armazenamento.
 - Tabelas exclusivamente internas têm RLS, privilégios diretos revogados e política explícita de negação.
@@ -60,15 +62,13 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Google Wallet está preparado no BFF e banco, porém a emissão real depende da conta de emissor e da chave de serviço.
 - O preview público de homologação ainda deve ser configurado com variáveis exclusivas, publicado e submetido ao roteiro funcional completo.
 - A proteção contra senhas vazadas deve ser habilitada no Supabase Auth de homologação quando a configuração estiver disponível.
-- As funções `SECURITY DEFINER` intencionalmente executáveis por `authenticated` continuam sendo comparadas com a allowlist do BFF e seus controles internos antes da liberação final.
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
 1. Executar testes reais de passkey em Android, iPhone e Windows.
 2. Configurar Meta WhatsApp e Google Wallet no cofre do ambiente de homologação.
 3. Publicar um preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
-4. Concluir o inventário das funções `SECURITY DEFINER` autenticadas e bloquear qualquer rotina fora das superfícies atuais.
-5. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
+4. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
 
 ## Evidências principais
 
@@ -79,10 +79,13 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `tests/e2e/public-mobile-smoke.e2e.mjs`
 - `supabase/tests/permission_matrix_live.sql`
 - `supabase/tests/public_endpoint_rate_limit_live.sql`
+- `supabase/tests/authenticated_rpc_allowlist_live.sql`
 - `supabase/migrations/20260727124000_lock_retired_direct_rpcs.sql`
+- `supabase/migrations/20260727125000_lock_unrouted_authenticated_rpcs.sql`
 - `docs/permission-matrix-live-runbook.md`
 - `src/legacy-surfaces-removed.test.ts`
 - `src/retired-direct-rpc-lockdown.test.ts`
+- `src/unrouted-authenticated-rpc-lockdown.test.ts`
 - `src/bff-session-security.test.ts`
 - `src/public-service-request-bff-security.test.ts`
 - `src/site-feedback-bff-hardening.test.ts`
