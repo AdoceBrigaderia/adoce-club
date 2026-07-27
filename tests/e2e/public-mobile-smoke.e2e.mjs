@@ -25,7 +25,9 @@ test("página pública preserva identidade e não estoura a largura", async ({ p
   await page.goto("/#", { waitUntil: "networkidle" });
 
   await expect(page).toHaveTitle(/Adoce Brigaderia/i);
-  await expect(page.getByRole("img", { name: "Adoce Brigaderia" }).first()).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Adoce Brigaderia — início" }).first(),
+  ).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(pageErrors).toEqual([]);
 });
