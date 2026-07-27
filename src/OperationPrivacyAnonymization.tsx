@@ -37,6 +37,13 @@ type AnonymizationPlan = {
   confirmation_required: string;
 };
 
+type ReviewedAnonymizationPlan = AnonymizationPlan & {
+  reviewed_at: string;
+  expires_at: string;
+};
+
+const REVIEW_VALIDITY_MS = 5 * 60 * 1000;
+
 const dateTime = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
   month: "2-digit",
@@ -46,10 +53,13 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Fortaleza",
 });
 
+const planIsFresh = (plan: ReviewedAnonymizationPlan | undefined) =>
+  Boolean(plan && Date.parse(plan.expires_at) > Date.now());
+
 export default function OperationPrivacyAnonymization() {
   const [owner, setOwner] = useState<boolean | null>(null);
   const [requests, setRequests] = useState<DeletionRequest[]>([]);
-  const [plans, setPlans] = useState<Record<string, AnonymizationPlan>>({});
+  const [plans, setPlans] = useState<Record<string, ReviewedAnonymizationPlan>>({});
   const [confirmations, setConfirmations] = useState<Record<string, string>>({});
   const [acknowledged, setAcknowledged] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
@@ -98,13 +108,12 @@ export default function OperationPrivacyAnonymization() {
   }, [load]);
 
   const blockerCount = useMemo(
-    () =>
-      Object.values(plans).filter((plan) => !plan.ready).length,
+    () => Object.values(plans).filter((plan) => !plan.ready).length,
     [plans],
   );
 
   const review = async (item: DeletionRequest) => {
-    if (busyId) return;
+    if (busyId || item.privacy_identity_status !== "verified") return;
     setBusyId(item.id);
     setNotice("");
     try {
@@ -112,7 +121,13 @@ export default function OperationPrivacyAnonymization() {
         "staff_get_privacy_anonymization_plan",
         { target_feedback_id: item.id },
       );
-      setPlans((current) => ({ ...current, [item.id]: plan }));
+      const reviewedAt = Date.now();
+      const reviewedPlan: ReviewedAnonymizationPlan = {
+        ...plan,
+        reviewed_at: new Date(reviewedAt).toISOString(),
+        expires_at: new Date(reviewedAt + REVIEW_VALIDITY_MS).toISOString(),
+      };
+      setPlans((current) => ({ ...current, [item.id]: reviewedPlan }));
       setConfirmations((current) => ({ ...current, [item.id]: "" }));
       setAcknowledged((current) => ({ ...current, [item.id]: false }));
       setNotice(
@@ -133,12 +148,20 @@ export default function OperationPrivacyAnonymization() {
 
   const anonymize = async (item: DeletionRequest) => {
     const plan = plans[item.id];
+    const fresh = planIsFresh(plan);
     if (
       busyId ||
+      item.privacy_identity_status !== "verified" ||
       !plan?.ready ||
-      confirmations[item.id] !== item.protocol ||
+      !fresh ||
+      confirmations[item.id] !== plan.confirmation_required ||
       !acknowledged[item.id]
     ) {
+      if (plan && !fresh) {
+        setNotice(
+          `${item.protocol}: a revisão expirou. Revise o impacto novamente antes de continuar.`,
+        );
+      }
       return;
     }
 
@@ -215,7 +238,12 @@ export default function OperationPrivacyAnonymization() {
         {requests.map((item) => {
           const plan = plans[item.id];
           const busy = busyId === item.id;
-          const confirmationMatches = confirmations[item.id] === item.protocol;
+          const identityVerified = item.privacy_identity_status === "verified";
+          const fresh = planIsFresh(plan);
+          const confirmationMatches =
+            Boolean(plan) && confirmations[item.id] === plan?.confirmation_required;
+          const confirmationId = `privacy-anonymization-confirmation-${item.id}`;
+          const confirmationHelpId = `${confirmationId}-help`;
           return (
             <article key={item.id} className={item.overdue ? "overdue" : ""}>
               <div className="privacy-anonymization-title">
@@ -226,20 +254,34 @@ export default function OperationPrivacyAnonymization() {
                   <h3>{item.customer_name}</h3>
                   <span>{item.protocol}</span>
                 </div>
-                <button type="button" onClick={() => void review(item)} disabled={busy}>
+                <button
+                  type="button"
+                  onClick={() => void review(item)}
+                  disabled={busy || !identityVerified}
+                  title={
+                    identityVerified
+                      ? "Recalcular bloqueios e impacto"
+                      : "Confirme a identidade na fila de privacidade primeiro"
+                  }
+                >
                   <ShieldCheck /> Revisar impacto
                 </button>
               </div>
 
-              {item.privacy_identity_status !== "verified" ? (
-                <p className="privacy-anonymization-warning">
+              {!identityVerified ? (
+                <p className="privacy-anonymization-warning" role="alert">
                   <AlertTriangle /> A identidade ainda não foi confirmada na fila de
-                  privacidade.
+                  privacidade. A revisão e a anonimização permanecem bloqueadas.
                 </p>
               ) : null}
 
               {plan ? (
                 <div className="privacy-anonymization-plan">
+                  <p className="privacy-anonymization-review-time">
+                    Revisão válida até {dateTime.format(new Date(plan.expires_at))}. A execução
+                    final também recalcula os bloqueios no backend.
+                  </p>
+
                   <div className="privacy-anonymization-grid">
                     <span>
                       <strong>Pedidos em aberto</strong>
@@ -258,8 +300,16 @@ export default function OperationPrivacyAnonymization() {
                       {plan.blockers.staff_profile ? "Sim" : "Não"}
                     </span>
                     <span>
+                      <strong>Contas de fidelidade</strong>
+                      {plan.impact.loyalty_accounts}
+                    </span>
+                    <span>
                       <strong>Pedidos a anonimizar</strong>
                       {plan.impact.orders_to_anonymize}
+                    </span>
+                    <span>
+                      <strong>Atendimentos a anonimizar</strong>
+                      {plan.impact.service_requests_to_anonymize}
                     </span>
                     <span>
                       <strong>Recompensas a reverter</strong>
@@ -271,18 +321,25 @@ export default function OperationPrivacyAnonymization() {
                     </span>
                   </div>
 
-                  {!plan.ready ? (
-                    <p className="privacy-anonymization-warning">
+                  {!fresh ? (
+                    <p className="privacy-anonymization-warning" role="alert">
+                      <AlertTriangle /> Esta revisão expirou. Toque em Revisar impacto antes de
+                      continuar.
+                    </p>
+                  ) : !plan.ready ? (
+                    <p className="privacy-anonymization-warning" role="alert">
                       <AlertTriangle /> Há vínculos operacionais que precisam ser resolvidos
                       antes da anonimização.
                     </p>
                   ) : (
                     <div className="privacy-anonymization-confirmation">
-                      <p>
-                        Esta ação é irreversível. Digite exatamente <strong>{item.protocol}</strong>
-                        para confirmar.
+                      <p id={confirmationHelpId}>
+                        Esta ação é irreversível. Digite exatamente{" "}
+                        <strong>{plan.confirmation_required}</strong> para confirmar.
                       </p>
+                      <label htmlFor={confirmationId}>Confirmação pelo protocolo</label>
                       <input
+                        id={confirmationId}
                         value={confirmations[item.id] || ""}
                         onChange={(event) =>
                           setConfirmations((current) => ({
@@ -290,8 +347,11 @@ export default function OperationPrivacyAnonymization() {
                             [item.id]: event.target.value,
                           }))
                         }
-                        placeholder={item.protocol}
+                        placeholder={plan.confirmation_required}
+                        aria-describedby={confirmationHelpId}
                         autoComplete="off"
+                        autoCapitalize="characters"
+                        spellCheck={false}
                         disabled={busy}
                       />
                       <label>
@@ -312,7 +372,13 @@ export default function OperationPrivacyAnonymization() {
                         type="button"
                         className="danger"
                         onClick={() => void anonymize(item)}
-                        disabled={busy || !confirmationMatches || !acknowledged[item.id]}
+                        disabled={
+                          busy ||
+                          !identityVerified ||
+                          !fresh ||
+                          !confirmationMatches ||
+                          !acknowledged[item.id]
+                        }
                       >
                         <Trash2 /> Anonimizar definitivamente
                       </button>
