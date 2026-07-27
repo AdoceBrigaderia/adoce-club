@@ -1,14 +1,19 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("acesso do cliente por celular e senha", () => {
-  it("usa o endpoint seguro e restaura a sessão no navegador", () => {
-    const auth = source("./services/auth.ts");
-    expect(auth).toContain('fetch("/api/customer-phone-login"');
-    expect(auth).toContain("auth.setSession");
-    expect(auth).not.toContain("signInWithPassword({\n    phone:");
+  it("remove o restaurador de sessão legado e usa somente o gateway BFF", () => {
+    expect(existsSync(new URL("./services/auth.ts", import.meta.url))).toBe(false);
+    const gateway = source("./PasskeyClientGateway.tsx");
+    const bffAuth = source("./services/bff-auth.ts");
+    expect(gateway).toContain("loginWithBffPassword");
+    expect(bffAuth).toContain('fetch("/api/auth-bff-login"');
+    expect(bffAuth).toContain('credentials: "same-origin"');
+    expect(bffAuth).not.toContain("auth.setSession");
+    expect(bffAuth).not.toContain("access_token");
+    expect(bffAuth).not.toContain("refresh_token");
   });
 
   it("mantém a identificação interna fora da resposta de erro", () => {
