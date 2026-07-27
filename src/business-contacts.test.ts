@@ -15,6 +15,7 @@ const contactDock = readFileSync(
   new URL("./PublicContactDock.tsx", import.meta.url),
   "utf8",
 );
+const indexHtml = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 
 const expected = {
   atendimento: "atendimento@adocebrigaderia.com.br",
@@ -66,5 +67,13 @@ describe("canais oficiais da Adoce", () => {
   it("oferece o e-mail oficial junto aos canais públicos", () => {
     expect(contactDock).toContain("publicContactLinks.emailAtendimento");
     expect(contactDock).toContain("Canal oficial de atendimento");
+  });
+
+  it("publica atendimento e privacidade nos dados estruturados", () => {
+    expect(indexHtml).toContain('"contactType": "customer service"');
+    expect(indexHtml).toContain('"contactType": "privacy"');
+    expect(indexHtml).toContain(expected.atendimento);
+    expect(indexHtml).toContain(expected.privacidade);
+    expect(indexHtml).not.toContain("fcorbz@gmail.com");
   });
 });
