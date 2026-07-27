@@ -77,8 +77,8 @@ describe("verificação de identidade em solicitações de privacidade", () => {
     expect(operation).toContain('bffRpc("staff_verify_privacy_request_identity"');
     expect(operation).toContain("Identidade confirmada");
     expect(operation).toContain("Não confirmada");
-    expect(operation).toContain(
-      "Não registre documentos ou códigos completos nesta anotação.",
+    expect(operation).toMatch(
+      /Não registre documentos ou\s+códigos completos nesta anotação\./,
     );
   });
 });

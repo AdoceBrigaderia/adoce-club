@@ -33,7 +33,9 @@ describe("ensaio vivo da operação de privacidade", () => {
   it("valida idempotência, tipo, prazo, outbox e bloqueio ao navegador", () => {
     expect(typesLiveTest).toContain("repeated_result");
     expect(typesLiveTest).toContain("'access'");
-    expect(typesLiveTest).toContain("interval '15 days'");
+    expect(typesLiveTest).toContain("interval '14 days'");
+    expect(typesLiveTest).toContain("interval '16 days'");
+    expect(typesLiveTest).toContain("em torno de 15 dias");
     expect(typesLiveTest).toContain("'business.privacidade'");
     expect(typesLiveTest).toContain("'unknown'");
     expect(typesLiveTest).toContain("has_function_privilege");

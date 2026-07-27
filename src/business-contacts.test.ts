@@ -70,8 +70,8 @@ describe("canais oficiais da Adoce", () => {
   });
 
   it("mantém um canal oficial quando o formulário estiver indisponível", () => {
-    expect(feedbackPage).toContain('"atendimento",');
-    expect(feedbackPage).toContain("BUSINESS_CONTACTS.atendimento.email");
+    expect(feedbackPage).toContain('? "privacidade" : "atendimento"');
+    expect(feedbackPage).toContain("BUSINESS_CONTACTS[fallbackContact].email");
     expect(feedbackPage).toContain(
       "Não foi possível conectar ao atendimento agora.",
     );

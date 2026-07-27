@@ -43,7 +43,9 @@ describe("Pede Junto pelo BFF", () => {
     expect(endpoint).toContain("validGroupCsrf(request)");
     expect(client).toContain('headers["X-Adoce-Group-CSRF"] = csrf');
     expect(client).toContain('credentials: "same-origin"');
-    expect(client).toContain('request<{ room: PedeJuntoRoom; access: PedeJuntoAccess }>(\n    "select"');
+    expect(client).toMatch(
+      /request<\{ room: PedeJuntoRoom; access: PedeJuntoAccess \}>\(\s+"select"/,
+    );
     expect(client).toContain('>("submit", { group_code: code }, true)');
   });
 

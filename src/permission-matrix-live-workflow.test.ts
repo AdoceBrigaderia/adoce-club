@@ -55,7 +55,11 @@ describe("workflow dos ensaios vivos de segurança", () => {
     expect(workflow).toContain(
       "--file=supabase/tests/authenticated_rpc_allowlist_live.sql",
     );
-    expect(workflow.match(/grep -Eiq \"ROLLBACK\"/g)).toHaveLength(3);
+    const sqlRuns =
+      workflow.match(/--file=supabase\/tests\/[\w-]+\.sql/g) ?? [];
+    const rollbackChecks = workflow.match(/grep -Eiq \"ROLLBACK\"/g) ?? [];
+    expect(sqlRuns.length).toBeGreaterThanOrEqual(3);
+    expect(rollbackChecks).toHaveLength(sqlRuns.length);
   });
 
   it.each([

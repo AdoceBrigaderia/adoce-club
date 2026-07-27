@@ -47,7 +47,17 @@ describe("gate de cabeçalhos de segurança", () => {
   it("autoriza somente o JSON-LD conhecido pelo hash", () => {
     const match = indexHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
     expect(match).not.toBeNull();
-    const digest = createHash("sha256").update(match![1]).digest("base64");
-    expect(contentSecurityPolicy()).toContain(`'sha256-${digest}'`);
+    const normalizedBody = match![1].replace(/\r\n/g, "\n");
+    const knownDigests = [
+      normalizedBody,
+      normalizedBody.replace(/\n/g, "\r\n"),
+    ].map((body) => createHash("sha256").update(body).digest("base64"));
+    const authorizedDigests =
+      contentSecurityPolicy().match(/'sha256-([^']+)'/g) ?? [];
+
+    expect(authorizedDigests).toHaveLength(knownDigests.length);
+    knownDigests.forEach((digest) => {
+      expect(authorizedDigests).toContain(`'sha256-${digest}'`);
+    });
   });
 });

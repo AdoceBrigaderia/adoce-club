@@ -42,7 +42,16 @@ describe("operação de correção e consentimento", () => {
     expect(operation).toContain("requested_marketing: options.marketing");
     expect(operation).toContain("requested_whatsapp: options.marketing && options.whatsapp");
     expect(operation).toContain("requested_email: options.marketing && options.email");
-    expect(actionMigration).toContain("allow_marketing, false");
+    expect(actionMigration).toContain(
+      "allow_marketing boolean := coalesce(requested_marketing, false)",
+    );
+    expect(actionMigration).toContain(
+      "allow_whatsapp boolean := coalesce(requested_marketing, false) and coalesce(requested_whatsapp, false)",
+    );
+    expect(actionMigration).toContain(
+      "allow_email boolean := coalesce(requested_marketing, false) and coalesce(requested_email, false)",
+    );
+    expect(actionMigration).toMatch(/'marketing',\s+allow_marketing,/);
   });
 
   it("bloqueia resolução genérica até o resultado específico", () => {

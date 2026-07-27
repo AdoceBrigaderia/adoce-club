@@ -42,7 +42,7 @@ describe("rate limit dos endpoints públicos", () => {
   });
 
   it("armazena somente hash SHA-256 e nunca IP ou WhatsApp em claro", () => {
-    expect(helper).toContain('crypto.subtle.digest(\n    "SHA-256"');
+    expect(helper).toMatch(/crypto\.subtle\.digest\(\s+"SHA-256"/);
     expect(helper).toContain("requested_subject_hash: digest");
     expect(helper).not.toContain("requested_subject:");
     expect(migration).toContain("subject_hash text not null");
