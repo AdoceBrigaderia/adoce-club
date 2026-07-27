@@ -98,8 +98,14 @@ function sourceLineAt(source, index) {
 }
 
 function isTypeOnlyImport(source, index) {
-  const line = sourceLineAt(source, index);
-  return /^import\s+type\b/.test(line);
+  const prefix = source.slice(0, index);
+  const importIndex = prefix.lastIndexOf("import");
+  const statementBoundary = Math.max(
+    prefix.lastIndexOf(";"),
+    prefix.lastIndexOf("}"),
+  );
+  if (importIndex < 0 || importIndex < statementBoundary) return false;
+  return /^import\s+type\b/.test(source.slice(importIndex, index).trimStart());
 }
 
 function storageViolations(path, source) {
