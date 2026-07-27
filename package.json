@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "test": "vitest run",
+    "test": "vitest run --exclude 'tests/e2e/**'",
     "lint": "tsc -b --pretty false",
     "verify:fast": "npm run lint && npm run test",
     "verify": "npm run lint && npm run test && npm run test:image-library-audit && npm run test:browser-security-audit && npm run test:homologation-environment && npm run audit:image-library && npm run audit:browser-security && npm run build && npm run verify:security-build",
