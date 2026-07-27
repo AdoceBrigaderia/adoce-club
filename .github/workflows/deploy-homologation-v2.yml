@@ -88,6 +88,7 @@ jobs:
         run: |
           mkdir -p artifacts
           npm run report:migration-integrity
+          npm run report:migration-reconciliation
           npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" npm run report:homologation-preflight
           npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" npm run gate:homologation-environment
           npx --yes netlify-cli@26.2.0 build --context "$NETLIFY_CONTEXT"
@@ -174,6 +175,8 @@ jobs:
           path: |
             artifacts/migration-integrity.json
             artifacts/migration-integrity.md
+            artifacts/migration-reconciliation.json
+            artifacts/migration-reconciliation.md
             artifacts/homologation-preflight.json
             artifacts/homologation-preflight.md
             artifacts/netlify-homologation-deploy.json
