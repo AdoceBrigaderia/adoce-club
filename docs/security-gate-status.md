@@ -56,7 +56,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Correções de nome passam pela normalização oficial do backend e registram valor anterior, novo valor e protocolo na auditoria.
 - Alterações de consentimento gravam novo evento. Quando marketing é revogado, WhatsApp, e-mail e preferências promocionais são desligados no backend, mesmo que o navegador envie canais marcados.
 - O status genérico não pode resolver consulta sem entrega, correção/consentimento sem ação aplicada ou exclusão sem o procedimento protegido específico.
-- A exclusão/anonimização é exclusiva do proprietário e exige identidade confirmada, cadastro vinculado, plano de impacto sem bloqueios, aceite explícito e digitação do protocolo exato.
+- A exclusão/anonimização é exclusiva do proprietário e exige identidade confirmada, cadastro vinculado, plano de impacto sem bloqueios, aceite explícito e digitação da confirmação devolvida pelo backend.
+- A revisão visual da anonimização expira após cinco minutos; depois disso, a interface exige novo cálculo de impacto. A execução final continua recalculando bloqueios no backend, portanto o estado do navegador não autoriza a ação.
+- O painel mostra todos os impactos previstos: contas de fidelidade, recompensas, pedidos, atendimentos e check-ins, além de todos os bloqueadores operacionais.
 - O plano bloqueia anonimização de perfil da equipe, pedidos ou atendimentos em aberto e contas de fidelidade compartilhadas.
 - A anonimização revoga sessões, passkeys, QR e Wallet; desativa conta e fidelidade; reverte recompensas disponíveis; remove CRM, check-ins e preferências; e anonimiza contatos em pedidos e serviços preservando registros financeiros e de auditoria.
 - O procedimento não registra nome, telefone ou e-mail originais no evento final de auditoria.
@@ -88,7 +90,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - O preview público de homologação ainda deve receber variáveis e segredos exclusivos, ser publicado no alias fixo e passar pelo roteiro funcional completo.
 - A proteção contra senhas vazadas deve ser habilitada no Supabase Auth de homologação quando a configuração estiver disponível.
 - O head atual ainda precisa de uma execução normal dos três pipelines principais; tentativas recentes encerraram antes de fornecer etapas ou logs utilizáveis.
-- O painel de anonimização está integrado à operação, mas ainda precisa de validação visual no preview publicado e teste touch real em tablet.
+- O painel de anonimização está integrado à operação e protegido por testes de contrato e da janela de revisão, mas ainda precisa de validação visual no preview publicado e teste touch real em tablet.
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
@@ -127,6 +129,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `src/privacy-correction-consent-operation.test.ts`
 - `src/privacy-profile-anonymization.test.ts`
 - `src/privacy-anonymization-operation.test.ts`
+- `src/privacy-anonymization-review.test.ts`
 - Workflows `Portal quality gate`, `Verificar reestruturação`, `Playwright mobile e tablet` e `Testar segurança viva na homologação`
 
 ## Produção
