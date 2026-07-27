@@ -1,5 +1,3 @@
-import { supabase } from "./lib/supabase";
-
 export type PublicAnalyticsEvent =
   | "page_view"
   | "whatsapp_click"
@@ -27,7 +25,7 @@ const productionHosts = new Set([
 ]);
 
 export function publicAnalyticsEnabled() {
-  if (typeof window === "undefined" || !supabase) return false;
+  if (typeof window === "undefined") return false;
   if (!productionHosts.has(window.location.hostname.toLowerCase())) return false;
   if (window.location.hash.startsWith("#operacao")) return false;
   if (window.localStorage.getItem("adoce-analytics") === "denied") return false;
@@ -43,11 +41,20 @@ export function currentPublicPath() {
 export function trackPublicEvent(eventName: PublicAnalyticsEvent, properties: AnalyticsProperties = {}) {
   if (!publicAnalyticsEnabled()) return;
   const device = window.innerWidth < 700 ? "mobile" : window.innerWidth < 1100 ? "tablet" : "desktop";
-  void supabase!.rpc("record_site_analytics_event", {
-    requested_event_id: crypto.randomUUID(),
-    requested_event_name: eventName,
-    requested_page_path: currentPublicPath(),
-    requested_properties: { ...properties, device },
+  void fetch("/api/public-analytics-event", {
+    method: "POST",
+    credentials: "same-origin",
+    keepalive: true,
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      event_id: crypto.randomUUID(),
+      event_name: eventName,
+      page_path: currentPublicPath(),
+      properties: { ...properties, device },
+    }),
   }).then(() => undefined, () => undefined);
 }
 
