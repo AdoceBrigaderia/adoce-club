@@ -1,16 +1,26 @@
 import { useState } from "react";
 import { ArrowLeft, Mail, ShieldCheck } from "lucide-react";
+import { BUSINESS_CONTACTS, businessMailto } from "./business-contacts";
 import "./legal.css";
 
 export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
   const privacy = kind === "privacy";
-  const [analyticsAllowed, setAnalyticsAllowed] = useState(() =>
-    typeof window === "undefined" || window.localStorage.getItem("adoce-analytics") !== "denied",
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(
+    () =>
+      typeof window === "undefined" ||
+      window.localStorage.getItem("adoce-analytics") !== "denied",
   );
   const updateAnalyticsPreference = (allowed: boolean) => {
-    window.localStorage.setItem("adoce-analytics", allowed ? "allowed" : "denied");
+    window.localStorage.setItem(
+      "adoce-analytics",
+      allowed ? "allowed" : "denied",
+    );
     setAnalyticsAllowed(allowed);
   };
+  const contact = privacy
+    ? BUSINESS_CONTACTS.privacidade
+    : BUSINESS_CONTACTS.atendimento;
+
   return (
     <main className="legal-page">
       <header>
@@ -18,12 +28,16 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
           <img src="/site/logo.webp" alt="Adoce Brigaderia" />
           <strong>Adoce Brigaderia</strong>
         </a>
-        <a href="/#inicio"><ArrowLeft /> Voltar ao site</a>
+        <a href="/#inicio">
+          <ArrowLeft /> Voltar ao site
+        </a>
       </header>
       <article>
         <span>{privacy ? "Privacidade e dados pessoais" : "Clube Adoce"}</span>
         <h1>{privacy ? "Política de Privacidade" : "Termos do Clube Adoce"}</h1>
-        <p className="legal-version">Versão 1.1 · vigente desde 22 de julho de 2026</p>
+        <p className="legal-version">
+          Versão 1.2 · vigente desde 27 de julho de 2026
+        </p>
 
         {privacy ? (
           <>
@@ -46,7 +60,9 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
               <li>Criar e proteger seu acesso ao Clube Adoce.</li>
               <li>Registrar carimbos, recompensas, indicações e grupos autorizados.</li>
               <li>Responder solicitações, preparar orçamentos e organizar a agenda.</li>
-              <li>Enviar novidades somente quando houver consentimento opcional válido.</li>
+              <li>
+                Enviar novidades somente quando houver consentimento opcional válido.
+              </li>
               <li>Prevenir fraudes, corrigir falhas e manter auditoria da operação.</li>
             </ul>
             <h2>Compartilhamento e armazenamento</h2>
@@ -58,16 +74,32 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             </p>
             <h2>Medição anônima de uso do site</h2>
             <p>
-              Registramos eventos agregados, como página visitada, abertura de um produto,
-              clique no WhatsApp e envio de pré-reserva, para melhorar a experiência. Esses
-              eventos não recebem nome, telefone, e-mail, endereço IP, conteúdo digitado nem
-              identificador persistente do visitante.
+              Registramos eventos agregados, como página visitada, abertura de um
+              produto, clique no WhatsApp e envio de pré-reserva, para melhorar a
+              experiência. Esses eventos não recebem nome, telefone, e-mail, endereço
+              IP, conteúdo digitado nem identificador persistente do visitante.
             </p>
             <div className="legal-analytics-choice">
-              <strong>Medição anônima: {analyticsAllowed ? "permitida neste aparelho" : "desativada neste aparelho"}</strong>
+              <strong>
+                Medição anônima: {analyticsAllowed
+                  ? "permitida neste aparelho"
+                  : "desativada neste aparelho"}
+              </strong>
               <div>
-                <button type="button" className={analyticsAllowed ? "active" : ""} onClick={() => updateAnalyticsPreference(true)}>Permitir</button>
-                <button type="button" className={!analyticsAllowed ? "active" : ""} onClick={() => updateAnalyticsPreference(false)}>Não permitir</button>
+                <button
+                  type="button"
+                  className={analyticsAllowed ? "active" : ""}
+                  onClick={() => updateAnalyticsPreference(true)}
+                >
+                  Permitir
+                </button>
+                <button
+                  type="button"
+                  className={!analyticsAllowed ? "active" : ""}
+                  onClick={() => updateAnalyticsPreference(false)}
+                >
+                  Não permitir
+                </button>
               </div>
             </div>
             <h2>Seus direitos</h2>
@@ -86,9 +118,8 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             </p>
             <h2>Contato</h2>
             <p>
-              Para exercer direitos ou tirar dúvidas, escreva para
-              <a href="mailto:fcorbz@gmail.com"> fcorbz@gmail.com</a>. Este canal é
-              provisório e poderá ser atualizado nesta página.
+              Para exercer direitos ou tirar dúvidas sobre seus dados, escreva para
+              <a href={businessMailto("privacidade", "Privacidade e dados pessoais")}> {contact.email}</a>.
             </p>
           </>
         ) : (
@@ -103,9 +134,18 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <ul>
               <li>Cada fatia tradicional ou premium paga gera um carimbo.</li>
               <li>Encomendas, tortas inteiras, docinhos e eventos não geram carimbos.</li>
-              <li>Ao completar 14 carimbos, o participante recebe uma fatia tradicional grátis.</li>
-              <li>Uma fatia premium pode ser escolhida mediante pagamento da diferença vigente.</li>
-              <li>A recompensa fica guardada e um novo cartão começa a acumular normalmente.</li>
+              <li>
+                Ao completar 14 carimbos, o participante recebe uma fatia tradicional
+                grátis.
+              </li>
+              <li>
+                Uma fatia premium pode ser escolhida mediante pagamento da diferença
+                vigente.
+              </li>
+              <li>
+                A recompensa fica guardada e um novo cartão começa a acumular
+                normalmente.
+              </li>
             </ul>
             <h2>Cartão em Grupo e Espalhe Doçura</h2>
             <p>
@@ -130,7 +170,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <h2>Contato</h2>
             <p>
               Dúvidas sobre o Clube: WhatsApp (85) 98215-6026 ou
-              <a href="mailto:fcorbz@gmail.com"> fcorbz@gmail.com</a>.
+              <a href={businessMailto("atendimento", "Dúvida sobre o Clube Adoce")}> {contact.email}</a>.
             </p>
           </>
         )}
@@ -138,12 +178,15 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
         <aside>
           {privacy ? <ShieldCheck /> : <Mail />}
           <p>
-            Ao atualizar este documento, a Adoce registrará uma nova versão e solicitará
-            novo aceite quando a alteração afetar direitos ou regras essenciais.
+            Ao atualizar este documento, a Adoce registrará uma nova versão e
+            solicitará novo aceite quando a alteração afetar direitos ou regras
+            essenciais.
           </p>
         </aside>
       </article>
-      <footer>Adoce Brigaderia · Rua Professor Odílio Filho, 227 · Passaré · Fortaleza/CE</footer>
+      <footer>
+        Adoce Brigaderia · Rua Professor Odílio Filho, 227 · Passaré · Fortaleza/CE
+      </footer>
     </main>
   );
 }
