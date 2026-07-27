@@ -14,10 +14,10 @@ if (!result.passed) {
     console.error(`[bloqueio] ${error}`);
   }
   throw new Error(
-    "Publicação de homologação bloqueada: ambiente, domínio ou Supabase não passaram pelo isolamento obrigatório.",
+    "Publicação de homologação bloqueada: ambiente, origem, segredos do núcleo ou Supabase não passaram pelo isolamento obrigatório.",
   );
 }
 
 console.log(
-  "\nHomologação isolada: domínio de produção rejeitado, frontend e Functions no mesmo Supabase autorizado e chave pública validada.\n",
+  "\nHomologação isolada: origem canônica, BFF, passkeys, peppers, segredo server-only, chave pública e Supabase autorizado foram validados.\n",
 );
