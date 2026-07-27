@@ -2,10 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
+  ClipboardCopy,
   Clock3,
+  Download,
+  FileJson,
   Mail,
   MessageCircle,
   RefreshCw,
+  Send,
   ShieldCheck,
 } from "lucide-react";
 import { bffRpc } from "./services/bff-rpc";
@@ -19,6 +23,7 @@ type PrivacyRequestType =
   | "deletion"
   | "consent"
   | "other";
+type PrivacyDeliveryChannel = "email" | "whatsapp" | "in_person" | "other";
 
 type PrivacyRequest = {
   id: string;
@@ -37,9 +42,34 @@ type PrivacyRequest = {
   privacy_identity_status: PrivacyIdentityStatus;
   privacy_identity_checked_at: string | null;
   privacy_identity_notes: string | null;
+  privacy_response_prepared_at: string | null;
+  privacy_response_package_version: string | null;
+  privacy_response_delivered_at: string | null;
+  privacy_response_delivery_channel: PrivacyDeliveryChannel | null;
+  privacy_response_delivery_notes: string | null;
   overdue: boolean;
   created_at: string;
   updated_at: string;
+};
+
+type PrivacyAccessPackage = {
+  metadata: {
+    protocol: string;
+    package_version: string;
+    generated_at: string;
+    scope: string;
+    notice: string;
+  };
+  profile: Record<string, unknown>;
+  consents: unknown[];
+  preferences: Record<string, unknown>;
+  loyalty: {
+    movement_count?: number;
+    recent_movements?: unknown[];
+    [key: string]: unknown;
+  };
+  orders: { total_count?: number; recent?: unknown[] };
+  checkins: { total_count?: number; recent?: unknown[] };
 };
 
 const filters: Array<{ value: "all" | PrivacyStatus; label: string }> = [
@@ -71,6 +101,13 @@ const privacyTypeLabel: Record<PrivacyRequestType, string> = {
   other: "Outro assunto",
 };
 
+const deliveryChannelLabel: Record<PrivacyDeliveryChannel, string> = {
+  email: "E-mail",
+  whatsapp: "WhatsApp",
+  in_person: "Presencial",
+  other: "Outro canal",
+};
+
 const identityRequiredTypes = new Set<PrivacyRequestType>([
   "access",
   "correction",
@@ -94,10 +131,17 @@ function whatsappUrl(value: string | null) {
   return `https://wa.me/${international}`;
 }
 
+function packageJson(value: PrivacyAccessPackage) {
+  return JSON.stringify(value, null, 2);
+}
+
 export default function OperationPrivacyRequests() {
   const [filter, setFilter] = useState<"all" | PrivacyStatus>("new");
   const [requests, setRequests] = useState<PrivacyRequest[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
+  const [accessPackages, setAccessPackages] = useState<
+    Record<string, PrivacyAccessPackage>
+  >({});
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
@@ -120,7 +164,8 @@ export default function OperationPrivacyRequests() {
         const updated = { ...current };
         next.forEach((item) => {
           if (!(item.id in updated)) {
-            updated[item.id] = item.internal_notes || item.privacy_identity_notes || "";
+            updated[item.id] =
+              item.internal_notes || item.privacy_identity_notes || "";
           }
         });
         return updated;
@@ -165,7 +210,9 @@ export default function OperationPrivacyRequests() {
         requested_status: nextStatus,
         requested_internal_notes: notes[item.id] || "",
       });
-      setNotice(`Solicitação ${item.protocol} atualizada para ${statusLabel[nextStatus]}.`);
+      setNotice(
+        `Solicitação ${item.protocol} atualizada para ${statusLabel[nextStatus]}.`,
+      );
       await load();
     } catch (error) {
       setNotice(
@@ -191,13 +238,92 @@ export default function OperationPrivacyRequests() {
         requested_identity_status: nextStatus,
         requested_verification_notes: notes[item.id] || "",
       });
-      setNotice(`${item.protocol}: ${identityLabel[nextStatus].toLocaleLowerCase("pt-BR")}.`);
+      setNotice(
+        `${item.protocol}: ${identityLabel[nextStatus].toLocaleLowerCase("pt-BR")}.`,
+      );
       await load();
     } catch (error) {
       setNotice(
         error instanceof Error
           ? error.message
           : "Não foi possível registrar a verificação de identidade.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const prepareAccessPackage = async (item: PrivacyRequest) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    setNotice("");
+    try {
+      const result = await bffRpc<PrivacyAccessPackage>(
+        "staff_prepare_privacy_access_response",
+        { target_feedback_id: item.id },
+      );
+      setAccessPackages((current) => ({ ...current, [item.id]: result }));
+      setNotice(
+        `Pacote ${result.metadata.package_version} preparado para ${item.protocol}. Revise antes de enviar.`,
+      );
+      await load();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível preparar o pacote de consulta.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const copyAccessPackage = async (item: PrivacyRequest) => {
+    const value = accessPackages[item.id];
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(packageJson(value));
+      setNotice(`Pacote de ${item.protocol} copiado. Revise o destinatário antes de enviar.`);
+    } catch {
+      setNotice("O navegador não permitiu copiar. Use o download do arquivo JSON.");
+    }
+  };
+
+  const downloadAccessPackage = (item: PrivacyRequest) => {
+    const value = accessPackages[item.id];
+    if (!value) return;
+    const blob = new Blob([packageJson(value)], { type: "application/json;charset=utf-8" });
+    const href = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = href;
+    anchor.download = `adoce-privacidade-${item.protocol}.json`;
+    anchor.click();
+    URL.revokeObjectURL(href);
+    setNotice(`Arquivo de ${item.protocol} gerado localmente. Confirme o destinatário antes do envio.`);
+  };
+
+  const markDelivered = async (
+    item: PrivacyRequest,
+    channel: PrivacyDeliveryChannel,
+  ) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    setNotice("");
+    try {
+      await bffRpc("staff_mark_privacy_response_delivered", {
+        target_feedback_id: item.id,
+        requested_channel: channel,
+        requested_delivery_notes: (notes[item.id] || "").slice(0, 1200),
+      });
+      setNotice(
+        `${item.protocol}: entrega registrada por ${deliveryChannelLabel[channel]}.`,
+      );
+      await load();
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível registrar a entrega da resposta.",
       );
     } finally {
       setBusyId("");
@@ -268,8 +394,15 @@ export default function OperationPrivacyRequests() {
           const requestType =
             privacyTypeLabel[item.privacy_request_type] || privacyTypeLabel.other;
           const identityStatus = item.privacy_identity_status || "pending";
-          const identityRequired = identityRequiredTypes.has(item.privacy_request_type);
+          const identityRequired = identityRequiredTypes.has(
+            item.privacy_request_type,
+          );
           const canResolve = !identityRequired || identityStatus === "verified";
+          const accessPackage = accessPackages[item.id];
+          const canPrepareAccess =
+            item.privacy_request_type === "access" &&
+            identityStatus === "verified" &&
+            Boolean(item.profile_id);
           return (
             <details
               key={item.id}
@@ -287,7 +420,9 @@ export default function OperationPrivacyRequests() {
                   <h3>{item.customer_name}</h3>
                   <span className="privacy-kind">{requestType}</span>
                   <p>{item.message}</p>
-                  <small className={item.overdue ? "privacy-due overdue" : "privacy-due"}>
+                  <small
+                    className={item.overdue ? "privacy-due overdue" : "privacy-due"}
+                  >
                     {item.overdue ? <AlertTriangle /> : <Clock3 />}
                     Prazo interno: {dateTime.format(new Date(item.privacy_due_at))}
                   </small>
@@ -315,6 +450,21 @@ export default function OperationPrivacyRequests() {
                       <span>
                         <strong>Conferida em</strong>
                         {dateTime.format(new Date(item.privacy_identity_checked_at))}
+                      </span>
+                    ) : null}
+                    {item.privacy_response_prepared_at ? (
+                      <span>
+                        <strong>Pacote preparado</strong>
+                        {dateTime.format(new Date(item.privacy_response_prepared_at))}
+                      </span>
+                    ) : null}
+                    {item.privacy_response_delivered_at ? (
+                      <span>
+                        <strong>Resposta entregue</strong>
+                        {dateTime.format(new Date(item.privacy_response_delivered_at))}
+                        {item.privacy_response_delivery_channel
+                          ? ` · ${deliveryChannelLabel[item.privacy_response_delivery_channel]}`
+                          : ""}
                       </span>
                     ) : null}
                     {item.privacy_resolved_at ? (
@@ -394,6 +544,93 @@ export default function OperationPrivacyRequests() {
                     </p>
                   ) : null}
                 </section>
+
+                {item.privacy_request_type === "access" ? (
+                  <section>
+                    <h4>Pacote de consulta de dados</h4>
+                    <p>
+                      O pacote inclui dados do cadastro, consentimentos, preferências,
+                      fidelidade, pedidos e check-ins vinculados. Anotações internas,
+                      controles antifraude e dados de terceiros não são incluídos.
+                    </p>
+                    {!item.profile_id ? (
+                      <p className="operation-privacy-notice" role="status">
+                        <AlertTriangle /> Vincule esta solicitação ao cadastro correto antes
+                        de preparar a resposta.
+                      </p>
+                    ) : null}
+                    <div className="operation-privacy-actions">
+                      <button
+                        type="button"
+                        onClick={() => void prepareAccessPackage(item)}
+                        disabled={busy || !canPrepareAccess}
+                      >
+                        <FileJson /> Preparar pacote seguro
+                      </button>
+                      {accessPackage ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void copyAccessPackage(item)}
+                            disabled={busy}
+                          >
+                            <ClipboardCopy /> Copiar JSON
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadAccessPackage(item)}
+                            disabled={busy}
+                          >
+                            <Download /> Baixar JSON
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                    {accessPackage ? (
+                      <div className="operation-privacy-metadata">
+                        <span>
+                          <strong>Versão</strong>
+                          {accessPackage.metadata.package_version}
+                        </span>
+                        <span>
+                          <strong>Movimentações</strong>
+                          {Number(accessPackage.loyalty.movement_count || 0)}
+                        </span>
+                        <span>
+                          <strong>Pedidos</strong>
+                          {Number(accessPackage.orders.total_count || 0)}
+                        </span>
+                        <span>
+                          <strong>Check-ins</strong>
+                          {Number(accessPackage.checkins.total_count || 0)}
+                        </span>
+                      </div>
+                    ) : null}
+                    {item.privacy_response_prepared_at &&
+                    !item.privacy_response_delivered_at ? (
+                      <div className="operation-privacy-actions">
+                        {item.customer_email ? (
+                          <button
+                            type="button"
+                            onClick={() => void markDelivered(item, "email")}
+                            disabled={busy}
+                          >
+                            <Send /> Registrar entrega por e-mail
+                          </button>
+                        ) : null}
+                        {waUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => void markDelivered(item, "whatsapp")}
+                            disabled={busy}
+                          >
+                            <Send /> Registrar entrega no WhatsApp
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
 
                 <div className="operation-privacy-actions">
                   <button
