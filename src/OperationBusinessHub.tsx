@@ -5,6 +5,7 @@ import OperationContingencySale from "./OperationContingencySale";
 import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationManualSale from "./OperationManualSale";
+import OperationPrivacyRequests from "./OperationPrivacyRequests";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
@@ -63,6 +64,7 @@ export default function OperationBusinessHub() {
       <OperationCustomerCheckIns />
       <OperationManualSale onCreated={refreshBusinessViews} />
       <OperationQuickLoyalty />
+      <OperationPrivacyRequests />
       <OperationCustomer360 key={`customer-${businessRevision}`} />
       <OperationContingencySale />
       <OperationCashReconciliation />
