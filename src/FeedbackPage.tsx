@@ -8,12 +8,20 @@ import {
 import { BUSINESS_CONTACTS, businessMailto } from "./business-contacts";
 import "./feedback-page.css";
 
+function initialFeedbackCategory() {
+  if (typeof window === "undefined") return "problem";
+  const query = window.location.hash.split("?")[1] || "";
+  return new URLSearchParams(query).get("tipo") === "privacy"
+    ? "privacy"
+    : "problem";
+}
+
 export default function FeedbackPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
     phone: "",
-    category: "problem",
+    category: initialFeedbackCategory(),
     message: "",
   });
   const [operationKey] = useState(() => crypto.randomUUID());
