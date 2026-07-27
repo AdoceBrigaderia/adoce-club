@@ -14,6 +14,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_get_cash_reconciliation_queue",
   "manager_reconcile_cash_sale",
   "staff_get_quick_sale_catalog",
+  "staff_set_quick_sale_favorite",
   "staff_adjust_loyalty_stamps",
   "staff_financial_sales_summary",
   "staff_get_commerce_settings",
