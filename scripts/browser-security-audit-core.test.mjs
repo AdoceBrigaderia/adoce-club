@@ -114,16 +114,21 @@ test("bloqueia cabeçalho Bearer manual em superfície do navegador", () => {
   );
 });
 
-test("SDK Supabase direto gera alerta, mas o adaptador central é permitido", () => {
+test("SDK Supabase direto gera alerta, mas tipo puro e adaptador central são permitidos", () => {
   const direct = auditBrowserSource(
     "src/CustomerData.ts",
     'import { createClient } from "@supabase/supabase-js";',
+  );
+  const typeOnly = auditBrowserSource(
+    "src/OperationBusinessStructure.tsx",
+    'import type { Session } from "@supabase/supabase-js";',
   );
   const central = auditBrowserSource(
     "src/lib/supabase.ts",
     'import { createClient } from "@supabase/supabase-js";',
   );
   assert.ok(direct.some((item) => item.id === "direct-supabase-sdk-import"));
+  assert.equal(typeOnly.length, 0);
   assert.equal(central.length, 0);
 });
 
@@ -132,6 +137,10 @@ test("relatório permite somente alertas não sensíveis e reprova sessão diret
     {
       path: "src/PublicCatalog.ts",
       source: 'import { createClient } from "@supabase/supabase-js";',
+    },
+    {
+      path: "src/OperationContentAdmin.tsx",
+      source: 'import type { Session } from "@supabase/supabase-js";',
     },
   ]);
   assert.equal(warningOnly.passed, true);
