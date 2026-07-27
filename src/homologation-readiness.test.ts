@@ -7,6 +7,7 @@ const baseEnvironment = {
   ADOCE_HOMOLOGATION_SUPABASE_REF: "homolog-project",
   ADOCE_PRODUCTION_SUPABASE_REF: "production-project",
   SITE_URL: "https://adoce-homologacao.netlify.app",
+  READINESS_REQUEST_ORIGIN: "https://adoce-homologacao.netlify.app",
   BFF_ALLOWED_ORIGINS: "https://adoce-homologacao.netlify.app",
   VITE_SUPABASE_URL: "https://homolog-project.supabase.co",
   SUPABASE_URL: "https://homolog-project.supabase.co",
@@ -39,6 +40,7 @@ describe("diagnóstico seguro da homologação", () => {
     );
     expect(result.exposed).toBe(true);
     expect(result.coreReady).toBe(true);
+    expect(result.site.requestMatchesConfiguredSite).toBe(true);
     expect(result.supabase.projectRef).toBe("homolog-project");
     expect(result.security.configured).toBe(true);
     expect(result.integrations.passkeys.configured).toBe(true);
@@ -63,6 +65,7 @@ describe("diagnóstico seguro da homologação", () => {
     const result = buildHomologationReadiness({
       ...baseEnvironment,
       SITE_URL: "https://www.adocebrigaderia.com.br",
+      READINESS_REQUEST_ORIGIN: "https://www.adocebrigaderia.com.br",
       BFF_ALLOWED_ORIGINS: "https://www.adocebrigaderia.com.br",
       VITE_SUPABASE_URL: "https://production-project.supabase.co",
       SUPABASE_URL: "https://production-project.supabase.co",
@@ -71,6 +74,17 @@ describe("diagnóstico seguro da homologação", () => {
     expect(result.site.validHomologationOrigin).toBe(false);
     expect(result.site.productionDomainRejected).toBe(false);
     expect(result.supabase.isolated).toBe(false);
+  });
+
+  it("bloqueia preview servido por origem diferente da configuração", () => {
+    const result = buildHomologationReadiness({
+      ...baseEnvironment,
+      READINESS_REQUEST_ORIGIN:
+        "https://outro-deploy--adoce-homologacao.netlify.app",
+    });
+    expect(result.coreReady).toBe(false);
+    expect(result.site.requestOriginValid).toBe(true);
+    expect(result.site.requestMatchesConfiguredSite).toBe(false);
   });
 
   it("bloqueia o núcleo quando peppers obrigatórios estão ausentes", () => {
@@ -110,6 +124,9 @@ describe("diagnóstico seguro da homologação", () => {
     );
     expect(endpoint).toContain("if (!readiness.exposed)");
     expect(endpoint).toContain('return secureJson({ error: "Recurso não encontrado." }, 404)');
+    expect(endpoint).toContain('"WHATSAPP_OTP_PEPPER"');
+    expect(endpoint).toContain('"PUBLIC_RATE_LIMIT_PEPPER"');
+    expect(endpoint).toContain("READINESS_REQUEST_ORIGIN: requestOrigin");
     expect(endpoint).not.toContain("accessToken:");
     expect(endpoint).not.toContain("privateKey:");
   });
