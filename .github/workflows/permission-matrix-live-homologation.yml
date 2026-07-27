@@ -1,4 +1,4 @@
-name: Testar matriz de permissões na homologação
+name: Testar segurança viva na homologação
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ on:
         type: string
 
 concurrency:
-  group: permission-matrix-live-homologation
+  group: security-live-homologation
   cancel-in-progress: false
 
 permissions:
@@ -26,7 +26,7 @@ env:
 
 jobs:
   permission-matrix:
-    name: Ensaio vivo com rollback integral
+    name: Ensaios vivos com rollback integral
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: homologation
@@ -72,6 +72,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends postgresql-client
 
+      - name: Preparar evidências
+        run: mkdir -p artifacts/security-live
+
       - name: Executar matriz por loja e papel com rollback
         env:
           SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
@@ -79,19 +82,46 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/permission-matrix
           psql "$SUPABASE_HOMOLOGATION_DB_URL" \
             --no-psqlrc \
             --set=ON_ERROR_STOP=1 \
             --file=supabase/tests/permission_matrix_live.sql \
-            2>&1 | tee artifacts/permission-matrix/live-test.log
-          grep -Eiq "ROLLBACK" artifacts/permission-matrix/live-test.log
+            2>&1 | tee artifacts/security-live/permission-matrix.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/permission-matrix.log
 
-      - name: Preservar evidência sem credenciais
+      - name: Executar rate limit público com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc \
+            --set=ON_ERROR_STOP=1 \
+            --file=supabase/tests/public_endpoint_rate_limit_live.sql \
+            2>&1 | tee artifacts/security-live/public-rate-limit.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/public-rate-limit.log
+
+      - name: Validar allowlist dos RPCs autenticados
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc \
+            --set=ON_ERROR_STOP=1 \
+            --file=supabase/tests/authenticated_rpc_allowlist_live.sql \
+            2>&1 | tee artifacts/security-live/authenticated-rpc-allowlist.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/authenticated-rpc-allowlist.log
+
+      - name: Preservar evidências sem credenciais
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: permission-matrix-live-${{ github.sha }}
-          path: artifacts/permission-matrix/live-test.log
+          name: security-live-${{ github.sha }}
+          path: artifacts/security-live
           retention-days: 14
           if-no-files-found: warn
