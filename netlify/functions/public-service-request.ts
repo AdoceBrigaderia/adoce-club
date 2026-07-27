@@ -1,4 +1,8 @@
 import {
+  ipRateLimitRule,
+  consumePublicRateLimits,
+} from "./_shared/public-rate-limit";
+import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
   allowedOrigin,
@@ -124,6 +128,36 @@ export default async (request: Request) => {
       { error: "Canal de pré-reserva temporariamente indisponível." },
       503,
     );
+
+  const rateLimit = await consumePublicRateLimits({
+    supabaseUrl,
+    secretKey,
+    pepper:
+      env("PUBLIC_RATE_LIMIT_PEPPER") ||
+      env("WHATSAPP_OTP_PEPPER") ||
+      secretKey,
+    rules: [
+      ipRateLimitRule(request, "service-request:ip", 3600, 20),
+      {
+        bucket: "service-request:phone",
+        subject: `phone:${phoneDigits}`,
+        windowSeconds: 3600,
+        maxRequests: 5,
+      },
+    ],
+  });
+  if (!rateLimit.allowed) {
+    return secureJson(
+      {
+        error: rateLimit.failed
+          ? "Canal de pré-reserva temporariamente indisponível."
+          : "Muitas tentativas. Aguarde antes de enviar outra pré-reserva.",
+        code: rateLimit.failed ? "rate_limit_unavailable" : "rate_limited",
+        retry_after_seconds: rateLimit.retryAfterSeconds,
+      },
+      rateLimit.failed ? 503 : 429,
+    );
+  }
 
   const profileId = await optionalClientProfile(
     request,
