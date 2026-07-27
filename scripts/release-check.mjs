@@ -1,19 +1,21 @@
 import { spawnSync } from "node:child_process";
 
 const stages = [
-  ["Testes automatizados", ["run", "test"]],
-  ["Verificacao de tipos e codigo", ["run", "lint"]],
-  ["Compilacao final e documentacao", ["run", "build"]],
+  ["Gate integral de homologação", ["run", "verify"]],
 ];
 
-console.log("\nPORTAO DE PUBLICACAO ADOCE\n");
+console.log("\nPORTÃO DE PUBLICAÇÃO ADOCE\n");
 
 for (const [label, args] of stages) {
   console.log(`> ${label}`);
-  const command = process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "npm";
-  const commandArgs = process.platform === "win32"
-    ? ["/d", "/s", "/c", `npm ${args.join(" ")}`]
-    : args;
+  const command =
+    process.platform === "win32"
+      ? process.env.ComSpec || "cmd.exe"
+      : "npm";
+  const commandArgs =
+    process.platform === "win32"
+      ? ["/d", "/s", "/c", `npm ${args.join(" ")}`]
+      : args;
   const result = spawnSync(command, commandArgs, {
     cwd: process.cwd(),
     stdio: "inherit",
@@ -22,12 +24,13 @@ for (const [label, args] of stages) {
 
   if (result.status !== 0) {
     if (result.error) console.error(result.error.message);
-    console.error(`\nPUBLICACAO BLOQUEADA: ${label} nao foi aprovado.`);
+    console.error(`\nPUBLICAÇÃO BLOQUEADA: ${label} não foi aprovado.`);
     process.exit(result.status || 1);
   }
 }
 
-console.log("\nAPROVADO PARA HOMOLOGACAO VISUAL");
-console.log("1. Conferir as telas alteradas no computador e no celular.");
-console.log("2. Confirmar textos, links, imagens e dados reais.");
-console.log("3. Somente depois usar npm run release:prod.\n");
+console.log("\nAPROVADO PARA HOMOLOGAÇÃO VISUAL");
+console.log("1. Conferir telas no computador, tablet e celular.");
+console.log("2. Validar login, passkeys, NFC/QR, vendas, caixa e fidelidade.");
+console.log("3. Confirmar textos, links, imagens e dados do ambiente de homologação.");
+console.log("4. Produção continua sujeita ao portão de aprovação expressa.\n");
