@@ -1,3 +1,7 @@
+import {
+  consumePublicRateLimits,
+  ipRateLimitRule,
+} from "./_shared/public-rate-limit";
 import { allowedOrigin, secureJson } from "./_shared/session-security";
 
 declare const Netlify:
@@ -76,6 +80,24 @@ export default async (request: Request) => {
     env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !secretKey)
     return secureJson({ accepted: false }, 202);
+
+  const rateLimit = await consumePublicRateLimits({
+    supabaseUrl,
+    secretKey,
+    pepper:
+      env("PUBLIC_RATE_LIMIT_PEPPER") ||
+      env("WHATSAPP_OTP_PEPPER") ||
+      secretKey,
+    rules: [ipRateLimitRule(request, "analytics:ip", 3600, 300)],
+  });
+  if (!rateLimit.allowed)
+    return secureJson(
+      {
+        accepted: false,
+        rate_limited: !rateLimit.failed,
+      },
+      202,
+    );
 
   try {
     const upstream = await fetch(
