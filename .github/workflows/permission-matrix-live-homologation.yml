@@ -131,6 +131,20 @@ jobs:
             2>&1 | tee artifacts/security-live/site-feedback-privacy.log
           grep -Eiq "ROLLBACK" artifacts/security-live/site-feedback-privacy.log
 
+      - name: Validar operação de privacidade com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc \
+            --set=ON_ERROR_STOP=1 \
+            --file=supabase/tests/privacy_request_operation_live.sql \
+            2>&1 | tee artifacts/security-live/privacy-request-operation.log
+          grep -Eiq "ROLLBACK" artifacts/security-live/privacy-request-operation.log
+
       - name: Preservar evidências sem credenciais
         if: always()
         uses: actions/upload-artifact@v4
