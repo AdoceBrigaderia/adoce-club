@@ -22,7 +22,8 @@ describe("acesso da operação com senha", () => {
     expect(auth).toContain('credentials: "same-origin"');
     expect(auth).not.toContain("access_token");
     expect(auth).not.toContain("refresh_token");
-    expect(endpoint).toContain("createSessionCookies");
+    expect(endpoint).toContain("sessionCookies(");
+    expect(endpoint).toContain("cookieSession.values");
     expect(endpoint).toContain("secureJson");
   });
 
