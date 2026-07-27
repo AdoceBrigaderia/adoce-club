@@ -1,29 +1,42 @@
 name: Verificar reestruturação
 
 on:
-  push:
-    branches:
-      - reestruturacao/ux-crm-operacao-imagens-v1
-  pull_request:
-    branches:
-      - fonte-oficial/portal-adoce-2026-07-25
   workflow_dispatch:
+    inputs:
+      commit:
+        description: "SHA exato do marco que será validado"
+        required: true
+        type: string
 
 concurrency:
-  group: verify-restructure-${{ github.ref }}
+  group: verify-restructure-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
+env:
+  CI: true
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  EXPECTED_COMMIT: ${{ inputs.commit }}
+
 jobs:
   verify:
-    name: Lint, testes e build
+    name: Lint, testes e build completos do marco
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - name: Confirmar branch e commit autorizados
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -101,6 +114,14 @@ jobs:
           set -o pipefail
           npm run build 2>&1 | tee artifacts/build.log
 
+      - id: security_build
+        name: Executar gate completo de segurança
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run verify:security-build 2>&1 | tee artifacts/security-build.log
+
       - name: Preservar diagnósticos
         if: always()
         uses: actions/upload-artifact@v4
@@ -130,6 +151,7 @@ jobs:
           AUDIT_RESULT: ${{ steps.audit.outcome }}
           BROWSER_AUDIT_RESULT: ${{ steps.browser_audit.outcome }}
           BUILD_RESULT: ${{ steps.build.outcome }}
+          SECURITY_BUILD_RESULT: ${{ steps.security_build.outcome }}
         run: |
           echo "TypeScript: $LINT_RESULT"
           echo "Vitest: $TEST_RESULT"
@@ -139,6 +161,7 @@ jobs:
           echo "Auditoria de imagens: $AUDIT_RESULT"
           echo "Auditoria do navegador: $BROWSER_AUDIT_RESULT"
           echo "Build: $BUILD_RESULT"
+          echo "Gate de segurança: $SECURITY_BUILD_RESULT"
           test "$LINT_RESULT" = success
           test "$TEST_RESULT" = success
           test "$AUDIT_TEST_RESULT" = success
@@ -147,3 +170,4 @@ jobs:
           test "$AUDIT_RESULT" = success
           test "$BROWSER_AUDIT_RESULT" = success
           test "$BUILD_RESULT" = success
+          test "$SECURITY_BUILD_RESULT" = success
