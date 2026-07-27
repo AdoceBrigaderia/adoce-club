@@ -4,6 +4,7 @@ import OperationCashReconciliation from "./OperationCashReconciliation";
 import OperationContingencySale from "./OperationContingencySale";
 import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
+import OperationManualSale from "./OperationManualSale";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
@@ -39,14 +40,23 @@ export default function OperationBusinessHub() {
   }, []);
 
   if (error) {
-    return <p className="operation-dashboard-notice" role="status">{error}</p>;
+    return (
+      <p className="operation-dashboard-notice" role="status">
+        {error}
+      </p>
+    );
   }
   if (!session) {
-    return <p className="operation-dashboard-notice">Carregando operação rápida…</p>;
+    return (
+      <p className="operation-dashboard-notice">
+        Carregando operação rápida…
+      </p>
+    );
   }
   return (
     <>
       <OperationCustomerCheckIns />
+      <OperationManualSale />
       <OperationQuickLoyalty />
       <OperationCustomer360 />
       <OperationContingencySale />
