@@ -1,20 +1,24 @@
 name: Playwright mobile e tablet
 
 on:
-  push:
-    branches:
-      - reestruturacao/ux-crm-operacao-imagens-v1
-  pull_request:
-    branches:
-      - fonte-oficial/portal-adoce-2026-07-25
   workflow_dispatch:
+    inputs:
+      commit:
+        description: "SHA exato do marco visual que será testado"
+        required: true
+        type: string
 
 concurrency:
-  group: playwright-mobile-${{ github.ref }}
+  group: playwright-mobile-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+
+env:
+  CI: true
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  EXPECTED_COMMIT: ${{ inputs.commit }}
 
 jobs:
   smoke:
@@ -24,6 +28,15 @@ jobs:
     steps:
       - name: Baixar código
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - name: Confirmar branch e commit autorizados
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
