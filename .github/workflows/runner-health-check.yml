@@ -2,6 +2,11 @@ name: Diagnosticar disponibilidade do runner
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/runner-health-check.yml
 
 concurrency:
   group: runner-health-${{ github.ref_name }}
