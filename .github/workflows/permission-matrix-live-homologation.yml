@@ -1,0 +1,97 @@
+name: Testar matriz de permissões na homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite TESTAR SOMENTE HOMOLOGACAO
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo da branch que será validado
+        required: true
+        type: string
+
+concurrency:
+  group: permission-matrix-live-homologation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: ${{ vars.ADOCE_HOMOLOGATION_SUPABASE_REF }}
+  PRODUCTION_REF: ${{ vars.ADOCE_PRODUCTION_SUPABASE_REF }}
+
+jobs:
+  permission-matrix:
+    name: Ensaio vivo com rollback integral
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente a branch de reestruturação
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, branch, commit e banco isolado
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "TESTAR SOMENTE HOMOLOGACAO"
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test -n "$HOMOLOGATION_REF"
+          test -n "$PRODUCTION_REF"
+          test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL de homologação inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "A URL não pertence ao Supabase de homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência de produção detectada e bloqueada" >&2; exit 1 ;;
+          esac
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Executar matriz por loja e papel com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/permission-matrix
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc \
+            --set=ON_ERROR_STOP=1 \
+            --file=supabase/tests/permission_matrix_live.sql \
+            2>&1 | tee artifacts/permission-matrix/live-test.log
+          grep -Eiq "ROLLBACK" artifacts/permission-matrix/live-test.log
+
+      - name: Preservar evidência sem credenciais
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: permission-matrix-live-${{ github.sha }}
+          path: artifacts/permission-matrix/live-test.log
+          retention-days: 14
+          if-no-files-found: warn
