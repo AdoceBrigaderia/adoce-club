@@ -13,6 +13,10 @@ const playwrightGate = readFileSync(
   new URL("../.github/workflows/playwright-mobile-smoke.yml", import.meta.url),
   "utf8",
 );
+const runnerHealth = readFileSync(
+  new URL("../.github/workflows/runner-health-check.yml", import.meta.url),
+  "utf8",
+);
 
 const hasAutomaticPush = (workflow: string) => /\n\s{2}push:\s*\n/.test(workflow);
 const hasAutomaticPullRequest = (workflow: string) =>
@@ -60,5 +64,15 @@ describe("consumo controlado do GitHub Actions", () => {
     expect(playwrightGate).toContain("SHA exato do marco visual que será testado");
     expect(playwrightGate).toContain("ref: ${{ inputs.commit }}");
     expect(playwrightGate).toContain("npx playwright test");
+  });
+
+  it("mantém um diagnóstico mínimo e manual para separar falha de runner de falha do portal", () => {
+    expect(runnerHealth).toContain("workflow_dispatch:");
+    expect(hasAutomaticPush(runnerHealth)).toBe(false);
+    expect(hasAutomaticPullRequest(runnerHealth)).toBe(false);
+    expect(runnerHealth).toContain("timeout-minutes: 3");
+    expect(runnerHealth).toContain('echo "runner_started=true"');
+    expect(runnerHealth).not.toContain("actions/checkout");
+    expect(runnerHealth).not.toContain("npm ci");
   });
 });
