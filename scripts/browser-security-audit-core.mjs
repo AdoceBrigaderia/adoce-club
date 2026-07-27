@@ -7,7 +7,7 @@ const DEFAULT_IGNORED_PATTERNS = [
   /(?:^|\/)dist(?:\/|$)/,
   /(?:^|\/)artifacts(?:\/|$)/,
   /(?:^|\/)coverage(?:\/|$)/,
-  /\.d\.ts$/,
+  /\.d\.(?:ts|mts|cts)$/,
   /\.(?:test|spec)\.[cm]?[jt]sx?$/,
   /(?:^|\/)LegacyPrototype(?:\.|\/)/i,
   /(?:^|\/)legacy(?:\/|$)/i,
@@ -15,13 +15,25 @@ const DEFAULT_IGNORED_PATTERNS = [
   /(?:^|\/)prototype(?:\/|$)/i,
 ];
 
-const AUTH_STORAGE_CONTEXT = /(?:auth|token|session|supabase|remember[-_ ]?login|credential|jwt)/i;
-const LIVE_SURFACE_PATH = /(?:Customer|Operation|Passkey|Registration|InstantOrder|services\/|App\.)/;
+const DEVELOPMENT_ONLY_AUTH_SURFACES = [
+  /^src\/AccessApp\.tsx$/,
+  /^src\/PilotApp\.tsx$/,
+  /^src\/ProductionRollbackPanel\.tsx$/,
+  /^src\/CustomerRegistrationPage\.tsx$/,
+  /^src\/services\/auth\.ts$/,
+  /^src\/customer-account-actions\.ts$/,
+  /^src\/customer-profile-admin\.ts$/,
+  /^src\/staff-access-code\.ts$/,
+];
+
+const AUTH_STORAGE_CONTEXT =
+  /(?:auth|access[_-]?token|refresh[_-]?token|bearer|supabase|remember[-_ ]?login|credential|jwt|password|recovery)/i;
 
 const RULES = [
   {
     id: "client-secret-environment",
     severity: "critical",
+    alwaysCritical: true,
     description: "Segredo foi referenciado por variável VITE_ e pode entrar no bundle público.",
     pattern:
       /\bVITE_[A-Z0-9_]*(?:SECRET|PRIVATE_KEY|SERVICE_ROLE|ACCESS_TOKEN|REFRESH_TOKEN|APP_SECRET|PEPPER)[A-Z0-9_]*\b/g,
@@ -29,6 +41,7 @@ const RULES = [
   {
     id: "private-key-material",
     severity: "critical",
+    alwaysCritical: true,
     description: "Material de chave privada foi encontrado em código do navegador.",
     pattern: /-----BEGIN (?:RSA )?PRIVATE KEY-----/g,
   },
@@ -45,7 +58,6 @@ const RULES = [
     description: "Superfície real autentica diretamente pelo cliente Supabase, fora do BFF.",
     pattern:
       /\.auth\.(?:signInWithPassword|signInWithOtp|verifyOtp|signOut|updateUser|resetPasswordForEmail)\s*\(/g,
-    onlyLiveSurface: true,
   },
   {
     id: "bearer-token-in-browser",
@@ -59,7 +71,6 @@ const RULES = [
     severity: "critical",
     description: "Superfície real referencia access_token/refresh_token no navegador.",
     pattern: /\b(?:access_token|refresh_token)\b/g,
-    onlyLiveSurface: true,
   },
   {
     id: "direct-supabase-sdk-import",
@@ -72,6 +83,15 @@ const RULES = [
 
 function toPosix(path) {
   return path.split(sep).join("/");
+}
+
+function isDevelopmentOnlyAuthSurface(path) {
+  return DEVELOPMENT_ONLY_AUTH_SURFACES.some((pattern) => pattern.test(path));
+}
+
+function effectiveSeverity(path, rule) {
+  if (rule.alwaysCritical || rule.severity !== "critical") return rule.severity;
+  return isDevelopmentOnlyAuthSurface(path) ? "warning" : "critical";
 }
 
 export function isAuditableSource(path, ignoredPatterns = DEFAULT_IGNORED_PATTERNS) {
@@ -95,17 +115,20 @@ function storageViolations(path, source) {
   const findings = [];
   const storagePattern = /\b(?:localStorage|sessionStorage)\b/g;
   for (const match of source.matchAll(storagePattern)) {
-    const start = Math.max(0, match.index - 160);
-    const end = Math.min(source.length, match.index + 220);
-    const context = source.slice(start, end);
+    const start = Math.max(0, match.index - 180);
+    const end = Math.min(source.length, match.index + 260);
+    const context = source.slice(start, match.index) + source.slice(match.index + match[0].length, end);
     if (!AUTH_STORAGE_CONTEXT.test(context)) continue;
     findings.push({
       id: "persistent-auth-storage",
-      severity: "critical",
-      description: "Armazenamento do navegador é usado em contexto de autenticação ou token.",
+      severity: isDevelopmentOnlyAuthSurface(path) ? "warning" : "critical",
+      description: isDevelopmentOnlyAuthSurface(path)
+        ? "Superfície exclusiva de desenvolvimento ainda contém armazenamento de autenticação legado."
+        : "Armazenamento do navegador é usado em contexto de autenticação ou token.",
       path,
       line: lineNumberAt(source, match.index),
       excerpt: sourceLineAt(source, match.index),
+      developmentOnly: isDevelopmentOnlyAuthSurface(path),
     });
   }
   return findings;
@@ -118,15 +141,20 @@ export function auditBrowserSource(path, source) {
   const findings = [...storageViolations(normalizedPath, source)];
   for (const rule of RULES) {
     if (rule.exceptPaths?.has(normalizedPath)) continue;
-    if (rule.onlyLiveSurface && !LIVE_SURFACE_PATH.test(normalizedPath)) continue;
     for (const match of source.matchAll(rule.pattern)) {
+      const developmentOnly = isDevelopmentOnlyAuthSurface(normalizedPath);
+      const severity = effectiveSeverity(normalizedPath, rule);
       findings.push({
         id: rule.id,
-        severity: rule.severity,
-        description: rule.description,
+        severity,
+        description:
+          developmentOnly && severity === "warning" && rule.severity === "critical"
+            ? `${rule.description} O arquivo está restrito a rotas import.meta.env.DEV e permanece inventariado para remoção.`
+            : rule.description,
         path: normalizedPath,
         line: lineNumberAt(source, match.index),
         excerpt: sourceLineAt(source, match.index),
+        developmentOnly,
       });
     }
   }
