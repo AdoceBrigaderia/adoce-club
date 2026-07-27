@@ -93,6 +93,10 @@ export function buildHomologationReadiness(
       value(environment, "VITE_SUPABASE_URL"),
   );
   const site = siteState(value(environment, "SITE_URL"));
+  const requestSite = siteState(value(environment, "READINESS_REQUEST_ORIGIN"));
+  const requestMatchesConfiguredSite = Boolean(
+    site.origin && requestSite.origin && site.origin === requestSite.origin,
+  );
   const allowedOrigins = originList(value(environment, "BFF_ALLOWED_ORIGINS"));
   const siteAllowed = Boolean(
     site.origin && allowedOrigins.includes(site.origin.replace(/\/+$/, "")),
@@ -126,6 +130,8 @@ export function buildHomologationReadiness(
   const coreReady = Boolean(
     deployEnvironment === "homologation" &&
       site.valid &&
+      requestSite.valid &&
+      requestMatchesConfiguredSite &&
       siteAllowed &&
       supabaseIsolated &&
       publishableKeyPresent &&
@@ -139,9 +145,12 @@ export function buildHomologationReadiness(
     coreReady,
     site: {
       validHomologationOrigin: site.valid,
-      productionDomainRejected: !site.production,
+      requestOriginValid: requestSite.valid,
+      requestMatchesConfiguredSite,
+      productionDomainRejected: !site.production && !requestSite.production,
       allowedByBff: siteAllowed,
       origin: site.origin,
+      requestOrigin: requestSite.origin,
     },
     supabase: {
       isolated: supabaseIsolated,
