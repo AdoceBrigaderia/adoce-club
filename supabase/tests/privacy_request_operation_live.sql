@@ -8,6 +8,7 @@ declare
   requests jsonb;
   selected jsonb;
   updated jsonb;
+  resolved jsonb;
   audit_found boolean;
 begin
   select member.user_id
@@ -29,7 +30,9 @@ begin
     customer_name,
     customer_email,
     page_url,
-    message
+    message,
+    privacy_request_type,
+    privacy_due_at
   ) values (
     'PRIV-LIVE-' || upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 8)),
     gen_random_uuid(),
@@ -37,7 +40,9 @@ begin
     test_name,
     'privacy-operation@example.com',
     'https://homologacao-adoce--adoce-homologacao.netlify.app/#operacao',
-    'Solicitação temporária para validar listagem, atualização e auditoria operacional.'
+    'Solicitação temporária para validar listagem, atualização, prazo e auditoria operacional.',
+    'access',
+    now() + interval '15 days'
   );
 
   perform set_config('request.jwt.claim.sub', actor_id::text, true);
@@ -58,6 +63,15 @@ begin
   if selected is null then
     raise exception 'Solicitação de teste não apareceu na listagem';
   end if;
+  if selected->>'privacy_request_type' is distinct from 'access' then
+    raise exception 'Tipo da solicitação não foi preservado';
+  end if;
+  if coalesce((selected->>'overdue')::boolean, true) then
+    raise exception 'Solicitação nova foi marcada como atrasada';
+  end if;
+  if selected->>'privacy_due_at' is null then
+    raise exception 'Prazo interno não foi retornado';
+  end if;
 
   updated := public.staff_update_privacy_request(
     (selected->>'id')::uuid,
@@ -67,6 +81,16 @@ begin
 
   if updated->>'status' is distinct from 'reviewing' then
     raise exception 'Status não foi atualizado';
+  end if;
+
+  resolved := public.staff_update_privacy_request(
+    (selected->>'id')::uuid,
+    'resolved',
+    'Solicitação resolvida durante ensaio vivo com rollback.'
+  );
+
+  if resolved->>'privacy_resolved_at' is null then
+    raise exception 'Momento da resolução não foi registrado';
   end if;
 
   select exists(
