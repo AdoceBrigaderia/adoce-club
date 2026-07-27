@@ -39,13 +39,17 @@ describe("pedido imediato pelo BFF", () => {
     expect(client).toContain('failure.code !== "session_refresh_required"');
   });
 
-  it("não usa segredo administrativo e filtra payloads no servidor", () => {
+  it("usa segredo somente no BFF para impedir bypass anônimo do RPC", () => {
     expect(endpoint).toContain("allowedOrigin");
     expect(endpoint).toContain("normalizeItems");
     expect(endpoint).toContain("normalizeReward");
     expect(endpoint).toContain("PAYMENT_CODE");
-    expect(endpoint).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
-    expect(endpoint).not.toContain("SUPABASE_SECRET_KEY");
+    expect(endpoint).toContain('env("SUPABASE_SECRET_KEY")');
+    expect(endpoint).toContain('env("SUPABASE_SERVICE_ROLE_KEY")');
+    expect(endpoint).toContain("const apiKey = accessToken ? publishableKey : secretKey");
+    expect(endpoint).toContain("const bearer = accessToken || secretKey");
+    expect(client).not.toContain("SUPABASE_SECRET_KEY");
+    expect(panel).not.toContain("SUPABASE_SECRET_KEY");
   });
 
   it("protege envios autenticados contra CSRF e não retorna tokens", () => {
