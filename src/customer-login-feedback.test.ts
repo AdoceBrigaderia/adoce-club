@@ -25,14 +25,23 @@ describe("acesso do cliente por celular e senha", () => {
 });
 
 describe("canal de reclamações e sugestões", () => {
-  it("é público para envio, mas a tabela só pode ser lida pela equipe", () => {
-    const migration = source("../supabase/migrations/20260720132544_customer_feedback.sql");
+  it("é público para envio pelo BFF, mas a tabela só pode ser lida pela equipe", () => {
+    const baseMigration = source(
+      "../supabase/migrations/20260720132544_customer_feedback.sql",
+    );
+    const bffMigration = source(
+      "../supabase/migrations/20260727110000_site_feedback_bff_hardening.sql",
+    );
     const app = source("./App.tsx");
-    const endpoint = source("../netlify/functions/site-feedback.ts");
-    expect(migration).toContain("enable row level security");
-    expect(migration).toContain("revoke all on table public.site_feedback from public, anon, authenticated");
-    expect(migration).toContain("using (private.is_staff())");
+    const endpoint = source("../netlify/functions/public-feedback.ts");
+    expect(baseMigration).toContain("enable row level security");
+    expect(baseMigration).toContain(
+      "revoke all on table public.site_feedback from public, anon, authenticated",
+    );
+    expect(baseMigration).toContain("using (private.is_staff())");
     expect(app).toContain('hash.startsWith("#fale-com-a-adoce")');
-    expect(endpoint).toContain('.from("site_feedback").insert');
+    expect(endpoint).toContain("submit_site_feedback_bff");
+    expect(endpoint).toContain("allowedOrigin");
+    expect(bffMigration).toContain("to service_role");
   });
 });
