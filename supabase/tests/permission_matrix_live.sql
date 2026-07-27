@@ -4,17 +4,20 @@ do $$
 declare
   owner_actor uuid;
   test_staff uuid;
+  owner_ids uuid[];
   primary_store uuid;
   secondary_store uuid;
   audit_before integer;
   audit_after integer;
   failure_message text;
 begin
-  select min(user_id), max(user_id)
-  into owner_actor, test_staff
+  select array_agg(user_id order by user_id::text)
+  into owner_ids
   from public.staff_members
   where role::text = 'owner' and active;
 
+  owner_actor := owner_ids[1];
+  test_staff := owner_ids[2];
   if owner_actor is null or test_staff is null or owner_actor = test_staff then
     raise exception 'O teste vivo exige dois proprietários ativos em homologação';
   end if;
