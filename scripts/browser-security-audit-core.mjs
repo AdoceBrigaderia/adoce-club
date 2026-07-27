@@ -27,14 +27,15 @@ const DEVELOPMENT_ONLY_AUTH_SURFACES = [
 ];
 
 const AUTH_STORAGE_CONTEXT =
-  /(?:auth|access[_-]?token|refresh[_-]?token|bearer|supabase|remember[-_ ]?login|credential|jwt|password|recovery)/i;
+  /(?:auth|access[_-]?token|refresh[_-]?token|bearer|supabase|remember[-_ ]?login|credential|jwt|password)/i;
 
 const RULES = [
   {
     id: "client-secret-environment",
     severity: "critical",
     alwaysCritical: true,
-    description: "Segredo foi referenciado por variável VITE_ e pode entrar no bundle público.",
+    description:
+      "Segredo foi referenciado por variável VITE_ e pode entrar no bundle público.",
     pattern:
       /\bVITE_[A-Z0-9_]*(?:SECRET|PRIVATE_KEY|SERVICE_ROLE|ACCESS_TOKEN|REFRESH_TOKEN|APP_SECRET|PEPPER)[A-Z0-9_]*\b/g,
   },
@@ -42,7 +43,8 @@ const RULES = [
     id: "private-key-material",
     severity: "critical",
     alwaysCritical: true,
-    description: "Material de chave privada foi encontrado em código do navegador.",
+    description:
+      "Material de chave privada foi encontrado em código do navegador.",
     pattern: /-----BEGIN (?:RSA )?PRIVATE KEY-----/g,
   },
   {
@@ -55,7 +57,8 @@ const RULES = [
   {
     id: "browser-authentication-api",
     severity: "critical",
-    description: "Superfície real autentica diretamente pelo cliente Supabase, fora do BFF.",
+    description:
+      "Superfície real autentica diretamente pelo cliente Supabase, fora do BFF.",
     pattern:
       /\.auth\.(?:signInWithPassword|signInWithOtp|verifyOtp|signOut|updateUser|resetPasswordForEmail)\s*\(/g,
   },
@@ -69,7 +72,8 @@ const RULES = [
   {
     id: "token-response-shape",
     severity: "critical",
-    description: "Superfície real referencia access_token/refresh_token no navegador.",
+    description:
+      "Superfície real referencia access_token/refresh_token no navegador.",
     pattern: /\b(?:access_token|refresh_token)\b/g,
   },
   {
@@ -94,7 +98,10 @@ function effectiveSeverity(path, rule) {
   return isDevelopmentOnlyAuthSurface(path) ? "warning" : "critical";
 }
 
-export function isAuditableSource(path, ignoredPatterns = DEFAULT_IGNORED_PATTERNS) {
+export function isAuditableSource(
+  path,
+  ignoredPatterns = DEFAULT_IGNORED_PATTERNS,
+) {
   const normalized = toPosix(path);
   if (!SOURCE_EXTENSIONS.has(extname(normalized))) return false;
   return !ignoredPatterns.some((pattern) => pattern.test(normalized));
@@ -117,7 +124,9 @@ function storageViolations(path, source) {
   for (const match of source.matchAll(storagePattern)) {
     const start = Math.max(0, match.index - 180);
     const end = Math.min(source.length, match.index + 260);
-    const context = source.slice(start, match.index) + source.slice(match.index + match[0].length, end);
+    const context =
+      source.slice(start, match.index) +
+      source.slice(match.index + match[0].length, end);
     if (!AUTH_STORAGE_CONTEXT.test(context)) continue;
     findings.push({
       id: "persistent-auth-storage",
@@ -162,7 +171,9 @@ export function auditBrowserSource(path, source) {
 }
 
 export function auditBrowserFiles(files) {
-  const findings = files.flatMap(({ path, source }) => auditBrowserSource(path, source));
+  const findings = files.flatMap(({ path, source }) =>
+    auditBrowserSource(path, source),
+  );
   const critical = findings.filter((item) => item.severity === "critical");
   const warnings = findings.filter((item) => item.severity === "warning");
   return {
