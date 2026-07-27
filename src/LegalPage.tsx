@@ -118,7 +118,11 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             </p>
             <h2>Contato</h2>
             <p>
-              Para exercer direitos ou tirar dúvidas sobre seus dados, escreva para
+              Para exercer direitos ou tirar dúvidas sobre seus dados, abra uma
+              <a href="/#fale-com-a-adoce?tipo=privacy">
+                {" solicitação de privacidade com protocolo"}
+              </a>{" "}
+              ou escreva para
               <a href={businessMailto("privacidade", "Privacidade e dados pessoais")}> {contact.email}</a>.
             </p>
           </>
