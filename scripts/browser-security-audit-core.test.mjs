@@ -33,17 +33,17 @@ test("bloqueia sessão Supabase manipulada em superfície real", () => {
   );
 });
 
-test("inventaria autenticação antiga de AccessApp sem confundir rota DEV com produção", () => {
+test("bloqueia reintrodução de autenticação antiga mesmo usando nome legado", () => {
   const findings = auditBrowserSource(
     "src/AccessApp.tsx",
     "await supabase.auth.setSession({ access_token, refresh_token });",
   );
   assert.ok(findings.length >= 3);
-  assert.ok(findings.every((item) => item.severity === "warning"));
-  assert.ok(findings.every((item) => item.developmentOnly === true));
+  assert.ok(findings.every((item) => item.severity === "critical"));
+  assert.ok(findings.every((item) => item.developmentOnly === false));
 });
 
-test("segredos permanecem críticos mesmo dentro de módulo exclusivo de desenvolvimento", () => {
+test("segredos permanecem críticos em qualquer módulo do navegador", () => {
   const findings = auditBrowserSource(
     "src/AccessApp.tsx",
     "const secret = import.meta.env.VITE_META_APP_SECRET;",
@@ -127,23 +127,20 @@ test("SDK Supabase direto gera alerta, mas o adaptador central é permitido", ()
   assert.equal(central.length, 0);
 });
 
-test("relatório só reprova quando há achado crítico", () => {
+test("relatório permite somente alertas não sensíveis e reprova sessão direta", () => {
   const warningOnly = auditBrowserFiles([
     {
       path: "src/PublicCatalog.ts",
       source: 'import { createClient } from "@supabase/supabase-js";',
     },
-    {
-      path: "src/services/auth.ts",
-      source: "await client.auth.getSession();",
-    },
   ]);
   assert.equal(warningOnly.passed, true);
-  assert.equal(warningOnly.warnings.length, 2);
+  assert.equal(warningOnly.warnings.length, 1);
+  assert.equal(warningOnly.critical.length, 0);
 
   const blocked = auditBrowserFiles([
     {
-      path: "src/OperationAccess.tsx",
+      path: "src/services/auth.ts",
       source: "await client.auth.getSession();",
     },
   ]);
