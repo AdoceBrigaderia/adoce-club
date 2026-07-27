@@ -25,21 +25,25 @@ describe("gateway BFF do cliente", () => {
   it("carrega cartão e QR somente por RPCs permitidos no BFF", () => {
     expect(CLIENT_RPC_ALLOWLIST).toContain("customer_get_account_workspace");
     expect(CLIENT_RPC_ALLOWLIST).toContain("issue_customer_qr");
-    expect(gateway).toContain('clientBffRpc<CustomerWorkspace>("customer_get_account_workspace")');
-    expect(gateway).toContain('clientBffRpc<IssuedQr | IssuedQr[]>("issue_customer_qr")');
+    expect(gateway).toMatch(
+      /clientBffRpc<CustomerWorkspace>\(\s*"customer_get_account_workspace"/,
+    );
+    expect(gateway).toMatch(
+      /clientBffRpc<IssuedQr \| IssuedQr\[]>\(\s*"issue_customer_qr"/,
+    );
   });
 
   it("usa o gateway seguro nas rotas reais de cliente e operação", () => {
     expect(app).toContain('lazy(() => import("./PasskeyClientGateway"))');
     expect(app).toContain('lazy(() => import("./PasskeyOperationGateway"))');
-    expect(app).not.toContain('const AccessApp = lazy');
+    expect(app).not.toContain("const AccessApp = lazy");
     expect(main).not.toContain("PasskeyOperationGateway");
   });
 
   it("permite cadastrar passkeys para cliente e equipe", () => {
     expect(manager).toContain('surface = "operation"');
     expect(manager).toContain("registerPasskeyBff(surface)");
-    expect(gateway).toContain('<PasskeyManager surface="client"');
+    expect(gateway).toMatch(/<PasskeyManager\s+surface="client"/);
   });
 
   it("retoma automaticamente o check-in após autenticação", () => {
