@@ -2,14 +2,25 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { OPERATION_RPC_ALLOWLIST } from "../netlify/functions/_shared/bff-rpc-policy";
 
-const source = readFileSync(new URL("./OperationReports.tsx", import.meta.url), "utf8");
-const styles = readFileSync(new URL("./operation-reports.css", import.meta.url), "utf8");
-const hub = readFileSync(new URL("./OperationBusinessHub.tsx", import.meta.url), "utf8");
+const source = readFileSync(
+  new URL("./OperationReports.tsx", import.meta.url),
+  "utf8",
+);
+const styles = readFileSync(
+  new URL("./operation-reports.css", import.meta.url),
+  "utf8",
+);
+const hub = readFileSync(
+  new URL("./OperationBusinessHub.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("painel operacional de relatórios", () => {
   it("usa o consolidado somente pelo BFF", () => {
     expect(OPERATION_RPC_ALLOWLIST).toContain("staff_get_operational_reports");
-    expect(source).toContain('bffRpc<ReportsData>("staff_get_operational_reports"');
+    expect(source).toContain(
+      'bffRpc<ReportsData>("staff_get_operational_reports"',
+    );
     expect(source).not.toContain("requireSupabase");
     expect(source).not.toContain("Authorization");
     expect(source).not.toContain("localStorage");
@@ -34,7 +45,7 @@ describe("painel operacional de relatórios", () => {
 
   it("fica integrado e responsivo", () => {
     expect(hub).toContain('import OperationReports from "./OperationReports"');
-    expect(hub).toContain("<OperationReports />");
+    expect(hub).toContain("<OperationReports");
     expect(styles).toContain("@media(max-width:820px)");
     expect(styles).toContain("@media(max-width:520px)");
     expect(styles).toContain("min-height:58px");
