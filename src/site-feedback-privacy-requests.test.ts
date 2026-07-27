@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const page = readFileSync(new URL("./FeedbackPage.tsx", import.meta.url), "utf8");
+const legal = readFileSync(new URL("./LegalPage.tsx", import.meta.url), "utf8");
 const endpoint = readFileSync(
   new URL("../netlify/functions/public-feedback.ts", import.meta.url),
   "utf8",
@@ -23,6 +24,12 @@ describe("solicitações de privacidade pela Escuta Adoce", () => {
     expect(page).toContain("new URLSearchParams(query)");
     expect(page).toContain('.get("tipo") === "privacy"');
     expect(page).toContain("fallbackContact, fallbackSubject");
+  });
+
+  it("liga a política ao formulário protocolado sem remover o e-mail", () => {
+    expect(legal).toContain('/#fale-com-a-adoce?tipo=privacy');
+    expect(legal).toContain("solicitação de privacidade com protocolo");
+    expect(legal).toContain('businessMailto("privacidade"');
   });
 
   it("valida a categoria e o contato novamente no BFF", () => {
