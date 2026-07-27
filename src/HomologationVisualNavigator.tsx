@@ -1,27 +1,105 @@
-import { CheckCircle2, ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
-
-const validationRoutes = [
-  ["Início e identidade", "/#inicio"],
-  ["Fatias de hoje", "/#adoce-hoje"],
-  ["Cadastro simplificado", "/#cadastro"],
-  ["Clube e cartão digital", "/#clube"],
-  ["Pede Junto", "/#pede-junto"],
-  ["Encomendas", "/#encomendas"],
-  ["Operação", "/#operacao"],
-  ["Fale com a Adoce", "/#fale-com-a-adoce"],
-] as const;
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ClipboardCheck,
+  Copy,
+  RotateCcw,
+  TriangleAlert,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  buildVisualReviewMarkdown,
+  createEmptyVisualReview,
+  normalizeVisualReview,
+  VISUAL_REVIEW_SESSION_KEY,
+  visualReviewProgress,
+  visualValidationRoutes,
+  type VisualReviewStatus,
+} from "./homologation-visual-review";
 
 export function isVisualNavigatorEnabled(value: string | undefined) {
   return value === "visual";
 }
 
-export default function HomologationVisualNavigator() {
-  const [open, setOpen] = useState(false);
+function readStoredReview() {
+  if (typeof window === "undefined") return createEmptyVisualReview();
 
-  if (!isVisualNavigatorEnabled(import.meta.env.VITE_ADOCE_VALIDATION_MODE)) {
-    return null;
+  try {
+    const stored = window.sessionStorage.getItem(VISUAL_REVIEW_SESSION_KEY);
+    return stored ? normalizeVisualReview(JSON.parse(stored)) : createEmptyVisualReview();
+  } catch {
+    return createEmptyVisualReview();
   }
+}
+
+function copyWithFallback(text: string) {
+  if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(text);
+
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.opacity = "0";
+  document.body.appendChild(field);
+  field.select();
+  const copied = document.execCommand("copy");
+  field.remove();
+
+  if (!copied) throw new Error("Não foi possível copiar o relatório.");
+  return Promise.resolve();
+}
+
+export default function HomologationVisualNavigator() {
+  const enabled = isVisualNavigatorEnabled(
+    import.meta.env.VITE_ADOCE_VALIDATION_MODE,
+  );
+  const [open, setOpen] = useState(false);
+  const [review, setReview] = useState(readStoredReview);
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const progress = useMemo(() => visualReviewProgress(review), [review]);
+  const report = useMemo(
+    () =>
+      buildVisualReviewMarkdown(review, {
+        commit: import.meta.env.VITE_ADOCE_PREVIEW_COMMIT,
+        builtAt: import.meta.env.VITE_ADOCE_PREVIEW_BUILT_AT,
+        url: typeof window === "undefined" ? undefined : window.location.origin,
+      }),
+    [review],
+  );
+
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    window.sessionStorage.setItem(
+      VISUAL_REVIEW_SESSION_KEY,
+      JSON.stringify(review),
+    );
+  }, [enabled, review]);
+
+  if (!enabled) return null;
+
+  const updateStatus = (id: string, status: VisualReviewStatus) => {
+    setReview((current) => ({
+      ...current,
+      statuses: { ...current.statuses, [id]: status },
+      updatedAt: new Date().toISOString(),
+    }));
+    setCopyFeedback("");
+  };
+
+  const copyReport = async () => {
+    try {
+      await copyWithFallback(report);
+      setCopyFeedback("Relatório copiado. Cole no atendimento ou no issue.");
+    } catch {
+      setCopyFeedback("Não foi possível copiar automaticamente neste navegador.");
+    }
+  };
+
+  const resetReview = () => {
+    setReview(createEmptyVisualReview());
+    setCopyFeedback("Revisão reiniciada.");
+  };
 
   return (
     <aside
@@ -38,7 +116,9 @@ export default function HomologationVisualNavigator() {
         <img src="/site/logo.webp" alt="Logo oficial da Adoce Brigaderia" />
         <span>
           <strong>Roteiro de validação</strong>
-          <small>Abra as telas principais sem procurar no menu.</small>
+          <small>
+            {progress.reviewed}/{progress.total} telas revisadas · {progress.adjust} ajustes
+          </small>
         </span>
         {open ? <ChevronDown aria-hidden="true" /> : <ChevronUp aria-hidden="true" />}
       </button>
@@ -49,19 +129,84 @@ export default function HomologationVisualNavigator() {
           id="homologation-visual-route-list"
         >
           <p>
-            Revise aparência, textos, organização e experiência touch. Fluxos que
-            dependem de credenciais externas podem permanecer em contingência.
+            Abra cada tela, valide aparência e experiência touch e marque o resultado.
+            O progresso permanece nesta aba durante a revisão.
           </p>
+
+          <div className="homologation-visual-review-progress" aria-live="polite">
+            <span><strong>{progress.approved}</strong> aprovadas</span>
+            <span><strong>{progress.adjust}</strong> com ajustes</span>
+            <span><strong>{progress.pending}</strong> pendentes</span>
+          </div>
+
           <nav aria-label="Telas para validar">
-            {validationRoutes.map(([label, href]) => (
-              <a href={href} key={href} onClick={() => setOpen(false)}>
-                <CheckCircle2 aria-hidden="true" />
-                {label}
-              </a>
-            ))}
+            {visualValidationRoutes.map(({ id, label, href }) => {
+              const status = review.statuses[id];
+              return (
+                <article className={`homologation-visual-route is-${status}`} key={id}>
+                  <a href={href} onClick={() => setOpen(false)}>
+                    {status === "approved" ? (
+                      <CheckCircle2 aria-hidden="true" />
+                    ) : status === "adjust" ? (
+                      <TriangleAlert aria-hidden="true" />
+                    ) : (
+                      <ClipboardCheck aria-hidden="true" />
+                    )}
+                    {label}
+                  </a>
+                  <div role="group" aria-label={`Resultado de ${label}`}>
+                    <button
+                      type="button"
+                      aria-pressed={status === "approved"}
+                      onClick={() => updateStatus(id, "approved")}
+                    >
+                      Aprovado
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={status === "adjust"}
+                      onClick={() => updateStatus(id, "adjust")}
+                    >
+                      Ajustar
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
           </nav>
+
+          <label className="homologation-visual-review-notes">
+            <span>Observações gerais</span>
+            <textarea
+              value={review.notes}
+              maxLength={4000}
+              placeholder="Ex.: botão pequeno no celular, texto confuso ou imagem incorreta."
+              onChange={(event) =>
+                setReview((current) => ({
+                  ...current,
+                  notes: event.target.value,
+                  updatedAt: new Date().toISOString(),
+                }))
+              }
+            />
+          </label>
+
+          <div className="homologation-visual-review-actions">
+            <button type="button" onClick={() => void copyReport()}>
+              <Copy aria-hidden="true" />
+              Copiar relatório
+            </button>
+            <button type="button" onClick={resetReview}>
+              <RotateCcw aria-hidden="true" />
+              Reiniciar
+            </button>
+          </div>
+
+          {copyFeedback ? <p className="homologation-visual-copy-feedback">{copyFeedback}</p> : null}
+
           <small>
             Identidade visual carregada diretamente dos assets oficiais do Portal.
+            Fluxos externos podem permanecer em contingência neste preview.
           </small>
         </div>
       ) : null}
