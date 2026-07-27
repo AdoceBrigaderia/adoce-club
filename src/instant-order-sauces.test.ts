@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { hasFirstAndLastName } from "./InstantOrderPanel";
 
 const panel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
+const service = readFileSync(
+  new URL("./services/public-instant-order.ts", import.meta.url),
+  "utf8",
+);
 const operation = readFileSync(new URL("./OperationInstantOrders.tsx", import.meta.url), "utf8");
 const migration = readFileSync(
   new URL("../supabase/migrations/20260722212224_add_order_sauces_and_friendly_pickup.sql", import.meta.url),
@@ -21,7 +25,8 @@ describe("caldas individuais no pedido de fatias", () => {
     expect(panel).toContain("Escolha uma opção para cada fatia");
     expect(panel).toContain('<option value="none">Sem calda</option>');
     expect(panel).toContain("Enviar somente as fatias");
-    expect(panel).toContain('rpc("submit_instant_order_v5"');
+    expect(panel).toContain("submitPublicInstantOrder");
+    expect(service).toContain("requested_items: input.items");
   });
 
   it("oferece cadastro e disponibilidade na operação", () => {
