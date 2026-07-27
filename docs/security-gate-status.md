@@ -24,6 +24,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Adoce Hoje, pré-reservas comerciais, Pede Junto, analytics e feedback público passam por Functions same-origin.
 - RPCs de escrita pública correspondentes foram retirados de `anon`/`authenticated` e limitados ao `service_role` do servidor.
 - Pré-reservas e feedback possuem chave idempotente e trava transacional contra duplicidade.
+- Endpoints públicos sensíveis possuem rate limit transacional por IP e contato com identificadores anonimizados antes do armazenamento.
 - Tabelas exclusivamente internas têm RLS, privilégios diretos revogados e política explícita de negação.
 - CSP, HSTS, anti-frame, nosniff, Referrer-Policy, Permissions-Policy e COOP/CORP são verificados no build.
 
@@ -36,6 +37,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Matriz por loja cobre venda, caixa, estoque, financeiro, clientes, pedidos, produção, relatórios e configurações.
 - Mudanças de papel e capacidade geram auditoria; gerente não altera proprietário/gestor e o último proprietário ativo não pode ser removido.
 - Valores públicos de pedidos e upgrade de recompensa são recalculados no banco.
+- O ensaio vivo transacional da matriz de permissões foi executado no Supabase de homologação com `ROLLBACK`, validando cashier, production, isolamento entre lojas, auditoria de capacidade e bloqueios de owner/manager sem persistir os dados temporários.
 
 ### Homologação e automação
 
@@ -56,11 +58,10 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 
 ## Bloqueadores restantes para liberar a homologação ao usuário
 
-1. Criar usuários de teste para cada papel e executar testes vivos de escalada, acesso entre lojas e revogação.
-2. Executar testes reais de passkey em Android, iPhone e Windows.
-3. Configurar Meta WhatsApp e Google Wallet no cofre do ambiente de homologação.
-4. Publicar um preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
-5. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
+1. Executar testes reais de passkey em Android, iPhone e Windows.
+2. Configurar Meta WhatsApp e Google Wallet no cofre do ambiente de homologação.
+3. Publicar um preview isolado, confirmar que todas as Functions estão presentes e executar smoke tests externos.
+4. Comparar novamente o preview com a produção atual sem migrar, publicar ou alterar produção.
 
 ## Evidências principais
 
@@ -69,6 +70,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - `scripts/homologation-environment-gate.mjs`
 - `scripts/verify-security-build.mjs`
 - `tests/e2e/public-mobile-smoke.e2e.mjs`
+- `supabase/tests/permission_matrix_live.sql`
+- `docs/permission-matrix-live-runbook.md`
 - `src/legacy-surfaces-removed.test.ts`
 - `src/bff-session-security.test.ts`
 - `src/public-service-request-bff-security.test.ts`
