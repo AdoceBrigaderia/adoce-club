@@ -38,7 +38,7 @@ describe("caixa rápido na operação", () => {
   });
 
   it("fica disponível diretamente na central operacional", () => {
-    expect(hub).toContain("<OperationQuickCash />");
+    expect(hub).toContain("<OperationQuickCash");
   });
 
   it("mantém alvos grandes no celular e tablet", () => {
