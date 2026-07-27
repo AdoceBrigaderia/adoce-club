@@ -9,12 +9,20 @@ const workflow = readFileSync(
   "utf8",
 );
 
-const sql = readFileSync(
+const permissionSql = readFileSync(
   new URL("../supabase/tests/permission_matrix_live.sql", import.meta.url),
   "utf8",
 );
+const rateLimitSql = readFileSync(
+  new URL("../supabase/tests/public_endpoint_rate_limit_live.sql", import.meta.url),
+  "utf8",
+);
+const rpcAllowlistSql = readFileSync(
+  new URL("../supabase/tests/authenticated_rpc_allowlist_live.sql", import.meta.url),
+  "utf8",
+);
 
-describe("workflow do ensaio vivo da matriz de permissões", () => {
+describe("workflow dos ensaios vivos de segurança", () => {
   it("é exclusivamente manual e exige autorização textual e commit exato", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("TESTAR SOMENTE HOMOLOGACAO");
@@ -36,12 +44,25 @@ describe("workflow do ensaio vivo da matriz de permissões", () => {
     expect(workflow).not.toContain("SUPABASE_PRODUCTION_DB_URL");
   });
 
-  it("executa psql com interrupção no primeiro erro e preserva rollback", () => {
+  it("executa todos os ensaios com interrupção no primeiro erro", () => {
     expect(workflow).toContain("--set=ON_ERROR_STOP=1");
     expect(workflow).toContain(
       "--file=supabase/tests/permission_matrix_live.sql",
     );
-    expect(workflow).toContain('grep -Eiq "ROLLBACK"');
+    expect(workflow).toContain(
+      "--file=supabase/tests/public_endpoint_rate_limit_live.sql",
+    );
+    expect(workflow).toContain(
+      "--file=supabase/tests/authenticated_rpc_allowlist_live.sql",
+    );
+    expect(workflow.match(/grep -Eiq \"ROLLBACK\"/g)).toHaveLength(3);
+  });
+
+  it.each([
+    ["matriz de permissões", permissionSql],
+    ["rate limit", rateLimitSql],
+    ["allowlist de RPCs", rpcAllowlistSql],
+  ])("preserva rollback integral no ensaio %s", (_label, sql) => {
     expect(sql.trimStart()).toMatch(/^begin;/i);
     expect(sql.trimEnd()).toMatch(/rollback;$/i);
   });
