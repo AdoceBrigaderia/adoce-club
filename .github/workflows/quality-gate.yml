@@ -1,9 +1,9 @@
 name: Portal quality gate
 
 on:
-  pull_request:
+  push:
     branches:
-      - fonte-oficial/portal-adoce-2026-07-25
+      - reestruturacao/ux-crm-operacao-imagens-v1
     paths-ignore:
       - "docs/**"
       - "**/*.md"
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: portal-quality-${{ github.event.pull_request.number || github.ref_name }}
+  group: portal-quality-${{ github.ref_name }}
   cancel-in-progress: true
 
 permissions:
@@ -28,31 +28,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Node 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
-
       - name: Prepare diagnostics
         run: mkdir -p artifacts/ci
-
       - name: TypeScript
         shell: bash
         run: |
           set -o pipefail
           npm run lint 2>&1 | tee artifacts/ci/typescript.log
-
       - name: Unit and contract tests
         shell: bash
         run: |
           set -o pipefail
           npm run test 2>&1 | tee artifacts/ci/tests.log
-
       - name: Audit core tests
         shell: bash
         run: |
@@ -62,7 +56,6 @@ jobs:
             npm run test:browser-security-audit
             npm run test:homologation-environment
           } 2>&1 | tee artifacts/ci/audit-tests.log
-
       - name: Runtime audits
         shell: bash
         run: |
@@ -71,19 +64,16 @@ jobs:
             npm run audit:image-library
             npm run audit:browser-security
           } 2>&1 | tee artifacts/ci/runtime-audits.log
-
       - name: Build
         shell: bash
         run: |
           set -o pipefail
           npm run build 2>&1 | tee artifacts/ci/build.log
-
       - name: Security build gate
         shell: bash
         run: |
           set -o pipefail
           npm run verify:security-build 2>&1 | tee artifacts/ci/security-build.log
-
       - name: Save diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,7 +82,6 @@ jobs:
           path: artifacts/ci
           retention-days: 7
           if-no-files-found: warn
-
       - name: Save homologation build
         if: success()
         uses: actions/upload-artifact@v4
