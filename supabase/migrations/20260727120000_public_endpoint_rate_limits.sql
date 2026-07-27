@@ -31,7 +31,7 @@ as $$
 declare
   normalized_bucket text := left(lower(btrim(coalesce(requested_bucket, ''))), 80);
   normalized_subject text := lower(btrim(coalesce(requested_subject_hash, '')));
-  current_time timestamptz := clock_timestamp();
+  observed_at timestamptz := clock_timestamp();
   current_row private.public_endpoint_rate_limits%rowtype;
   next_count integer;
   retry_after integer;
@@ -62,7 +62,7 @@ begin
 
   if current_row.bucket is null
      or current_row.window_started_at <=
-       current_time - make_interval(secs => requested_window_seconds) then
+       observed_at - make_interval(secs => requested_window_seconds) then
     insert into private.public_endpoint_rate_limits(
       bucket,
       subject_hash,
@@ -72,9 +72,9 @@ begin
     ) values (
       normalized_bucket,
       normalized_subject,
-      current_time,
+      observed_at,
       1,
-      current_time
+      observed_at
     )
     on conflict (bucket, subject_hash) do update
       set window_started_at = excluded.window_started_at,
@@ -95,14 +95,14 @@ begin
       extract(epoch from (
         current_row.window_started_at
           + make_interval(secs => requested_window_seconds)
-          - current_time
+          - observed_at
       ))
     )::integer
   );
 
   if next_count > requested_max_requests then
     update private.public_endpoint_rate_limits
-    set updated_at = current_time
+    set updated_at = observed_at
     where bucket = normalized_bucket
       and subject_hash = normalized_subject;
 
@@ -115,7 +115,7 @@ begin
 
   update private.public_endpoint_rate_limits
   set request_count = next_count,
-      updated_at = current_time
+      updated_at = observed_at
   where bucket = normalized_bucket
     and subject_hash = normalized_subject;
 
