@@ -37,9 +37,10 @@ describe("consumo controlado do GitHub Actions", () => {
     expect(qualityGate).toContain("cancel-in-progress: true");
   });
 
-  it("preserva TypeScript, testes, auditorias, build e segurança no gate automático", () => {
+  it("preserva TypeScript, testes, auditorias, pré-flight, build e segurança no gate automático", () => {
     expect(qualityGate).toContain("npm run lint");
     expect(qualityGate).toContain("npm run test");
+    expect(qualityGate).toContain("npm run test:homologation-preflight");
     expect(qualityGate).toContain("npm run audit:image-library");
     expect(qualityGate).toContain("npm run audit:browser-security");
     expect(qualityGate).toContain("npm run build");
