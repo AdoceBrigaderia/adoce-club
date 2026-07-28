@@ -1,0 +1,103 @@
+name: Pré-flight das migrations de homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite VALIDAR MIGRATIONS HOMOLOGACAO
+        required: true
+        type: string
+      expected_commit:
+        description: SHA exato da branch a validar
+        required: true
+        type: string
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/homologation-pending-migrations-preflight.yml
+      - docs/evidence/homologation-pending-migrations-20260728.json
+      - scripts/homologation-pending-migrations.mjs
+      - scripts/homologation-pending-migrations.test.mjs
+      - package.json
+      - supabase/migrations/**
+
+concurrency:
+  group: homologation-pending-migrations-${{ github.event.pull_request.number || 'manual' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_PROJECT_ID: vazozolhbehnriytzcdc
+
+jobs:
+  validate:
+    name: Inventário, ordem e bloqueios
+    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Baixar head exato
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_commit || github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, branch, commit e projeto isolado
+        shell: bash
+        env:
+          CONFIRMATION: ${{ inputs.confirmation || 'VALIDAR MIGRATIONS HOMOLOGACAO' }}
+          EXPECTED_COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_commit || github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "VALIDAR MIGRATIONS HOMOLOGACAO"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$HOMOLOGATION_PROJECT_ID" = "vazozolhbehnriytzcdc"
+          case "$HOMOLOGATION_PROJECT_ID" in
+            uefwywizqhfvvijaopcn) echo "Projeto produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Executar testes do plano
+        run: npm run test:homologation-pending-migrations
+
+      - name: Gerar relatório estrutural
+        run: npm run report:homologation-pending-migrations
+
+      - name: Confirmar inventário completo e bloqueio operacional
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('artifacts/homologation-pending-migrations.json', 'utf8'));
+          if (report.structural_passed !== true) throw new Error('Plano estrutural reprovado.');
+          if (report.pending_count !== 17) throw new Error(`Esperadas 17 migrations; encontradas ${report.pending_count}.`);
+          if (report.ready_for_apply !== false) throw new Error('O plano não deve liberar aplicação sem backup, repairs e dry-run.');
+          for (const blocker of ['backup_nao_confirmado', 'repairs_pendentes', 'dry_run_pendente']) {
+            if (!report.apply_blockers.includes(blocker)) throw new Error(`Bloqueio ausente: ${blocker}`);
+          }
+          NODE
+
+      - name: Preservar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preflight-migrations-homologacao-${{ github.run_number }}
+          path: |
+            artifacts/homologation-pending-migrations.json
+            artifacts/homologation-pending-migrations.md
+            docs/evidence/homologation-pending-migrations-20260728.json
+          if-no-files-found: error
+          retention-days: 30
