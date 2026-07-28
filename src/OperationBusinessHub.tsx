@@ -13,6 +13,7 @@ import OperationProductProfitability from "./OperationProductProfitability";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
+import OperationServiceRequestPricingSnapshot from "./OperationServiceRequestPricingSnapshot";
 import OperationWhatsAppHealth from "./OperationWhatsAppHealth";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
@@ -79,6 +80,7 @@ export default function OperationBusinessHub() {
       <OperationReports key={`reports-${businessRevision}`} />
       {canConfigureProduction ? <OperationCostCatalog /> : null}
       {canConfigureProduction ? <OperationProductProfitability /> : null}
+      {canConfigureProduction ? <OperationServiceRequestPricingSnapshot /> : null}
       {canConfigureProduction ? <OperationCakeBuilderSettings /> : null}
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
