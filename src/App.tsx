@@ -4,6 +4,7 @@ import { installPublicAnalytics } from "./analytics";
 
 const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
 const CakeOrderExperience = lazy(() => import("./CakeOrderExperience"));
+const ConfigurableProductCatalogPage = lazy(() => import("./ConfigurableProductCatalogPage"));
 const ClubExperience = lazy(() => import("./ClubExperience"));
 const GroupOrderPage = lazy(() => import("./GroupOrderPage"));
 const LegalPage = lazy(() => import("./LegalPage"));
@@ -39,6 +40,8 @@ export function titleForRoute(hash: string) {
   if (hash.startsWith("#cadastro")) return "Cadastro · Clube Adoce";
   if (hash.startsWith("#docinhos"))
     return "Docinhos · Adoce Brigaderia";
+  if (hash.startsWith("#biscoitos"))
+    return "Biscoitos · Adoce Brigaderia";
   if (hash.startsWith("#encomendas"))
     return "Encomendas · Adoce Brigaderia";
   if (hash.startsWith("#eventos"))
@@ -193,7 +196,13 @@ export default function App() {
   if (location.hash.startsWith("#docinhos"))
     return (
       <Suspense fallback={loading}>
-        <CommercialCatalog initialSegment="sweets" />
+        <ConfigurableProductCatalogPage segment="sweets" />
+      </Suspense>
+    );
+  if (location.hash.startsWith("#biscoitos"))
+    return (
+      <Suspense fallback={loading}>
+        <ConfigurableProductCatalogPage segment="cookies" />
       </Suspense>
     );
   if (location.hash.startsWith("#eventos"))
@@ -205,7 +214,7 @@ export default function App() {
   if (location.hash.startsWith("#adoce-na-escola"))
     return (
       <Suspense fallback={loading}>
-        <CommercialCatalog initialSegment="school" />
+        <ConfigurableProductCatalogPage segment="school" />
       </Suspense>
     );
   if (location.hash.startsWith("#aluguel-decoracao"))
