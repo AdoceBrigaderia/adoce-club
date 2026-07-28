@@ -20,6 +20,7 @@ import "./customer-name-normalization.css";
 import "./homologation-validation.css";
 import "./styles.css";
 import "./theme.css";
+import "./mobile-responsive-fixes.css";
 
 const visualValidationMode = isVisualValidationMode(
   import.meta.env.VITE_ADOCE_VALIDATION_MODE,
