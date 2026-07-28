@@ -17,6 +17,7 @@ permissions:
 
 env:
   CI: true
+  PLAYWRIGHT_WEBKIT: "1"
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
   EXPECTED_COMMIT: ${{ inputs.commit }}
 
@@ -53,10 +54,10 @@ jobs:
       - name: Instalar Playwright isoladamente
         run: npm install --no-save --no-package-lock @playwright/test@1.61.1
 
-      - name: Instalar Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Instalar Chromium e WebKit
+        run: npx playwright install --with-deps chromium webkit
 
-      - name: Executar smoke mobile, tablet e desktop
+      - name: Executar smoke responsivo em Chromium e WebKit
         run: npx playwright test
 
       - name: Preservar relatório e evidências

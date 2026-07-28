@@ -10,6 +10,7 @@ import "./public-contact-dock.css";
 export default function PublicContactDock() {
   const [, refreshRoute] = useState(0);
   const [open, setOpen] = useState(false);
+  const [heroActionsVisible, setHeroActionsVisible] = useState(false);
   const dockRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -19,6 +20,21 @@ export default function PublicContactDock() {
     };
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    const actions = document.querySelector(".brand-hero .public-actions");
+    const compactViewport = window.matchMedia("(max-width: 560px)");
+    if (!actions || !compactViewport.matches) {
+      setHeroActionsVisible(false);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => setHeroActionsVisible(entry.isIntersecting),
+      { threshold: 0.05 },
+    );
+    observer.observe(actions);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -38,6 +54,7 @@ export default function PublicContactDock() {
   }, [open]);
 
   if (
+    heroActionsVisible ||
     !shouldShowPublicContactDock(
       window.location.hostname,
       window.location.hash,
