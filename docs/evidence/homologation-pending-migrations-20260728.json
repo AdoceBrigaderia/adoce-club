@@ -3,11 +3,11 @@
   "environment": "homologation",
   "repository": "AdoceBrigaderia/adoce-club",
   "branch": "reestruturacao/ux-crm-operacao-imagens-v1",
-  "head_evaluated": "a5a76f048ab3b0ede607c8e9054f354feb1d0f95",
+  "head_evaluated": "26c6d26da438c98404fa9fa1db01680f5ca89c57",
   "project_id": "vazozolhbehnriytzcdc",
   "production_project_id": "uefwywizqhfvvijaopcn",
   "production_forbidden": true,
-  "captured_at": "2026-07-28T16:02:00-03:00",
+  "captured_at": "2026-07-28T17:14:25-03:00",
   "remote_last_applied": {
     "version": "20260727113349",
     "name": "privacy_anonymization_preserve_member_code"
@@ -47,6 +47,13 @@
     "required": true,
     "status": "in_progress",
     "evidence": ".github/workflows/apply-homologation-migrations-now.yml"
+  },
+  "last_apply_trigger": {
+    "requested_at": "2026-07-28T17:14:25-03:00",
+    "parent_commit": "26c6d26da438c98404fa9fa1db01680f5ca89c57",
+    "workflow": ".github/workflows/apply-homologation-migrations-now.yml",
+    "scope": "homologation_only",
+    "production_forbidden": true
   },
   "pending_migrations": [
     { "version": "20260728073000", "name": "cake_builder_configuration", "stage": "foundation" },
