@@ -1,4 +1,4 @@
-name: Pré-flight das migrations de homologação
+name: Pré-flight e aplicação das migrations de homologação
 
 on:
   workflow_dispatch:
@@ -16,22 +16,28 @@ on:
     paths:
       - .github/workflows/homologation-pending-migrations-preflight.yml
       - .github/workflows/homologation-migration-repair.yml
+      - docs/evidence/homologation-backup-confirmed-20260728.json
       - docs/evidence/homologation-pending-migrations-20260728.json
+      - docs/evidence/homologation-migrations-20260727.json
+      - docs/evidence/homologation-migration-repair-plan-20260727.json
       - scripts/homologation-pending-migrations.mjs
       - scripts/homologation-pending-migrations.test.mjs
+      - scripts/reconcile-homologation-migration-filenames.mjs
+      - scripts/reconcile-homologation-migration-filenames.test.mjs
       - package.json
       - supabase/migrations/**
 
 concurrency:
   group: homologation-pending-migrations-${{ github.event.pull_request.number || 'manual' }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
   HOMOLOGATION_PROJECT_ID: vazozolhbehnriytzcdc
+  PRODUCTION_PROJECT_ID: uefwywizqhfvvijaopcn
 
 jobs:
   validate:
@@ -57,9 +63,8 @@ jobs:
           test "$CONFIRMATION" = "VALIDAR MIGRATIONS HOMOLOGACAO"
           test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
           test "$HOMOLOGATION_PROJECT_ID" = "vazozolhbehnriytzcdc"
-          case "$HOMOLOGATION_PROJECT_ID" in
-            uefwywizqhfvvijaopcn) echo "Projeto produtivo rejeitado" >&2; exit 1 ;;
-          esac
+          test "$PRODUCTION_PROJECT_ID" = "uefwywizqhfvvijaopcn"
+          test "$HOMOLOGATION_PROJECT_ID" != "$PRODUCTION_PROJECT_ID"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -101,4 +106,213 @@ jobs:
             artifacts/homologation-pending-migrations.md
             docs/evidence/homologation-pending-migrations-20260728.json
           if-no-files-found: error
+          retention-days: 30
+
+  apply-homologation:
+    name: Dry-run e aplicação exclusiva na homologação
+    needs: validate
+    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: homologation
+    steps:
+      - name: Baixar branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 0
+
+      - name: Detectar autorização explícita do commit
+        id: authorization
+        shell: bash
+        env:
+          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          subject="$(git log -1 --pretty=%s)"
+          if [ "$subject" = "ci: aplicar migrations somente na homologação" ]; then
+            echo "authorized=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "authorized=false" >> "$GITHUB_OUTPUT"
+            echo "Commit sem autorização de aplicação; job permanecerá somente informativo."
+          fi
+
+      - name: Validar backup, projeto e conexão isolada
+        if: steps.authorization.outputs.authorized == 'true'
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_PROJECT_ID"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_PROJECT_ID"*) echo "Produção detectada e rejeitada" >&2; exit 1 ;;
+          esac
+          node - <<'NODE'
+          const fs = require('fs');
+          const evidence = JSON.parse(fs.readFileSync('docs/evidence/homologation-backup-confirmed-20260728.json', 'utf8'));
+          if (evidence.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Backup de projeto incorreto.');
+          if (evidence.accepted_for_homologation_migration_gate !== true) throw new Error('Backup não aceito.');
+          if (evidence.package?.sha256 !== 'e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354') throw new Error('Digest divergente.');
+          if (evidence.package?.invalid_checksum_count !== 0) throw new Error('Checksum inválido.');
+          if (evidence.storage?.verified_object_count !== 430) throw new Error('Storage incompleto.');
+          NODE
+
+      - name: Configurar Node.js e PostgreSQL
+        if: steps.authorization.outputs.authorized == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar cliente PostgreSQL
+        if: steps.authorization.outputs.authorized == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Testar e alinhar versões locais
+        if: steps.authorization.outputs.authorized == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test scripts/reconcile-homologation-migration-filenames.test.mjs
+          node scripts/reconcile-homologation-migration-filenames.mjs --strict --apply
+          git diff --check
+
+      - name: Confirmar repairs no histórico remoto
+        if: steps.authorization.outputs.authorized == 'true'
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-migrations
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+            --command="select version || ':' || name from supabase_migrations.schema_migrations where name in ('backend_only_tables_explicit_deny','operational_foreign_key_indexes','public_analytics_bff_only') order by version" \
+            > artifacts/homologation-migrations/repair-scope-before.txt
+          cat > artifacts/homologation-migrations/repair-scope-expected.txt <<'EXPECTED'
+          20260727035116:backend_only_tables_explicit_deny
+          20260727035246:operational_foreign_key_indexes
+          20260727035513:public_analytics_bff_only
+          EXPECTED
+          diff -u artifacts/homologation-migrations/repair-scope-expected.txt artifacts/homologation-migrations/repair-scope-before.txt
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --csv \
+            --command="select version, name from supabase_migrations.schema_migrations order by version" \
+            > artifacts/homologation-migrations/history-before.csv
+
+      - name: Executar dry-run integral
+        if: steps.authorization.outputs.authorized == 'true'
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 db push --db-url "$SUPABASE_HOMOLOGATION_DB_URL" --dry-run \
+            > artifacts/homologation-migrations/db-push-dry-run.txt 2>&1
+          cat artifacts/homologation-migrations/db-push-dry-run.txt
+          for migration in \
+            20260728073000 20260728090000 20260728093000 20260728103000 \
+            20260728115000 20260728115100 20260728130000 20260728154500 \
+            20260728164000 20260728165116 20260728165303 20260728170236 \
+            20260728170246 20260728170307 20260728170501 20260728170941 \
+            20260728174500; do
+            grep -q "$migration" artifacts/homologation-migrations/db-push-dry-run.txt
+          done
+
+      - name: Aplicar as 17 migrations
+        if: steps.authorization.outputs.authorized == 'true'
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 db push --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            > artifacts/homologation-migrations/db-push-apply.txt 2>&1
+          cat artifacts/homologation-migrations/db-push-apply.txt
+
+      - name: Validar histórico, objetos e RLS
+        if: steps.authorization.outputs.authorized == 'true'
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --csv \
+            --command="select version, name from supabase_migrations.schema_migrations order by version" \
+            > artifacts/homologation-migrations/history-after.csv
+          test "$(psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="select count(*) from supabase_migrations.schema_migrations where version >= '20260728073000'")" = "17"
+          test "$(psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="select max(version) from supabase_migrations.schema_migrations")" = "20260728174500"
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align <<'SQL' > artifacts/homologation-migrations/schema-smoke.txt
+          select case when every(object_name is not null) then 'ok' else 'missing' end
+          from (
+            values
+              (to_regclass('public.cake_builder_templates')::text),
+              (to_regclass('public.costing_items')::text),
+              (to_regclass('public.costing_recipes')::text),
+              (to_regclass('public.costing_cost_snapshots')::text),
+              (to_regclass('public.service_request_pricing_snapshots')::text),
+              (to_regclass('public.gallery_media_versions')::text)
+          ) as required(object_name);
+          select count(*)
+          from pg_class c
+          join pg_namespace n on n.oid = c.relnamespace
+          where n.nspname = 'public'
+            and c.relname in ('cake_builder_templates','costing_items','costing_recipes','costing_cost_snapshots','service_request_pricing_snapshots','gallery_media_versions')
+            and c.relrowsecurity;
+          SQL
+          grep -qx 'ok' artifacts/homologation-migrations/schema-smoke.txt
+          grep -qx '6' artifacts/homologation-migrations/schema-smoke.txt
+
+      - name: Registrar evidência na branch
+        if: steps.authorization.outputs.authorized == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = {
+            schema_version: 1,
+            environment: 'homologation',
+            project_id: 'vazozolhbehnriytzcdc',
+            production_forbidden: true,
+            source_commit: process.env.GITHUB_SHA,
+            completed_at: new Date().toISOString(),
+            backup_sha256: 'e45f322ecece827609269e6d500f2f60ad354',
+            repairs_confirmed: true,
+            dry_run_completed: true,
+            migrations_applied: 17,
+            final_version: '20260728174500'
+          };
+          report.backup_sha256 = 'e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354';
+          fs.writeFileSync('docs/evidence/homologation-migrations-applied-20260728.json', `${JSON.stringify(report, null, 2)}\n`);
+          NODE
+          git config user.name "adoce-homologation-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/migrations docs/evidence/homologation-migration-filename-reconciliation-20260728.json docs/evidence/homologation-migrations-applied-20260728.json
+          git diff --cached --quiet || {
+            git commit -m "chore: registra migrations aplicadas na homologação"
+            git push origin HEAD:reestruturacao/ux-crm-operacao-imagens-v1
+          }
+
+      - name: Preservar evidências da aplicação
+        if: always() && steps.authorization.outputs.authorized == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrations-homologacao-${{ github.run_number }}
+          path: |
+            artifacts/homologation-migrations
+            docs/evidence/homologation-migration-filename-reconciliation-20260728.json
+            docs/evidence/homologation-migrations-applied-20260728.json
+          if-no-files-found: warn
           retention-days: 30
