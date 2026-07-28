@@ -1,0 +1,124 @@
+name: Diagnosticar TypeScript da reestruturação
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/typescript-diagnostics.yml
+
+concurrency:
+  group: typescript-diagnostics
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  DELIVERY_ISSUE_NUMBER: "13"
+
+jobs:
+  diagnose:
+    name: Capturar erros TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Baixar o commit exato
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch e SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        shell: bash
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Executar TypeScript e preservar saída
+        id: typescript
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          npx tsc -b --pretty false 2>&1 | tee artifacts/typescript-errors.txt
+          status=${PIPESTATUS[0]}
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Gerar resumo objetivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const input = fs.readFileSync('artifacts/typescript-errors.txt', 'utf8');
+          const lines = input.split(/\r?\n/).filter(Boolean);
+          const errors = lines.filter((line) => /error TS\d+:/.test(line));
+          const unique = [...new Set(errors)];
+          const summary = unique.slice(0, 40).join('\n');
+          fs.writeFileSync('artifacts/typescript-summary.txt', summary || 'Nenhum erro TypeScript encontrado.\n');
+          fs.writeFileSync('artifacts/typescript-count.txt', `${unique.length}\n`);
+          NODE
+
+      - name: Publicar diagnóstico no issue de entrega
+        uses: actions/github-script@v7
+        env:
+          EXIT_CODE: ${{ steps.typescript.outputs.exit_code }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('artifacts/typescript-summary.txt', 'utf8').trim();
+            const count = fs.readFileSync('artifacts/typescript-count.txt', 'utf8').trim();
+            const clipped = summary.slice(0, 6000);
+            const ok = process.env.EXIT_CODE === '0';
+            const body = [
+              ok ? '## TypeScript aprovado' : '## Diagnóstico TypeScript disponível',
+              '',
+              `- Commit: \`${context.sha}\``,
+              `- Erros únicos: **${count}**`,
+              `- Exit code: \`${process.env.EXIT_CODE}\``,
+              '',
+              '```text',
+              clipped,
+              '```',
+              '',
+              '- Produção: **não alterada**.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });
+
+      - name: Preservar diagnóstico
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-diagnostics-${{ github.sha }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Falhar quando TypeScript estiver inválido
+        if: ${{ steps.typescript.outputs.exit_code != '0' }}
+        shell: bash
+        run: exit 1
