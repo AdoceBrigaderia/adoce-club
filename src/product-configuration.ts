@@ -19,6 +19,7 @@ export type ProductConfigurationRules = {
   includedQuantity?: number;
   additionalUnitPrice?: number;
   groupLimits?: Record<string, number>;
+  groupMinimums?: Record<string, number>;
 };
 
 export type ProductConfigurationOption = {
@@ -77,7 +78,7 @@ export type ProductConfigurationQuote = {
   internalCost: number;
 };
 
-type NormalizedRules = {
+export type NormalizedProductConfigurationRules = {
   minimumTotalQuantity: number;
   maximumTotalQuantity: number;
   maximumFlavors: number;
@@ -88,6 +89,7 @@ type NormalizedRules = {
   includedQuantity: number;
   additionalUnitPrice: number;
   groupLimits: Record<string, number>;
+  groupMinimums: Record<string, number>;
 };
 
 const positiveInteger = (value: unknown, fallback: number) => {
@@ -100,9 +102,16 @@ const nonNegativeNumber = (value: unknown, fallback: number) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
+const normalizeGroupRules = (input: Record<string, number> | null | undefined) =>
+  Object.fromEntries(
+    Object.entries(input || {})
+      .map(([group, limit]) => [group.trim(), positiveInteger(limit, 0)] as const)
+      .filter(([group, limit]) => Boolean(group) && limit > 0),
+  );
+
 export function normalizeProductConfigurationRules(
   input: ProductConfigurationRules | null | undefined,
-): NormalizedRules {
+): NormalizedProductConfigurationRules {
   const priceTiers = Array.isArray(input?.priceTiers)
     ? input.priceTiers
         .map((tier) => ({
@@ -115,11 +124,7 @@ export function normalizeProductConfigurationRules(
         .filter((tier) => tier.quantity > 0 && tier.price >= 0)
         .sort((left, right) => left.quantity - right.quantity)
     : [];
-  const groupLimits = Object.fromEntries(
-    Object.entries(input?.groupLimits || {})
-      .map(([group, limit]) => [group.trim(), positiveInteger(limit, 0)] as const)
-      .filter(([group, limit]) => Boolean(group) && limit > 0),
-  );
+
   return {
     minimumTotalQuantity: positiveInteger(input?.minimumTotalQuantity, 1),
     maximumTotalQuantity: positiveInteger(input?.maximumTotalQuantity, 10000),
@@ -130,14 +135,15 @@ export function normalizeProductConfigurationRules(
     priceTiers,
     includedQuantity: positiveInteger(input?.includedQuantity, 1),
     additionalUnitPrice: nonNegativeNumber(input?.additionalUnitPrice, 0),
-    groupLimits,
+    groupLimits: normalizeGroupRules(input?.groupLimits),
+    groupMinimums: normalizeGroupRules(input?.groupMinimums),
   };
 }
 
 function resolveBasePrice(
   product: ConfigurableCommercialProduct,
   requestedQuantity: number,
-  rules: NormalizedRules,
+  rules: NormalizedProductConfigurationRules,
 ) {
   if (rules.priceTiers.length) {
     const tier = rules.priceTiers.find((item) => item.quantity === requestedQuantity);
@@ -166,6 +172,14 @@ export function quoteProductConfiguration(
   }
 
   const rules = normalizeProductConfigurationRules(product.configuration_rules);
+  const minimumQuantity = Math.max(product.minimum_quantity, rules.minimumTotalQuantity);
+  if (requestedQuantity < minimumQuantity) {
+    throw new Error(`A quantidade mínima é ${minimumQuantity}.`);
+  }
+  if (requestedQuantity > rules.maximumTotalQuantity) {
+    throw new Error(`A quantidade máxima é ${rules.maximumTotalQuantity}.`);
+  }
+
   const pricing = resolveBasePrice(product, requestedQuantity, rules);
 
   if (product.customization_mode !== "option_groups") {
@@ -222,6 +236,10 @@ export function quoteProductConfiguration(
   for (const [group, limit] of Object.entries(rules.groupLimits)) {
     const selected = items.filter((item) => item.groupKey === group).length;
     if (selected > limit) throw new Error(`Escolha no máximo ${limit} opção(ões) em ${group.replace(/_/g, " ")}.`);
+  }
+  for (const [group, minimum] of Object.entries(rules.groupMinimums)) {
+    const selected = items.filter((item) => item.groupKey === group).length;
+    if (selected < minimum) throw new Error(`Escolha pelo menos ${minimum} opção(ões) em ${group.replace(/_/g, " ")}.`);
   }
   if (rules.requireExactTotal && configuredQuantity !== requestedQuantity) {
     throw new Error(`Distribua exatamente ${requestedQuantity} unidade(s) entre os sabores.`);
