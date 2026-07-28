@@ -33,15 +33,11 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Confirmar branch e proteção de produção
+      - name: Confirmar branch autorizada
         shell: bash
         run: |
           set -euo pipefail
           test "$(git branch --show-current)" = "reestruturacao/ux-crm-operacao-imagens-v1"
-          ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
-            scripts/generate-homologation-visual-atlas.mjs \
-            scripts/export-homologation-visual-atlas-images.mjs \
-            docs/HOMOLOGACAO-ATLAS-VISUAL-98.md
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -70,6 +66,13 @@ jobs:
           node -e "const m=require('./artifacts/atlas-visual/imagens-separadas/manifest.json'); if(m.totalAreas!==8||m.totalImages!==98||m.productionChanged!==false) process.exit(1)"
           test -f artifacts/atlas-visual/imagens-separadas/index.html
           test -f artifacts/atlas-visual/imagens-separadas/LEIA-ME.txt
+
+      - name: Confirmar isolamento dos artefatos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
+            artifacts/atlas-visual
 
       - name: Registrar documentação e evidência
         shell: bash
