@@ -20,6 +20,8 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_get_commerce_settings",
   "staff_get_cake_builder_configuration",
   "manager_save_cake_builder_configuration",
+  "manager_get_cake_builder_costing_workspace",
+  "manager_save_cake_builder_costing_links",
   "manager_get_costing_catalog_workspace",
   "manager_save_costing_catalog_item",
   "manager_add_costing_item_price",
