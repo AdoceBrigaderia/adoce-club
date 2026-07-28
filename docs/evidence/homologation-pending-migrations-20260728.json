@@ -3,45 +3,50 @@
   "environment": "homologation",
   "repository": "AdoceBrigaderia/adoce-club",
   "branch": "reestruturacao/ux-crm-operacao-imagens-v1",
-  "head_evaluated": "e15d30bc843157408cb79b40a294cd7935c94b3f",
+  "head_evaluated": "a5a76f048ab3b0ede607c8e9054f354feb1d0f95",
   "project_id": "vazozolhbehnriytzcdc",
   "production_project_id": "uefwywizqhfvvijaopcn",
   "production_forbidden": true,
-  "captured_at": "2026-07-28T14:51:57-03:00",
+  "captured_at": "2026-07-28T16:02:00-03:00",
   "remote_last_applied": {
     "version": "20260727113349",
     "name": "privacy_anonymization_preserve_member_code"
   },
   "backup": {
     "required": true,
-    "confirmed": false,
-    "status": "required_unconfirmed",
-    "evidence": null
+    "confirmed": true,
+    "status": "confirmed",
+    "evidence_file": "docs/evidence/homologation-backup-confirmed-20260728.json",
+    "package_sha256": "e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354",
+    "restore_test_performed": false
   },
   "required_repairs": [
     {
       "name": "backend_only_tables_explicit_deny",
       "keep_version": "20260727035116",
       "revert_version": "20260727035059",
-      "confirmed": false
+      "confirmed": true,
+      "verified_by": "remote_history_query"
     },
     {
       "name": "operational_foreign_key_indexes",
       "keep_version": "20260727035246",
       "revert_version": "20260727035343",
-      "confirmed": false
+      "confirmed": true,
+      "verified_by": "remote_history_query"
     },
     {
       "name": "public_analytics_bff_only",
       "keep_version": "20260727035513",
       "revert_version": "20260727040533",
-      "confirmed": false
+      "confirmed": true,
+      "verified_by": "remote_history_query"
     }
   ],
   "dry_run": {
     "required": true,
-    "status": "not_executed",
-    "evidence": null
+    "status": "in_progress",
+    "evidence": ".github/workflows/apply-homologation-migrations-now.yml"
   },
   "pending_migrations": [
     { "version": "20260728073000", "name": "cake_builder_configuration", "stage": "foundation" },
