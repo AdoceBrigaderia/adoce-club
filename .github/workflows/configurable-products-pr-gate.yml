@@ -17,15 +17,18 @@ on:
       - src/App.tsx
       - src/ConfigurableProductBuilder.tsx
       - src/ConfigurableProductCatalogPage.tsx
+      - src/CustomerServiceRequestHistory.tsx
       - src/OperationAdminCenter.tsx
       - src/OperationBusinessHub.tsx
       - src/OperationConfiguredOrders.tsx
+      - src/OperationCustomer360.tsx
       - src/OperationProductCatalog.tsx
       - src/OperationServiceRequestPricingSnapshot.tsx
       - src/product-configuration.ts
       - src/product-configuration.test.ts
       - src/unified-configurable-products-migration.test.ts
       - src/configurable-product-constraints-migration.test.ts
+      - src/configurable-product-consistency-migration.test.ts
       - src/configured-orders-workspace.test.ts
       - src/service-request-pricing-snapshot-ui.test.ts
       - src/configurable-product-builder.css
@@ -35,6 +38,8 @@ on:
       - supabase/migrations/20260728220000_unified_configurable_products.sql
       - supabase/migrations/20260728221500_configurable_product_constraints.sql
       - supabase/migrations/20260728223000_service_request_configuration_workspace.sql
+      - supabase/migrations/20260728224500_configurable_product_consistency_and_crm.sql
+      - supabase/migrations/20260728225000_real_configurable_product_catalog.sql
       - supabase/tests/authenticated_rpc_allowlist_live.sql
       - supabase/tests/homologation_post_migration_live.sql
 
@@ -93,6 +98,7 @@ jobs:
             src/product-configuration.test.ts \
             src/unified-configurable-products-migration.test.ts \
             src/configurable-product-constraints-migration.test.ts \
+            src/configurable-product-consistency-migration.test.ts \
             src/configured-orders-workspace.test.ts \
             src/service-request-pricing-snapshot-ui.test.ts \
             src/bff-rpc-security.test.ts
