@@ -1,0 +1,88 @@
+name: Alinhar versões locais das migrations à homologação
+
+on:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/reconcile-homologation-migration-filenames.yml
+      - scripts/reconcile-homologation-migration-filenames.mjs
+      - scripts/reconcile-homologation-migration-filenames.test.mjs
+      - docs/evidence/homologation-migrations-20260727.json
+      - docs/evidence/homologation-migration-repair-plan-20260727.json
+      - supabase/migrations/**
+
+concurrency:
+  group: reconcile-homologation-migration-filenames
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    name: Renomear arquivos sem executar SQL
+    if: ${{ github.event.head_commit.message == 'ci: alinhar migrations locais à homologação' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 0
+
+      - name: Validar repositório, branch e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "AdoceBrigaderia/adoce-club"
+          test "$(git branch --show-current)" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "${{ github.event.head_commit.message }}" = "ci: alinhar migrations locais à homologação"
+          ! grep -R "uefwywizqhfvvijaopcn" scripts/reconcile-homologation-migration-filenames.mjs
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Testar reconciliador
+        run: node --test scripts/reconcile-homologation-migration-filenames.test.mjs
+
+      - name: Executar reconciliação estrita
+        run: node scripts/reconcile-homologation-migration-filenames.mjs --strict --apply
+
+      - name: Validar alterações
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
+          test -f docs/evidence/homologation-migration-filename-reconciliation-20260728.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('docs/evidence/homologation-migration-filename-reconciliation-20260728.json', 'utf8'));
+          if (report.passed !== true) throw new Error('Reconciliação reprovada.');
+          if (report.rename_count < 1) throw new Error('Nenhum arquivo precisou ser alinhado.');
+          if (report.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Projeto de homologação incorreto.');
+          if (report.production_forbidden !== true) throw new Error('Proteção de produção ausente.');
+          NODE
+
+      - name: Registrar renomes na branch autorizada
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "adoce-homologation-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add supabase/migrations docs/evidence/homologation-migration-filename-reconciliation-20260728.json
+          git diff --cached --quiet && { echo "Nenhuma alteração para registrar" >&2; exit 1; }
+          git commit -m "chore: alinha migrations ao histórico da homologação"
+          git push origin HEAD:reestruturacao/ux-crm-operacao-imagens-v1
+
+      - name: Preservar relatório
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reconciliacao-nomes-migrations-${{ github.run_number }}
+          path: docs/evidence/homologation-migration-filename-reconciliation-20260728.json
+          if-no-files-found: warn
+          retention-days: 30
