@@ -1,8 +1,9 @@
 name: Aplicar migrations vinculadas somente na homologação
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
     paths:
       - .github/workflows/apply-homologation-linked.yml
       - scripts/reconcile-homologation-migration-filenames.mjs
@@ -27,26 +28,24 @@ env:
 jobs:
   apply:
     name: Dry-run e db push vinculados à homologação
-    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    if: ${{ github.event.head_commit.message == 'ci: aplicar migrations via linked homologacao' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: homologation
     steps:
-      - name: Baixar SHA exato do PR
+      - name: Baixar SHA exato da branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Validar autorização, backup e isolamento
         shell: bash
-        env:
-          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
-          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
           test "$(git log -1 --pretty=%s)" = "ci: aplicar migrations via linked homologacao"
           test "$HOMOLOGATION_REF" = "vazozolhbehnriytzcdc"
           test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
