@@ -23,6 +23,11 @@ create table if not exists public.costing_item_commercial_settings (
   updated_at timestamptz not null default now()
 );
 
+insert into public.costing_item_commercial_settings(item_id)
+select item.id
+from public.costing_items item
+on conflict (item_id) do nothing;
+
 alter table public.costing_item_commercial_settings enable row level security;
 revoke all on public.costing_item_commercial_settings from public, anon, authenticated;
 grant all on public.costing_item_commercial_settings to service_role;
@@ -189,7 +194,13 @@ begin
       or lower(item.name) like '%' || normalized_search || '%'
       or lower(item.internal_code) like '%' || normalized_search || '%'
       or lower(item.category) like '%' || normalized_search || '%'
-    order by item.active desc, commercial.margin_alert asc nulls last, item.name
+    order by
+      item.active desc,
+      (
+        commercial.sale_price > 0 and
+        ((commercial.sale_price - private.costing_effective_unit_cost(item.id)) / commercial.sale_price) < commercial.minimum_margin
+      ) desc,
+      item.name
     limit 1;
   end if;
 
