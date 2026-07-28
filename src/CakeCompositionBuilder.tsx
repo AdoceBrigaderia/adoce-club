@@ -32,13 +32,19 @@ type Props = {
   onChange: (quote: CakeBuilderQuote | null) => void;
 };
 
+type MultiSelectionPlacement =
+  | "filling_fruit"
+  | "topping_fruit"
+  | "filling_extra"
+  | "topping_extra";
+
 const money = (value: number) =>
   new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
   }).format(value);
 
-function selectionKey(placement: CakeBuilderPlacement) {
+function selectionKey(placement: MultiSelectionPlacement) {
   return {
     filling_fruit: "fillingFruits",
     topping_fruit: "toppingFruits",
@@ -188,14 +194,20 @@ export default function CakeCompositionBuilder({
   ) => {
     setSelection((current) => {
       if (!current) return current;
-      const next = [...current[field]];
-      next[index] = value;
+      const allowsMixed =
+        field === "cakeLayers"
+          ? template.allowMixedCakeLayers
+          : template.allowMixedFillings;
+      const next = allowsMixed
+        ? [...current[field]]
+        : current[field].map(() => value);
+      if (allowsMixed) next[index] = value;
       return normalizeCakeBuilderSelection(template, { ...current, [field]: next });
     });
   };
 
   const toggleOption = (
-    placement: "filling_fruit" | "topping_fruit" | "filling_extra" | "topping_extra",
+    placement: MultiSelectionPlacement,
     id: string,
   ) => {
     const key = selectionKey(placement);
@@ -212,6 +224,12 @@ export default function CakeCompositionBuilder({
   const cakeOptions = optionsForPlacement(template, "cake_layer");
   const fillingOptions = optionsForPlacement(template, "filling_layer");
   const toppingOptions = optionsForPlacement(template, "topping");
+  const visibleCakeLayers = template.allowMixedCakeLayers
+    ? selection.cakeLayers
+    : selection.cakeLayers.slice(0, 1);
+  const visibleFillingLayers = template.allowMixedFillings
+    ? selection.fillingLayers
+    : selection.fillingLayers.slice(0, 1);
 
   return (
     <section className="cake-builder" aria-labelledby="cake-builder-title">
@@ -235,9 +253,9 @@ export default function CakeCompositionBuilder({
       <section className="cake-builder-layer-group">
         <header><CakeSlice /><div><small>Etapa 1</small><h4>Sabores das camadas de bolo</h4></div></header>
         <div className="cake-builder-layer-list">
-          {selection.cakeLayers.map((selectedId, index) => (
+          {visibleCakeLayers.map((selectedId, index) => (
             <label key={`cake-${index}`}>
-              <span>Camada de bolo {index + 1}</span>
+              <span>{template.allowMixedCakeLayers ? `Camada de bolo ${index + 1}` : "Sabor para todas as camadas de bolo"}</span>
               <div><select value={selectedId} onChange={(event) => updateLayer("cakeLayers", index, event.target.value)}>
                 {cakeOptions.map((option) => <option key={option.id} value={option.id}>{option.label}{option.priceAdjustment ? ` (+${money(option.priceAdjustment)})` : ""}</option>)}
               </select><ChevronDown /></div>
@@ -249,9 +267,9 @@ export default function CakeCompositionBuilder({
       <section className="cake-builder-layer-group">
         <header><Sparkles /><div><small>Etapa 2</small><h4>Sabores das camadas de recheio</h4></div></header>
         <div className="cake-builder-layer-list">
-          {selection.fillingLayers.map((selectedId, index) => (
+          {visibleFillingLayers.map((selectedId, index) => (
             <label key={`filling-${index}`}>
-              <span>Camada de recheio {index + 1}</span>
+              <span>{template.allowMixedFillings ? `Camada de recheio ${index + 1}` : "Sabor para todas as camadas de recheio"}</span>
               <div><select value={selectedId} onChange={(event) => updateLayer("fillingLayers", index, event.target.value)}>
                 {fillingOptions.map((option) => <option key={option.id} value={option.id}>{option.label}{option.priceAdjustment ? ` (+${money(option.priceAdjustment)})` : ""}</option>)}
               </select><ChevronDown /></div>
