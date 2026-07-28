@@ -9,7 +9,14 @@ const css = readFileSync(
   new URL("./operation-service-request-pricing-snapshot.css", import.meta.url),
   "utf8",
 );
-const hub = readFileSync(new URL("./OperationBusinessHub.tsx", import.meta.url), "utf8");
+const hub = readFileSync(
+  new URL("./OperationBusinessHub.tsx", import.meta.url),
+  "utf8",
+);
+const adminCenter = readFileSync(
+  new URL("./OperationAdminCenter.tsx", import.meta.url),
+  "utf8",
+);
 const policy = readFileSync(
   new URL("../netlify/functions/_shared/bff-rpc-policy.ts", import.meta.url),
   "utf8",
@@ -17,7 +24,7 @@ const policy = readFileSync(
 
 describe("consulta operacional do snapshot financeiro", () => {
   it("usa somente o BFF e exige identificador completo da encomenda", () => {
-    expect(component).toContain('bffRpc<PricingSnapshot | null>');
+    expect(component).toContain("bffRpc<PricingSnapshot | null>");
     expect(component).toContain('"manager_get_service_request_pricing_snapshot"');
     expect(component).toContain("UUID.test(normalized)");
     expect(component).not.toContain("requireSupabase");
@@ -49,14 +56,15 @@ describe("consulta operacional do snapshot financeiro", () => {
     expect(component).toContain("Adicionais na cobertura");
   });
 
-  it("fica restrito a owner e manager na central da operação", () => {
-    expect(hub).toContain(
+  it("fica restrito a owner e manager na central administrativa", () => {
+    expect(hub).toContain('const canConfigureProduction = ["owner", "manager"]');
+    expect(hub).toContain("<OperationAdminCenter userId={session.user.id} />");
+    expect(adminCenter).toContain(
       'import OperationServiceRequestPricingSnapshot from "./OperationServiceRequestPricingSnapshot"',
     );
-    expect(hub).toContain(
-      "canConfigureProduction ? <OperationServiceRequestPricingSnapshot /> : null",
+    expect(adminCenter).toContain(
+      'activeArea === "history" ? <OperationServiceRequestPricingSnapshot /> : null',
     );
-    expect(hub).toContain('["owner", "manager"].includes(session.user.role)');
   });
 
   it("mantém botões grandes e layout responsivo", () => {
