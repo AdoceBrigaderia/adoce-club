@@ -13,17 +13,17 @@ const loadFixture = async () => {
   };
 };
 
-test("plano real contém as 20 migrations em ordem e aguarda somente o dry-run", async () => {
+test("plano real contém as 21 migrations em ordem e aguarda somente o dry-run", async () => {
   const { plan, files, remoteNames } = await loadFixture();
   const report = inspectPendingMigrationPlan(plan, files, remoteNames);
   assert.equal(report.structural_passed, true, report.errors.join("\n"));
-  assert.equal(report.pending_count, 20);
+  assert.equal(report.pending_count, 21);
   assert.equal(report.ready_for_apply, false);
   assert.deepEqual(report.apply_blockers, ["dry_run_pendente"]);
   assert.equal(plan.backup.confirmed, true);
   assert.equal(plan.required_repairs.every((repair) => repair.confirmed), true);
   assert.equal(report.pending_migrations[0].file, "20260728073000_cake_builder_configuration.sql");
-  assert.equal(report.pending_migrations.at(-1).file, "20260728223000_service_request_configuration_workspace.sql");
+  assert.equal(report.pending_migrations.at(-1).file, "20260728224500_configurable_product_consistency_and_crm.sql");
 });
 
 test("rejeita projeto diferente da homologação autorizada", async () => {
@@ -35,17 +35,17 @@ test("rejeita projeto diferente da homologação autorizada", async () => {
 
 test("rejeita aplicação parcial quando um arquivo planejado não existe", async () => {
   const { plan, files, remoteNames } = await loadFixture();
-  const withoutWorkspace = files.filter((file) => file !== "20260728223000_service_request_configuration_workspace.sql");
-  const report = inspectPendingMigrationPlan(plan, withoutWorkspace, remoteNames);
+  const withoutConsistency = files.filter((file) => file !== "20260728224500_configurable_product_consistency_and_crm.sql");
+  const report = inspectPendingMigrationPlan(plan, withoutConsistency, remoteNames);
   assert.equal(report.structural_passed, false);
-  assert.deepEqual(report.missing_planned_files, ["20260728223000_service_request_configuration_workspace.sql"]);
+  assert.deepEqual(report.missing_planned_files, ["20260728224500_configurable_product_consistency_and_crm.sql"]);
 });
 
 test("rejeita migration posterior que não esteja explicitamente no plano", async () => {
   const { plan, files, remoteNames } = await loadFixture();
-  const report = inspectPendingMigrationPlan(plan, [...files, "20260728224500_nao_planejada.sql"], remoteNames);
+  const report = inspectPendingMigrationPlan(plan, [...files, "20260728230000_nao_planejada.sql"], remoteNames);
   assert.equal(report.structural_passed, false);
-  assert.deepEqual(report.unexpected_pending_files, ["20260728224500_nao_planejada.sql"]);
+  assert.deepEqual(report.unexpected_pending_files, ["20260728230000_nao_planejada.sql"]);
 });
 
 test("ignora drift local quando o nome já está representado no snapshot remoto", async () => {
