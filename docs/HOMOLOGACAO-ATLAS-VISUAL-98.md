@@ -50,31 +50,44 @@ node scripts/export-homologation-visual-atlas-images.mjs \
   --out-dir artifacts/atlas-visual/imagens-separadas
 ```
 
-O artefato do GitHub Actions é baixado como ZIP e contém:
+A execução faz checkout do **SHA exato** que acionou o workflow e confirma que o commit baixado coincide com `GITHUB_SHA`. Isso impede que um novo push altere silenciosamente o conteúdo enquanto o pacote anterior ainda está sendo montado.
+
+O artefato do GitHub Actions contém os arquivos abertos e também um ZIP interno pronto para repasse:
 
 ```text
-validacao-visual-98.html
-imagens-separadas/
-  index.html
-  manifest.json
+atlas-visual/
+  validacao-visual-98.html
+  LEIA-ME.md
+  EVIDENCIA.txt
+  SHA256SUMS.txt
+  imagens-separadas/
+    index.html
+    manifest.json
+    LEIA-ME.txt
+    imagens/
+      001-....svg
+      002-....svg
+      ...
+      098-....svg
+entrega/
+  adoce-atlas-visual-98-<SHA-CURTO>.zip
+  adoce-atlas-visual-98-<SHA-CURTO>.zip.sha256
   LEIA-ME.txt
-  imagens/
-    001-....svg
-    002-....svg
-    ...
-    098-....svg
-EVIDENCIA.txt
 ```
 
 O arquivo `imagens-separadas/index.html` apresenta uma galeria navegável. Cada SVG informa área, checkpoint, rota interna, indicação de homologação e confirmação de que produção não foi alterada.
+
+O arquivo `SHA256SUMS.txt` permite conferir cada item do atlas antes do uso. O arquivo `.zip.sha256` permite validar o pacote completo. O workflow também abre o ZIP em modo de teste e confirma que existem exatamente 98 SVGs antes do upload.
 
 As imagens são representações conceituais para revisão de UX, identidade, hierarquia visual, alvos touch e clareza operacional. A validação funcional continua sendo feita no preview navegável.
 
 ## Segurança
 
 - execução exclusiva na branch de reestruturação;
+- checkout e validação do SHA exato do evento;
 - geração das 98 imagens sem `npm ci`, Netlify, Supabase ou credenciais externas;
-- artefato ZIP mantido por 30 dias no GitHub Actions;
+- pacote ZIP validado antes do upload e acompanhado por checksums SHA-256;
+- artefato mantido por 30 dias no GitHub Actions;
 - publicação do preview apenas no deploy estático de rascunho da homologação;
 - sem `--prod`;
 - sem Netlify Functions;
