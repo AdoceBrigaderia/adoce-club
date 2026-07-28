@@ -1,0 +1,134 @@
+name: Gate de custos e margens
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/costing-catalog-pr-gate.yml
+      - netlify/functions/_shared/bff-rpc-policy.ts
+      - src/OperationBusinessHub.tsx
+      - src/OperationCostCatalog.tsx
+      - src/operation-cost-catalog.css
+      - src/costing-engine.ts
+      - src/costing-engine.test.ts
+      - src/costing-core-migration.test.ts
+      - src/costing-commercial-catalog-migration.test.ts
+      - src/costing-commercial-catalog-ui.test.ts
+      - supabase/migrations/20260728090000_costing_core_foundation.sql
+      - supabase/migrations/20260728093000_costing_commercial_catalog.sql
+
+concurrency:
+  group: costing-catalog-pr-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate:
+    name: Segurança, TypeScript, testes e build de custos
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_ADOCE_VALIDATION_MODE: visual
+      VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, commit e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes direcionados
+        run: |
+          npx vitest run \
+            src/costing-engine.test.ts \
+            src/costing-core-migration.test.ts \
+            src/costing-commercial-catalog-migration.test.ts \
+            src/costing-commercial-catalog-ui.test.ts \
+            src/bff-rpc-security.test.ts
+
+      - name: Gerar build visual isolado
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: npx vite build
+
+      - name: Confirmar ausência de produção e segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R "uefwywizqhfvvijaopcn" dist
+          ! grep -R "adocebrigaderia.com.br" dist
+          ! grep -R "SUPABASE_SECRET_KEY" dist
+          ! grep -R "META_WA_ACCESS_TOKEN" dist
+
+      - name: Registrar marco aprovado no issue 3
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Gate de custos e margens aprovado",
+              "",
+              `- Commit: \`${context.payload.pull_request.head.sha}\``,
+              "- TypeScript: aprovado.",
+              "- Testes: motor de custos, migrations, painel e BFF aprovados.",
+              "- Build visual: aprovado.",
+              "- Isolamento: Supabase de homologação; referências produtivas e segredos ausentes do build.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
+
+      - name: Registrar falha objetiva no issue 3
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Gate de custos e margens com falha",
+              "",
+              `- Commit: \`${context.payload.pull_request.head.sha}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Ação: corrigir a primeira etapa vermelha; repetir jobs falhos somente quando a causa for transiente.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
