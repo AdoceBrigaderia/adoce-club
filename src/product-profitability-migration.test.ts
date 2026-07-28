@@ -9,6 +9,14 @@ const migration = readFileSync(
   "utf8",
 );
 
+const autoProfileMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260728115100_product_profitability_autoprofile.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 const policy = readFileSync(
   new URL("../netlify/functions/_shared/bff-rpc-policy.ts", import.meta.url),
   "utf8",
@@ -24,6 +32,18 @@ describe("rentabilidade dos produtos comerciais", () => {
     expect(migration).toContain("sale_price_override");
     expect(migration).toContain("yield_quantity");
     expect(migration).toContain("minimum_margin");
+  });
+
+  it("cria automaticamente perfil provisório para cada novo produto", () => {
+    expect(autoProfileMigration).toContain(
+      "private.ensure_commercial_product_costing_settings",
+    );
+    expect(autoProfileMigration).toContain(
+      "commercial_products_create_costing_profile",
+    );
+    expect(autoProfileMigration).toContain("after insert on public.commercial_products");
+    expect(autoProfileMigration).toContain("default_yield := 13");
+    expect(autoProfileMigration).toContain("raw_yield ~");
   });
 
   it("aceita custo provisório e ficha técnica versionada sem perder histórico", () => {
@@ -64,13 +84,18 @@ describe("rentabilidade dos produtos comerciais", () => {
       expect(policy).toContain(`\"${rpc}\"`);
     }
     expect(migration).not.toContain("grant select on public.commercial_product_costing_settings to anon");
+    expect(autoProfileMigration).toContain(
+      "revoke all on function private.ensure_commercial_product_costing_settings() from public, anon, authenticated",
+    );
   });
 
   it("permanece transacional e sem coordenadas de produção", () => {
-    expect(migration.trimStart()).toMatch(/^begin;/);
-    expect(migration.trimEnd()).toMatch(/commit;$/);
-    expect(migration).not.toContain("uefwywizqhfvvijaopcn");
-    expect(migration).not.toContain("adocebrigaderia.com.br");
-    expect(migration).not.toContain("--prod");
+    for (const sql of [migration, autoProfileMigration]) {
+      expect(sql.trimStart()).toMatch(/^begin;/);
+      expect(sql.trimEnd()).toMatch(/commit;$/);
+      expect(sql).not.toContain("uefwywizqhfvvijaopcn");
+      expect(sql).not.toContain("adocebrigaderia.com.br");
+      expect(sql).not.toContain("--prod");
+    }
   });
 });
