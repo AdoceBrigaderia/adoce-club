@@ -3,10 +3,12 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const workflowPath = '.github/workflows/homologation-apply-pending-migrations.yml';
+const packageWorkflowPath = '.github/workflows/homologation-package-pending-migrations-one-shot.yml';
 const liveAuditPath = 'supabase/tests/homologation_post_migration_live.sql';
 const planPath = 'docs/evidence/homologation-pending-migrations-20260728.json';
 
 const workflow = fs.readFileSync(workflowPath, 'utf8');
+const packageWorkflow = fs.readFileSync(packageWorkflowPath, 'utf8');
 const liveAudit = fs.readFileSync(liveAuditPath, 'utf8');
 const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
 
@@ -26,6 +28,17 @@ test('aplicação de migrations é manual, isolada e exige commit exato', () => 
 test('não permite aplicadores automáticos, parciais ou vinculados por mensagem de commit', () => {
   assert.equal(fs.existsSync('.github/workflows/homologation-apply-products-one-shot.yml'), false);
   assert.equal(fs.existsSync('.github/workflows/apply-homologation-linked.yml'), false);
+});
+
+test('empacotamento automático é repetível, sem segredos e incapaz de aplicar migrations', () => {
+  assert.match(packageWorkflow, /pull_request:/);
+  assert.match(packageWorkflow, /docs\/evidence\/homologation-pending-migrations-20260728\.json/);
+  assert.match(packageWorkflow, /supabase\/migrations\/\*\*/);
+  assert.match(packageWorkflow, /pending_migrations\.length !== 22/);
+  assert.doesNotMatch(packageWorkflow, /AUTHORIZED_PARENT/);
+  assert.doesNotMatch(packageWorkflow, /secrets\./);
+  assert.doesNotMatch(packageWorkflow, /db push/);
+  assert.doesNotMatch(packageWorkflow, /SUPABASE_HOMOLOGATION_DB_URL/);
 });
 
 test('workflow executa dry-run antes da aplicação e não permite conjunto parcial', () => {
