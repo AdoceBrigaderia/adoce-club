@@ -1,6 +1,7 @@
 import { Minus, Plus, ShoppingBasket } from "lucide-react";
 import { useMemo } from "react";
 import {
+  normalizeProductConfigurationRules,
   quoteProductConfiguration,
   type ConfigurableCommercialProduct,
   type ProductConfigurationDraft,
@@ -32,15 +33,24 @@ export default function ConfigurableProductBuilder({
   onDraftChange: (draft: ProductConfigurationDraft) => void;
   onQuoteChange: (quote: ProductConfigurationQuote | null, error: string) => void;
 }) {
+  const rules = useMemo(
+    () => normalizeProductConfigurationRules(product.configuration_rules),
+    [product.configuration_rules],
+  );
   const grouped = useMemo(
     () =>
       product.options
-        .filter((option) => option.active && option.published)
+        .filter(
+          (option) =>
+            option.active &&
+            option.published &&
+            (option.option_kind !== "addon" || rules.allowAddons),
+        )
         .reduce<Record<string, typeof product.options>>((acc, option) => {
           (acc[option.group_key] ||= []).push(option);
           return acc;
         }, {}),
-    [product.options],
+    [product.options, rules.allowAddons],
   );
 
   const update = (optionId: string, next: number) => {
