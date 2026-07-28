@@ -30,7 +30,7 @@
     "audit:migrations": "node scripts/migration-integrity-report.mjs --strict",
     "audit:migration-reconciliation": "node scripts/migration-reconciliation-report.mjs --strict",
     "report:migration-integrity": "node scripts/migration-integrity-report.mjs",
-    "report:migration-reconciliation": "node scripts/migration-reconciliation-report.mjs",
+    "report:migration-reconciliation": "node scripts/migration-reconciliation-report.mjs --strict",
     "report:migration-repair": "node scripts/homologation-migration-repair.mjs",
     "report:homologation-pending-migrations": "node scripts/homologation-pending-migrations.mjs --strict",
     "report:homologation-preflight": "node scripts/homologation-preflight-report.mjs",
@@ -41,7 +41,7 @@
     "release:check": "node scripts/release-check.mjs",
     "release:preview": "npm run report:migration-integrity && npm run report:migration-reconciliation && npm run report:homologation-pending-migrations && npm run report:homologation-preflight && npm run gate:homologation-environment && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --alias=homologacao-adoce --skip-functions-cache",
     "release:prod": "node scripts/production-approval-gate.mjs && npm run audit:migrations && npm run audit:migration-reconciliation && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --skip-functions-cache",
-    "prebuild": "npm run generate:pwa-icons && npm run docs:build",
+    "prebuild": "node scripts/expose-homologation-migration-bundle.mjs && npm run generate:pwa-icons && npm run docs:build",
     "launch:build": "node scripts/generate-launch-page-v3.mjs",
     "launch:verify": "node scripts/verify-launch-v3.cjs"
   },
