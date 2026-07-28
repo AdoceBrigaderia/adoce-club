@@ -34,6 +34,8 @@ type PricingSnapshot = {
   captured_at: string;
 };
 
+type SelectionGroup = { group: string; labels: string[] };
+
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -64,19 +66,45 @@ const originLabels: Record<string, string> = {
   service: "Serviço ou recurso",
 };
 
-function selectedLabels(selection: Record<string, unknown>) {
-  const summary = selection.cake_builder_summary;
-  if (!summary || typeof summary !== "object" || Array.isArray(summary)) return [];
+const stringList = (value: unknown) =>
+  Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
+    : typeof value === "string" && value.trim() !== ""
+      ? [value]
+      : [];
 
-  return Object.entries(summary as Record<string, unknown>).flatMap(([group, value]) => {
-    const labels = Array.isArray(value)
-      ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
-      : typeof value === "string" && value.trim() !== ""
-        ? [value]
-        : [];
-    if (!labels.length) return [];
-    return [{ group, labels }];
-  });
+function selectedLabels(selection: Record<string, unknown>): SelectionGroup[] {
+  const groups: SelectionGroup[] = [];
+  const cakeSummary = selection.cake_builder_summary;
+  if (cakeSummary && typeof cakeSummary === "object" && !Array.isArray(cakeSummary)) {
+    for (const [group, value] of Object.entries(cakeSummary as Record<string, unknown>)) {
+      const labels = stringList(value);
+      if (labels.length) groups.push({ group, labels });
+    }
+  }
+
+  const productSummary = stringList(selection.product_configuration_summary);
+  if (productSummary.length) {
+    groups.push({ group: "product_configuration", labels: productSummary });
+  } else {
+    const configuration = selection.product_configuration;
+    const items = configuration && typeof configuration === "object" && !Array.isArray(configuration)
+      ? (configuration as Record<string, unknown>).items
+      : null;
+    if (Array.isArray(items)) {
+      const labels = items.flatMap((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+        const record = item as Record<string, unknown>;
+        const label = typeof record.label === "string" ? record.label.trim() : "";
+        const quantity = Number(record.quantity);
+        return label && Number.isInteger(quantity) && quantity > 0
+          ? [`${quantity}× ${label}`]
+          : [];
+      });
+      if (labels.length) groups.push({ group: "product_configuration", labels });
+    }
+  }
+  return groups;
 }
 
 const groupLabels: Record<string, string> = {
@@ -87,6 +115,7 @@ const groupLabels: Record<string, string> = {
   topping_fruits: "Frutas na cobertura",
   filling_extras: "Adicionais no recheio",
   topping_extras: "Adicionais na cobertura",
+  product_configuration: "Sabores, variações e adicionais",
 };
 
 export default function OperationServiceRequestPricingSnapshot() {
@@ -126,7 +155,7 @@ export default function OperationServiceRequestPricingSnapshot() {
       setSnapshot(result);
       setNotice(
         result
-          ? "Snapshot histórico localizado. Os valores abaixo não mudam quando custos futuros forem atualizados."
+          ? "Snapshot histórico localizado. Os valores e escolhas abaixo não mudam quando o produto for atualizado."
           : "Esta encomenda ainda não possui snapshot financeiro.",
       );
     } catch (error) {
@@ -146,10 +175,10 @@ export default function OperationServiceRequestPricingSnapshot() {
       <header className="operation-request-pricing-snapshot-heading">
         <div>
           <small>Histórico protegido</small>
-          <h2>Valores usados na encomenda</h2>
+          <h2>Valores e escolhas usados na encomenda</h2>
           <p>
-            Consulte o custo, o preço e a margem congelados no momento em que a
-            solicitação foi registrada.
+            Consulte custo, preço, margem, sabores, quantidades e adicionais congelados
+            no momento em que a solicitação foi registrada.
           </p>
         </div>
         <History />
@@ -170,7 +199,7 @@ export default function OperationServiceRequestPricingSnapshot() {
           </span>
         </label>
         <button type="submit" disabled={busy}>
-          {busy ? "Consultando…" : "Consultar valores"}
+          {busy ? "Consultando…" : "Consultar encomenda"}
         </button>
       </form>
 
@@ -216,7 +245,7 @@ export default function OperationServiceRequestPricingSnapshot() {
 
           {selections.length ? (
             <section className="operation-request-pricing-snapshot-selections">
-              <header><Layers3 /><div><small>Adoce do Seu Jeito</small><h4>Composição registrada</h4></div></header>
+              <header><Layers3 /><div><small>Pedido estruturado</small><h4>Composição registrada</h4></div></header>
               <div>
                 {selections.map((selection) => (
                   <span key={selection.group}>
@@ -232,7 +261,7 @@ export default function OperationServiceRequestPricingSnapshot() {
             <ShieldCheck />
             <p>
               Este registro não é recalculado. Alterações posteriores em ingredientes,
-              fichas técnicas ou preços não modificam a rentabilidade histórica desta encomenda.
+              opções, fichas técnicas ou preços não modificam a encomenda histórica.
             </p>
           </footer>
         </div>
