@@ -7,6 +7,7 @@ on:
       - .github/workflows/homologation-package-pending-migrations-one-shot.yml
       - docs/evidence/homologation-pending-migrations-20260728.json
       - supabase/migrations/**
+      - ops/netlify-homologation-proxy.json
 
 concurrency:
   group: homologation-pending-migrations-package-${{ github.event.pull_request.number }}
@@ -14,25 +15,28 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
   PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
   HOMOLOGATION_REF: vazozolhbehnriytzcdc
   PRODUCTION_REF: uefwywizqhfvvijaopcn
+  HOMOLOGATION_SITE_ID: f0cc51be-a0ec-4451-9644-a394592cdc37
+  PRODUCTION_SITE_ID: bb0c96cd-5af2-4270-a9a8-b63b9637b1f4
 
 jobs:
   package:
-    name: Validar e empacotar lote exato
+    name: Validar, empacotar e transportar homologação
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - name: Baixar o head exato
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Validar branch, commit e isolamento
@@ -44,6 +48,7 @@ jobs:
           test "$HOMOLOGATION_REF" = "vazozolhbehnriytzcdc"
           test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
+          test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"
 
       - name: Validar plano e empacotar exatamente as 22 migrations
         shell: bash
@@ -117,6 +122,74 @@ jobs:
           NODE
           test -s runtime.json
 
+      - name: Gerar chave temporária para o proxy
+        if: ${{ hashFiles('ops/netlify-homologation-proxy.json') == '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          key_dir="artifacts/netlify-proxy-key"
+          mkdir -p "$key_dir/private" "$key_dir/public"
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 -out "$key_dir/private/private.pem" >/dev/null 2>&1
+          openssl pkey -in "$key_dir/private/private.pem" -pubout -out "$key_dir/public/public.pem"
+          printf '%s\n' "$GITHUB_RUN_ID" > "$key_dir/private/run-id.txt"
+          printf '%s\n' "$GITHUB_RUN_ID" > "$key_dir/public/run-id.txt"
+          chmod 600 "$key_dir/private/private.pem"
+
+      - name: Descriptografar proxy e publicar somente homologação
+        if: ${{ hashFiles('ops/netlify-homologation-proxy.json') != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          envelope=ops/netlify-homologation-proxy.json
+          key_run_id="$(node -p "require('./$envelope').key_run_id")"
+          expected_parent="$(node -p "require('./$envelope').expected_parent")"
+          requested_site="$(node -p "require('./$envelope').site_id")"
+          test "$requested_site" = "$HOMOLOGATION_SITE_ID"
+          test "$requested_site" != "$PRODUCTION_SITE_ID"
+          test "$(git rev-parse HEAD^)" = "$expected_parent"
+          test "$(git diff --name-only "$expected_parent" HEAD)" = "$envelope"
+
+          private_dir="$RUNNER_TEMP/netlify-private-key"
+          mkdir -p "$private_dir"
+          gh run download "$key_run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "netlify-proxy-private-$key_run_id" \
+            --dir "$private_dir"
+          test -s "$private_dir/private.pem"
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const env = JSON.parse(fs.readFileSync('ops/netlify-homologation-proxy.json', 'utf8'));
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/netlify-key.enc', Buffer.from(env.encrypted_key_b64, 'base64'));
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/netlify-proxy.enc', Buffer.from(env.ciphertext_b64, 'base64'));
+          NODE
+          openssl pkeyutl -decrypt \
+            -inkey "$private_dir/private.pem" \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in "$RUNNER_TEMP/netlify-key.enc" \
+            -out "$RUNNER_TEMP/netlify-aes.key"
+          openssl enc -d -aes-256-cbc -pbkdf2 \
+            -pass file:"$RUNNER_TEMP/netlify-aes.key" \
+            -in "$RUNNER_TEMP/netlify-proxy.enc" \
+            -out "$RUNNER_TEMP/netlify-proxy.txt"
+          proxy_path="$(cat "$RUNNER_TEMP/netlify-proxy.txt")"
+          case "$proxy_path" in
+            https://netlify-mcp.netlify.app//proxy/*) ;;
+            *) echo "Proxy Netlify inválido" >&2; exit 1 ;;
+          esac
+
+          mkdir -p artifacts/netlify-proxy-deploy
+          node artifacts/netlify-mcp-runtime/node_modules/@netlify/mcp/dist/netlify-mcp.js \
+            --site-id "$HOMOLOGATION_SITE_ID" \
+            --proxy-path "$proxy_path" \
+            2>&1 | tee artifacts/netlify-proxy-deploy/deploy.log
+          grep -q 'Deploy is ready!' artifacts/netlify-proxy-deploy/deploy.log
+          ! grep -q "$PRODUCTION_SITE_ID" artifacts/netlify-proxy-deploy/deploy.log
+          rm -f "$RUNNER_TEMP/netlify-key.enc" "$RUNNER_TEMP/netlify-proxy.enc" "$RUNNER_TEMP/netlify-aes.key" "$RUNNER_TEMP/netlify-proxy.txt"
+
       - name: Publicar pacote validado
         uses: actions/upload-artifact@v4
         with:
@@ -141,5 +214,35 @@ jobs:
           name: netlify-mcp-runtime-${{ github.run_number }}
           path: artifacts/netlify-mcp-runtime
           if-no-files-found: error
+          retention-days: 2
+          compression-level: 6
+
+      - name: Preservar chave pública temporária
+        if: ${{ hashFiles('ops/netlify-homologation-proxy.json') == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-proxy-public-${{ github.run_id }}
+          path: artifacts/netlify-proxy-key/public
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Preservar chave privada temporária
+        if: ${{ hashFiles('ops/netlify-homologation-proxy.json') == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-proxy-private-${{ github.run_id }}
+          path: artifacts/netlify-proxy-key/private
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Preservar evidência do deploy temporário
+        if: ${{ hashFiles('ops/netlify-homologation-proxy.json') != '' && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-proxy-deploy-${{ github.run_number }}
+          path: artifacts/netlify-proxy-deploy
+          if-no-files-found: warn
           retention-days: 2
           compression-level: 6
