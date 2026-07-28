@@ -9,9 +9,11 @@ on:
       - src/OperationBusinessHub.tsx
       - src/OperationCostCatalog.tsx
       - src/OperationProductProfitability.tsx
+      - src/OperationServiceRequestPricingSnapshot.tsx
       - src/OperationCakeBuilderSettings.tsx
       - src/operation-cost-catalog.css
       - src/operation-product-profitability.css
+      - src/operation-service-request-pricing-snapshot.css
       - src/operation-cake-builder-costing.css
       - src/costing-engine.ts
       - src/costing-engine.test.ts
@@ -22,6 +24,7 @@ on:
       - src/product-profitability-ui.test.ts
       - src/cake-builder-costing-links.test.ts
       - src/service-request-pricing-snapshot.test.ts
+      - src/service-request-pricing-snapshot-ui.test.ts
       - supabase/migrations/20260728090000_costing_core_foundation.sql
       - supabase/migrations/20260728093000_costing_commercial_catalog.sql
       - supabase/migrations/20260728103000_cake_builder_costing_catalog_links.sql
@@ -89,6 +92,7 @@ jobs:
             src/product-profitability-ui.test.ts \
             src/cake-builder-costing-links.test.ts \
             src/service-request-pricing-snapshot.test.ts \
+            src/service-request-pricing-snapshot-ui.test.ts \
             src/bff-rpc-security.test.ts
 
       - name: Gerar build visual isolado
@@ -116,7 +120,7 @@ jobs:
               "",
               `- Commit: \`${context.payload.pull_request.head.sha}\``,
               "- TypeScript: aprovado.",
-              "- Testes: motor de custos, catálogo, rentabilidade, montador, snapshot imutável de encomendas e BFF aprovados.",
+              "- Testes: motor de custos, catálogo, rentabilidade, montador, snapshot imutável de encomendas, consulta operacional e BFF aprovados.",
               "- Build visual: aprovado.",
               "- Isolamento: Supabase de homologação; referências produtivas e segredos ausentes do build.",
               "- Produção: **não alterada**.",
