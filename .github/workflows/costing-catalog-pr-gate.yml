@@ -8,18 +8,23 @@ on:
       - netlify/functions/_shared/bff-rpc-policy.ts
       - src/OperationBusinessHub.tsx
       - src/OperationCostCatalog.tsx
+      - src/OperationProductProfitability.tsx
       - src/OperationCakeBuilderSettings.tsx
       - src/operation-cost-catalog.css
+      - src/operation-product-profitability.css
       - src/operation-cake-builder-costing.css
       - src/costing-engine.ts
       - src/costing-engine.test.ts
       - src/costing-core-migration.test.ts
       - src/costing-commercial-catalog-migration.test.ts
       - src/costing-commercial-catalog-ui.test.ts
+      - src/product-profitability-migration.test.ts
+      - src/product-profitability-ui.test.ts
       - src/cake-builder-costing-links.test.ts
       - supabase/migrations/20260728090000_costing_core_foundation.sql
       - supabase/migrations/20260728093000_costing_commercial_catalog.sql
       - supabase/migrations/20260728103000_cake_builder_costing_catalog_links.sql
+      - supabase/migrations/20260728115000_product_profitability_workspace.sql
 
 concurrency:
   group: costing-catalog-pr-gate-${{ github.event.pull_request.number }}
@@ -77,6 +82,8 @@ jobs:
             src/costing-core-migration.test.ts \
             src/costing-commercial-catalog-migration.test.ts \
             src/costing-commercial-catalog-ui.test.ts \
+            src/product-profitability-migration.test.ts \
+            src/product-profitability-ui.test.ts \
             src/cake-builder-costing-links.test.ts \
             src/bff-rpc-security.test.ts
 
@@ -101,11 +108,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = [
-              "## Gate de custos, margens e montador aprovado",
+              "## Gate de custos, margens e produtos aprovado",
               "",
               `- Commit: \`${context.payload.pull_request.head.sha}\``,
               "- TypeScript: aprovado.",
-              "- Testes: motor de custos, migrations, painel, vínculos do montador e BFF aprovados.",
+              "- Testes: motor de custos, catálogo, rentabilidade de produtos, montador e BFF aprovados.",
               "- Build visual: aprovado.",
               "- Isolamento: Supabase de homologação; referências produtivas e segredos ausentes do build.",
               "- Produção: **não alterada**.",
@@ -124,7 +131,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = [
-              "## Gate de custos, margens e montador com falha",
+              "## Gate de custos, margens e produtos com falha",
               "",
               `- Commit: \`${context.payload.pull_request.head.sha}\``,
               `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
