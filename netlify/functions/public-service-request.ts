@@ -9,6 +9,7 @@ import {
   parseCookies,
   secureJson,
 } from "./_shared/session-security";
+import { sanitizeCakeBuilder } from "./_shared/cake-builder-input";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -23,59 +24,8 @@ const UUID =
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type JsonObject = Record<string, unknown>;
 
-type SanitizedCakeBuilder = {
-  cake_layers: string[];
-  filling_layers: string[];
-  topping: string;
-  filling_fruits: string[];
-  topping_fruits: string[];
-  filling_extras: string[];
-  topping_extras: string[];
-};
-
 function text(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
-}
-
-function uuidList(value: unknown, maximum: number) {
-  if (value === undefined || value === null) return [];
-  if (!Array.isArray(value) || value.length > maximum) return null;
-  const normalized = value.map((item) => text(item, 36));
-  if (normalized.some((item) => !UUID.test(item))) return null;
-  return [...new Set(normalized)];
-}
-
-function sanitizeCakeBuilder(value: unknown): SanitizedCakeBuilder | null | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (typeof value !== "object" || Array.isArray(value)) return null;
-  const source = value as JsonObject;
-  const cakeLayers = uuidList(source.cake_layers, 8);
-  const fillingLayers = uuidList(source.filling_layers, 7);
-  const fillingFruits = uuidList(source.filling_fruits, 20);
-  const toppingFruits = uuidList(source.topping_fruits, 20);
-  const fillingExtras = uuidList(source.filling_extras, 20);
-  const toppingExtras = uuidList(source.topping_extras, 20);
-  const topping = text(source.topping, 36);
-  if (
-    cakeLayers === null ||
-    fillingLayers === null ||
-    fillingFruits === null ||
-    toppingFruits === null ||
-    fillingExtras === null ||
-    toppingExtras === null ||
-    !topping ||
-    !UUID.test(topping)
-  )
-    return null;
-  return {
-    cake_layers: cakeLayers,
-    filling_layers: fillingLayers,
-    topping,
-    filling_fruits: fillingFruits,
-    topping_fruits: toppingFruits,
-    filling_extras: fillingExtras,
-    topping_extras: toppingExtras,
-  };
 }
 
 function upstreamMessage(value: unknown) {
