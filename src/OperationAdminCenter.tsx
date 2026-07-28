@@ -5,6 +5,7 @@ import {
   CircleDollarSign,
   ClipboardList,
   Images,
+  PackageSearch,
   Settings2,
   SlidersHorizontal,
   TrendingUp,
@@ -13,6 +14,7 @@ import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
 import OperationCakeBuilderSettings from "./OperationCakeBuilderSettings";
 import OperationCostCatalog from "./OperationCostCatalog";
 import OperationGlobalSettingsBff from "./OperationGlobalSettingsBff";
+import OperationProductCatalog from "./OperationProductCatalog";
 import OperationProductProfitability from "./OperationProductProfitability";
 import OperationServiceRequestPricingSnapshot from "./OperationServiceRequestPricingSnapshot";
 import OperationSiteVisualSettingsBff from "./OperationSiteVisualSettingsBff";
@@ -21,6 +23,7 @@ import "./operation-admin-center.css";
 type AdminArea =
   | "global"
   | "images"
+  | "products"
   | "costs"
   | "profitability"
   | "cakes"
@@ -46,6 +49,12 @@ const areas: AdminAreaDefinition[] = [
     label: "Fotos e identidade",
     description: "Logo, capas e imagens institucionais",
     icon: Images,
+  },
+  {
+    id: "products",
+    label: "Produtos e montadores",
+    description: "Tortas, docinhos, biscoitos e kits",
+    icon: PackageSearch,
   },
   {
     id: "costs",
@@ -89,8 +98,8 @@ export default function OperationAdminCenter({ userId }: { userId: string }) {
           <small>Administração central</small>
           <h2 id="operation-admin-title">Configurações da Adoce</h2>
           <p>
-            Regras globais, imagens, custos, margens, tortas e estrutura ficam em uma
-            única central, com acesso rápido para proprietário e gerente.
+            Regras globais, produtos, imagens, custos, margens, montadores e estrutura
+            ficam em uma única central, com acesso rápido para proprietário e gerente.
           </p>
         </div>
         <Settings2 />
@@ -117,6 +126,7 @@ export default function OperationAdminCenter({ userId }: { userId: string }) {
       <div className="operation-admin-workspace" aria-live="polite">
         {activeArea === "global" ? <OperationGlobalSettingsBff /> : null}
         {activeArea === "images" ? <OperationSiteVisualSettingsBff /> : null}
+        {activeArea === "products" ? <OperationProductCatalog /> : null}
         {activeArea === "costs" ? <OperationCostCatalog /> : null}
         {activeArea === "profitability" ? <OperationProductProfitability /> : null}
         {activeArea === "cakes" ? <OperationCakeBuilderSettings /> : null}
