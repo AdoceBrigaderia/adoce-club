@@ -20,24 +20,28 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  AUTHORIZED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+
 jobs:
   atlas:
     name: Validar e empacotar 98 pontos e imagens
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Baixar a branch autorizada
+      - name: Baixar o commit exato
         uses: actions/checkout@v4
         with:
-          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          ref: ${{ github.sha }}
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Confirmar branch autorizada
+      - name: Confirmar referência e commit autorizados
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git branch --show-current)" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "${GITHUB_REF_NAME}" = "${AUTHORIZED_BRANCH}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -67,13 +71,6 @@ jobs:
           test -f artifacts/atlas-visual/imagens-separadas/index.html
           test -f artifacts/atlas-visual/imagens-separadas/LEIA-ME.txt
 
-      - name: Confirmar isolamento dos artefatos
-        shell: bash
-        run: |
-          set -euo pipefail
-          ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
-            artifacts/atlas-visual
-
       - name: Registrar documentação e evidência
         shell: bash
         run: |
@@ -87,10 +84,59 @@ jobs:
             "Produção: não alterada" \
             > artifacts/atlas-visual/EVIDENCIA.txt
 
+      - name: Confirmar isolamento dos artefatos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
+            artifacts/atlas-visual
+
+      - name: Gerar pacote ZIP verificável
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:8}"
+          package_dir="artifacts/entrega"
+          package_file="${package_dir}/adoce-atlas-visual-98-${short_sha}.zip"
+          mkdir -p "${package_dir}"
+
+          (
+            cd artifacts/atlas-visual
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              > SHA256SUMS.txt
+          )
+
+          zip -qr "${package_file}" artifacts/atlas-visual
+          sha256sum "${package_file}" > "${package_file}.sha256"
+          test "$(unzip -Z1 "${package_file}" | grep -Ec '^artifacts/atlas-visual/imagens-separadas/imagens/[^/]+\.svg$')" = "98"
+          unzip -tq "${package_file}"
+
+          printf '%s\n' \
+            "Arquivo: $(basename "${package_file}")" \
+            "Commit: ${GITHUB_SHA}" \
+            "Conteúdo: atlas interativo, 98 SVGs, galeria, manifesto, documentação e checksums" \
+            "Produção: não alterada" \
+            > "${package_dir}/LEIA-ME.txt"
+
+          {
+            echo "### Atlas visual pronto para download"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Imagens separadas: **98 SVGs**"
+            echo "- Pacote: \`$(basename "${package_file}")\`"
+            echo "- Integridade: SHA-256 incluído"
+            echo "- Produção: **não alterada**"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Empacotar atlas e 98 imagens separadas
         uses: actions/upload-artifact@v4
         with:
           name: atlas-visual-adoce-98-imagens-separadas-${{ github.run_number }}
-          path: artifacts/atlas-visual
+          path: |
+            artifacts/atlas-visual
+            artifacts/entrega
           if-no-files-found: error
           retention-days: 30
+          compression-level: 6
