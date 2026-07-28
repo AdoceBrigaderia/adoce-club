@@ -1,0 +1,237 @@
+name: Backup lógico recuperável da homologação
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/homologation-logical-backup.yml
+      - scripts/homologation-backup-manifest.mjs
+      - scripts/homologation-backup-manifest.test.mjs
+      - scripts/homologation-logical-backup-contract.test.mjs
+      - docs/homologation-logical-backup-runbook.md
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite GERAR BACKUP SOMENTE HOMOLOGACAO seguido do project ref
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo autorizado da branch
+        required: true
+        type: string
+      backup_label:
+        description: Identificador operacional sem espaços, por exemplo pre-repair-20260728
+        required: true
+        type: string
+
+concurrency:
+  group: homologation-logical-backup-${{ github.event.pull_request.number || 'manual' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
+  PRODUCTION_REF: uefwywizqhfvvijaopcn
+
+jobs:
+  contract:
+    name: Validar contrato do backup
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Confirmar branch e commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+
+      - name: Executar testes contratuais
+        run: |
+          node --test \
+            scripts/homologation-backup-manifest.test.mjs \
+            scripts/homologation-logical-backup-contract.test.mjs
+
+  backup:
+    name: Gerar backup SQL e manifesto
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, commit, projeto e segredo
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_LABEL: ${{ inputs.backup_label }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$CONFIRMATION" = "GERAR BACKUP SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          test -n "$BACKUP_LABEL"
+          case "$BACKUP_LABEL" in
+            *[!a-zA-Z0-9._-]*) echo "Identificador do backup contém caracteres inválidos" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência produtiva proibida" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Testar gerador de manifesto
+        run: node --test scripts/homologation-backup-manifest.test.mjs
+
+      - name: Preparar diretório protegido
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p artifacts/homologation-logical-backup
+
+      - name: Gerar dumps oficiais do Supabase
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          backup_dir="artifacts/homologation-logical-backup"
+          npx --yes supabase@2.109.1 db dump \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --file "$backup_dir/roles.sql" \
+            --role-only
+          npx --yes supabase@2.109.1 db dump \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --file "$backup_dir/schema.sql"
+          npx --yes supabase@2.109.1 db dump \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --file "$backup_dir/data.sql" \
+            --use-copy \
+            --data-only \
+            --exclude storage.buckets_vectors \
+            --exclude storage.vector_indexes
+          npx --yes supabase@2.109.1 db dump \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --file "$backup_dir/history_schema.sql" \
+            --schema supabase_migrations
+          npx --yes supabase@2.109.1 db dump \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --file "$backup_dir/history_data.sql" \
+            --use-copy \
+            --data-only \
+            --schema supabase_migrations
+
+      - name: Exportar histórico legível
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc \
+            --set=ON_ERROR_STOP=1 \
+            --csv \
+            --command="select version, name from supabase_migrations.schema_migrations order by version" \
+            > artifacts/homologation-logical-backup/history.csv
+
+      - name: Gerar manifesto e validar integridade
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_LABEL: ${{ inputs.backup_label }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          backup_dir="artifacts/homologation-logical-backup"
+          created_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          node scripts/homologation-backup-manifest.mjs \
+            --directory "$backup_dir" \
+            --project "$HOMOLOGATION_REF" \
+            --commit "$EXPECTED_COMMIT" \
+            --created-at "$created_at" \
+            --label "$BACKUP_LABEL"
+          test -s "$backup_dir/manifest.json"
+          test -s "$backup_dir/manifest.md"
+          sha256sum -c <(
+            node -e '
+              const fs = require("fs");
+              const path = require("path");
+              const manifest = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+              for (const file of manifest.database_backup.files) {
+                console.log(`${file.sha256}  ${path.join(process.argv[2], file.name)}`);
+              }
+            ' "$backup_dir/manifest.json" "$backup_dir"
+          )
+
+      - name: Preservar backup recuperável
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-logico-homologacao-${{ inputs.backup_label }}-${{ inputs.expected_commit }}
+          path: artifacts/homologation-logical-backup
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Registrar evidência no issue técnico
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_LABEL: ${{ inputs.backup_label }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '## Backup lógico recuperável da homologação gerado',
+              '',
+              `- Commit: \`${process.env.EXPECTED_COMMIT}\``,
+              `- Identificador: \`${process.env.BACKUP_LABEL}\``,
+              `- [Baixar artefato](${process.env.ARTIFACT_URL})`,
+              `- Digest do artefato: \`${process.env.ARTIFACT_DIGEST}\``,
+              '- Inclui: roles.sql, schema.sql, data.sql, histórico SQL, CSV e manifesto SHA-256.',
+              '- Storage: objetos binários não incluídos; backup separado continua obrigatório.',
+              '- Produção: **não acessada e não alterada**.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
