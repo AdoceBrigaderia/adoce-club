@@ -19,6 +19,8 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_financial_sales_summary",
   "staff_get_commerce_settings",
   "staff_update_commerce_settings",
+  "manager_get_configurable_product_workspace",
+  "manager_save_configurable_product",
   "staff_get_cake_builder_configuration",
   "manager_save_cake_builder_configuration",
   "manager_get_cake_builder_costing_workspace",
