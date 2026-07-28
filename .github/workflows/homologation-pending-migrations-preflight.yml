@@ -90,7 +90,7 @@ jobs:
           retention-days: 30
 
   apply-homologation:
-    name: Diagnóstico, dry-run e db push na homologação
+    name: Dry-run e db push por conexão direta na homologação
     needs: validate
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
@@ -109,11 +109,12 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-          test "$(git log -1 --pretty=%s)" = "ci: diagnosticar credenciais e aplicar homologacao"
+          test "$(git log -1 --pretty=%s)" = "ci: aplicar homologacao com senha do banco"
           node - <<'NODE'
           const fs = require('fs');
           const evidence = JSON.parse(fs.readFileSync('docs/evidence/homologation-backup-confirmed-20260728.json', 'utf8'));
           if (evidence.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Backup de projeto incorreto.');
+          if (evidence.production_forbidden !== true) throw new Error('Produção não está bloqueada.');
           if (evidence.accepted_for_homologation_migration_gate !== true) throw new Error('Backup não aceito.');
           if (evidence.package?.sha256 !== 'e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354') throw new Error('Digest divergente.');
           if (evidence.package?.invalid_checksum_count !== 0) throw new Error('Checksum inválido.');
@@ -125,18 +126,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Confirmar segredo SUPABASE_ACCESS_TOKEN
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
-            echo "SUPABASE_ACCESS_TOKEN não está configurado no environment homologation" >&2
-            exit 21
-          fi
-
-      - name: Confirmar segredo SUPABASE_DB_PASSWORD
+      - name: Confirmar senha e montar conexão segura da homologação
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         shell: bash
@@ -146,27 +136,18 @@ jobs:
             echo "SUPABASE_DB_PASSWORD não está configurado no environment homologation" >&2
             exit 22
           fi
-
-      - name: Validar token do Supabase
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes supabase@2.109.1 projects list >/tmp/supabase-projects.txt
-          grep -q "$HOMOLOGATION_REF" /tmp/supabase-projects.txt
-          ! grep -q "$PRODUCTION_REF.*LINKED" /tmp/supabase-projects.txt
-
-      - name: Vincular exclusivamente à homologação
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes supabase@2.109.1 link --project-ref "$HOMOLOGATION_REF" --password "$SUPABASE_DB_PASSWORD"
-          test "$(cat supabase/.temp/project-ref)" = "$HOMOLOGATION_REF"
-          test "$(cat supabase/.temp/project-ref)" != "$PRODUCTION_REF"
+          echo "::add-mask::$SUPABASE_DB_PASSWORD"
+          node - <<'NODE'
+          const fs = require('fs');
+          const password = process.env.SUPABASE_DB_PASSWORD;
+          const url = new URL('postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres');
+          url.username = 'postgres.vazozolhbehnriytzcdc';
+          url.password = password;
+          url.searchParams.set('sslmode', 'require');
+          const connection = url.toString();
+          console.log(`::add-mask::${connection}`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `HOMOLOGATION_DB_URL=${connection}\n`);
+          NODE
 
       - name: Reconciliar nomes locais
         shell: bash
@@ -179,13 +160,10 @@ jobs:
           git diff --check
 
       - name: Confirmar repairs remotos
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes supabase@2.109.1 migration list --linked --password "$SUPABASE_DB_PASSWORD" \
+          npx --yes supabase@2.109.1 migration list --db-url "$HOMOLOGATION_DB_URL" \
             > artifacts/homologation-migrations/migration-list-before.txt
           grep -q "20260727035116" artifacts/homologation-migrations/migration-list-before.txt
           grep -q "20260727035246" artifacts/homologation-migrations/migration-list-before.txt
@@ -195,13 +173,10 @@ jobs:
           ! grep -q "20260727040533" artifacts/homologation-migrations/migration-list-before.txt
 
       - name: Executar dry-run integral
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes supabase@2.109.1 db push --linked --password "$SUPABASE_DB_PASSWORD" --dry-run \
+          npx --yes supabase@2.109.1 db push --db-url "$HOMOLOGATION_DB_URL" --dry-run \
             > artifacts/homologation-migrations/db-push-dry-run.txt 2>&1
           cat artifacts/homologation-migrations/db-push-dry-run.txt
           for migration in 20260728073000 20260728090000 20260728093000 20260728103000 20260728115000 20260728115100 20260728130000 20260728154500 20260728164000 20260728165116 20260728165303 20260728170236 20260728170246 20260728170307 20260728170501 20260728170941 20260728174500; do
@@ -209,17 +184,17 @@ jobs:
           done
 
       - name: Aplicar as 17 migrations
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes supabase@2.109.1 db push --linked --password "$SUPABASE_DB_PASSWORD" \
+          npx --yes supabase@2.109.1 db push --db-url "$HOMOLOGATION_DB_URL" \
             > artifacts/homologation-migrations/db-push-apply.txt 2>&1
           cat artifacts/homologation-migrations/db-push-apply.txt
-          npx --yes supabase@2.109.1 migration list --linked --password "$SUPABASE_DB_PASSWORD" \
+          npx --yes supabase@2.109.1 migration list --db-url "$HOMOLOGATION_DB_URL" \
             > artifacts/homologation-migrations/migration-list-after.txt
+          for migration in 20260728073000 20260728090000 20260728093000 20260728103000 20260728115000 20260728115100 20260728130000 20260728154500 20260728164000 20260728165116 20260728165303 20260728170236 20260728170246 20260728170307 20260728170501 20260728170941 20260728174500; do
+            grep -q "$migration" artifacts/homologation-migrations/migration-list-after.txt
+          done
 
       - name: Preservar evidências da aplicação
         if: always()
