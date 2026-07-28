@@ -11,17 +11,23 @@ O pacote offline é gerado pelo workflow `Publicar validação visual da homolog
 3. executar `npm run verify:fast`;
 4. gerar o build com `VITE_ADOCE_VALIDATION_MODE=visual`;
 5. incorporar o commit e o horário UTC do build;
-6. preservar a pasta `dist` como artefato do GitHub Actions.
+6. testar o servidor local e uma rota interna do SPA;
+7. preservar o pacote completo como artefato do GitHub Actions.
 
-A ausência de `NETLIFY_AUTH_TOKEN` não reprova mais esse fluxo. Ela apenas impede a publicação web; o pacote offline continua disponível.
+A ausência de `NETLIFY_AUTH_TOKEN` não reprova esse fluxo. Ela apenas impede a publicação web; o pacote offline continua disponível.
 
 ## Conteúdo do artefato
 
 ```text
 homologacao-visual-offline-<SHA>/
   dist/
+  servidor-preview.mjs
+  INICIAR-PREVIEW-WINDOWS.cmd
+  INICIAR-PREVIEW-LINUX-MAC.command
   LEIA-ME.txt
   EVIDENCIA.txt
+  SERVIDOR-TESTE.log
+  SMOKE-INDEX.html
 ```
 
 O artefato é mantido por 14 dias e o issue #3 recebe automaticamente:
@@ -29,26 +35,71 @@ O artefato é mantido por 14 dias e o issue #3 recebe automaticamente:
 - link direto para download;
 - digest retornado pelo GitHub Actions;
 - commit exato;
-- comando de execução local;
+- instruções de inicialização por sistema;
 - confirmação de que produção não foi alterada.
 
-## Execução local
+## Execução local rápida
 
-Requisito recomendado: Node.js 22 ou superior.
+Requisito: Node.js 22 ou superior.
+
+### Windows
+
+Depois de extrair o pacote, dê dois cliques em:
+
+```text
+INICIAR-PREVIEW-WINDOWS.cmd
+```
+
+### macOS ou Linux
+
+Execute:
+
+```bash
+./INICIAR-PREVIEW-LINUX-MAC.command
+```
+
+Caso o sistema remova a permissão de execução ao extrair o arquivo:
+
+```bash
+chmod +x INICIAR-PREVIEW-LINUX-MAC.command
+./INICIAR-PREVIEW-LINUX-MAC.command
+```
+
+### Alternativa universal
 
 Dentro da pasta extraída:
 
 ```bash
-npx --yes serve@14.2.4 -s dist -l 4173
+node servidor-preview.mjs --open
 ```
 
-Depois, abrir:
+O navegador abrirá:
 
 ```text
-http://localhost:4173
+http://127.0.0.1:4173
 ```
 
-O servidor em modo SPA é necessário para que rotas internas retornem corretamente ao `index.html`.
+Não é necessário executar `npm install`, `npm ci`, `npx` ou baixar pacotes adicionais. O servidor usa apenas recursos nativos do Node.js, escuta somente em `localhost/127.0.0.1` e aplica fallback para as rotas internas do Portal.
+
+## Validação automática do pacote
+
+Antes do upload, o workflow:
+
+1. inicia o servidor empacotado em uma porta temporária reservada;
+2. confirma resposta HTTP 200 na página inicial;
+3. confirma a presença do elemento raiz da aplicação;
+4. abre diretamente `/operacao/venda-rapida` e exige resposta HTTP 200;
+5. encerra o servidor de teste;
+6. só então publica o artefato.
+
+O servidor possui testes próprios para:
+
+- arquivos estáticos reais;
+- fallback de rotas SPA;
+- assets inexistentes sem fallback indevido;
+- métodos HTTP não permitidos;
+- tipos de conteúdo;
+- headers mínimos `nosniff` e `Referrer-Policy`.
 
 ## Escopo da validação
 
@@ -69,6 +120,8 @@ Integrações externas e ações transacionais podem permanecer indisponíveis. 
 
 - branch e SHA exatos são obrigatórios;
 - `npm run verify:fast` é executado antes do build;
+- o servidor local não aceita exposição em interfaces de rede externas;
+- o pacote não instala dependências durante o teste do usuário;
 - não há deploy produtivo;
 - não há `--prod`;
 - a publicação Netlify continua restrita ao site separado de homologação;
