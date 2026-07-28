@@ -49,11 +49,15 @@ describe("consulta operacional do snapshot financeiro", () => {
     expect(component).toContain("Margem protegida");
   });
 
-  it("apresenta a composição congelada do Adoce do Seu Jeito", () => {
+  it("apresenta tortas, sabores, quantidades e adicionais congelados", () => {
     expect(component).toContain("cake_builder_summary");
+    expect(component).toContain("product_configuration_summary");
+    expect(component).toContain("product_configuration");
     expect(component).toContain("Composição registrada");
     expect(component).toContain("Camadas de bolo");
     expect(component).toContain("Adicionais na cobertura");
+    expect(component).toContain("Sabores, variações e adicionais");
+    expect(component).toContain("`${quantity}× ${label}`");
   });
 
   it("fica restrito a owner e manager na central administrativa", () => {
