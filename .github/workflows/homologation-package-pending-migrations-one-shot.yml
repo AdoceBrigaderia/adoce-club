@@ -14,7 +14,6 @@ concurrency:
 
 permissions:
   contents: read
-  actions: write
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
@@ -24,10 +23,10 @@ env:
 
 jobs:
   package:
-    name: Validar, empacotar e solicitar homologação
+    name: Validar e empacotar lote exato
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Baixar o head exato
         uses: actions/checkout@v4
@@ -102,6 +101,22 @@ jobs:
           sha256sum artifacts/homologation-source/adoce-source.tar.gz > artifacts/homologation-source/sha256.txt
           test -s artifacts/homologation-source/adoce-source.tar.gz
 
+      - name: Preparar runtime portátil do Netlify MCP
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$GITHUB_WORKSPACE/artifacts/netlify-mcp-runtime"
+          mkdir -p "$runtime"
+          cd "$runtime"
+          npm init -y >/dev/null
+          npm install --omit=dev --no-audit --no-fund @netlify/mcp@1.15.1
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('node_modules/@netlify/mcp/package.json', 'utf8'));
+          fs.writeFileSync('runtime.json', JSON.stringify({ name: pkg.name, version: pkg.version, bin: pkg.bin }, null, 2));
+          NODE
+          test -s runtime.json
+
       - name: Publicar pacote validado
         uses: actions/upload-artifact@v4
         with:
@@ -120,16 +135,11 @@ jobs:
           retention-days: 2
           compression-level: 0
 
-      - name: Solicitar workflow oficial de homologação
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
-          gh workflow run deploy-homologation-v2.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref "$EXPECTED_BRANCH" \
-            --field confirmation="PUBLICAR SOMENTE HOMOLOGACAO" \
-            --field expected_commit="$EXPECTED_COMMIT"
+      - name: Publicar runtime do Netlify MCP
+        uses: actions/upload-artifact@v4
+        with:
+          name: netlify-mcp-runtime-${{ github.run_number }}
+          path: artifacts/netlify-mcp-runtime
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 6
