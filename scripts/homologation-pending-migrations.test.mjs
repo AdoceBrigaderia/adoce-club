@@ -3,14 +3,19 @@ import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import { inspectPendingMigrationPlan, renderPendingMigrationMarkdown } from "./homologation-pending-migrations.mjs";
 
-const loadFixture = async () => ({
-  plan: JSON.parse(await readFile("docs/evidence/homologation-pending-migrations-20260728.json", "utf8")),
-  files: (await readdir("supabase/migrations")).filter((file) => file.endsWith(".sql")),
-});
+const loadFixture = async () => {
+  const plan = JSON.parse(await readFile("docs/evidence/homologation-pending-migrations-20260728.json", "utf8"));
+  const snapshot = JSON.parse(await readFile("docs/evidence/homologation-migrations-20260727.json", "utf8"));
+  return {
+    plan,
+    files: (await readdir("supabase/migrations")).filter((file) => file.endsWith(".sql")),
+    remoteNames: snapshot.migrations.map((migration) => migration.name),
+  };
+};
 
 test("plano real contém as 17 migrations pendentes em ordem e permanece bloqueado", async () => {
-  const { plan, files } = await loadFixture();
-  const report = inspectPendingMigrationPlan(plan, files);
+  const { plan, files, remoteNames } = await loadFixture();
+  const report = inspectPendingMigrationPlan(plan, files, remoteNames);
   assert.equal(report.structural_passed, true, report.errors.join("\n"));
   assert.equal(report.pending_count, 17);
   assert.equal(report.ready_for_apply, false);
@@ -20,36 +25,43 @@ test("plano real contém as 17 migrations pendentes em ordem e permanece bloquea
 });
 
 test("rejeita projeto diferente da homologação autorizada", async () => {
-  const { plan, files } = await loadFixture();
-  const report = inspectPendingMigrationPlan({ ...plan, project_id: "projeto-incorreto" }, files);
+  const { plan, files, remoteNames } = await loadFixture();
+  const report = inspectPendingMigrationPlan({ ...plan, project_id: "projeto-incorreto" }, files, remoteNames);
   assert.equal(report.structural_passed, false);
   assert.match(report.errors.join("\n"), /projeto de homologação inválido/);
 });
 
 test("rejeita aplicação parcial quando um arquivo planejado não existe", async () => {
-  const { plan, files } = await loadFixture();
+  const { plan, files, remoteNames } = await loadFixture();
   const withoutFestival = files.filter((file) => file !== "20260728170246_festival_slice_yield_overrides.sql");
-  const report = inspectPendingMigrationPlan(plan, withoutFestival);
+  const report = inspectPendingMigrationPlan(plan, withoutFestival, remoteNames);
   assert.equal(report.structural_passed, false);
   assert.deepEqual(report.missing_planned_files, ["20260728170246_festival_slice_yield_overrides.sql"]);
 });
 
 test("rejeita migration posterior que não esteja explicitamente no plano", async () => {
-  const { plan, files } = await loadFixture();
-  const report = inspectPendingMigrationPlan(plan, [...files, "20260728180000_nao_planejada.sql"]);
+  const { plan, files, remoteNames } = await loadFixture();
+  const report = inspectPendingMigrationPlan(plan, [...files, "20260728180000_nao_planejada.sql"], remoteNames);
   assert.equal(report.structural_passed, false);
   assert.deepEqual(report.unexpected_pending_files, ["20260728180000_nao_planejada.sql"]);
 });
 
+test("ignora drift local quando o nome já está representado no snapshot remoto", async () => {
+  const { plan, files, remoteNames } = await loadFixture();
+  const report = inspectPendingMigrationPlan(plan, [...files, "20260728190000_privacy_anonymization_preserve_member_code.sql"], remoteNames);
+  assert.equal(report.structural_passed, true, report.errors.join("\n"));
+  assert.deepEqual(report.unexpected_pending_files, []);
+});
+
 test("só declara prontidão quando backup, repairs e dry-run estão confirmados", async () => {
-  const { plan, files } = await loadFixture();
+  const { plan, files, remoteNames } = await loadFixture();
   const readyPlan = {
     ...plan,
     backup: { ...plan.backup, confirmed: true, status: "confirmed" },
     required_repairs: plan.required_repairs.map((repair) => ({ ...repair, confirmed: true })),
     dry_run: { ...plan.dry_run, status: "passed" },
   };
-  const report = inspectPendingMigrationPlan(readyPlan, files);
+  const report = inspectPendingMigrationPlan(readyPlan, files, remoteNames);
   assert.equal(report.structural_passed, true);
   assert.equal(report.ready_for_apply, true);
   assert.deepEqual(report.apply_blockers, []);
