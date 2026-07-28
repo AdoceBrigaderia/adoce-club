@@ -10,6 +10,7 @@ import {
   secureJson,
 } from "./_shared/session-security";
 import { sanitizeCakeBuilder } from "./_shared/cake-builder-input";
+import { sanitizeProductConfiguration } from "./_shared/product-configuration-input";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -107,9 +108,25 @@ export default async (request: Request) => {
   const cakeBuilder = sanitizeCakeBuilder(selectionSource.cake_builder);
   if (cakeBuilder === null)
     return secureJson({ error: "A montagem da torta contém uma opção inválida." }, 400);
+  const productConfiguration = sanitizeProductConfiguration(
+    selectionSource.product_configuration,
+  );
+  if (productConfiguration === null)
+    return secureJson(
+      { error: "A configuração do produto contém uma opção inválida." },
+      400,
+    );
+  if (cakeBuilder && productConfiguration)
+    return secureJson(
+      { error: "A solicitação contém montadores incompatíveis." },
+      400,
+    );
   const selections: JsonObject = {
     preferences,
     ...(cakeBuilder ? { cake_builder: cakeBuilder } : {}),
+    ...(productConfiguration
+      ? { product_configuration: productConfiguration }
+      : {}),
   };
 
   const start = Date.parse(requestedStart);
