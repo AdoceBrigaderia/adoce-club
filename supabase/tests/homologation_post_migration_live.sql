@@ -8,6 +8,7 @@ declare
     'cake_builder_templates',
     'cake_builder_options',
     'service_request_cake_builds',
+    'service_request_product_configurations',
     'costing_items',
     'costing_item_prices',
     'costing_recipes',
@@ -33,7 +34,8 @@ declare
     '20260728170307',
     '20260728170501',
     '20260728170941',
-    '20260728174500'
+    '20260728174500',
+    '20260728220000'
   ];
   applied_count integer;
 begin
@@ -66,6 +68,18 @@ begin
 
   if to_regprocedure('private.canonicalize_cake_builder_selection(uuid,jsonb)') is null then
     raise exception 'Função privada de canonicalização do montador não foi criada';
+  end if;
+  if to_regprocedure('private.canonicalize_configurable_product_selection(uuid,integer,jsonb)') is null then
+    raise exception 'Função privada de configuração de produtos não foi criada';
+  end if;
+  if to_regprocedure('public.manager_get_configurable_product_workspace()') is null then
+    raise exception 'Workspace administrativo de produtos não foi criado';
+  end if;
+  if to_regprocedure('public.manager_save_configurable_product(jsonb,jsonb)') is null then
+    raise exception 'Gravação administrativa de produtos não foi criada';
+  end if;
+  if to_regprocedure('public.get_configurable_product_catalog(text)') is null then
+    raise exception 'Catálogo público configurável não foi criado';
   end if;
 
   select count(*)
