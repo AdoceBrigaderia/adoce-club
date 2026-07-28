@@ -19,7 +19,7 @@ test('aplicação de migrations é manual, isolada e exige commit exato', () => 
   assert.match(workflow, /HOMOLOGATION_REF: vazozolhbehnriytzcdc/);
   assert.match(workflow, /PRODUCTION_REF: uefwywizqhfvvijaopcn/);
   assert.match(workflow, /git rev-parse HEAD/);
-  assert.match(workflow, /APLICAR 18 MIGRATIONS SOMENTE HOMOLOGACAO/);
+  assert.match(workflow, /APLICAR 19 MIGRATIONS SOMENTE HOMOLOGACAO/);
   assert.match(workflow, /BACKUP CONFIRMADO/);
 });
 
@@ -28,12 +28,12 @@ test('workflow executa dry-run antes da aplicação e não permite conjunto parc
   const applyPosition = workflow.indexOf('Aplicar exatamente o conjunto aprovado');
   assert.ok(dryRunPosition > 0, 'dry-run precisa existir');
   assert.ok(applyPosition > dryRunPosition, 'aplicação precisa ocorrer depois do dry-run');
-  assert.match(workflow, /pending_count !== 18/);
+  assert.match(workflow, /pending_count !== 19/);
   assert.match(workflow, /--include-all/);
   assert.match(workflow, /expected-versions\.txt/);
   assert.match(workflow, /diff -u/);
-  assert.equal(plan.pending_migrations.length, 18);
-  assert.equal(plan.pending_migrations.at(-1).name, 'unified_configurable_products');
+  assert.equal(plan.pending_migrations.length, 19);
+  assert.equal(plan.pending_migrations.at(-1).name, 'configurable_product_constraints');
 });
 
 test('segredo do banco fica restrito ao environment e produção é rejeitada', () => {
