@@ -4,6 +4,7 @@ import {
   CakeSlice,
   CircleDollarSign,
   ClipboardList,
+  Images,
   Settings2,
   SlidersHorizontal,
   TrendingUp,
@@ -14,10 +15,12 @@ import OperationCostCatalog from "./OperationCostCatalog";
 import OperationGlobalSettingsBff from "./OperationGlobalSettingsBff";
 import OperationProductProfitability from "./OperationProductProfitability";
 import OperationServiceRequestPricingSnapshot from "./OperationServiceRequestPricingSnapshot";
+import OperationSiteVisualSettingsBff from "./OperationSiteVisualSettingsBff";
 import "./operation-admin-center.css";
 
 type AdminArea =
   | "global"
+  | "images"
   | "costs"
   | "profitability"
   | "cakes"
@@ -37,6 +40,12 @@ const areas: AdminAreaDefinition[] = [
     label: "Configurações globais",
     description: "Reservas, pagamentos e taxas",
     icon: SlidersHorizontal,
+  },
+  {
+    id: "images",
+    label: "Fotos e identidade",
+    description: "Logo, capas e imagens institucionais",
+    icon: Images,
   },
   {
     id: "costs",
@@ -80,8 +89,8 @@ export default function OperationAdminCenter({ userId }: { userId: string }) {
           <small>Administração central</small>
           <h2 id="operation-admin-title">Configurações da Adoce</h2>
           <p>
-            Regras globais, custos, margens, tortas e estrutura ficam em uma única
-            central, com acesso rápido para proprietário e gerente.
+            Regras globais, imagens, custos, margens, tortas e estrutura ficam em uma
+            única central, com acesso rápido para proprietário e gerente.
           </p>
         </div>
         <Settings2 />
@@ -107,6 +116,7 @@ export default function OperationAdminCenter({ userId }: { userId: string }) {
 
       <div className="operation-admin-workspace" aria-live="polite">
         {activeArea === "global" ? <OperationGlobalSettingsBff /> : null}
+        {activeArea === "images" ? <OperationSiteVisualSettingsBff /> : null}
         {activeArea === "costs" ? <OperationCostCatalog /> : null}
         {activeArea === "profitability" ? <OperationProductProfitability /> : null}
         {activeArea === "cakes" ? <OperationCakeBuilderSettings /> : null}
