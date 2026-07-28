@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildVisualReviewMarkdown,
   createEmptyVisualReview,
+  nextPendingVisualRoute,
   normalizeVisualReview,
   visualReviewProgress,
+  visualReviewReadiness,
 } from "./homologation-visual-review";
 
 describe("checklist de validação visual", () => {
@@ -18,6 +20,30 @@ describe("checklist de validação visual", () => {
       reviewed: 0,
     });
     expect(Object.values(review.routeNotes)).toEqual(Array(8).fill(""));
+    expect(nextPendingVisualRoute(review)?.id).toBe("inicio");
+    expect(visualReviewReadiness(review).ready).toBe(false);
+  });
+
+  it("avança para a primeira tela ainda pendente", () => {
+    const review = createEmptyVisualReview();
+    review.statuses.inicio = "approved";
+    review.statuses["adoce-hoje"] = "adjust";
+
+    expect(nextPendingVisualRoute(review)).toMatchObject({
+      id: "cadastro",
+      href: "/#cadastro",
+    });
+
+    Object.keys(review.statuses).forEach((id) => {
+      review.statuses[id as keyof typeof review.statuses] = "approved";
+    });
+
+    expect(nextPendingVisualRoute(review)).toBeNull();
+    expect(visualReviewReadiness(review)).toEqual({
+      ready: true,
+      hasAdjustments: false,
+      pendingRoutes: [],
+    });
   });
 
   it("normaliza estado armazenado sem aceitar status ou texto arbitrário", () => {
@@ -76,6 +102,8 @@ describe("checklist de validação visual", () => {
     expect(report).toContain("Viewport: 390x844 @3.00x");
     expect(report).toContain("Última atualização: 2026-07-27T23:40:00Z");
     expect(report).toContain("2/8 telas revisadas");
+    expect(report).toContain("Pronta para envio: não");
+    expect(report).toContain("Telas pendentes: Fatias de hoje, Cadastro simplificado");
     expect(report).toContain("Início e identidade: Aprovado");
     expect(report).toContain("Operação: Precisa ajustar");
     expect(report).toContain("Observação: Aumentar o botão principal no tablet.");
