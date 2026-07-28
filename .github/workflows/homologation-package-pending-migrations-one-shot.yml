@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/homologation-package-pending-migrations-one-shot.yml
       - docs/evidence/homologation-pending-migrations-20260728.json
+      - scripts/expose-homologation-migration-bundle.mjs
       - supabase/migrations/**
       - ops/netlify-homologation-proxy.json
 
@@ -24,6 +25,8 @@ env:
   PRODUCTION_REF: uefwywizqhfvvijaopcn
   HOMOLOGATION_SITE_ID: f0cc51be-a0ec-4451-9644-a394592cdc37
   PRODUCTION_SITE_ID: bb0c96cd-5af2-4270-a9a8-b63b9637b1f4
+  HOMOLOGATION_SITE_URL: https://adoce-homologacao.netlify.app
+  MIGRATION_BUNDLE_NAME: migrations-2f2e6bd6b6154fc184622467a54e62ca.sql
 
 jobs:
   package:
@@ -49,6 +52,10 @@ jobs:
           test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
           test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"
+          case "$HOMOLOGATION_SITE_URL" in
+            https://adoce-homologacao.netlify.app) ;;
+            *) echo "URL de homologação inválida" >&2; exit 1 ;;
+          esac
 
       - name: Validar plano e empacotar exatamente as 22 migrations
         shell: bash
@@ -96,15 +103,63 @@ jobs:
           cp "$PENDING_PLAN" artifacts/homologation-pending-migrations/plan.json
           test "$(find artifacts/homologation-pending-migrations/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)" -eq 22
 
-      - name: Empacotar source exato do commit
+      - name: Gerar bundle transacional e transporte mínimo
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p artifacts/homologation-source
-          git archive --format=tar.gz --output=artifacts/homologation-source/adoce-source.tar.gz HEAD
-          printf '%s\n' "$(git rev-parse HEAD)" > artifacts/homologation-source/commit.txt
-          sha256sum artifacts/homologation-source/adoce-source.tar.gz > artifacts/homologation-source/sha256.txt
-          test -s artifacts/homologation-source/adoce-source.tar.gz
+          node scripts/expose-homologation-migration-bundle.mjs
+          source_bundle="public/homologation-internal/$MIGRATION_BUNDLE_NAME"
+          source_manifest="$source_bundle.json"
+          test -s "$source_bundle"
+          test -s "$source_manifest"
+          test "$(grep -c '^-- BEGIN ' "$source_bundle")" -eq 22
+          test "$(grep -c 'insert into supabase_migrations.schema_migrations' "$source_bundle")" -eq 22
+          ! grep -q "$PRODUCTION_REF" "$source_bundle"
+
+          upload="$RUNNER_TEMP/adoce-migration-transport"
+          mkdir -p "$upload/public/homologation-internal"
+          cp "$source_bundle" "$upload/public/homologation-internal/$MIGRATION_BUNDLE_NAME"
+          cp "$source_manifest" "$upload/public/homologation-internal/$MIGRATION_BUNDLE_NAME.json"
+          cat > "$upload/public/index.html" <<'HTML'
+          <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Homologação Adoce</title></head><body><main><h1>Homologação técnica temporária</h1><p>Transporte transacional de migrations. Produção não alterada.</p></main></body></html>
+          HTML
+          cat > "$upload/package.json" <<'JSON'
+          {
+            "name": "adoce-homologation-migration-transport",
+            "version": "1.0.0",
+            "private": true,
+            "type": "module",
+            "scripts": { "build": "node build.mjs" }
+          }
+          JSON
+          cat > "$upload/build.mjs" <<'JS'
+          import fs from 'node:fs';
+          fs.rmSync('dist', { recursive: true, force: true });
+          fs.cpSync('public', 'dist', { recursive: true });
+          JS
+          cat > "$upload/netlify.toml" <<'TOML'
+          [build]
+            command = "npm run build"
+            publish = "dist"
+
+          [[headers]]
+            for = "/*"
+            [headers.values]
+              Cache-Control = "no-store, no-cache, must-revalidate"
+              X-Robots-Tag = "noindex, nofollow"
+              X-Content-Type-Options = "nosniff"
+              X-Frame-Options = "DENY"
+          TOML
+          printf '%s\n' "$(git rev-parse HEAD)" > "$upload/commit.txt"
+          bundle_sha="$(sha256sum "$source_bundle" | awk '{print $1}')"
+          printf '%s\n' "$bundle_sha" > "$upload/bundle-sha256.txt"
+          size_bytes="$(du -sb "$upload" | awk '{print $1}')"
+          test "$size_bytes" -lt 2000000
+          printf '%s\n' "$upload" > "$RUNNER_TEMP/netlify-upload-dir.txt"
+          mkdir -p artifacts/netlify-migration-transport
+          cp "$upload/commit.txt" artifacts/netlify-migration-transport/commit.txt
+          cp "$upload/bundle-sha256.txt" artifacts/netlify-migration-transport/bundle-sha256.txt
+          printf '%s\n' "$size_bytes" > artifacts/netlify-migration-transport/upload-bytes.txt
 
       - name: Preparar runtime portátil do Netlify MCP
         shell: bash
@@ -146,6 +201,8 @@ jobs:
           key_run_id="$(node -p "require('./$envelope').key_run_id")"
           expected_parent="$(node -p "require('./$envelope').expected_parent")"
           requested_site="$(node -p "require('./$envelope').site_id")"
+          expected_ciphertext_sha="$(node -p "require('./$envelope').ciphertext_sha256")"
+          expected_proxy_sha="$(node -p "require('./$envelope').proxy_sha256")"
           test "$requested_site" = "$HOMOLOGATION_SITE_ID"
           test "$requested_site" != "$PRODUCTION_SITE_ID"
           test "$(git rev-parse HEAD^)" = "$expected_parent"
@@ -165,6 +222,7 @@ jobs:
           fs.writeFileSync(process.env.RUNNER_TEMP + '/netlify-key.enc', Buffer.from(env.encrypted_key_b64, 'base64'));
           fs.writeFileSync(process.env.RUNNER_TEMP + '/netlify-proxy.enc', Buffer.from(env.ciphertext_b64, 'base64'));
           NODE
+          test "$(sha256sum "$RUNNER_TEMP/netlify-proxy.enc" | awk '{print $1}')" = "$expected_ciphertext_sha"
           openssl pkeyutl -decrypt \
             -inkey "$private_dir/private.pem" \
             -pkeyopt rsa_padding_mode:oaep \
@@ -176,19 +234,41 @@ jobs:
             -in "$RUNNER_TEMP/netlify-proxy.enc" \
             -out "$RUNNER_TEMP/netlify-proxy.txt"
           proxy_path="$(cat "$RUNNER_TEMP/netlify-proxy.txt")"
+          test "$(printf '%s' "$proxy_path" | sha256sum | awk '{print $1}')" = "$expected_proxy_sha"
           case "$proxy_path" in
             https://netlify-mcp.netlify.app//proxy/*) ;;
             *) echo "Proxy Netlify inválido" >&2; exit 1 ;;
           esac
 
-          mkdir -p artifacts/netlify-proxy-deploy
-          node artifacts/netlify-mcp-runtime/node_modules/@netlify/mcp/dist/netlify-mcp.js \
-            --site-id "$HOMOLOGATION_SITE_ID" \
-            --proxy-path "$proxy_path" \
-            2>&1 | tee artifacts/netlify-proxy-deploy/deploy.log
-          grep -q 'Deploy is ready!' artifacts/netlify-proxy-deploy/deploy.log
-          ! grep -q "$PRODUCTION_SITE_ID" artifacts/netlify-proxy-deploy/deploy.log
-          rm -f "$RUNNER_TEMP/netlify-key.enc" "$RUNNER_TEMP/netlify-proxy.enc" "$RUNNER_TEMP/netlify-aes.key" "$RUNNER_TEMP/netlify-proxy.txt"
+          upload="$(cat "$RUNNER_TEMP/netlify-upload-dir.txt")"
+          runtime="$GITHUB_WORKSPACE/artifacts/netlify-mcp-runtime/node_modules/@netlify/mcp/dist/netlify-mcp.js"
+          test -d "$upload"
+          test -s "$runtime"
+          mkdir -p "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy"
+          (
+            cd "$upload"
+            node "$runtime" \
+              --site-id "$HOMOLOGATION_SITE_ID" \
+              --proxy-path "$proxy_path"
+          ) 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/deploy.log"
+          grep -q 'Deploy is ready!' "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/deploy.log"
+          ! grep -q "$PRODUCTION_SITE_ID" "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/deploy.log"
+
+          expected_bundle_sha="$(cat "$upload/bundle-sha256.txt")"
+          fetched_bundle="$RUNNER_TEMP/fetched-migration-bundle.sql"
+          status=000
+          for attempt in $(seq 1 18); do
+            status="$(curl -sS -L -o "$fetched_bundle" -w '%{http_code}' "$HOMOLOGATION_SITE_URL/homologation-internal/$MIGRATION_BUNDLE_NAME" || true)"
+            if [ "$status" = "200" ] && [ "$(sha256sum "$fetched_bundle" | awk '{print $1}')" = "$expected_bundle_sha" ]; then
+              break
+            fi
+            sleep 5
+          done
+          test "$status" = "200"
+          test "$(sha256sum "$fetched_bundle" | awk '{print $1}')" = "$expected_bundle_sha"
+          printf '%s\n' "$HOMOLOGATION_SITE_URL/homologation-internal/$MIGRATION_BUNDLE_NAME" > "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/bundle-url.txt"
+          printf '%s\n' "$expected_bundle_sha" > "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/bundle-sha256.txt"
+          rm -f "$RUNNER_TEMP/netlify-key.enc" "$RUNNER_TEMP/netlify-proxy.enc" "$RUNNER_TEMP/netlify-aes.key" "$RUNNER_TEMP/netlify-proxy.txt" "$fetched_bundle"
 
       - name: Publicar pacote validado
         uses: actions/upload-artifact@v4
@@ -198,15 +278,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 6
-
-      - name: Publicar source do commit
-        uses: actions/upload-artifact@v4
-        with:
-          name: source-homologacao-${{ github.run_number }}
-          path: artifacts/homologation-source
-          if-no-files-found: error
-          retention-days: 2
-          compression-level: 0
 
       - name: Publicar runtime do Netlify MCP
         uses: actions/upload-artifact@v4
@@ -237,12 +308,14 @@ jobs:
           retention-days: 1
           compression-level: 0
 
-      - name: Preservar evidência do deploy temporário
-        if: ${{ hashFiles('ops/netlify-homologation-proxy.json') != '' && always() }}
+      - name: Preservar evidências do transporte
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: netlify-proxy-deploy-${{ github.run_number }}
-          path: artifacts/netlify-proxy-deploy
+          name: netlify-migration-transport-${{ github.run_number }}
+          path: |
+            artifacts/netlify-migration-transport
+            artifacts/netlify-proxy-deploy
           if-no-files-found: warn
           retention-days: 2
           compression-level: 6
