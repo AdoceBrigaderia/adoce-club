@@ -35,7 +35,8 @@ declare
     '20260728170501',
     '20260728170941',
     '20260728174500',
-    '20260728220000'
+    '20260728220000',
+    '20260728221500'
   ];
   applied_count integer;
 begin
@@ -80,6 +81,14 @@ begin
   end if;
   if to_regprocedure('public.get_configurable_product_catalog(text)') is null then
     raise exception 'Catálogo público configurável não foi criado';
+  end if;
+  if not exists (
+    select 1
+    from pg_constraint constraint_record
+    where constraint_record.conrelid = 'public.commercial_products'::regclass
+      and constraint_record.conname = 'commercial_products_type_mode_check'
+  ) then
+    raise exception 'Restrição entre tipo de produto e montador não foi criada';
   end if;
 
   select count(*)
