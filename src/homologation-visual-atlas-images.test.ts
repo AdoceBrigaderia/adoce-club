@@ -98,8 +98,9 @@ describe("imagens separadas do atlas visual", () => {
       "grep -Ec '^artifacts/atlas-visual/imagens-separadas/imagens/[^/]+\\.svg$'",
     );
     expect(workflow).toContain("GITHUB_STEP_SUMMARY");
+    expect(workflow).toContain("id: upload");
     expect(workflow).toContain(
-      "atlas-visual-adoce-98-imagens-separadas-${{ github.run_number }}",
+      "atlas-visual-adoce-98-${{ github.sha }}",
     );
     expect(workflow).toContain("artifacts/entrega");
     expect(workflow).toContain("retention-days: 30");
@@ -107,5 +108,20 @@ describe("imagens separadas do atlas visual", () => {
     expect(workflow).not.toContain("NETLIFY_AUTH_TOKEN");
     expect(workflow).not.toContain("--prod");
     expect(workflow).not.toContain("supabase");
+  });
+
+  it("publica o link direto do artefato no issue e registra falhas", async () => {
+    const workflow = await readFile(workflowPath, "utf8");
+
+    expect(workflow).toContain("issues: write");
+    expect(workflow).toContain("steps.upload.outputs.artifact-url");
+    expect(workflow).toContain("steps.upload.outputs.artifact-digest");
+    expect(workflow).toContain("Registrar download no issue de acompanhamento");
+    expect(workflow).toContain("Baixar o ZIP com as 98 imagens");
+    expect(workflow).toContain("issue_number: 3");
+    expect(workflow).toContain("if: ${{ success() }}");
+    expect(workflow).toContain("Registrar falha do empacotamento");
+    expect(workflow).toContain("if: ${{ failure() }}");
+    expect(workflow).toContain("Produção: **não alterada**");
   });
 });
