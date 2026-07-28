@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "repository": "AdoceBrigaderia/adoce-club",
+  "branch": "reestruturacao/ux-crm-operacao-imagens-v1",
+  "head_evaluated": "e15d30bc843157408cb79b40a294cd7935c94b3f",
+  "project_id": "vazozolhbehnriytzcdc",
+  "production_project_id": "uefwywizqhfvvijaopcn",
+  "production_forbidden": true,
+  "captured_at": "2026-07-28T14:51:57-03:00",
+  "remote_last_applied": {
+    "version": "20260727113349",
+    "name": "privacy_anonymization_preserve_member_code"
+  },
+  "backup": {
+    "required": true,
+    "confirmed": false,
+    "status": "required_unconfirmed",
+    "evidence": null
+  },
+  "required_repairs": [
+    {
+      "name": "backend_only_tables_explicit_deny",
+      "keep_version": "20260727035116",
+      "revert_version": "20260727035059",
+      "confirmed": false
+    },
+    {
+      "name": "operational_foreign_key_indexes",
+      "keep_version": "20260727035246",
+      "revert_version": "20260727035343",
+      "confirmed": false
+    },
+    {
+      "name": "public_analytics_bff_only",
+      "keep_version": "20260727035513",
+      "revert_version": "20260727040533",
+      "confirmed": false
+    }
+  ],
+  "dry_run": {
+    "required": true,
+    "status": "not_executed",
+    "evidence": null
+  },
+  "pending_migrations": [
+    { "version": "20260728073000", "name": "cake_builder_configuration", "stage": "foundation" },
+    { "version": "20260728090000", "name": "costing_core_foundation", "stage": "foundation" },
+    { "version": "20260728093000", "name": "costing_commercial_catalog", "stage": "foundation" },
+    { "version": "20260728103000", "name": "cake_builder_costing_catalog_links", "stage": "foundation" },
+    { "version": "20260728115000", "name": "product_profitability_workspace", "stage": "foundation" },
+    { "version": "20260728115100", "name": "product_profitability_autoprofile", "stage": "foundation" },
+    { "version": "20260728130000", "name": "service_request_pricing_snapshots", "stage": "foundation" },
+    { "version": "20260728154500", "name": "site_visual_assets_bff", "stage": "foundation" },
+    { "version": "20260728164000", "name": "dynamic_image_assets_bff", "stage": "foundation" },
+    { "version": "20260728165116", "name": "harden_pede_junto_participant_rejoin", "stage": "hardening" },
+    { "version": "20260728165303", "name": "harden_public_instant_order_submission", "stage": "hardening" },
+    { "version": "20260728170236", "name": "harden_customer_registration_consent", "stage": "hardening" },
+    { "version": "20260728170246", "name": "festival_slice_yield_overrides", "stage": "feature" },
+    { "version": "20260728170307", "name": "harden_pede_junto_public_writes", "stage": "hardening" },
+    { "version": "20260728170501", "name": "serialize_and_deduplicate_cash_operations", "stage": "hardening" },
+    { "version": "20260728170941", "name": "lock_private_cake_builder_helper", "stage": "hardening" },
+    { "version": "20260728174500", "name": "gallery_media_assets_bff", "stage": "media" }
+  ],
+  "apply_policy": {
+    "partial_apply_forbidden": true,
+    "required_order": "ascending_version",
+    "allowed_only_after_backup": true,
+    "allowed_only_after_repairs": true,
+    "allowed_only_after_dry_run": true,
+    "production_apply_forbidden": true
+  }
+}
