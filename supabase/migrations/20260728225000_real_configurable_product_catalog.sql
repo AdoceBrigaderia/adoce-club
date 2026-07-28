@@ -91,7 +91,7 @@ set product_type = 'school_kit',
       'maximumFlavors', 100,
       'minimumQuantityPerFlavor', 1,
       'requireExactTotal', false,
-      'allowAddons', false,
+      'allowAddons', true,
       'includedQuantity', product.minimum_quantity,
       'additionalUnitPrice', private.configurable_nonnegative_numeric(product.details->>'additional_price', 0),
       'priceTiers', '[]'::jsonb,
@@ -190,6 +190,6 @@ where product.id = profile.product_id
   );
 
 comment on column public.commercial_products.configuration_rules is
-  'Regras públicas do montador, incluindo pacotes, quantidade incluída e mínimos/máximos por grupo.';
+  'Regras públicas do montador, incluindo pacotes, quantidade incluída, adicionais e mínimos/máximos por grupo.';
 
 commit;
