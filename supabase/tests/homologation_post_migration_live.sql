@@ -9,6 +9,7 @@ declare
     'cake_builder_options',
     'service_request_cake_builds',
     'service_request_product_configurations',
+    'service_request_pricing_snapshots',
     'costing_items',
     'costing_item_prices',
     'costing_recipes',
@@ -37,7 +38,8 @@ declare
     '20260728174500',
     '20260728220000',
     '20260728221500',
-    '20260728223000'
+    '20260728223000',
+    '20260728224500'
   ];
   applied_count integer;
 begin
@@ -73,6 +75,12 @@ begin
   end if;
   if to_regprocedure('private.canonicalize_configurable_product_selection(uuid,integer,jsonb)') is null then
     raise exception 'Função privada de configuração de produtos não foi criada';
+  end if;
+  if to_regprocedure('private.redact_internal_product_configuration(jsonb)') is null then
+    raise exception 'Redação de custos internos dos produtos não foi criada';
+  end if;
+  if to_regprocedure('private.capture_service_request_pricing_snapshot(uuid,uuid,integer,jsonb,jsonb)') is null then
+    raise exception 'Snapshot financeiro das encomendas configuráveis não foi criado';
   end if;
   if to_regprocedure('public.manager_get_configurable_product_workspace()') is null then
     raise exception 'Workspace administrativo de produtos não foi criado';
