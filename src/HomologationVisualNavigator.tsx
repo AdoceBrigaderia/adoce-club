@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -11,6 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   buildVisualReviewMarkdown,
   createEmptyVisualReview,
+  nextPendingVisualRoute,
   normalizeVisualReview,
   VISUAL_REVIEW_SESSION_KEY,
   visualReviewProgress,
@@ -66,6 +68,7 @@ export default function HomologationVisualNavigator() {
   const [viewport, setViewport] = useState(readViewport);
   const [copyFeedback, setCopyFeedback] = useState("");
   const progress = useMemo(() => visualReviewProgress(review), [review]);
+  const nextPendingRoute = useMemo(() => nextPendingVisualRoute(review), [review]);
   const report = useMemo(
     () =>
       buildVisualReviewMarkdown(review, {
@@ -166,6 +169,28 @@ export default function HomologationVisualNavigator() {
             <span><strong>{progress.adjust}</strong> com ajustes</span>
             <span><strong>{progress.pending}</strong> pendentes</span>
           </div>
+
+          {nextPendingRoute ? (
+            <a
+              className="homologation-visual-next-route"
+              href={nextPendingRoute.href}
+              onClick={() => setOpen(false)}
+            >
+              <span>
+                <small>Próxima tela pendente</small>
+                <strong>{nextPendingRoute.label}</strong>
+              </span>
+              <ArrowRight aria-hidden="true" />
+            </a>
+          ) : (
+            <div className="homologation-visual-next-route is-complete" role="status">
+              <span>
+                <small>Roteiro concluído</small>
+                <strong>Todas as telas foram revisadas</strong>
+              </span>
+              <CheckCircle2 aria-hidden="true" />
+            </div>
+          )}
 
           <nav aria-label="Telas para validar">
             {visualValidationRoutes.map(({ id, label, href }) => {
