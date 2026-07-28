@@ -63,7 +63,8 @@ create or replace function private.capture_service_request_pricing_snapshot(
   target_request_id uuid,
   target_product_id uuid,
   target_quantity integer,
-  target_selections jsonb default '{}'::jsonb
+  target_selections jsonb default '{}'::jsonb,
+  target_cake_quote jsonb default null
 )
 returns boolean
 language plpgsql
@@ -77,6 +78,16 @@ declare
       then coalesce(target_selections, '{}'::jsonb)
     else '{}'::jsonb
   end;
+  normalized_quote jsonb := case
+    when jsonb_typeof(target_cake_quote) = 'object' then target_cake_quote
+    else null
+  end;
+  base_unit_cost numeric(14,4);
+  base_unit_price numeric(14,2);
+  catalog_base_price numeric(14,2);
+  quote_estimated_price numeric(14,2) := 0;
+  quote_option_cost numeric(14,4) := 0;
+  quote_price_adjustment numeric(14,2) := 0;
   resolved_unit_cost numeric(14,4);
   resolved_unit_price numeric(14,2);
   resolved_total_cost numeric(16,4);
@@ -106,8 +117,18 @@ begin
     raise exception 'Rentabilidade do produto não configurada';
   end if;
 
-  resolved_unit_cost := round(greatest(coalesce((profitability->>'effective_total_cost')::numeric, 0), 0), 4);
-  resolved_unit_price := round(greatest(coalesce((profitability->>'effective_sale_price')::numeric, 0), 0), 2);
+  base_unit_cost := round(greatest(coalesce((profitability->>'effective_total_cost')::numeric, 0), 0), 4);
+  base_unit_price := round(greatest(coalesce((profitability->>'effective_sale_price')::numeric, 0), 0), 2);
+  catalog_base_price := round(greatest(coalesce((profitability->>'base_price')::numeric, 0), 0), 2);
+
+  if normalized_quote is not null then
+    quote_estimated_price := round(greatest(coalesce((normalized_quote->>'estimated_price')::numeric, 0), 0), 2);
+    quote_option_cost := round(greatest(coalesce((normalized_quote->>'estimated_internal_cost')::numeric, 0), 0), 4);
+    quote_price_adjustment := round(greatest(quote_estimated_price - catalog_base_price, 0), 2);
+  end if;
+
+  resolved_unit_cost := round(base_unit_cost + quote_option_cost, 4);
+  resolved_unit_price := round(base_unit_price + quote_price_adjustment, 2);
   resolved_total_cost := round(resolved_unit_cost * target_quantity, 4);
   resolved_total_price := round(resolved_unit_price * target_quantity, 2);
   resolved_profit := round(resolved_total_price - resolved_total_cost, 4);
@@ -167,6 +188,11 @@ begin
         'slug', profitability->'slug',
         'segment', profitability->'segment'
       ),
+      'base_unit_cost', base_unit_cost,
+      'base_unit_price', base_unit_price,
+      'cake_builder_option_cost', quote_option_cost,
+      'cake_builder_price_adjustment', quote_price_adjustment,
+      'cake_builder_quote', normalized_quote,
       'unit_cost', resolved_unit_cost,
       'unit_price', resolved_unit_price,
       'quantity', target_quantity,
@@ -194,7 +220,7 @@ begin
 end;
 $$;
 
-revoke all on function private.capture_service_request_pricing_snapshot(uuid, uuid, integer, jsonb)
+revoke all on function private.capture_service_request_pricing_snapshot(uuid, uuid, integer, jsonb, jsonb)
   from public, anon, authenticated;
 
 create or replace function public.manager_get_service_request_pricing_snapshot(
@@ -272,6 +298,8 @@ declare
   existing_request public.service_requests%rowtype;
   target_request_id uuid;
   linked_profile_id uuid;
+  cake_quote jsonb;
+  canonical_selections jsonb := coalesce(requested_selections, '{}'::jsonb);
   pricing_snapshot_captured boolean := false;
 begin
   if requested_operation_key is null then
@@ -297,12 +325,27 @@ begin
       'conflict', null,
       'competing_prebooks', 0,
       'idempotent', true,
+      'cake_builder_confirmed', exists (
+        select 1 from public.service_request_cake_builds build where build.request_id = existing_request.id
+      ),
       'pricing_snapshot_captured', exists (
         select 1
         from public.service_request_pricing_snapshots snapshot
         where snapshot.request_id = existing_request.id
       ),
       'message', 'Esta pré-reserva já havia sido registrada.'
+    );
+  end if;
+
+  cake_quote := private.canonicalize_cake_builder_selection(
+    requested_product_id,
+    canonical_selections
+  );
+  if cake_quote is not null then
+    canonical_selections := (canonical_selections - 'cake_builder') || jsonb_build_object(
+      'cake_builder', cake_quote->'selection',
+      'cake_builder_summary', cake_quote->'summary',
+      'estimated_price', cake_quote->'estimated_price'
     );
   end if;
 
@@ -315,7 +358,7 @@ begin
     requested_start,
     requested_end,
     requested_location,
-    requested_selections,
+    canonical_selections,
     requested_notes
   );
 
@@ -341,11 +384,36 @@ begin
     raise exception 'A pré-reserva foi criada sem vínculo interno';
   end if;
 
+  if cake_quote is not null then
+    insert into public.service_request_cake_builds(
+      request_id,
+      product_id,
+      template_id,
+      canonical_selection,
+      selection_summary,
+      estimated_price,
+      estimated_internal_cost
+    ) values (
+      target_request_id,
+      requested_product_id,
+      (cake_quote->>'template_id')::uuid,
+      cake_quote->'selection',
+      cake_quote->'summary',
+      (cake_quote->>'estimated_price')::numeric,
+      (cake_quote->>'estimated_internal_cost')::numeric
+    );
+    response := response || jsonb_build_object(
+      'estimated_price', cake_quote->'estimated_price',
+      'cake_builder_confirmed', true
+    );
+  end if;
+
   pricing_snapshot_captured := private.capture_service_request_pricing_snapshot(
     target_request_id,
     requested_product_id,
     requested_quantity,
-    requested_selections
+    canonical_selections,
+    cake_quote
   );
 
   return response || jsonb_build_object(
