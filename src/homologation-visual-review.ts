@@ -4,7 +4,7 @@ export const visualValidationRoutes = [
   { id: "inicio", label: "Início e identidade", href: "/#inicio" },
   { id: "adoce-hoje", label: "Fatias de hoje", href: "/#adoce-hoje" },
   { id: "cadastro", label: "Cadastro simplificado", href: "/#cadastro" },
-  { id: "clube", label: "Clube e cartão digital", href: "/#clube" },
+  { id: "clube", label: "Clube e cartão digital", href: "/#minha-conta" },
   { id: "pede-junto", label: "Pede Junto", href: "/#pede-junto" },
   { id: "encomendas", label: "Encomendas", href: "/#encomendas" },
   { id: "operacao", label: "Operação", href: "/#operacao" },
