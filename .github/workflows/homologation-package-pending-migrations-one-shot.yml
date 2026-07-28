@@ -26,7 +26,7 @@ jobs:
     name: Validar e empacotar lote exato
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Baixar o head exato
         uses: actions/checkout@v4
@@ -91,6 +91,16 @@ jobs:
           cp "$PENDING_PLAN" artifacts/homologation-pending-migrations/plan.json
           test "$(find artifacts/homologation-pending-migrations/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)" -eq 22
 
+      - name: Empacotar source exato do commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-source
+          git archive --format=tar.gz --output=artifacts/homologation-source/adoce-source.tar.gz HEAD
+          printf '%s\n' "$(git rev-parse HEAD)" > artifacts/homologation-source/commit.txt
+          sha256sum artifacts/homologation-source/adoce-source.tar.gz > artifacts/homologation-source/sha256.txt
+          test -s artifacts/homologation-source/adoce-source.tar.gz
+
       - name: Publicar pacote validado
         uses: actions/upload-artifact@v4
         with:
@@ -99,3 +109,12 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 6
+
+      - name: Publicar source do commit
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-source
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 0
