@@ -15,6 +15,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/homologation-pending-migrations-preflight.yml
+      - .github/workflows/homologation-migration-repair.yml
       - docs/evidence/homologation-pending-migrations-20260728.json
       - scripts/homologation-pending-migrations.mjs
       - scripts/homologation-pending-migrations.test.mjs
