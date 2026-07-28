@@ -1,0 +1,158 @@
+name: Aplicar migrations vinculadas somente na homologação
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/apply-homologation-linked.yml
+      - scripts/reconcile-homologation-migration-filenames.mjs
+      - scripts/reconcile-homologation-migration-filenames.test.mjs
+      - docs/evidence/homologation-backup-confirmed-20260728.json
+      - docs/evidence/homologation-migrations-20260727.json
+      - docs/evidence/homologation-migration-repair-plan-20260727.json
+      - supabase/migrations/**
+
+concurrency:
+  group: apply-homologation-linked
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
+  PRODUCTION_REF: uefwywizqhfvvijaopcn
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+
+jobs:
+  apply:
+    name: Dry-run e db push vinculados à homologação
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: homologation
+    steps:
+      - name: Baixar SHA exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validar autorização, backup e isolamento
+        shell: bash
+        env:
+          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
+          test "$(git log -1 --pretty=%s)" = "ci: aplicar migrations via linked homologacao"
+          test "$HOMOLOGATION_REF" = "vazozolhbehnriytzcdc"
+          test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
+          test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
+          node - <<'NODE'
+          const fs = require('fs');
+          const evidence = JSON.parse(fs.readFileSync('docs/evidence/homologation-backup-confirmed-20260728.json', 'utf8'));
+          if (evidence.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Backup não pertence à homologação.');
+          if (evidence.production_forbidden !== true) throw new Error('Proteção de produção ausente.');
+          if (evidence.accepted_for_homologation_migration_gate !== true) throw new Error('Backup não autorizado pelo gate.');
+          if (evidence.package?.sha256 !== 'e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354') throw new Error('Digest do backup divergente.');
+          if (evidence.package?.invalid_checksum_count !== 0) throw new Error('Backup com checksum inválido.');
+          if (evidence.storage?.verified_object_count !== 430) throw new Error('Backup do Storage incompleto.');
+          NODE
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validar segredos e vincular exclusivamente à homologação
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+          npx --yes supabase@2.109.1 link --project-ref "$HOMOLOGATION_REF" --password "$SUPABASE_DB_PASSWORD"
+          test "$(cat supabase/.temp/project-ref)" = "$HOMOLOGATION_REF"
+          case "$(cat supabase/.temp/project-ref)" in
+            "$PRODUCTION_REF") echo "Produção detectada e rejeitada" >&2; exit 1 ;;
+          esac
+
+      - name: Testar e reconciliar nomes locais
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-migrations
+          node --test scripts/reconcile-homologation-migration-filenames.test.mjs
+          node scripts/reconcile-homologation-migration-filenames.mjs --strict --apply \
+            > artifacts/homologation-migrations/filename-reconciliation.json
+          git diff --check
+
+      - name: Confirmar histórico antes da aplicação
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 migration list --linked --password "$SUPABASE_DB_PASSWORD" \
+            > artifacts/homologation-migrations/migration-list-before.txt
+          grep -q "20260727035116" artifacts/homologation-migrations/migration-list-before.txt
+          grep -q "20260727035246" artifacts/homologation-migrations/migration-list-before.txt
+          grep -q "20260727035513" artifacts/homologation-migrations/migration-list-before.txt
+          ! grep -q "20260727035059" artifacts/homologation-migrations/migration-list-before.txt
+          ! grep -q "20260727035343" artifacts/homologation-migrations/migration-list-before.txt
+          ! grep -q "20260727040533" artifacts/homologation-migrations/migration-list-before.txt
+
+      - name: Executar dry-run integral
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 db push --linked --password "$SUPABASE_DB_PASSWORD" --dry-run \
+            > artifacts/homologation-migrations/db-push-dry-run.txt 2>&1
+          cat artifacts/homologation-migrations/db-push-dry-run.txt
+          for migration in \
+            20260728073000 20260728090000 20260728093000 20260728103000 \
+            20260728115000 20260728115100 20260728130000 20260728154500 \
+            20260728164000 20260728165116 20260728165303 20260728170236 \
+            20260728170246 20260728170307 20260728170501 20260728170941 \
+            20260728174500; do
+            grep -q "$migration" artifacts/homologation-migrations/db-push-dry-run.txt
+          done
+
+      - name: Aplicar as 17 migrations na homologação
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 db push --linked --password "$SUPABASE_DB_PASSWORD" \
+            > artifacts/homologation-migrations/db-push-apply.txt 2>&1
+          cat artifacts/homologation-migrations/db-push-apply.txt
+          npx --yes supabase@2.109.1 migration list --linked --password "$SUPABASE_DB_PASSWORD" \
+            > artifacts/homologation-migrations/migration-list-after.txt
+          for migration in \
+            20260728073000 20260728090000 20260728093000 20260728103000 \
+            20260728115000 20260728115100 20260728130000 20260728154500 \
+            20260728164000 20260728165116 20260728165303 20260728170236 \
+            20260728170246 20260728170307 20260728170501 20260728170941 \
+            20260728174500; do
+            grep -q "$migration" artifacts/homologation-migrations/migration-list-after.txt
+          done
+
+      - name: Preservar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrations-homologacao-linked-${{ github.run_number }}
+          path: artifacts/homologation-migrations
+          if-no-files-found: warn
+          retention-days: 30
