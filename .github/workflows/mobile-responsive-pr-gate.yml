@@ -14,6 +14,7 @@ on:
       - src/public-commercial-polish.css
       - src/homologation-validation.css
       - src/mobile-responsive-fixes.css
+      - src/mobile-page-layout-fixes.css
       - src/mobile-responsive-regression.test.ts
       - src/homologation-visual-preview.test.ts
       - scripts/serve-homologation-preview.mjs
@@ -178,7 +179,7 @@ jobs:
               `- Commit: \`${context.payload.pull_request.head.sha}\``,
               `- [Baixar pacote para iOS/Android](${process.env.ARTIFACT_URL})`,
               `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
-              '- Corrigidos: hero público, CTAs, aviso de homologação e roteiro aberto em telas estreitas.',
+              '- Corrigidos: hero público, CTAs, aviso de homologação, cadastro, Clube, encomendas e roteiro aberto em telas estreitas.',
               '- Gates: TypeScript, testes responsivos, build, isolamento e smoke tests HTTP 200.',
               '- Produção: **não alterada**.',
             ].join('\n');
