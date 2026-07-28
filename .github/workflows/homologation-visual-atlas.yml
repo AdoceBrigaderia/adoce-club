@@ -7,7 +7,9 @@ on:
       - reestruturacao/ux-crm-operacao-imagens-v1
     paths:
       - scripts/generate-homologation-visual-atlas.mjs
+      - scripts/export-homologation-visual-atlas-images.mjs
       - src/homologation-visual-atlas.test.ts
+      - src/homologation-visual-atlas-images.test.ts
       - docs/HOMOLOGACAO-ATLAS-VISUAL-98.md
       - .github/workflows/homologation-visual-atlas.yml
 
@@ -20,9 +22,9 @@ permissions:
 
 jobs:
   atlas:
-    name: Validar e empacotar 98 pontos
+    name: Validar e empacotar 98 pontos e imagens
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Baixar a branch autorizada
         uses: actions/checkout@v4
@@ -38,6 +40,7 @@ jobs:
           test "$(git branch --show-current)" = "reestruturacao/ux-crm-operacao-imagens-v1"
           ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
             scripts/generate-homologation-visual-atlas.mjs \
+            scripts/export-homologation-visual-atlas-images.mjs \
             docs/HOMOLOGACAO-ATLAS-VISUAL-98.md
 
       - name: Configurar Node.js
@@ -45,7 +48,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Validar e gerar atlas
+      - name: Validar e gerar atlas interativo
         shell: bash
         run: |
           set -euo pipefail
@@ -54,14 +57,37 @@ jobs:
           node scripts/generate-homologation-visual-atlas.mjs \
             --out artifacts/atlas-visual/validacao-visual-98.html
           test "$(grep -o 'data-checkpoint=' artifacts/atlas-visual/validacao-visual-98.html | wc -l)" = "98"
+
+      - name: Gerar 98 imagens separadas
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/export-homologation-visual-atlas-images.mjs --check
+          node scripts/export-homologation-visual-atlas-images.mjs \
+            --logo public/site/logo.webp \
+            --out-dir artifacts/atlas-visual/imagens-separadas
+          test "$(find artifacts/atlas-visual/imagens-separadas/imagens -maxdepth 1 -type f -name '*.svg' | wc -l)" = "98"
+          node -e "const m=require('./artifacts/atlas-visual/imagens-separadas/manifest.json'); if(m.totalAreas!==8||m.totalImages!==98||m.productionChanged!==false) process.exit(1)"
+          test -f artifacts/atlas-visual/imagens-separadas/index.html
+          test -f artifacts/atlas-visual/imagens-separadas/LEIA-ME.txt
+
+      - name: Registrar documentação e evidência
+        shell: bash
+        run: |
+          set -euo pipefail
           cp docs/HOMOLOGACAO-ATLAS-VISUAL-98.md artifacts/atlas-visual/LEIA-ME.md
-          printf '%s\n' "Commit: ${GITHUB_SHA}" "Produção: não alterada" \
+          printf '%s\n' \
+            "Commit: ${GITHUB_SHA}" \
+            "Área: homologação visual isolada" \
+            "Atlas interativo: 98 checkpoints" \
+            "Imagens separadas: 98 SVGs" \
+            "Produção: não alterada" \
             > artifacts/atlas-visual/EVIDENCIA.txt
 
-      - name: Empacotar atlas visual
+      - name: Empacotar atlas e 98 imagens separadas
         uses: actions/upload-artifact@v4
         with:
-          name: atlas-visual-adoce-98-pontos-${{ github.run_number }}
+          name: atlas-visual-adoce-98-imagens-separadas-${{ github.run_number }}
           path: artifacts/atlas-visual
           if-no-files-found: error
           retention-days: 30
