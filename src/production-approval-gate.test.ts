@@ -67,7 +67,7 @@ describe("portão de produção", () => {
       "npm run release:check",
     );
     expect(packageJson.scripts["release:prod"]).toMatch(
-      /^node scripts\/production-approval-gate\.mjs && npm run audit:migrations && npm run release:check/,
+      /^node scripts\/production-approval-gate\.mjs && npm run audit:migrations && npm run audit:migration-reconciliation && npm run release:check/,
     );
     expect(releaseCheck).toContain('["run", "verify"]');
   });
