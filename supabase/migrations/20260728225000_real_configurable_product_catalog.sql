@@ -6,12 +6,12 @@ set product_type = 'sweet',
     configuration_rules = coalesce(product.configuration_rules, '{}'::jsonb) || jsonb_build_object(
       'minimumTotalQuantity', product.minimum_quantity,
       'maximumTotalQuantity', coalesce((
-        select max(private.configurable_positive_integer(package->>'quantity', product.minimum_quantity))
-        from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package
+        select max(private.configurable_positive_integer(package.value->>'quantity', product.minimum_quantity))
+        from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package(value)
       ), product.minimum_quantity),
       'maximumFlavors', coalesce((
-        select max(private.configurable_positive_integer(package->>'flavors', 1))
-        from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package
+        select max(private.configurable_positive_integer(package.value->>'flavors', 1))
+        from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package(value)
       ), 1),
       'minimumQuantityPerFlavor', 1,
       'requireExactTotal', true,
@@ -20,11 +20,11 @@ set product_type = 'sweet',
       'additionalUnitPrice', 0,
       'priceTiers', coalesce((
         select jsonb_agg(jsonb_build_object(
-          'quantity', private.configurable_positive_integer(package->>'quantity', product.minimum_quantity),
-          'price', private.configurable_nonnegative_numeric(package->>'price', coalesce(product.base_price, 0)),
-          'maximumFlavors', private.configurable_positive_integer(package->>'flavors', 1)
-        ) order by private.configurable_positive_integer(package->>'quantity', product.minimum_quantity))
-        from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package
+          'quantity', private.configurable_positive_integer(package.value->>'quantity', product.minimum_quantity),
+          'price', private.configurable_nonnegative_numeric(package.value->>'price', coalesce(product.base_price, 0)),
+          'maximumFlavors', private.configurable_positive_integer(package.value->>'flavors', 1)
+        ) order by private.configurable_positive_integer(package.value->>'quantity', product.minimum_quantity))
+        from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package(value)
       ), '[]'::jsonb),
       'groupLimits', '{}'::jsonb,
       'groupMinimums', '{}'::jsonb
@@ -61,8 +61,8 @@ select
   0,
   1,
   coalesce((
-    select max(private.configurable_positive_integer(package->>'quantity', product.minimum_quantity))
-    from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package
+    select max(private.configurable_positive_integer(package.value->>'quantity', product.minimum_quantity))
+    from jsonb_array_elements(coalesce(product.details->'packages', '[]'::jsonb)) package(value)
   ), product.minimum_quantity),
   true,
   true,
