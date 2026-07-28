@@ -1,0 +1,67 @@
+name: Gerar atlas visual de homologação
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - scripts/generate-homologation-visual-atlas.mjs
+      - src/homologation-visual-atlas.test.ts
+      - docs/HOMOLOGACAO-ATLAS-VISUAL-98.md
+      - .github/workflows/homologation-visual-atlas.yml
+
+concurrency:
+  group: homologation-visual-atlas-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  atlas:
+    name: Validar e empacotar 98 pontos
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Baixar a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Confirmar branch e proteção de produção
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
+            scripts/generate-homologation-visual-atlas.mjs \
+            docs/HOMOLOGACAO-ATLAS-VISUAL-98.md
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validar e gerar atlas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/atlas-visual
+          node scripts/generate-homologation-visual-atlas.mjs --check
+          node scripts/generate-homologation-visual-atlas.mjs \
+            --out artifacts/atlas-visual/validacao-visual-98.html
+          test "$(grep -o 'data-checkpoint=' artifacts/atlas-visual/validacao-visual-98.html | wc -l)" = "98"
+          cp docs/HOMOLOGACAO-ATLAS-VISUAL-98.md artifacts/atlas-visual/LEIA-ME.md
+          printf '%s\n' "Commit: ${GITHUB_SHA}" "Produção: não alterada" \
+            > artifacts/atlas-visual/EVIDENCIA.txt
+
+      - name: Empacotar atlas visual
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-visual-adoce-98-pontos-${{ github.run_number }}
+          path: artifacts/atlas-visual
+          if-no-files-found: error
+          retention-days: 30
