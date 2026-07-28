@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   migrate:
@@ -35,11 +35,12 @@ jobs:
       BACKUP_EVIDENCE: docs/evidence/homologation-backup-confirmed-20260728.json
       PGCONNECT_TIMEOUT: '20'
     steps:
-      - name: Baixar head exato da branch autorizada
+      - name: Baixar o SHA exato autorizado
         uses: actions/checkout@v4
         with:
-          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Validar autorização e isolamento absoluto
         env:
@@ -48,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = "AdoceBrigaderia/adoce-club"
-          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "${{ github.event.head_commit.message }}" = "ci: aplicar migrations somente na homologação"
           test "$HOMOLOGATION_REF" = "vazozolhbehnriytzcdc"
@@ -66,6 +67,7 @@ jobs:
           case "$SUPABASE_HOMOLOGATION_DB_URL" in
             *"$PRODUCTION_REF"*) echo "Produção detectada e rejeitada" >&2; exit 1 ;;
           esac
+          echo "::add-mask::$SUPABASE_HOMOLOGATION_DB_URL"
 
       - name: Validar evidência do backup recuperável
         shell: bash
@@ -183,7 +185,7 @@ jobs:
           grep -qx 'ok' artifacts/homologation-migrations/schema-smoke.txt
           grep -qx '6' artifacts/homologation-migrations/schema-smoke.txt
 
-      - name: Registrar evidência e renomes na branch
+      - name: Gerar evidência local da aplicação
         shell: bash
         run: |
           set -euo pipefail
@@ -204,24 +206,14 @@ jobs:
             final_version: '20260728174500',
             history_line_count: history.trim().split(/\r?\n/).length,
           };
-          fs.writeFileSync('docs/evidence/homologation-migrations-applied-20260728.json', `${JSON.stringify(report, null, 2)}\n`);
+          fs.writeFileSync('artifacts/homologation-migrations/homologation-migrations-applied-20260728.json', `${JSON.stringify(report, null, 2)}\n`);
           NODE
-          git config user.name "adoce-homologation-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add supabase/migrations docs/evidence/homologation-migration-filename-reconciliation-20260728.json docs/evidence/homologation-migrations-applied-20260728.json
-          git diff --cached --quiet || {
-            git commit -m "chore: registra migrations aplicadas na homologação"
-            git push origin HEAD:reestruturacao/ux-crm-operacao-imagens-v1
-          }
 
       - name: Preservar todas as evidências
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: migrations-homologacao-${{ github.run_number }}
-          path: |
-            artifacts/homologation-migrations
-            docs/evidence/homologation-migration-filename-reconciliation-20260728.json
-            docs/evidence/homologation-migrations-applied-20260728.json
+          path: artifacts/homologation-migrations
           if-no-files-found: warn
           retention-days: 30
