@@ -23,8 +23,59 @@ const UUID =
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type JsonObject = Record<string, unknown>;
 
+type SanitizedCakeBuilder = {
+  cake_layers: string[];
+  filling_layers: string[];
+  topping: string;
+  filling_fruits: string[];
+  topping_fruits: string[];
+  filling_extras: string[];
+  topping_extras: string[];
+};
+
 function text(value: unknown, maxLength: number) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function uuidList(value: unknown, maximum: number) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > maximum) return null;
+  const normalized = value.map((item) => text(item, 36));
+  if (normalized.some((item) => !UUID.test(item))) return null;
+  return [...new Set(normalized)];
+}
+
+function sanitizeCakeBuilder(value: unknown): SanitizedCakeBuilder | null | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  const source = value as JsonObject;
+  const cakeLayers = uuidList(source.cake_layers, 8);
+  const fillingLayers = uuidList(source.filling_layers, 7);
+  const fillingFruits = uuidList(source.filling_fruits, 20);
+  const toppingFruits = uuidList(source.topping_fruits, 20);
+  const fillingExtras = uuidList(source.filling_extras, 20);
+  const toppingExtras = uuidList(source.topping_extras, 20);
+  const topping = text(source.topping, 36);
+  if (
+    cakeLayers === null ||
+    fillingLayers === null ||
+    fillingFruits === null ||
+    toppingFruits === null ||
+    fillingExtras === null ||
+    toppingExtras === null ||
+    !topping ||
+    !UUID.test(topping)
+  )
+    return null;
+  return {
+    cake_layers: cakeLayers,
+    filling_layers: fillingLayers,
+    topping,
+    filling_fruits: fillingFruits,
+    topping_fruits: toppingFruits,
+    filling_extras: fillingExtras,
+    topping_extras: toppingExtras,
+  };
 }
 
 function upstreamMessage(value: unknown) {
@@ -98,10 +149,18 @@ export default async (request: Request) => {
   const location = text(body.requested_location, 300);
   const notes = text(body.requested_notes, 2_000);
   const rawSelections = body.requested_selections;
-  const preferences =
+  const selectionSource =
     rawSelections && typeof rawSelections === "object" && !Array.isArray(rawSelections)
-      ? text((rawSelections as JsonObject).preferences, 1_000)
-      : "";
+      ? (rawSelections as JsonObject)
+      : {};
+  const preferences = text(selectionSource.preferences, 1_000);
+  const cakeBuilder = sanitizeCakeBuilder(selectionSource.cake_builder);
+  if (cakeBuilder === null)
+    return secureJson({ error: "A montagem da torta contém uma opção inválida." }, 400);
+  const selections: JsonObject = {
+    preferences,
+    ...(cakeBuilder ? { cake_builder: cakeBuilder } : {}),
+  };
 
   const start = Date.parse(requestedStart);
   const end = Date.parse(requestedEnd);
@@ -186,7 +245,7 @@ export default async (request: Request) => {
           requested_start: new Date(start).toISOString(),
           requested_end: new Date(end).toISOString(),
           requested_location: location,
-          requested_selections: { preferences },
+          requested_selections: selections,
           requested_notes: notes,
           requested_profile_id: profileId,
         }),
