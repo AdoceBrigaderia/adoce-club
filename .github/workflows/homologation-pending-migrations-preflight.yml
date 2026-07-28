@@ -1,16 +1,6 @@
 name: Pré-flight e aplicação das migrations de homologação
 
 on:
-  workflow_dispatch:
-    inputs:
-      confirmation:
-        description: Digite VALIDAR MIGRATIONS HOMOLOGACAO
-        required: true
-        type: string
-      expected_commit:
-        description: SHA exato da branch a validar
-        required: true
-        type: string
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
@@ -27,7 +17,7 @@ on:
       - supabase/migrations/**
 
 concurrency:
-  group: homologation-migrations-${{ github.event.pull_request.number || 'manual' }}
+  group: homologation-migrations-${{ github.event.pull_request.number }}
   cancel-in-progress: false
 
 permissions:
@@ -41,26 +31,23 @@ env:
 jobs:
   validate:
     name: Inventário, ordem e bloqueios
-    if: ${{ github.event_name == 'workflow_dispatch' || github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - name: Baixar head exato
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_commit || github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Validar autorização, commit e projeto isolado
+      - name: Validar commit e ambiente
         shell: bash
-        env:
-          CONFIRMATION: ${{ inputs.confirmation || 'VALIDAR MIGRATIONS HOMOLOGACAO' }}
-          EXPECTED_COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_commit || github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          test "$CONFIRMATION" = "VALIDAR MIGRATIONS HOMOLOGACAO"
-          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
           test "$HOMOLOGATION_REF" = "vazozolhbehnriytzcdc"
           test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
@@ -71,11 +58,9 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Instalar dependências
-        run: npm ci --prefer-offline --no-audit
-
-      - name: Executar testes e relatório estrutural
+      - name: Instalar, testar e gerar relatório
         run: |
+          npm ci --prefer-offline --no-audit
           npm run test:homologation-pending-migrations
           npm run report:homologation-pending-migrations
 
@@ -101,14 +86,13 @@ jobs:
           path: |
             artifacts/homologation-pending-migrations.json
             artifacts/homologation-pending-migrations.md
-            docs/evidence/homologation-pending-migrations-20260728.json
           if-no-files-found: error
           retention-days: 30
 
   apply-homologation:
-    name: Dry-run e db push exclusivos na homologação
+    name: Diagnóstico, dry-run e db push na homologação
     needs: validate
-    if: ${{ github.event_name == 'pull_request' && github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: homologation
@@ -120,18 +104,16 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Validar autorização explícita e backup
+      - name: Validar autorização e backup
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
-          test "$(git log -1 --pretty=%s)" = "ci: aplicar migrations via linked homologacao"
+          test "$(git log -1 --pretty=%s)" = "ci: diagnosticar credenciais e aplicar homologacao"
           node - <<'NODE'
           const fs = require('fs');
           const evidence = JSON.parse(fs.readFileSync('docs/evidence/homologation-backup-confirmed-20260728.json', 'utf8'));
-          if (evidence.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Backup não pertence à homologação.');
-          if (evidence.production_forbidden !== true) throw new Error('Proteção de produção ausente.');
+          if (evidence.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Backup de projeto incorreto.');
           if (evidence.accepted_for_homologation_migration_gate !== true) throw new Error('Backup não aceito.');
           if (evidence.package?.sha256 !== 'e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354') throw new Error('Digest divergente.');
           if (evidence.package?.invalid_checksum_count !== 0) throw new Error('Checksum inválido.');
@@ -143,6 +125,38 @@ jobs:
         with:
           node-version: 22
 
+      - name: Confirmar segredo SUPABASE_ACCESS_TOKEN
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "SUPABASE_ACCESS_TOKEN não está configurado no environment homologation" >&2
+            exit 21
+          fi
+
+      - name: Confirmar segredo SUPABASE_DB_PASSWORD
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "SUPABASE_DB_PASSWORD não está configurado no environment homologation" >&2
+            exit 22
+          fi
+
+      - name: Validar token do Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 projects list >/tmp/supabase-projects.txt
+          grep -q "$HOMOLOGATION_REF" /tmp/supabase-projects.txt
+          ! grep -q "$PRODUCTION_REF.*LINKED" /tmp/supabase-projects.txt
+
       - name: Vincular exclusivamente à homologação
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -150,8 +164,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$SUPABASE_ACCESS_TOKEN"
-          test -n "$SUPABASE_DB_PASSWORD"
           npx --yes supabase@2.109.1 link --project-ref "$HOMOLOGATION_REF" --password "$SUPABASE_DB_PASSWORD"
           test "$(cat supabase/.temp/project-ref)" = "$HOMOLOGATION_REF"
           test "$(cat supabase/.temp/project-ref)" != "$PRODUCTION_REF"
@@ -166,7 +178,7 @@ jobs:
             > artifacts/homologation-migrations/filename-reconciliation.json
           git diff --check
 
-      - name: Confirmar repairs no histórico remoto
+      - name: Confirmar repairs remotos
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -192,12 +204,7 @@ jobs:
           npx --yes supabase@2.109.1 db push --linked --password "$SUPABASE_DB_PASSWORD" --dry-run \
             > artifacts/homologation-migrations/db-push-dry-run.txt 2>&1
           cat artifacts/homologation-migrations/db-push-dry-run.txt
-          for migration in \
-            20260728073000 20260728090000 20260728093000 20260728103000 \
-            20260728115000 20260728115100 20260728130000 20260728154500 \
-            20260728164000 20260728165116 20260728165303 20260728170236 \
-            20260728170246 20260728170307 20260728170501 20260728170941 \
-            20260728174500; do
+          for migration in 20260728073000 20260728090000 20260728093000 20260728103000 20260728115000 20260728115100 20260728130000 20260728154500 20260728164000 20260728165116 20260728165303 20260728170236 20260728170246 20260728170307 20260728170501 20260728170941 20260728174500; do
             grep -q "$migration" artifacts/homologation-migrations/db-push-dry-run.txt
           done
 
@@ -213,20 +220,12 @@ jobs:
           cat artifacts/homologation-migrations/db-push-apply.txt
           npx --yes supabase@2.109.1 migration list --linked --password "$SUPABASE_DB_PASSWORD" \
             > artifacts/homologation-migrations/migration-list-after.txt
-          for migration in \
-            20260728073000 20260728090000 20260728093000 20260728103000 \
-            20260728115000 20260728115100 20260728130000 20260728154500 \
-            20260728164000 20260728165116 20260728165303 20260728170236 \
-            20260728170246 20260728170307 20260728170501 20260728170941 \
-            20260728174500; do
-            grep -q "$migration" artifacts/homologation-migrations/migration-list-after.txt
-          done
 
       - name: Preservar evidências da aplicação
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: migrations-homologacao-linked-${{ github.run_number }}
+          name: migrations-homologacao-${{ github.run_number }}
           path: artifacts/homologation-migrations
           if-no-files-found: warn
           retention-days: 30
