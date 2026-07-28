@@ -14,6 +14,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
@@ -23,7 +24,7 @@ env:
 
 jobs:
   package:
-    name: Validar e empacotar lote exato
+    name: Validar, empacotar e solicitar homologação
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -118,3 +119,17 @@ jobs:
           if-no-files-found: error
           retention-days: 2
           compression-level: 0
+
+      - name: Solicitar workflow oficial de homologação
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_COMMIT: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          gh workflow run deploy-homologation-v2.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$EXPECTED_BRANCH" \
+            --field confirmation="PUBLICAR SOMENTE HOMOLOGACAO" \
+            --field expected_commit="$EXPECTED_COMMIT"
