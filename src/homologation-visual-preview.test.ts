@@ -15,11 +15,15 @@ const workflow = readFileSync(
   "utf8",
 );
 
+const normalizedBanner = banner.replace(/\s+/g, " ");
+
 describe("preview de validação visual da homologação", () => {
   it("marca o preview sem contaminar os demais ambientes", () => {
     expect(banner).toContain('value === "visual"');
     expect(banner).toContain("Homologação — validação visual");
-    expect(banner).toContain("Ações transacionais e integrações externas");
+    expect(normalizedBanner).toContain(
+      "Ações transacionais e integrações externas",
+    );
     expect(main).toContain("<HomologationValidationBanner />");
     expect(main).toContain("VITE_ADOCE_VALIDATION_MODE");
     expect(styles).toContain(".homologation-validation-banner");
