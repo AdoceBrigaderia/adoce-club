@@ -5,6 +5,10 @@
   "captured_at": "2026-07-27T15:55:00-03:00",
   "source": "supabase_migrations.schema_migrations",
   "scope": "migrations introduced by reestruturacao/ux-crm-operacao-imagens-v1",
+  "local_version_range": {
+    "minimum": "20260725213624",
+    "maximum": "20260727235959"
+  },
   "migrations": [
     { "version": "20260725213624", "name": "central_image_placeholders" },
     { "version": "20260726005258", "name": "site_visual_asset_versions" },

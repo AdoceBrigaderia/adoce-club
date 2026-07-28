@@ -8,6 +8,7 @@ import {
   loadRemoteMigrationSnapshot,
   readLocalMigrationInventory,
   renderMigrationReconciliationMarkdown,
+  scopeLocalMigrationInventory,
   writeMigrationReconciliationReport,
 } from "./migration-reconciliation-report.mjs";
 
@@ -157,4 +158,34 @@ test("grava artefatos redigidos em JSON e Markdown", async () => {
   assert.match(json, /"version_drift_count": 1/);
   assert.match(markdown, /Plano de renomeação por nome canônico/);
   assert.doesNotMatch(`${json}${markdown}`, /NAO_PUBLICAR/);
+});
+
+test("aplica ao inventário local o mesmo recorte temporal declarado no snapshot", async () => {
+  const data = await fixture(
+    {
+      "20260725213624_primeira.sql": "select 1;",
+      "20260727190000_segunda.sql": "select 2;",
+      "20260728100000_pendente_depois_do_snapshot.sql": "select 3;",
+    },
+    [
+      { version: "20260725213624", name: "primeira" },
+      { version: "20260727190000", name: "segunda" },
+    ],
+  );
+  const local = await readLocalMigrationInventory(data.migrations);
+  const snapshot = await loadRemoteMigrationSnapshot(data.snapshotPath);
+  snapshot.local_version_range = {
+    minimum: "20260725213624",
+    maximum: "20260727235959",
+  };
+  const scoped = scopeLocalMigrationInventory(local, snapshot);
+  const report = inspectMigrationReconciliation(scoped, snapshot);
+
+  assert.equal(scoped.files.length, 2);
+  assert.equal(report.local_total, 2);
+  assert.equal(report.passed, true);
+  assert.doesNotMatch(
+    JSON.stringify(report),
+    /pendente_depois_do_snapshot/,
+  );
 });

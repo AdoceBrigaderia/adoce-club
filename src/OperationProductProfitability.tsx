@@ -9,6 +9,10 @@ import {
   Search,
 } from "lucide-react";
 import { bffRpc } from "./services/bff-rpc";
+import {
+  completeOperation,
+  pendingOperationKey,
+} from "./services/operation-idempotency";
 import "./operation-product-profitability.css";
 
 type CostOrigin =
@@ -32,6 +36,43 @@ type RecipeVersion = {
   latest_snapshot_cost: number | null;
   latest_snapshot_status: string | null;
   latest_snapshot_at: string | null;
+};
+
+type YieldOverride = {
+  override_id: string;
+  product_id: string;
+  context_type: "action" | "event";
+  context_key: string;
+  context_label: string;
+  active: boolean;
+  valid_from: string;
+  valid_until: string | null;
+  yield_label: string;
+  standard_yield_quantity: number;
+  applied_yield_quantity: number;
+  total_cost: number;
+  cost_per_slice: number;
+  authorized_slice_price: number;
+  projected_total_revenue: number;
+  gross_profit_per_slice: number;
+  projected_gross_profit: number;
+  margin: number;
+  markup: number;
+  minimum_margin: number;
+  margin_alert: boolean;
+};
+
+type YieldSaleSnapshot = {
+  id: string;
+  sale_reference: string;
+  applied_yield_quantity: number;
+  yield_label: string;
+  cost_per_slice: number;
+  authorized_slice_price: number;
+  margin: number;
+  margin_alert: boolean;
+  captured_at: string;
+  idempotent: boolean;
 };
 
 type ProductProfitability = {
@@ -62,6 +103,7 @@ type ProductProfitability = {
   markup: number;
   margin_alert: boolean;
   recipe_versions: RecipeVersion[];
+  yield_overrides?: YieldOverride[];
 };
 
 type Workspace = {
@@ -74,6 +116,7 @@ type Workspace = {
     products_without_cost: number;
     margin_alerts: number;
     provisional_costs: number;
+    active_yield_overrides?: number;
   };
 };
 
@@ -91,6 +134,18 @@ type ProductForm = {
   notes: string;
 };
 
+type YieldOverrideForm = {
+  overrideId: string;
+  contextType: "action" | "event";
+  contextKey: string;
+  contextLabel: string;
+  yieldQuantity: number;
+  requestedSlicePrice: string;
+  active: boolean;
+  validFrom: string;
+  validUntil: string;
+};
+
 const emptyForm = (): ProductForm => ({
   productId: "",
   costOrigin: "manual_provisional",
@@ -103,6 +158,18 @@ const emptyForm = (): ProductForm => ({
   minimumMarginPercent: 30,
   dataStatus: "provisional",
   notes: "",
+});
+
+const emptyYieldOverrideForm = (): YieldOverrideForm => ({
+  overrideId: "",
+  contextType: "event",
+  contextKey: "festival-de-fatias",
+  contextLabel: "Festival de Fatias",
+  yieldQuantity: 13,
+  requestedSlicePrice: "",
+  active: true,
+  validFrom: "",
+  validUntil: "",
 });
 
 const fromProduct = (product: ProductProfitability): ProductForm => ({
@@ -119,6 +186,29 @@ const fromProduct = (product: ProductProfitability): ProductForm => ({
   dataStatus: product.data_status,
   notes: product.notes,
 });
+
+const toLocalDateTime = (value: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+
+const fromYieldOverride = (setting?: YieldOverride): YieldOverrideForm => {
+  if (!setting) return emptyYieldOverrideForm();
+  return {
+    overrideId: setting.override_id,
+    contextType: setting.context_type,
+    contextKey: setting.context_key,
+    contextLabel: setting.context_label,
+    yieldQuantity: Number(setting.applied_yield_quantity),
+    requestedSlicePrice: String(setting.authorized_slice_price),
+    active: setting.active,
+    validFrom: toLocalDateTime(setting.valid_from),
+    validUntil: toLocalDateTime(setting.valid_until),
+  };
+};
 
 const money = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -141,9 +231,15 @@ const originLabels: Record<CostOrigin, string> = {
 export default function OperationProductProfitability() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [yieldOverrideForm, setYieldOverrideForm] = useState<YieldOverrideForm>(
+    emptyYieldOverrideForm,
+  );
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [saleReference, setSaleReference] = useState("");
+  const [lastSaleSnapshot, setLastSaleSnapshot] =
+    useState<YieldSaleSnapshot | null>(null);
 
   const load = useCallback(async (query = "", requestedProductId?: string) => {
     setBusy(true);
@@ -155,6 +251,11 @@ export default function OperationProductProfitability() {
       });
       setWorkspace(next);
       setForm(next.selected_product ? fromProduct(next.selected_product) : emptyForm());
+      setYieldOverrideForm(
+        fromYieldOverride(next.selected_product?.yield_overrides?.[0]),
+      );
+      setSaleReference("");
+      setLastSaleSnapshot(null);
     } catch (error) {
       setNotice(
         error instanceof Error
@@ -176,23 +277,12 @@ export default function OperationProductProfitability() {
     [form.recipeVersionId, selected?.recipe_versions],
   );
 
-  const preview = useMemo(() => {
-    const recipeCost = Number(selectedRecipe?.latest_snapshot_cost || 0);
-    const cost = form.costOrigin === "recipe_snapshot" ? recipeCost : form.manualTotalCost;
-    const salePrice = form.salePriceOverride === ""
-      ? Number(selected?.base_price || 0)
-      : Number(form.salePriceOverride || 0);
-    const profit = salePrice - cost;
-    const margin = salePrice > 0 ? profit / salePrice : 0;
-    return {
-      cost,
-      salePrice,
-      profit,
-      margin,
-      markup: cost > 0 ? salePrice / cost : 0,
-      costPerYield: cost / Math.max(form.yieldQuantity, 1),
-    };
-  }, [form, selected?.base_price, selectedRecipe?.latest_snapshot_cost]);
+  const selectedYieldOverride = useMemo(
+    () => selected?.yield_overrides?.find(
+      (setting) => setting.override_id === yieldOverrideForm.overrideId,
+    ) || null,
+    [selected?.yield_overrides, yieldOverrideForm.overrideId],
+  );
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -225,6 +315,98 @@ export default function OperationProductProfitability() {
       setNotice("Custo, preço e margem do produto foram atualizados.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Não foi possível salvar o produto.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveYieldOverride = async () => {
+    if (!form.productId || busy) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const next = await bffRpc<Workspace>("manager_save_product_yield_override", {
+        target_product_id: form.productId,
+        target_override_id: yieldOverrideForm.overrideId || null,
+        next_context_type: yieldOverrideForm.contextType,
+        next_context_key: yieldOverrideForm.contextKey,
+        next_context_label: yieldOverrideForm.contextLabel,
+        next_yield_quantity: yieldOverrideForm.yieldQuantity,
+        requested_slice_price: Number(yieldOverrideForm.requestedSlicePrice),
+        next_active: yieldOverrideForm.active,
+        next_valid_from: yieldOverrideForm.validFrom
+          ? new Date(yieldOverrideForm.validFrom).toISOString()
+          : null,
+        next_valid_until: yieldOverrideForm.validUntil
+          ? new Date(yieldOverrideForm.validUntil).toISOString()
+          : null,
+      });
+      setWorkspace(next);
+      if (next.selected_product) {
+        setForm(fromProduct(next.selected_product));
+        const saved = next.selected_product.yield_overrides?.find(
+          (setting) => setting.override_id === yieldOverrideForm.overrideId
+            || (
+              setting.context_type === yieldOverrideForm.contextType
+              && setting.context_key === yieldOverrideForm.contextKey.trim().toLowerCase()
+            ),
+        );
+        setYieldOverrideForm(fromYieldOverride(saved));
+      }
+      setNotice("Rendimento e preço por fatia recalculados e autorizados pelo servidor.");
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível salvar o rendimento do evento.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const captureYieldSaleSnapshot = async () => {
+    if (!form.productId || !selectedYieldOverride || busy) return;
+    const normalizedSaleReference = saleReference.trim();
+    if (normalizedSaleReference.length < 2) {
+      setNotice("Informe a referência da venda antes de registrar o snapshot.");
+      return;
+    }
+
+    const payload = {
+      target_product_id: form.productId,
+      target_context_type: selectedYieldOverride.context_type,
+      target_context_key: selectedYieldOverride.context_key,
+      target_sale_reference: normalizedSaleReference,
+    };
+    const operation = pendingOperationKey(
+      "festival-yield-sale-snapshot",
+      payload,
+    );
+
+    setBusy(true);
+    setNotice("");
+    try {
+      const snapshot = await bffRpc<YieldSaleSnapshot>(
+        "manager_capture_product_yield_sale_snapshot",
+        {
+          ...payload,
+          operation_key: operation.value,
+        },
+      );
+      completeOperation(operation.fingerprint);
+      setLastSaleSnapshot(snapshot);
+      setNotice(
+        snapshot.idempotent
+          ? "O snapshot desta venda já estava registrado e foi recuperado."
+          : "Snapshot financeiro imutável da venda registrado pelo servidor.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível registrar o snapshot da venda.",
+      );
     } finally {
       setBusy(false);
     }
@@ -303,12 +485,12 @@ export default function OperationProductProfitability() {
             </header>
 
             <div className="operation-product-profitability-metrics">
-              <span><small>Custo total</small><strong>{money(preview.cost)}</strong></span>
-              <span><small>Preço usado</small><strong>{money(preview.salePrice)}</strong></span>
-              <span><small>Lucro bruto</small><strong>{money(preview.profit)}</strong></span>
-              <span className={preview.margin < form.minimumMarginPercent / 100 ? "danger" : "ok"}><small>Margem</small><strong>{percent(preview.margin)}</strong></span>
-              <span><small>Markup</small><strong>{preview.markup.toFixed(2)}x</strong></span>
-              <span><small>Custo por {form.yieldLabel || "unidade"}</small><strong>{money(preview.costPerYield)}</strong></span>
+              <span><small>Custo total</small><strong>{money(selected.effective_total_cost)}</strong></span>
+              <span><small>Preço usado</small><strong>{money(selected.effective_sale_price)}</strong></span>
+              <span><small>Lucro bruto</small><strong>{money(selected.gross_profit)}</strong></span>
+              <span className={selected.margin_alert ? "danger" : "ok"}><small>Margem</small><strong>{percent(selected.margin)}</strong></span>
+              <span><small>Markup</small><strong>{Number(selected.markup).toFixed(2)}x</strong></span>
+              <span><small>Custo por {selected.yield_label || "unidade"}</small><strong>{money(selected.cost_per_yield)}</strong></span>
             </div>
 
             <div className="operation-product-profitability-grid">
@@ -380,12 +562,195 @@ export default function OperationProductProfitability() {
               </label>
             </div>
 
-            {preview.margin < form.minimumMarginPercent / 100 ? (
+            {selected.margin_alert ? (
               <p className="operation-product-profitability-alert"><AlertTriangle /> A margem estimada está abaixo do mínimo configurado.</p>
             ) : null}
 
+            <section aria-labelledby="festival-slice-heading">
+              <header>
+                <div>
+                  <small>Ação ou evento sem duplicar o produto</small>
+                  <h3 id="festival-slice-heading">Festival de Fatias</h3>
+                  <p>O rendimento padrão permanece no produto. Este bloco registra somente a exceção e o preço por fatia autorizado.</p>
+                </div>
+              </header>
+
+              <div className="operation-product-profitability-grid">
+                <label className="wide">
+                  Configuração existente
+                  <select
+                    value={yieldOverrideForm.overrideId}
+                    onChange={(event) => {
+                      const setting = selected.yield_overrides?.find(
+                        (item) => item.override_id === event.target.value,
+                      );
+                      setYieldOverrideForm(fromYieldOverride(setting));
+                    }}
+                  >
+                    <option value="">Nova ação ou evento</option>
+                    {(selected.yield_overrides || []).map((setting) => (
+                      <option key={setting.override_id} value={setting.override_id}>
+                        {setting.context_label} · {setting.active ? "ativa" : "inativa"}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Tipo de contexto
+                  <select
+                    value={yieldOverrideForm.contextType}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      contextType: event.target.value as "action" | "event",
+                    })}
+                  >
+                    <option value="event">Evento</option>
+                    <option value="action">Ação</option>
+                  </select>
+                </label>
+                <label>
+                  Chave do contexto
+                  <input
+                    value={yieldOverrideForm.contextKey}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      contextKey: event.target.value,
+                    })}
+                    placeholder="festival-de-fatias"
+                  />
+                </label>
+                <label className="wide">
+                  Nome da ação ou evento
+                  <input
+                    value={yieldOverrideForm.contextLabel}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      contextLabel: event.target.value,
+                    })}
+                    placeholder="Festival de Fatias"
+                  />
+                </label>
+                <label>
+                  Rendimento padrão
+                  <input value={`${selected.yield_quantity} ${selected.yield_label}`} readOnly />
+                </label>
+                <label>
+                  Rendimento no evento
+                  <input
+                    type="number"
+                    min="0.0001"
+                    step="0.01"
+                    value={yieldOverrideForm.yieldQuantity}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      yieldQuantity: Number(event.target.value),
+                    })}
+                  />
+                </label>
+                <label>
+                  Preço por fatia proposto
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={yieldOverrideForm.requestedSlicePrice}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      requestedSlicePrice: event.target.value,
+                    })}
+                    placeholder="0,00"
+                  />
+                </label>
+                <label>
+                  Início da validade
+                  <input
+                    type="datetime-local"
+                    value={yieldOverrideForm.validFrom}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      validFrom: event.target.value,
+                    })}
+                  />
+                </label>
+                <label>
+                  Fim da validade <small>(opcional)</small>
+                  <input
+                    type="datetime-local"
+                    value={yieldOverrideForm.validUntil}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      validUntil: event.target.value,
+                    })}
+                  />
+                </label>
+                <label>
+                  Configuração ativa
+                  <input
+                    type="checkbox"
+                    checked={yieldOverrideForm.active}
+                    onChange={(event) => setYieldOverrideForm({
+                      ...yieldOverrideForm,
+                      active: event.target.checked,
+                    })}
+                  />
+                </label>
+              </div>
+
+              {selectedYieldOverride ? (
+                <>
+                  <div className="operation-product-profitability-metrics">
+                    <span><small>Custo total</small><strong>{money(selectedYieldOverride.total_cost)}</strong></span>
+                    <span><small>Custo por fatia</small><strong>{money(selectedYieldOverride.cost_per_slice)}</strong></span>
+                    <span><small>Preço por fatia autorizado</small><strong>{money(selectedYieldOverride.authorized_slice_price)}</strong></span>
+                    <span><small>Lucro por fatia</small><strong>{money(selectedYieldOverride.gross_profit_per_slice)}</strong></span>
+                    <span className={selectedYieldOverride.margin_alert ? "danger" : "ok"}><small>Margem</small><strong>{percent(selectedYieldOverride.margin)}</strong></span>
+                    <span><small>Markup</small><strong>{Number(selectedYieldOverride.markup).toFixed(2)}x</strong></span>
+                  </div>
+                  {selectedYieldOverride.margin_alert ? (
+                    <p className="operation-product-profitability-alert"><AlertTriangle /> A margem das fatias está abaixo do mínimo do produto.</p>
+                  ) : null}
+
+                  <div className="operation-product-profitability-grid">
+                    <label className="wide">
+                      Referência da venda
+                      <input
+                        value={saleReference}
+                        onChange={(event) => setSaleReference(event.target.value)}
+                        placeholder="Número do pedido, venda ou comprovante"
+                        maxLength={160}
+                      />
+                      <small>O servidor congela rendimento, custo e preço autorizados usados nesta venda.</small>
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={busy || saleReference.trim().length < 2}
+                    onClick={() => void captureYieldSaleSnapshot()}
+                  >
+                    <PackageCheck /> {busy ? "Registrando…" : "Registrar snapshot da venda"}
+                  </button>
+
+                  {lastSaleSnapshot ? (
+                    <p role="status">
+                      Venda {lastSaleSnapshot.sale_reference}:{" "}
+                      {lastSaleSnapshot.applied_yield_quantity} {lastSaleSnapshot.yield_label},{" "}
+                      custo {money(lastSaleSnapshot.cost_per_slice)} e preço{" "}
+                      {money(lastSaleSnapshot.authorized_slice_price)} por fatia.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p>Salve a configuração para receber o cálculo financeiro do servidor.</p>
+              )}
+
+              <button type="button" disabled={busy} onClick={() => void saveYieldOverride()}>
+                <Save /> {busy ? "Salvando…" : "Salvar rendimento do evento"}
+              </button>
+            </section>
+
             <footer>
-              <p>O cliente nunca recebe custo, lucro ou margem. O backend continua sendo a fonte de verdade.</p>
+              <p>Os valores exibidos são os últimos cálculos do servidor. O cliente nunca recebe custo, lucro ou margem.</p>
               <button type="submit" disabled={busy}><Save /> {busy ? "Salvando…" : "Salvar rentabilidade"}</button>
             </footer>
           </form>

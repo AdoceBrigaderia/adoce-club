@@ -49,6 +49,33 @@ export async function loadRemoteMigrationSnapshot(snapshotPath) {
   return parsed;
 }
 
+export function scopeLocalMigrationInventory(localInventory, snapshot) {
+  const range = snapshot.local_version_range;
+  if (!range) return localInventory;
+  const minimum = String(range.minimum || "");
+  const maximum = String(range.maximum || "");
+  if (!VERSION_PATTERN.test(minimum) || !VERSION_PATTERN.test(maximum)) {
+    throw new Error(
+      "Snapshot remoto inválido: local_version_range deve conter versões de 14 dígitos.",
+    );
+  }
+  if (minimum > maximum) {
+    throw new Error(
+      "Snapshot remoto inválido: o início do recorte local é posterior ao fim.",
+    );
+  }
+  const valid = localInventory.valid.filter(
+    (migration) =>
+      migration.version >= minimum && migration.version <= maximum,
+  );
+  const invalid = localInventory.invalid;
+  return {
+    files: [...valid.map((migration) => migration.file), ...invalid].sort(),
+    valid,
+    invalid,
+  };
+}
+
 export function inspectMigrationReconciliation(localInventory, snapshot) {
   const remote = snapshot.migrations.map((migration, index) => ({
     version: String(migration.version || ""),
@@ -167,6 +194,7 @@ export function inspectMigrationReconciliation(localInventory, snapshot) {
     environment: snapshot.environment || "unknown",
     project_id: snapshot.project_id || null,
     snapshot_captured_at: snapshot.captured_at || null,
+    local_version_range: snapshot.local_version_range || null,
     local_total: localInventory.files.length,
     remote_total: remote.length,
     aligned_count: aligned.length,
@@ -308,7 +336,11 @@ export async function runMigrationReconciliationCli(argv = process.argv.slice(2)
   const options = parseArguments(argv);
   const localInventory = await readLocalMigrationInventory(options.directory);
   const snapshot = await loadRemoteMigrationSnapshot(options.snapshot);
-  const report = inspectMigrationReconciliation(localInventory, snapshot);
+  const scopedLocalInventory = scopeLocalMigrationInventory(
+    localInventory,
+    snapshot,
+  );
+  const report = inspectMigrationReconciliation(scopedLocalInventory, snapshot);
   const artifacts = await writeMigrationReconciliationReport(
     report,
     options.outputDirectory,
