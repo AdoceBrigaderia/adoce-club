@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: Digite APLICAR 19 MIGRATIONS SOMENTE HOMOLOGACAO seguido do project ref
+        description: Digite APLICAR 20 MIGRATIONS SOMENTE HOMOLOGACAO seguido do project ref
         required: true
         type: string
       expected_commit:
@@ -55,7 +55,7 @@ jobs:
           set -euo pipefail
           test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
           test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
-          test "$CONFIRMATION" = "APLICAR 19 MIGRATIONS SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          test "$CONFIRMATION" = "APLICAR 20 MIGRATIONS SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
           case "$BACKUP_EVIDENCE" in
             "BACKUP CONFIRMADO "*) ;;
             *) echo "Evidência de backup inválida" >&2; exit 1 ;;
@@ -91,7 +91,7 @@ jobs:
           const fs = require('fs');
           const report = JSON.parse(fs.readFileSync('artifacts/homologation-pending-migrations.json', 'utf8'));
           if (report.structural_passed !== true) throw new Error('Plano estrutural reprovado.');
-          if (report.pending_count !== 19) throw new Error(`Esperadas 19 migrations; encontradas ${report.pending_count}.`);
+          if (report.pending_count !== 20) throw new Error(`Esperadas 20 migrations; encontradas ${report.pending_count}.`);
           if (report.apply_blockers.length !== 1 || report.apply_blockers[0] !== 'dry_run_pendente') {
             throw new Error(`Bloqueios inesperados: ${report.apply_blockers.join(', ')}`);
           }
@@ -104,7 +104,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends postgresql-client
 
-      - name: Executar dry-run integral das 19 migrations
+      - name: Executar dry-run integral das 20 migrations
         env:
           SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
         shell: bash
@@ -123,7 +123,7 @@ jobs:
           const missing = plan.pending_migrations
             .map((migration) => migration.version)
             .filter((version) => !output.includes(version));
-          if (plan.pending_migrations.length !== 19) throw new Error('Plano não contém 19 migrations.');
+          if (plan.pending_migrations.length !== 20) throw new Error('Plano não contém 20 migrations.');
           if (missing.length) throw new Error(`Dry-run não listou: ${missing.join(', ')}`);
           NODE
 
