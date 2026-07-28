@@ -35,6 +35,7 @@ jobs:
       VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
       DIAGNOSTIC_ISSUE_NUMBER: "14"
+      DELIVERY_ISSUE_NUMBER: "13"
     steps:
       - name: Baixar head exato do PR
         uses: actions/checkout@v4
@@ -120,6 +121,114 @@ jobs:
           ! grep -R "adocebrigaderia.com.br" dist
           test -f dist/index.html
 
+      - name: Preparar pacote testável validado
+        id: package
+        if: ${{ steps.typescript.outputs.exit_code == '0' && steps.tests.outputs.exit_code == '0' && steps.build.outputs.exit_code == '0' && steps.isolation.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="artifacts/portal-adoce-preview-validado"
+          mkdir -p "$package_dir"
+          cp -R dist "$package_dir/dist"
+          cp scripts/serve-homologation-preview.mjs "$package_dir/servidor-preview.mjs"
+
+          cat > "$package_dir/INICIAR-PREVIEW-WINDOWS.cmd" <<'EOF_WINDOWS'
+          @echo off
+          cd /d "%~dp0"
+          where node >nul 2>nul
+          if errorlevel 1 (
+            echo Node.js 22 ou superior nao foi encontrado.
+            pause
+            exit /b 1
+          )
+          node servidor-preview.mjs --open
+          if errorlevel 1 pause
+          EOF_WINDOWS
+
+          cat > "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command" <<'EOF_UNIX'
+          #!/usr/bin/env sh
+          set -eu
+          cd "$(dirname "$0")"
+          exec node servidor-preview.mjs --open
+          EOF_UNIX
+          chmod +x "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command"
+
+          cat > "$package_dir/LEIA-ME.txt" <<EOF_README
+          PORTAL ADOCE — PREVIEW VALIDADO DO MONTADOR DE TORTAS
+
+          Windows: extraia o ZIP e abra INICIAR-PREVIEW-WINDOWS.cmd.
+          macOS/Linux: execute INICIAR-PREVIEW-LINUX-MAC.command.
+          URL local: http://127.0.0.1:4173
+
+          Commit: ${{ github.event.pull_request.head.sha }}
+          Inclui: Clube e Operação em modo visual, encomendas e montador completo de tortas.
+          Gates: TypeScript, 25 testes direcionados, build visual e isolamento de produção.
+          Produção: não alterada.
+          EOF_README
+
+          printf '%s\n' \
+            "Commit: ${{ github.event.pull_request.head.sha }}" \
+            "TypeScript: aprovado" \
+            "Testes direcionados: aprovados" \
+            "Build visual: aprovado" \
+            "Isolamento produtivo: aprovado" \
+            "Produção: não alterada" \
+            > "$package_dir/EVIDENCIA.txt"
+
+          node "$package_dir/servidor-preview.mjs" --port 4187 > "$package_dir/SMOKE.log" 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl -sS -o /tmp/adoce-index.html -w '%{http_code}' http://127.0.0.1:4187/ || true)"
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          test "$status" = "200"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:4187/operacao/venda-rapida)" = "200"
+          cleanup
+          wait "$server_pid" 2>/dev/null || true
+          trap - EXIT
+          echo "short_sha=${{ github.event.pull_request.head.sha }}" | cut -c1-18 >> "$GITHUB_OUTPUT"
+
+      - name: Publicar pacote validado
+        id: preview-upload
+        if: ${{ steps.package.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-adoce-preview-validado-${{ github.event.pull_request.head.sha }}
+          path: artifacts/portal-adoce-preview-validado
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Registrar entrega validada
+        if: ${{ steps.preview-upload.outcome == 'success' }}
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.preview-upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.preview-upload.outputs.artifact-digest }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '## Preview atualizado e validado disponível',
+              '',
+              `- Commit: \`${context.payload.pull_request.head.sha}\``,
+              `- [Baixar pacote testável](${process.env.ARTIFACT_URL})`,
+              `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
+              '- Inclui Clube e Operação acessíveis no modo visual e montador completo de tortas.',
+              '- Gates: TypeScript, 25 testes direcionados, build visual, isolamento produtivo e smoke tests HTTP 200.',
+              '- Produção: **não alterada**.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });
+
       - name: Registrar diagnóstico no issue técnico
         if: ${{ always() && steps.install.outcome == 'success' }}
         uses: actions/github-script@v7
@@ -172,7 +281,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cake-builder-gate-${{ github.event.pull_request.head.sha }}
-          path: artifacts
+          path: artifacts/typescript.txt
+            artifacts/tests.txt
+            artifacts/build.txt
           if-no-files-found: warn
           retention-days: 7
 
