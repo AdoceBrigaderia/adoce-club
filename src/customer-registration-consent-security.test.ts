@@ -100,8 +100,8 @@ describe("consentimento seguro no cadastro BFF", () => {
     expect(migration).toContain(
       "and coalesce(profile_record.phone_e164 = normalized_phone, false)",
     );
-    expect(migration).toContain(
-      "effective_marketing :=\n    coalesce(next_marketing, false)\n    and whatsapp_verified",
+    expect(migration).toMatch(
+      /effective_marketing :=\s+coalesce\(next_marketing, false\)\s+and whatsapp_verified/,
     );
     expect(migration).toContain("whatsapp_enabled = excluded.whatsapp_enabled");
     expect(migration).not.toContain(
