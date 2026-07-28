@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const hub = readFileSync("src/OperationBusinessHub.tsx", "utf8");
 const center = readFileSync("src/OperationAdminCenter.tsx", "utf8");
 const globalSettings = readFileSync("src/OperationGlobalSettingsBff.tsx", "utf8");
+const visualSettings = readFileSync("src/OperationSiteVisualSettingsBff.tsx", "utf8");
 const styles = readFileSync("src/operation-admin-center.css", "utf8");
 const policy = readFileSync(
   "netlify/functions/_shared/bff-rpc-policy.ts",
@@ -15,6 +16,7 @@ describe("central administrativa da operação", () => {
     expect(hub).toContain('const canConfigureProduction = ["owner", "manager"]');
     expect(hub).toContain("<OperationAdminCenter userId={session.user.id} />");
     expect(center).toContain("Configurações globais");
+    expect(center).toContain("Fotos e identidade");
     expect(center).toContain("Itens e custos");
     expect(center).toContain("Rentabilidade");
     expect(center).toContain("Montagem das tortas");
@@ -25,12 +27,14 @@ describe("central administrativa da operação", () => {
   it("renderiza somente a área administrativa selecionada", () => {
     expect(center).toContain('useState<AdminArea>("global")');
     expect(center).toContain('activeArea === "global"');
+    expect(center).toContain('activeArea === "images"');
     expect(center).toContain('activeArea === "costs"');
     expect(center).toContain('activeArea === "profitability"');
     expect(center).toContain('activeArea === "cakes"');
     expect(center).toContain('activeArea === "history"');
     expect(center).toContain('activeArea === "structure"');
     expect(center).toContain('aria-pressed={activeArea === id}');
+    expect(center).toContain("<OperationSiteVisualSettingsBff />");
   });
 
   it("move leitura e gravação das regras globais para o BFF com CSRF", () => {
@@ -41,6 +45,15 @@ describe("central administrativa da operação", () => {
     expect(globalSettings).not.toContain("sessionStorage");
     expect(policy).toContain('"staff_get_commerce_settings"');
     expect(policy).toContain('"staff_update_commerce_settings"');
+  });
+
+  it("mantém imagens institucionais sem acesso direto ao Supabase", () => {
+    expect(visualSettings).toContain("getSiteVisualWorkspace");
+    expect(visualSettings).toContain("uploadSiteVisualAsset");
+    expect(visualSettings).toContain("resetSiteVisualAsset");
+    expect(visualSettings).not.toContain("requireSupabase");
+    expect(visualSettings).not.toContain("localStorage");
+    expect(visualSettings).not.toContain("sessionStorage");
   });
 
   it("mantém botões grandes e adaptação para celular e tablet", () => {
