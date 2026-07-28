@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "repository": "AdoceBrigaderia/adoce-club",
+  "branch": "reestruturacao/ux-crm-operacao-imagens-v1",
+  "project_id": "vazozolhbehnriytzcdc",
+  "production_project_id": "uefwywizqhfvvijaopcn",
+  "production_forbidden": true,
+  "captured_at": "2026-07-28T17:14:25-03:00",
+  "source_head": "6f54a18d60b504c43c7f00d539b46b6c5c4d90b9",
+  "backup": {
+    "confirmed": true,
+    "package_sha256": "e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354",
+    "storage_verified_objects": 430,
+    "restore_test_performed": false
+  },
+  "history_repairs": {
+    "confirmed": true,
+    "kept_versions": [
+      "20260727035116",
+      "20260727035246",
+      "20260727035513"
+    ],
+    "removed_duplicate_versions": [
+      "20260727035059",
+      "20260727035343",
+      "20260727040533"
+    ]
+  },
+  "pending_migrations": {
+    "expected": 17,
+    "applied": 0,
+    "first_version": "20260728073000",
+    "last_version": "20260728174500"
+  },
+  "attempts": [
+    {
+      "run_id": 30395314454,
+      "result": "failed_before_dry_run",
+      "stage": "link_homologation",
+      "missing_configuration": [
+        "SUPABASE_ACCESS_TOKEN",
+        "SUPABASE_DB_PASSWORD"
+      ]
+    },
+    {
+      "run_id": 30395765774,
+      "result": "failed_before_dry_run",
+      "stage": "build_direct_connection",
+      "missing_configuration": [
+        "SUPABASE_DB_PASSWORD"
+      ]
+    },
+    {
+      "run_id": 30395983168,
+      "result": "failed_before_dry_run",
+      "stage": "validate_direct_database_url",
+      "missing_configuration": [
+        "SUPABASE_HOMOLOGATION_DB_URL"
+      ]
+    }
+  ],
+  "current_blocker": {
+    "type": "external_secret_configuration",
+    "required_secret": "SUPABASE_HOMOLOGATION_DB_URL",
+    "required_location": "GitHub Environment homologation",
+    "must_reference_project": "vazozolhbehnriytzcdc",
+    "must_not_reference_project": "uefwywizqhfvvijaopcn",
+    "must_not_be_committed": true,
+    "must_not_be_sent_in_chat": true
+  },
+  "prepared_workflows": [
+    ".github/workflows/homologation-pending-migrations-preflight.yml",
+    ".github/workflows/apply-homologation-migrations-now.yml"
+  ],
+  "next_action_after_unblock": [
+    "execute dry-run for all 17 migrations",
+    "apply all 17 migrations in ascending order only to homologation",
+    "validate migration history, tables, functions, grants and RLS",
+    "publish only the isolated Netlify homologation preview",
+    "run external smoke and Playwright tests"
+  ]
+}
