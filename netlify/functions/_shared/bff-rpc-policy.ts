@@ -27,6 +27,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "manager_add_costing_item_price",
   "manager_get_product_profitability_workspace",
   "manager_save_product_costing_settings",
+  "manager_get_service_request_pricing_snapshot",
   "staff_search_customers",
   "staff_lookup_customer_by_qr",
   "staff_list_active_customer_checkins",
