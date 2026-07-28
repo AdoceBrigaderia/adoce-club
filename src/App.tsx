@@ -3,6 +3,7 @@ import MarketingLanding from "./MarketingLanding";
 import { installPublicAnalytics } from "./analytics";
 
 const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
+const CakeOrderExperience = lazy(() => import("./CakeOrderExperience"));
 const ClubExperience = lazy(() => import("./ClubExperience"));
 const GroupOrderPage = lazy(() => import("./GroupOrderPage"));
 const LegalPage = lazy(() => import("./LegalPage"));
@@ -186,7 +187,7 @@ export default function App() {
   if (location.hash.startsWith("#encomendas"))
     return (
       <Suspense fallback={loading}>
-        <CommercialCatalog initialSegment="cakes" />
+        <CakeOrderExperience />
       </Suspense>
     );
   if (location.hash.startsWith("#docinhos"))
