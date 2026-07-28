@@ -25,18 +25,18 @@ Ele contém somente nomes, versões, ambiente, projeto e horário da coleta. Nen
 
 ### `20260727082000`
 
-- `20260727082000_pede_junto_bff_only.sql`
-- `20260727082000_quick_sale_favorites_and_ranking.sql`
+- `20260727033336_pede_junto_bff_only.sql`
+- `20260727034403_quick_sale_favorites_and_ranking.sql`
 
 ### `20260727180000`
 
-- `20260727180000_privacy_deletion_readiness.sql`
-- `20260727180000_privacy_profile_anonymization.sql`
+- `20260727112539_privacy_deletion_readiness.sql`
+- `20260727112924_privacy_profile_anonymization.sql`
 
 ### `20260727182000`
 
-- `20260727182000_privacy_anonymization_generated_identity_email_fix.sql`
-- `20260727182000_privacy_anonymization_plan_alignment.sql`
+- `20260727113213_privacy_anonymization_generated_identity_email_fix.sql`
+- `20260727113133_privacy_anonymization_plan_alignment.sql`
 
 ## Duplicidades no histórico remoto
 

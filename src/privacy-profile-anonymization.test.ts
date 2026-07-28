@@ -3,28 +3,28 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727180000_privacy_profile_anonymization.sql",
+    "../supabase/migrations/20260727112924_privacy_profile_anonymization.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const emailGuard = readFileSync(
   new URL(
-    "../supabase/migrations/20260727181000_privacy_anonymization_null_email_guard.sql",
+    "../supabase/migrations/20260727112947_privacy_anonymization_null_email_guard.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const identityFix = readFileSync(
   new URL(
-    "../supabase/migrations/20260727182000_privacy_anonymization_generated_identity_email_fix.sql",
+    "../supabase/migrations/20260727113213_privacy_anonymization_generated_identity_email_fix.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const memberCodeFix = readFileSync(
   new URL(
-    "../supabase/migrations/20260727183000_privacy_anonymization_preserve_member_code.sql",
+    "../supabase/migrations/20260727113349_privacy_anonymization_preserve_member_code.sql",
     import.meta.url,
   ),
   "utf8",

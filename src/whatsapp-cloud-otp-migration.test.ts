@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260726204500_whatsapp_cloud_otp.sql",
+    "../supabase/migrations/20260726185348_whatsapp_cloud_otp.sql",
     import.meta.url,
   ),
   "utf8",

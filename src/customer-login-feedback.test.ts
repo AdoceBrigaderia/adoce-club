@@ -38,7 +38,7 @@ describe("canal de reclamações e sugestões", () => {
       "../supabase/migrations/20260720132544_customer_feedback.sql",
     );
     const bffMigration = source(
-      "../supabase/migrations/20260727110000_site_feedback_bff_hardening.sql",
+      "../supabase/migrations/20260727041258_site_feedback_bff_hardening.sql",
     );
     const app = source("./App.tsx");
     const endpoint = source("../netlify/functions/public-feedback.ts");

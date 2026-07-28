@@ -12,7 +12,7 @@ const legacyEndpoint = new URL(
 );
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727110000_site_feedback_bff_hardening.sql",
+    "../supabase/migrations/20260727041258_site_feedback_bff_hardening.sql",
     import.meta.url,
   ),
   "utf8",

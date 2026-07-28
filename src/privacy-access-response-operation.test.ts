@@ -7,14 +7,14 @@ const operation = readFileSync(
 );
 const packageMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727170000_privacy_access_response_package.sql",
+    "../supabase/migrations/20260727105843_privacy_access_response_package.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const listMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727171000_privacy_response_status_list.sql",
+    "../supabase/migrations/20260727105905_privacy_response_status_list.sql",
     import.meta.url,
   ),
   "utf8",

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const migration = readFileSync(
-  new URL("../supabase/migrations/20260725204000_central_image_placeholders.sql", import.meta.url),
+  new URL("../supabase/migrations/20260725213624_central_image_placeholders.sql", import.meta.url),
   "utf8",
 );
 

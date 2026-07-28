@@ -19,7 +19,7 @@ const policy = readFileSync(
 );
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727180000_privacy_profile_anonymization.sql",
+    "../supabase/migrations/20260727112924_privacy_profile_anonymization.sql",
     import.meta.url,
   ),
   "utf8",

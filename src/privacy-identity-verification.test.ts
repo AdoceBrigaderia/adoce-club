@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727160000_privacy_identity_verification.sql",
+    "../supabase/migrations/20260727095752_privacy_identity_verification.sql",
     import.meta.url,
   ),
   "utf8",
 );
 const defaultsMigration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727161000_privacy_identity_defaults.sql",
+    "../supabase/migrations/20260727095852_privacy_identity_defaults.sql",
     import.meta.url,
   ),
   "utf8",
