@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
+import OperationAdminCenter from "./OperationAdminCenter";
 import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
-import OperationCakeBuilderSettings from "./OperationCakeBuilderSettings";
 import OperationCashReconciliation from "./OperationCashReconciliation";
 import OperationContingencySale from "./OperationContingencySale";
-import OperationCostCatalog from "./OperationCostCatalog";
 import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationManualSale from "./OperationManualSale";
 import OperationPrivacyAnonymization from "./OperationPrivacyAnonymization";
 import OperationPrivacyRequests from "./OperationPrivacyRequests";
-import OperationProductProfitability from "./OperationProductProfitability";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
-import OperationServiceRequestPricingSnapshot from "./OperationServiceRequestPricingSnapshot";
 import OperationWhatsAppHealth from "./OperationWhatsAppHealth";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
@@ -78,11 +75,11 @@ export default function OperationBusinessHub() {
       <OperationQuickCash key={`cash-${businessRevision}`} />
       <OperationWhatsAppHealth />
       <OperationReports key={`reports-${businessRevision}`} />
-      {canConfigureProduction ? <OperationCostCatalog /> : null}
-      {canConfigureProduction ? <OperationProductProfitability /> : null}
-      {canConfigureProduction ? <OperationServiceRequestPricingSnapshot /> : null}
-      {canConfigureProduction ? <OperationCakeBuilderSettings /> : null}
-      <OperationBusinessStructureBff userId={session.user.id} />
+      {canConfigureProduction ? (
+        <OperationAdminCenter userId={session.user.id} />
+      ) : (
+        <OperationBusinessStructureBff userId={session.user.id} />
+      )}
     </>
   );
 }
