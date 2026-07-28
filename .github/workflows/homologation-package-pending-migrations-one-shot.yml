@@ -11,7 +11,7 @@ permissions:
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
-  AUTHORIZED_PARENT: 1754cf7ad5140a762eed3b8c34221de0802ce32b
+  AUTHORIZED_PARENT: fac078e853e0760d51b7733c043ca3d139b9d463
   PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
   PRODUCTION_REF: uefwywizqhfvvijaopcn
 
