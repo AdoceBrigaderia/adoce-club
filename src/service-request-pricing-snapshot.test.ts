@@ -66,12 +66,27 @@ describe("snapshot financeiro imutável das encomendas", () => {
     expect(migration).toContain(
       "resolved_profit := round(resolved_total_price - resolved_total_cost, 4)",
     );
+    expect(migration).toContain("resolved_margin := case");
+    expect(migration).toContain("resolved_markup := case");
+  });
+
+  it("preserva a montagem e soma adicionais ao custo e ao preço administrativos", () => {
     expect(migration).toContain(
-      "resolved_margin := case",
+      "cake_quote := private.canonicalize_cake_builder_selection",
     );
     expect(migration).toContain(
-      "resolved_markup := case",
+      "insert into public.service_request_cake_builds",
     );
+    expect(migration).toContain(
+      "quote_price_adjustment := round(greatest(quote_estimated_price - catalog_base_price, 0), 2)",
+    );
+    expect(migration).toContain(
+      "resolved_unit_cost := round(base_unit_cost + quote_option_cost, 4)",
+    );
+    expect(migration).toContain(
+      "resolved_unit_price := round(base_unit_price + quote_price_adjustment, 2)",
+    );
+    expect(migration).toContain("'cake_builder_quote', normalized_quote");
   });
 
   it("não aceita custo, preço ou margem enviados pelo cliente", () => {
@@ -101,9 +116,7 @@ describe("snapshot financeiro imutável das encomendas", () => {
     expect(migration).toContain(
       "revoke all on public.service_request_pricing_snapshots from public, anon, authenticated",
     );
-    expect(migration).toContain(
-      "if not private.is_manager() then",
-    );
+    expect(migration).toContain("if not private.is_manager() then");
     expect(migration).toContain(
       "public.manager_get_service_request_pricing_snapshot",
     );
