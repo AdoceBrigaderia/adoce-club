@@ -5,11 +5,17 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/operation-settings-preview-gate.yml
+      - netlify/functions/_shared/bff-rpc-policy.ts
       - src/HomologationOperationPreview.tsx
       - src/HomologationOperationSettings.tsx
+      - src/OperationAdminCenter.tsx
+      - src/OperationBusinessHub.tsx
+      - src/OperationGlobalSettingsBff.tsx
       - src/homologation-operation-settings.css
       - src/homologation-operation-settings.test.ts
       - src/homologation-visual-preview.test.ts
+      - src/operation-admin-center.css
+      - src/operation-admin-center.test.ts
 
 concurrency:
   group: operation-settings-preview-${{ github.event.pull_request.number }}
@@ -20,7 +26,7 @@ permissions:
 
 jobs:
   validate:
-    name: TypeScript, testes e build visual
+    name: TypeScript, testes e build visual/BFF
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -63,7 +69,9 @@ jobs:
         run: |
           npx vitest run \
             src/homologation-operation-settings.test.ts \
-            src/homologation-visual-preview.test.ts
+            src/operation-admin-center.test.ts \
+            src/homologation-visual-preview.test.ts \
+            src/bff-rpc-security.test.ts
 
       - name: Gerar build visual isolado
         env:
