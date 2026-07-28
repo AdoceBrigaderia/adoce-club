@@ -8,11 +8,14 @@ declare
     'customer_get_account_workspace',
     'customer_prepare_google_wallet_pass',
     'get_checkout_payment_methods',
+    'get_configurable_product_catalog',
     'issue_customer_qr',
     'manager_cancel_empty_cash_session',
     'manager_create_manual_sale_for_reconciliation',
+    'manager_get_configurable_product_workspace',
     'manager_get_whatsapp_otp_metrics',
     'manager_reconcile_cash_sale',
+    'manager_save_configurable_product',
     'manager_set_staff_capability',
     'manager_set_staff_store_assignment',
     'manager_update_staff_member',
@@ -77,7 +80,11 @@ declare
     'manager_get_dynamic_image_workspace',
     'manager_save_dynamic_image_asset',
     'manager_list_dynamic_image_versions',
-    'manager_restore_dynamic_image_version'
+    'manager_restore_dynamic_image_version',
+    'manager_get_gallery_media_workspace',
+    'manager_disable_gallery_media',
+    'manager_list_gallery_media_versions',
+    'manager_restore_gallery_media_version'
   ];
   required text[] := array[
     'customer_complete_registration',
@@ -85,11 +92,14 @@ declare
     'customer_get_account_workspace',
     'customer_prepare_google_wallet_pass',
     'get_checkout_payment_methods',
+    'get_configurable_product_catalog',
     'issue_customer_qr',
     'manager_cancel_empty_cash_session',
     'manager_create_manual_sale_for_reconciliation',
+    'manager_get_configurable_product_workspace',
     'manager_get_whatsapp_otp_metrics',
     'manager_reconcile_cash_sale',
+    'manager_save_configurable_product',
     'manager_set_staff_capability',
     'manager_set_staff_store_assignment',
     'manager_update_staff_member',
@@ -131,7 +141,7 @@ declare
     array['staff_record_cash_movement', 'staff_record_cash_movement_v2'],
     array['submit_instant_order_v5', 'submit_instant_order_v6']
   ];
-  allowed_anon text[] := array['public_get_cake_builder_catalog'];
+  allowed_anon text[] := array['public_get_cake_builder_catalog', 'get_configurable_product_catalog'];
   unexpected text[];
   missing text[];
   unexpected_anon text[];
