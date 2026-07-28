@@ -90,7 +90,7 @@ jobs:
           retention-days: 30
 
   apply-homologation:
-    name: Dry-run e db push por conexão direta na homologação
+    name: Dry-run e db push por URL segura na homologação
     needs: validate
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
@@ -109,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-          test "$(git log -1 --pretty=%s)" = "ci: aplicar homologacao com senha do banco"
+          test "$(git log -1 --pretty=%s)" = "ci: aplicar homologacao com url segura"
           node - <<'NODE'
           const fs = require('fs');
           const evidence = JSON.parse(fs.readFileSync('docs/evidence/homologation-backup-confirmed-20260728.json', 'utf8'));
@@ -126,28 +126,29 @@ jobs:
         with:
           node-version: 22
 
-      - name: Confirmar senha e montar conexão segura da homologação
+      - name: Confirmar URL segura exclusiva da homologação
         env:
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "SUPABASE_DB_PASSWORD não está configurado no environment homologation" >&2
-            exit 22
+          if [ -z "$SUPABASE_HOMOLOGATION_DB_URL" ]; then
+            echo "SUPABASE_HOMOLOGATION_DB_URL não está configurada no environment homologation" >&2
+            exit 23
           fi
-          echo "::add-mask::$SUPABASE_DB_PASSWORD"
-          node - <<'NODE'
-          const fs = require('fs');
-          const password = process.env.SUPABASE_DB_PASSWORD;
-          const url = new URL('postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres');
-          url.username = 'postgres.vazozolhbehnriytzcdc';
-          url.password = password;
-          url.searchParams.set('sslmode', 'require');
-          const connection = url.toString();
-          console.log(`::add-mask::${connection}`);
-          fs.appendFileSync(process.env.GITHUB_ENV, `HOMOLOGATION_DB_URL=${connection}\n`);
-          NODE
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL de homologação inválida" >&2; exit 24 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 25 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência produtiva detectada e rejeitada" >&2; exit 26 ;;
+          esac
+          echo "::add-mask::$SUPABASE_HOMOLOGATION_DB_URL"
+          printf 'HOMOLOGATION_DB_URL=%s\n' "$SUPABASE_HOMOLOGATION_DB_URL" >> "$GITHUB_ENV"
 
       - name: Reconciliar nomes locais
         shell: bash
