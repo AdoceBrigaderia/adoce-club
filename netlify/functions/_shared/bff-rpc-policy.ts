@@ -18,6 +18,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_adjust_loyalty_stamps",
   "staff_financial_sales_summary",
   "staff_get_commerce_settings",
+  "staff_update_commerce_settings",
   "staff_get_cake_builder_configuration",
   "manager_save_cake_builder_configuration",
   "manager_get_cake_builder_costing_workspace",
