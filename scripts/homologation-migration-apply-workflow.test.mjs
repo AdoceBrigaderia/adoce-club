@@ -19,7 +19,7 @@ test('aplicação de migrations é manual, isolada e exige commit exato', () => 
   assert.match(workflow, /HOMOLOGATION_REF: vazozolhbehnriytzcdc/);
   assert.match(workflow, /PRODUCTION_REF: uefwywizqhfvvijaopcn/);
   assert.match(workflow, /git rev-parse HEAD/);
-  assert.match(workflow, /APLICAR 20 MIGRATIONS SOMENTE HOMOLOGACAO/);
+  assert.match(workflow, /APLICAR 21 MIGRATIONS SOMENTE HOMOLOGACAO/);
   assert.match(workflow, /BACKUP CONFIRMADO/);
 });
 
@@ -28,12 +28,12 @@ test('workflow executa dry-run antes da aplicação e não permite conjunto parc
   const applyPosition = workflow.indexOf('Aplicar exatamente o conjunto aprovado');
   assert.ok(dryRunPosition > 0, 'dry-run precisa existir');
   assert.ok(applyPosition > dryRunPosition, 'aplicação precisa ocorrer depois do dry-run');
-  assert.match(workflow, /pending_count !== 20/);
+  assert.match(workflow, /pending_count !== 21/);
   assert.match(workflow, /--include-all/);
   assert.match(workflow, /expected-versions\.txt/);
   assert.match(workflow, /diff -u/);
-  assert.equal(plan.pending_migrations.length, 20);
-  assert.equal(plan.pending_migrations.at(-1).name, 'service_request_configuration_workspace');
+  assert.equal(plan.pending_migrations.length, 21);
+  assert.equal(plan.pending_migrations.at(-1).name, 'configurable_product_consistency_and_crm');
 });
 
 test('segredo do banco fica restrito ao environment e produção é rejeitada', () => {
@@ -55,5 +55,6 @@ test('auditoria viva cobre histórico, RLS, produtos configuráveis e ausência 
   assert.match(liveAudit, /private\.canonicalize_configurable_product_selection\(uuid,integer,jsonb\)/);
   assert.match(liveAudit, /service_request_product_configurations/);
   assert.match(liveAudit, /staff_get_service_request_workspace/);
+  assert.match(liveAudit, /private\.redact_internal_product_configuration\(jsonb\)/);
   assert.match(liveAudit, /rollback;/);
 });
