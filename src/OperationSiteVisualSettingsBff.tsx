@@ -3,6 +3,7 @@ import { ImagePlus, Images, RotateCcw } from "lucide-react";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import OperationDynamicImageLibraryBff from "./OperationDynamicImageLibraryBff";
+import OperationGalleryImageLibraryBff from "./OperationGalleryImageLibraryBff";
 import OperationSiteVisualAssetHistoryBff from "./OperationSiteVisualAssetHistoryBff";
 import type { EditedProductImage } from "./admin-media";
 import {
@@ -125,8 +126,9 @@ export default function OperationSiteVisualSettingsBff() {
           <small>Central de imagens pelo BFF</small>
           <h2>Fotos e identidade do Portal</h2>
           <p>
-            Imagens institucionais, capas de sabores, tortas, produtos e categorias ficam
-            reunidas sem expor sessão, token ou escrita direta no banco.
+            Imagens institucionais, capas, galerias e carrosséis de sabores, tortas,
+            produtos e categorias ficam reunidos sem expor sessão, token ou escrita
+            direta no banco.
           </p>
         </div>
         <Images />
@@ -138,6 +140,7 @@ export default function OperationSiteVisualSettingsBff() {
       {loading ? <p className="operation-visual-loading">Carregando imagens…</p> : null}
 
       <OperationDynamicImageLibraryBff onChanged={() => void load()} />
+      <OperationGalleryImageLibraryBff onChanged={() => void load()} />
 
       {groups.map(([section, assets]) => (
         <section className="operation-visual-group" key={section}>
