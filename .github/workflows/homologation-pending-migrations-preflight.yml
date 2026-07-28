@@ -1,4 +1,4 @@
-name: Pré-flight e aplicação das migrations de homologação
+name: Pré-flight das migrations de homologação
 
 on:
   pull_request:
@@ -17,8 +17,8 @@ on:
       - supabase/migrations/**
 
 concurrency:
-  group: homologation-migrations-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
+  group: homologation-migrations-preflight-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -87,121 +87,4 @@ jobs:
             artifacts/homologation-pending-migrations.json
             artifacts/homologation-pending-migrations.md
           if-no-files-found: error
-          retention-days: 30
-
-  apply-homologation:
-    name: Dry-run e db push por URL segura na homologação
-    needs: validate
-    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    environment: homologation
-    steps:
-      - name: Baixar SHA exato do PR
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Validar autorização e backup
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-          test "$(git log -1 --pretty=%s)" = "ci: aplicar homologacao com url segura"
-          node - <<'NODE'
-          const fs = require('fs');
-          const evidence = JSON.parse(fs.readFileSync('docs/evidence/homologation-backup-confirmed-20260728.json', 'utf8'));
-          if (evidence.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Backup de projeto incorreto.');
-          if (evidence.production_forbidden !== true) throw new Error('Produção não está bloqueada.');
-          if (evidence.accepted_for_homologation_migration_gate !== true) throw new Error('Backup não aceito.');
-          if (evidence.package?.sha256 !== 'e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354') throw new Error('Digest divergente.');
-          if (evidence.package?.invalid_checksum_count !== 0) throw new Error('Checksum inválido.');
-          if (evidence.storage?.verified_object_count !== 430) throw new Error('Storage incompleto.');
-          NODE
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Confirmar URL segura exclusiva da homologação
-        env:
-          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "$SUPABASE_HOMOLOGATION_DB_URL" ]; then
-            echo "SUPABASE_HOMOLOGATION_DB_URL não está configurada no environment homologation" >&2
-            exit 23
-          fi
-          case "$SUPABASE_HOMOLOGATION_DB_URL" in
-            postgres://*|postgresql://*) ;;
-            *) echo "URL PostgreSQL de homologação inválida" >&2; exit 24 ;;
-          esac
-          case "$SUPABASE_HOMOLOGATION_DB_URL" in
-            *"$HOMOLOGATION_REF"*) ;;
-            *) echo "URL não pertence à homologação" >&2; exit 25 ;;
-          esac
-          case "$SUPABASE_HOMOLOGATION_DB_URL" in
-            *"$PRODUCTION_REF"*) echo "Referência produtiva detectada e rejeitada" >&2; exit 26 ;;
-          esac
-          echo "::add-mask::$SUPABASE_HOMOLOGATION_DB_URL"
-          printf 'HOMOLOGATION_DB_URL=%s\n' "$SUPABASE_HOMOLOGATION_DB_URL" >> "$GITHUB_ENV"
-
-      - name: Reconciliar nomes locais
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/homologation-migrations
-          node --test scripts/reconcile-homologation-migration-filenames.test.mjs
-          node scripts/reconcile-homologation-migration-filenames.mjs --strict --apply \
-            > artifacts/homologation-migrations/filename-reconciliation.json
-          git diff --check
-
-      - name: Confirmar repairs remotos
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes supabase@2.109.1 migration list --db-url "$HOMOLOGATION_DB_URL" \
-            > artifacts/homologation-migrations/migration-list-before.txt
-          grep -q "20260727035116" artifacts/homologation-migrations/migration-list-before.txt
-          grep -q "20260727035246" artifacts/homologation-migrations/migration-list-before.txt
-          grep -q "20260727035513" artifacts/homologation-migrations/migration-list-before.txt
-          ! grep -q "20260727035059" artifacts/homologation-migrations/migration-list-before.txt
-          ! grep -q "20260727035343" artifacts/homologation-migrations/migration-list-before.txt
-          ! grep -q "20260727040533" artifacts/homologation-migrations/migration-list-before.txt
-
-      - name: Executar dry-run integral
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes supabase@2.109.1 db push --db-url "$HOMOLOGATION_DB_URL" --dry-run \
-            > artifacts/homologation-migrations/db-push-dry-run.txt 2>&1
-          cat artifacts/homologation-migrations/db-push-dry-run.txt
-          for migration in 20260728073000 20260728090000 20260728093000 20260728103000 20260728115000 20260728115100 20260728130000 20260728154500 20260728164000 20260728165116 20260728165303 20260728170236 20260728170246 20260728170307 20260728170501 20260728170941 20260728174500; do
-            grep -q "$migration" artifacts/homologation-migrations/db-push-dry-run.txt
-          done
-
-      - name: Aplicar as 17 migrations
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx --yes supabase@2.109.1 db push --db-url "$HOMOLOGATION_DB_URL" \
-            > artifacts/homologation-migrations/db-push-apply.txt 2>&1
-          cat artifacts/homologation-migrations/db-push-apply.txt
-          npx --yes supabase@2.109.1 migration list --db-url "$HOMOLOGATION_DB_URL" \
-            > artifacts/homologation-migrations/migration-list-after.txt
-          for migration in 20260728073000 20260728090000 20260728093000 20260728103000 20260728115000 20260728115100 20260728130000 20260728154500 20260728164000 20260728165116 20260728165303 20260728170236 20260728170246 20260728170307 20260728170501 20260728170941 20260728174500; do
-            grep -q "$migration" artifacts/homologation-migrations/migration-list-after.txt
-          done
-
-      - name: Preservar evidências da aplicação
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: migrations-homologacao-${{ github.run_number }}
-          path: artifacts/homologation-migrations
-          if-no-files-found: warn
           retention-days: 30
