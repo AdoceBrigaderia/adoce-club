@@ -8,7 +8,7 @@ const endpoint = readFileSync(
 );
 const migration = readFileSync(
   new URL(
-    "../supabase/migrations/20260727101000_public_analytics_bff_only.sql",
+    "../supabase/migrations/20260727035513_public_analytics_bff_only.sql",
     import.meta.url,
   ),
   "utf8",

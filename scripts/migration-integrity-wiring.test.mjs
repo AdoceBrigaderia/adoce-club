@@ -21,7 +21,7 @@ test("liga integridade e reconciliação aos comandos e bloqueia produção", as
   );
   assert.equal(
     packageSource.scripts["report:migration-reconciliation"],
-    "node scripts/migration-reconciliation-report.mjs",
+    "node scripts/migration-reconciliation-report.mjs --strict",
   );
   assert.equal(
     packageSource.scripts["audit:migrations"],
