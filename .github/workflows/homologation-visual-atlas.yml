@@ -19,6 +19,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
 
 env:
   AUTHORIZED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
@@ -131,12 +132,65 @@ jobs:
           } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Empacotar atlas e 98 imagens separadas
+        id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: atlas-visual-adoce-98-imagens-separadas-${{ github.run_number }}
+          name: atlas-visual-adoce-98-${{ github.sha }}
           path: |
             artifacts/atlas-visual
             artifacts/entrega
           if-no-files-found: error
           retention-days: 30
           compression-level: 6
+
+      - name: Registrar download no issue de acompanhamento
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          ARTIFACT_NAME: atlas-visual-adoce-98-${{ github.sha }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Atlas visual disponível para download",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- Artefato: \`${process.env.ARTIFACT_NAME}\``,
+              `- [Baixar o ZIP com as 98 imagens](${process.env.ARTIFACT_URL})`,
+              `- Digest do artefato: \`${process.env.ARTIFACT_DIGEST}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Retenção: 30 dias",
+              "- Produção: **não alterada**",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
+
+      - name: Registrar falha do empacotamento
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Atlas visual — empacotamento não concluído",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Produção: **não alterada**",
+              "",
+              "A execução falhou antes de disponibilizar o artefato. Os logs do run contêm a etapa exata que deve ser corrigida.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
