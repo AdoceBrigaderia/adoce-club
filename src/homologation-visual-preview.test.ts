@@ -62,24 +62,29 @@ describe("preview de validação visual da homologação", () => {
     );
   });
 
-  it("mantém publicação estática e isolada de produção", () => {
+  it("mantém publicação estática, rastreável e isolada de produção", () => {
     expect(workflow).toContain("workflow_dispatch:");
     expect(workflow).toContain("push:");
-    expect(workflow).toContain(
-      "- .github/workflows/homologation-visual-preview.yml",
-    );
+    expect(workflow).toContain("- src/HomologationVisualNavigator.tsx");
+    expect(workflow).toContain("- src/homologation-visual-review.ts");
     expect(workflow).toContain(
       "github.event_name == 'workflow_dispatch' && inputs.confirmation",
     );
     expect(workflow).toContain(
       "github.event_name == 'workflow_dispatch' && inputs.expected_commit",
     );
+    expect(workflow).toContain("ref: ${{ github.sha }}");
+    expect(workflow).not.toContain(
+      "ref: reestruturacao/ux-crm-operacao-imagens-v1",
+    );
     expect(workflow).toContain('test "$CONFIRMATION" = "PUBLICAR VALIDACAO VISUAL"');
+    expect(workflow).toContain('test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"');
+    expect(workflow).toContain('test "$(git rev-parse HEAD)" = "$GITHUB_SHA"');
     expect(workflow).toContain('test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"');
     expect(workflow).toContain('test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"');
     expect(workflow).toContain("f0cc51be-a0ec-4451-9644-a394592cdc37");
     expect(workflow).toContain("bb0c96cd-5af2-4270-a9a8-b63b9637b1f4");
-    expect(workflow).toContain("VITE_ADOCE_VALIDATION_MODE=visual");
+    expect(workflow).toContain("VITE_ADOCE_VALIDATION_MODE: visual");
     expect(workflow).toContain("VITE_ADOCE_PREVIEW_COMMIT");
     expect(workflow).toContain("VITE_ADOCE_PREVIEW_BUILT_AT");
     expect(workflow).toContain("npm run verify:fast");
@@ -90,14 +95,52 @@ describe("preview de validação visual da homologação", () => {
     expect(workflow).toContain("Domínio de produção proibido");
   });
 
-  it("publica URL ou bloqueio objetivo somente no issue de acompanhamento", () => {
+  it("gera pacote offline antes de depender da credencial da Netlify", () => {
+    const offlineBuild = workflow.indexOf(
+      "Gerar preview visual offline independente da Netlify",
+    );
+    const offlineUpload = workflow.indexOf(
+      "Preservar preview offline para teste imediato",
+    );
+    const credentialCheck = workflow.indexOf(
+      "Verificar disponibilidade da credencial Netlify",
+    );
+
+    expect(offlineBuild).toBeGreaterThan(-1);
+    expect(offlineUpload).toBeGreaterThan(offlineBuild);
+    expect(credentialCheck).toBeGreaterThan(offlineUpload);
+    expect(workflow).toContain("npm run build");
+    expect(workflow).toContain("homologacao-visual-offline-${{ github.sha }}");
+    expect(workflow).toContain("steps.offline-upload.outputs.artifact-url");
+    expect(workflow).toContain("steps.offline-upload.outputs.artifact-digest");
+    expect(workflow).toContain("npx --yes serve@14.2.4 -s dist -l 4173");
+    expect(workflow).toContain("retention-days: 14");
+  });
+
+  it("não transforma ausência do token em falha do preview offline", () => {
+    expect(workflow).toContain('echo "configured=false" >> "$GITHUB_OUTPUT"');
+    expect(workflow).toContain(
+      "o preview offline foi preservado e a publicação web será ignorada",
+    );
+    expect(workflow).toContain(
+      "if: ${{ steps.netlify-auth.outputs.configured == 'true' }}",
+    );
+    expect(workflow).toContain(
+      "if: ${{ steps.netlify-auth.outputs.configured != 'true' && success() }}",
+    );
+    expect(workflow).not.toContain(
+      "NETLIFY_AUTH_TOKEN não está configurado no environment homologation.",
+    );
+  });
+
+  it("publica URL, pacote offline ou falha real somente no issue", () => {
     expect(workflow).toContain("issues: write");
-    expect(workflow).toContain("repos/${GITHUB_REPOSITORY}/issues/3/comments");
+    expect(workflow).toContain("issue_number: 3");
     expect(workflow).toContain("Preview visual publicado");
-    expect(workflow).toContain("Preview visual bloqueado");
-    expect(workflow).toContain("NETLIFY_AUTH_TOKEN não está configurado");
-    expect(workflow).toContain("actions/runs/${GITHUB_RUN_ID}");
-    expect(workflow).toContain("Produção: não alterada");
+    expect(workflow).toContain("Preview visual offline disponível");
+    expect(workflow).toContain("Preview visual bloqueado por falha real");
+    expect(workflow).toContain("actions/runs/${context.runId}");
+    expect(workflow).toContain("Produção: **não alterada**");
     expect(workflow).not.toContain("pulls/10/merge");
   });
 });
