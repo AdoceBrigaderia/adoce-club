@@ -6,6 +6,10 @@ const banner = readFileSync("src/HomologationValidationBanner.tsx", "utf8");
 const navigator = readFileSync("src/HomologationVisualNavigator.tsx", "utf8");
 const reviewModel = readFileSync("src/homologation-visual-review.ts", "utf8");
 const styles = readFileSync("src/homologation-validation.css", "utf8");
+const previewServer = readFileSync(
+  "scripts/serve-homologation-preview.mjs",
+  "utf8",
+);
 const workflow = readFileSync(
   ".github/workflows/homologation-visual-preview.yml",
   "utf8",
@@ -67,6 +71,7 @@ describe("preview de validação visual da homologação", () => {
     expect(workflow).toContain("push:");
     expect(workflow).toContain("- src/HomologationVisualNavigator.tsx");
     expect(workflow).toContain("- src/homologation-visual-review.ts");
+    expect(workflow).toContain("- scripts/serve-homologation-preview.mjs");
     expect(workflow).toContain(
       "github.event_name == 'workflow_dispatch' && inputs.confirmation",
     );
@@ -95,7 +100,7 @@ describe("preview de validação visual da homologação", () => {
     expect(workflow).toContain("Domínio de produção proibido");
   });
 
-  it("gera pacote offline antes de depender da credencial da Netlify", () => {
+  it("gera pacote offline executável antes de depender da Netlify", () => {
     const offlineBuild = workflow.indexOf(
       "Gerar preview visual offline independente da Netlify",
     );
@@ -113,8 +118,24 @@ describe("preview de validação visual da homologação", () => {
     expect(workflow).toContain("homologacao-visual-offline-${{ github.sha }}");
     expect(workflow).toContain("steps.offline-upload.outputs.artifact-url");
     expect(workflow).toContain("steps.offline-upload.outputs.artifact-digest");
-    expect(workflow).toContain("npx --yes serve@14.2.4 -s dist -l 4173");
+    expect(workflow).toContain("INICIAR-PREVIEW-WINDOWS.cmd");
+    expect(workflow).toContain("INICIAR-PREVIEW-LINUX-MAC.command");
+    expect(workflow).toContain("node servidor-preview.mjs --open");
+    expect(workflow).toContain("http://127.0.0.1:4187/operacao/venda-rapida");
+    expect(workflow).toContain("Não é necessário instalar pacotes nem acessar a internet");
+    expect(workflow).not.toContain("npx --yes serve@14.2.4 -s dist -l 4173");
     expect(workflow).toContain("retention-days: 14");
+  });
+
+  it("mantém o servidor local restrito e compatível com rotas SPA", () => {
+    expect(previewServer).toContain('const DEFAULT_HOST = "127.0.0.1"');
+    expect(previewServer).toContain("createPreviewServer");
+    expect(previewServer).toContain("resolveRequestPath");
+    expect(previewServer).toContain('resolve(root, "index.html")');
+    expect(previewServer).toContain('"X-Content-Type-Options": "nosniff"');
+    expect(previewServer).toContain('"Referrer-Policy": "no-referrer"');
+    expect(previewServer).toContain("aceita somente localhost/127.0.0.1");
+    expect(previewServer).toContain("Produção não foi alterada.");
   });
 
   it("não transforma ausência do token em falha do preview offline", () => {
