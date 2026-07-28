@@ -46,7 +46,7 @@ describe("atlas visual de homologação", () => {
   });
 
   it("empacota o atlas sem npm, deploy ou credenciais externas", () => {
-    expect(workflow).toContain("timeout-minutes: 8");
+    expect(workflow).toContain("timeout-minutes: 10");
     expect(workflow).toContain("node scripts/generate-homologation-visual-atlas.mjs --check");
     expect(workflow).toContain("validacao-visual-98.html");
     expect(workflow).toContain("actions/upload-artifact@v4");
