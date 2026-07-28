@@ -28,10 +28,19 @@ describe("preview de validação visual da homologação", () => {
     expect(navigator).toContain("Roteiro de validação");
     expect(reviewModel).toContain("Cadastro simplificado");
     expect(reviewModel).toContain("Operação");
-    expect(navigator).toContain("Identidade visual carregada diretamente");
+    expect(navigator).toContain("Relatório identificado por commit");
     expect(main).toContain("<HomologationVisualNavigator />");
     expect(styles).toContain(".homologation-visual-navigator");
     expect(styles).toContain("min-height: 48px");
+  });
+
+  it("acelera a revisão levando à próxima tela pendente", () => {
+    expect(reviewModel).toContain("nextPendingVisualRoute");
+    expect(navigator).toContain("Próxima tela pendente");
+    expect(navigator).toContain("Todas as telas foram revisadas");
+    expect(styles).toContain(".homologation-visual-next-route");
+    expect(reviewModel).toContain("Pronta para envio");
+    expect(reviewModel).toContain("Telas pendentes");
   });
 
   it("permite revisar telas e copiar relatório sem backend", () => {
