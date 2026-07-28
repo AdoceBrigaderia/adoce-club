@@ -2,7 +2,7 @@
 
 ## Escopo
 
-Este procedimento gera um backup lógico do projeto Supabase de homologação `vazozolhbehnriytzcdc` antes de qualquer `migration repair` ou aplicação das migrations pendentes.
+Este procedimento gera backups recuperáveis do projeto Supabase de homologação `vazozolhbehnriytzcdc` antes de qualquer `migration repair` ou aplicação das migrations pendentes.
 
 Produção (`uefwywizqhfvvijaopcn`) é proibida.
 
@@ -11,11 +11,12 @@ Produção (`uefwywizqhfvvijaopcn`) é proibida.
 No environment GitHub `homologation`, configurar diretamente no cofre:
 
 - `SUPABASE_HOMOLOGATION_DB_URL`: URL PostgreSQL completa do projeto de homologação, preferencialmente pelo Session Pooler;
-- a URL deve conter a senha atual do banco e nunca pode ser registrada em commits, issues, logs manuais ou mensagens.
+- `SUPABASE_HOMOLOGATION_SERVICE_ROLE_KEY`: chave exclusiva da homologação para leitura dos objetos do Storage;
+- nenhum desses valores pode ser registrado em commits, issues, logs manuais ou mensagens.
 
-O workflow não executa SQL de alteração, `migration repair`, `db push`, deploy ou merge.
+Os workflows de backup não executam SQL de alteração, `migration repair`, `db push`, deploy ou merge.
 
-## Execução
+## Backup lógico do banco
 
 Workflow: **Backup lógico recuperável da homologação**.
 
@@ -25,7 +26,7 @@ Entradas obrigatórias:
 - `expected_commit`: SHA completo autorizado da branch `reestruturacao/ux-crm-operacao-imagens-v1`;
 - `backup_label`: identificador sem espaços, por exemplo `pre-repair-20260728-1800`.
 
-## Arquivos gerados
+### Arquivos gerados
 
 - `roles.sql`;
 - `schema.sql`;
@@ -38,24 +39,36 @@ Entradas obrigatórias:
 
 O manifesto registra projeto, commit, data/hora, tamanho e SHA-256 de cada arquivo. A execução também valida novamente os hashes antes de publicar o artefato.
 
-## Storage
+## Backup separado do Storage
 
-O dump SQL preserva os metadados do banco, mas não os objetos binários armazenados nos buckets. O backup do Storage é uma operação separada e deve registrar:
+O dump SQL preserva metadados do banco, mas não os objetos binários armazenados nos buckets.
 
-- lista de buckets;
-- caminhos dos objetos;
-- tamanho e tipo de conteúdo;
-- download dos arquivos;
-- SHA-256 por objeto ou por arquivo compactado;
-- manifesto independente.
+Workflow: **Backup separado do Storage da homologação**.
 
-A ausência do backup de Storage não autoriza repair ou migrations quando houver arquivos de homologação que precisem ser recuperáveis.
+Entradas obrigatórias:
+
+- `confirmation`: `GERAR BACKUP STORAGE SOMENTE HOMOLOGACAO vazozolhbehnriytzcdc`;
+- `expected_commit`: o mesmo SHA completo usado no backup lógico;
+- `backup_label`: o mesmo identificador operacional do backup lógico.
+
+O workflow:
+
+- lista todos os buckets da homologação;
+- percorre pastas e paginações;
+- baixa cada objeto sem alterar o Storage;
+- rejeita caminhos com travessia de diretórios;
+- preserva o tipo de conteúdo;
+- calcula tamanho e SHA-256 por objeto;
+- gera `storage-manifest.json`;
+- valida novamente todos os hashes antes de publicar o artefato.
+
+A ausência do backup do Storage não autoriza repair ou migrations quando houver arquivos de homologação que precisem ser recuperáveis.
 
 ## Evidência aceita pelo repair
 
-Depois de baixar e conferir o artefato, a evidência operacional deve usar o formato:
+Depois de baixar e conferir os dois artefatos, a evidência operacional deve usar o formato:
 
-`BACKUP CONFIRMADO <data ISO> <horário UTC> <backup_label> <digest do artefato>`
+`BACKUP CONFIRMADO <data ISO> <horário UTC> <backup_label> <digest SQL> <digest Storage>`
 
 Essa evidência deve ser informada ao workflow de repair sem incluir URL de banco, senha, token ou qualquer outro segredo.
 
@@ -63,16 +76,18 @@ Essa evidência deve ser informada ao workflow de repair sem incluir URL de banc
 
 Antes de considerar o backup recuperável:
 
-1. validar os hashes do manifesto;
+1. validar os hashes dos dois manifestos;
 2. confirmar que todos os arquivos SQL são não vazios;
-3. preferencialmente restaurar em banco descartável;
-4. executar `psql` com transação única e `ON_ERROR_STOP=1`;
-5. conferir tabelas fundamentais, funções, RLS e histórico de migrations;
-6. preservar o relatório do teste.
+3. confirmar que a quantidade de objetos baixados coincide com o manifesto;
+4. preferencialmente restaurar o banco em ambiente descartável;
+5. executar `psql` com transação única e `ON_ERROR_STOP=1`;
+6. conferir tabelas fundamentais, funções, RLS e histórico de migrations;
+7. conferir amostras dos objetos de cada bucket;
+8. preservar o relatório do teste.
 
 ## Sequência posterior
 
-1. gerar e validar o backup;
+1. gerar e validar o backup lógico e o backup do Storage;
 2. executar os três repairs históricos aprovados;
 3. gerar novo snapshot remoto;
 4. executar `supabase db push --linked --dry-run`;
