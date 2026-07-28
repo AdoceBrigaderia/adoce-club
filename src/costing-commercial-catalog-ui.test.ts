@@ -13,6 +13,10 @@ const hub = readFileSync(
   new URL("./OperationBusinessHub.tsx", import.meta.url),
   "utf8",
 );
+const adminCenter = readFileSync(
+  new URL("./OperationAdminCenter.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("painel rápido de custos e margens", () => {
   it("mostra custo, preço, lucro, margem e markup sem cálculo manual", () => {
@@ -48,9 +52,11 @@ describe("painel rápido de custos e margens", () => {
     expect(component).toContain("Preço de compra registrado no histórico");
   });
 
-  it("isola o painel para owner e manager", () => {
+  it("isola o painel para owner e manager na central administrativa", () => {
     expect(hub).toContain('const canConfigureProduction = ["owner", "manager"]');
-    expect(hub).toContain("canConfigureProduction ? <OperationCostCatalog /> : null");
+    expect(hub).toContain("<OperationAdminCenter userId={session.user.id} />");
+    expect(adminCenter).toContain('import OperationCostCatalog from "./OperationCostCatalog"');
+    expect(adminCenter).toContain('activeArea === "costs" ? <OperationCostCatalog /> : null');
   });
 
   it("preserva botões grandes e layout mobile/tablet", () => {
