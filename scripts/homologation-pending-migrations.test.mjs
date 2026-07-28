@@ -13,13 +13,15 @@ const loadFixture = async () => {
   };
 };
 
-test("plano real contém as 17 migrations pendentes em ordem e permanece bloqueado", async () => {
+test("plano real contém as 17 migrations em ordem e aguarda somente o dry-run", async () => {
   const { plan, files, remoteNames } = await loadFixture();
   const report = inspectPendingMigrationPlan(plan, files, remoteNames);
   assert.equal(report.structural_passed, true, report.errors.join("\n"));
   assert.equal(report.pending_count, 17);
   assert.equal(report.ready_for_apply, false);
-  assert.deepEqual(report.apply_blockers, ["backup_nao_confirmado", "repairs_pendentes", "dry_run_pendente"]);
+  assert.deepEqual(report.apply_blockers, ["dry_run_pendente"]);
+  assert.equal(plan.backup.confirmed, true);
+  assert.equal(plan.required_repairs.every((repair) => repair.confirmed), true);
   assert.equal(report.pending_migrations[0].file, "20260728073000_cake_builder_configuration.sql");
   assert.equal(report.pending_migrations.at(-1).file, "20260728174500_gallery_media_assets_bff.sql");
 });
@@ -53,12 +55,10 @@ test("ignora drift local quando o nome já está representado no snapshot remoto
   assert.deepEqual(report.unexpected_pending_files, []);
 });
 
-test("só declara prontidão quando backup, repairs e dry-run estão confirmados", async () => {
+test("declara prontidão quando o dry-run é aprovado", async () => {
   const { plan, files, remoteNames } = await loadFixture();
   const readyPlan = {
     ...plan,
-    backup: { ...plan.backup, confirmed: true, status: "confirmed" },
-    required_repairs: plan.required_repairs.map((repair) => ({ ...repair, confirmed: true })),
     dry_run: { ...plan.dry_run, status: "passed" },
   };
   const report = inspectPendingMigrationPlan(readyPlan, files, remoteNames);
