@@ -7,6 +7,15 @@ on:
       - reestruturacao/ux-crm-operacao-imagens-v1
     paths:
       - .github/workflows/delivery-preview-now.yml
+      - package.json
+      - package-lock.json
+      - index.html
+      - public/**
+      - scripts/serve-homologation-preview.mjs
+      - src/**
+      - netlify/functions/_shared/cake-builder-input.ts
+      - netlify/functions/public-service-request.ts
+      - supabase/migrations/20260728073000_cake_builder_configuration.sql
 
 concurrency:
   group: delivery-preview-now
@@ -58,6 +67,16 @@ jobs:
         run: |
           set -euo pipefail
           npm ci --prefer-offline --no-audit
+
+      - name: Validar fluxos críticos desta entrega
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx vitest run \
+            src/cake-builder-public-input-security.test.ts \
+            src/cake-builder-configuration-migration.test.ts \
+            src/public-service-request-bff-security.test.ts \
+            src/homologation-visual-preview.test.ts
 
       - name: Gerar pacote visual offline
         id: package
@@ -117,8 +136,8 @@ jobs:
           Commit: ${GITHUB_SHA}
           Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}
           Escopo: validação visual e de navegação; integrações externas podem permanecer indisponíveis.
-          Validações executadas: build Vite e smoke tests do servidor local.
-          Observação: TypeScript e testes integrais continuam sendo tratados no quality gate separado.
+          Validações executadas: montador de tortas, BFF de encomendas, preview visual, build Vite e smoke tests do servidor local.
+          Observação: TypeScript e a suíte integral continuam sendo tratados no quality gate separado.
           Servidor: somente localhost/127.0.0.1.
           Produção: não alterada.
           EOF_README
@@ -128,6 +147,7 @@ jobs:
             "Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}" \
             "Supabase: vazozolhbehnriytzcdc (homologação)" \
             "Modo: visual, não transacional" \
+            "Testes direcionados: montador, BFF e preview visual" \
             "Produção: não alterada" \
             > "$package_dir/EVIDENCIA.txt"
 
@@ -175,16 +195,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = [
-              "## Pacote testável disponível",
+              "## Pacote testável atualizado disponível",
               "",
               `- Commit: \`${context.sha}\``,
               `- [Baixar preview offline](${process.env.ARTIFACT_URL})`,
               `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
               "- Windows: extraia o ZIP e abra `INICIAR-PREVIEW-WINDOWS.cmd`.",
+              "- Inclui: Clube e Operação acessíveis no modo visual e montador completo de tortas.",
+              "- Testes direcionados: sanitização pública, cálculo/permissões da migration, BFF e contrato do preview.",
               "- Smoke tests: página inicial e `/operacao/venda-rapida` retornaram HTTP 200.",
-              "- Validação desta entrega: build Vite e servidor do preview.",
-              "- TypeScript e testes integrais continuam no quality gate separado e não bloqueiam esta revisão visual inicial.",
-              "- Limite: integrações externas e ações transacionais podem estar indisponíveis.",
+              "- Limite: integrações externas e ações transacionais podem permanecer indisponíveis.",
               "- Produção: **não alterada**.",
             ].join("\n");
 
@@ -202,11 +222,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = [
-              "## Entrega bloqueada por falha real",
+              "## Entrega atualizada bloqueada por falha real",
               "",
               `- Commit: \`${context.sha}\``,
               `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
-              "- Ação: abrir a execução e corrigir somente a primeira etapa vermelha.",
+              "- Ação: revisar a primeira etapa vermelha e repetir somente os jobs necessários.",
               "- Produção: **não alterada**.",
             ].join("\n");
 
