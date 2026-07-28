@@ -164,6 +164,90 @@ describe("configuração estruturada de produtos", () => {
     expect(() => quoteProductConfiguration(schoolKit, 15, {})).toThrow(/pelo menos 1 opção/);
   });
 
+  it("calcula adicionais do kit escolar sem confundir com a quantidade de crianças", () => {
+    const schoolKit: ConfigurableCommercialProduct = {
+      ...product,
+      id: "20000000-0000-4000-8000-000000000001",
+      slug: "escola-recreio-completo",
+      segment: "school",
+      name: "Recreio completo",
+      base_price: 120,
+      minimum_quantity: 15,
+      product_type: "school_kit",
+      configuration_rules: {
+        minimumTotalQuantity: 15,
+        maximumTotalQuantity: 100,
+        requireExactTotal: false,
+        allowAddons: true,
+        includedQuantity: 15,
+        additionalUnitPrice: 8,
+        groupLimits: { sucos: 2 },
+        groupMinimums: { sucos: 2 },
+      },
+      options: [
+        {
+          ...product.options[2],
+          id: "20000000-0000-4000-8000-000000000011",
+          product_id: "20000000-0000-4000-8000-000000000001",
+          group_key: "sucos",
+          option_code: "suco-uva",
+          option_kind: "variant",
+          label: "Suco de uva",
+          price_adjustment: 0,
+          unit_cost: 0,
+        },
+        {
+          ...product.options[2],
+          id: "20000000-0000-4000-8000-000000000012",
+          product_id: "20000000-0000-4000-8000-000000000001",
+          group_key: "sucos",
+          option_code: "suco-maracuja",
+          option_kind: "variant",
+          label: "Suco de maracujá",
+          price_adjustment: 0,
+          unit_cost: 0,
+        },
+        {
+          ...product.options[2],
+          id: "20000000-0000-4000-8000-000000000013",
+          product_id: "20000000-0000-4000-8000-000000000001",
+          group_key: "adicionais",
+          option_code: "docinhos-extras",
+          option_kind: "addon",
+          label: "Porção de docinhos extras",
+          price_adjustment: 10,
+          unit_cost: 4,
+          maximum_quantity: 5,
+        },
+      ],
+    };
+
+    const quote = quoteProductConfiguration(schoolKit, 20, {
+      "20000000-0000-4000-8000-000000000011": 1,
+      "20000000-0000-4000-8000-000000000012": 1,
+      "20000000-0000-4000-8000-000000000013": 2,
+    });
+
+    expect(quote.configuredQuantity).toBe(0);
+    expect(quote.basePrice).toBe(160);
+    expect(quote.priceAdjustment).toBe(20);
+    expect(quote.estimatedPrice).toBe(180);
+    expect(quote.internalCost).toBe(8);
+    expect(quote.summary).toEqual(["1× Suco de uva", "1× Suco de maracujá", "2× Porção de docinhos extras"]);
+  });
+
+  it("rejeita adicionais quando o tipo de produto os desabilita", () => {
+    const withoutAddons = {
+      ...product,
+      configuration_rules: { ...product.configuration_rules, allowAddons: false },
+    };
+    expect(() => quoteProductConfiguration(withoutAddons, 100, {
+      "10000000-0000-4000-8000-000000000001": 60,
+      "10000000-0000-4000-8000-000000000002": 40,
+      "10000000-0000-4000-8000-000000000003": 1,
+    })).toThrow(/não aceita adicionais/);
+  });
+
   it("rejeita quantidade do pedido acima do máximo", () => {
     const limited = { ...product, configuration_rules: { ...product.configuration_rules, maximumTotalQuantity: 100 } };
     expect(() => quoteProductConfiguration(limited, 101, {})).toThrow(/quantidade máxima é 100/);
