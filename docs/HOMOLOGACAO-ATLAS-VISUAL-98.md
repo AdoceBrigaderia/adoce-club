@@ -79,6 +79,17 @@ O arquivo `imagens-separadas/index.html` apresenta uma galeria navegável. Cada 
 
 O arquivo `SHA256SUMS.txt` permite conferir cada item do atlas antes do uso. O arquivo `.zip.sha256` permite validar o pacote completo. O workflow também abre o ZIP em modo de teste e confirma que existem exatamente 98 SVGs antes do upload.
 
+Depois do upload, o workflow publica automaticamente no issue #3:
+
+- o link direto do artefato para download;
+- o nome rastreável pelo SHA completo;
+- o digest retornado pelo GitHub Actions;
+- o link da execução;
+- a retenção de 30 dias;
+- a confirmação de que produção não foi alterada.
+
+Se a execução falhar antes do upload, o issue recebe o link do run e a indicação de que os logs devem ser usados para localizar a etapa exata. Assim, a entrega não depende de localizar manualmente a execução correta entre vários pushes.
+
 As imagens são representações conceituais para revisão de UX, identidade, hierarquia visual, alvos touch e clareza operacional. A validação funcional continua sendo feita no preview navegável.
 
 ## Segurança
@@ -88,6 +99,7 @@ As imagens são representações conceituais para revisão de UX, identidade, hi
 - geração das 98 imagens sem `npm ci`, Netlify, Supabase ou credenciais externas;
 - pacote ZIP validado antes do upload e acompanhado por checksums SHA-256;
 - artefato mantido por 30 dias no GitHub Actions;
+- link publicado somente no issue privado do repositório;
 - publicação do preview apenas no deploy estático de rascunho da homologação;
 - sem `--prod`;
 - sem Netlify Functions;
