@@ -3,6 +3,7 @@ import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
 import OperationCakeBuilderSettings from "./OperationCakeBuilderSettings";
 import OperationCashReconciliation from "./OperationCashReconciliation";
 import OperationContingencySale from "./OperationContingencySale";
+import OperationCostCatalog from "./OperationCostCatalog";
 import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationManualSale from "./OperationManualSale";
@@ -75,6 +76,7 @@ export default function OperationBusinessHub() {
       <OperationQuickCash key={`cash-${businessRevision}`} />
       <OperationWhatsAppHealth />
       <OperationReports key={`reports-${businessRevision}`} />
+      {canConfigureProduction ? <OperationCostCatalog /> : null}
       {canConfigureProduction ? <OperationCakeBuilderSettings /> : null}
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
