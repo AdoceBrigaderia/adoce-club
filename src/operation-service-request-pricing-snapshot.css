@@ -1,0 +1,302 @@
+.operation-request-pricing-snapshot {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--adoce-pink, #d85b91) 22%, transparent);
+  border-radius: 1.5rem;
+  background: #fff;
+  box-shadow: 0 1rem 2.5rem rgba(73, 34, 51, 0.08);
+}
+
+.operation-request-pricing-snapshot-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.operation-request-pricing-snapshot-heading > div {
+  min-width: 0;
+}
+
+.operation-request-pricing-snapshot-heading small,
+.operation-request-pricing-snapshot-result small {
+  color: #8f4968;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.operation-request-pricing-snapshot-heading h2,
+.operation-request-pricing-snapshot-result h3,
+.operation-request-pricing-snapshot-selections h4 {
+  margin: 0.2rem 0;
+  color: #351f29;
+}
+
+.operation-request-pricing-snapshot-heading p,
+.operation-request-pricing-snapshot-result p {
+  margin: 0;
+  color: #6f5963;
+  line-height: 1.45;
+}
+
+.operation-request-pricing-snapshot-heading > svg {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0.65rem;
+  border-radius: 1rem;
+  color: #a52f68;
+  background: #fff0f6;
+}
+
+.operation-request-pricing-snapshot-search {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.operation-request-pricing-snapshot-search label {
+  display: grid;
+  gap: 0.35rem;
+  color: #4b3540;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.operation-request-pricing-snapshot-search label > span {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 3.25rem;
+  padding: 0 0.85rem;
+  border: 1px solid #ead7df;
+  border-radius: 1rem;
+  background: #fffafb;
+}
+
+.operation-request-pricing-snapshot-search label svg {
+  width: 1.25rem;
+  color: #a52f68;
+}
+
+.operation-request-pricing-snapshot-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #351f29;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+}
+
+.operation-request-pricing-snapshot-search button {
+  min-height: 3.25rem;
+  border: 0;
+  border-radius: 1rem;
+  padding: 0 1rem;
+  color: #fff;
+  background: #a52f68;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.operation-request-pricing-snapshot-search button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.operation-request-pricing-snapshot-notice {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  color: #6d3c52;
+  background: #fff0f6;
+  font-weight: 700;
+}
+
+.operation-request-pricing-snapshot-result {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  background: #fffafb;
+}
+
+.operation-request-pricing-snapshot-result > header {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.operation-request-pricing-snapshot-result > header > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.operation-request-pricing-snapshot-result > header > span svg {
+  width: 1.1rem;
+}
+
+.operation-request-pricing-snapshot-result .ok {
+  color: #1f6c48;
+  background: #e9f8ef;
+}
+
+.operation-request-pricing-snapshot-result .danger {
+  color: #9b2f3d;
+  background: #ffeaed;
+}
+
+.operation-request-pricing-snapshot-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.operation-request-pricing-snapshot-metrics > span {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.8rem;
+  border: 1px solid #f0dfe6;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.operation-request-pricing-snapshot-metrics strong {
+  overflow-wrap: anywhere;
+  color: #351f29;
+  font-size: 1.05rem;
+}
+
+.operation-request-pricing-snapshot-evidence {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.operation-request-pricing-snapshot-evidence > span {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem;
+  border-radius: 1rem;
+  color: #6d3c52;
+  background: #fff0f6;
+}
+
+.operation-request-pricing-snapshot-evidence svg {
+  flex: 0 0 auto;
+  width: 1.3rem;
+}
+
+.operation-request-pricing-snapshot-evidence div {
+  display: grid;
+}
+
+.operation-request-pricing-snapshot-evidence strong {
+  color: #3f2933;
+}
+
+.operation-request-pricing-snapshot-selections {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem;
+  border: 1px solid #f0dfe6;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.operation-request-pricing-snapshot-selections > header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.operation-request-pricing-snapshot-selections > header svg {
+  color: #a52f68;
+}
+
+.operation-request-pricing-snapshot-selections > div {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.operation-request-pricing-snapshot-selections > div > span {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f3e7ec;
+}
+
+.operation-request-pricing-snapshot-selections > div > span:last-child {
+  border-bottom: 0;
+}
+
+.operation-request-pricing-snapshot-selections strong {
+  color: #44313a;
+  line-height: 1.4;
+}
+
+.operation-request-pricing-snapshot-result > footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  color: #1f6c48;
+  background: #e9f8ef;
+}
+
+.operation-request-pricing-snapshot-result > footer svg {
+  flex: 0 0 auto;
+  width: 1.25rem;
+}
+
+.operation-request-pricing-snapshot-result > footer p {
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+@media (min-width: 720px) {
+  .operation-request-pricing-snapshot {
+    padding: 1.25rem;
+  }
+
+  .operation-request-pricing-snapshot-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .operation-request-pricing-snapshot-search button {
+    min-width: 11rem;
+  }
+
+  .operation-request-pricing-snapshot-result > header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .operation-request-pricing-snapshot-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .operation-request-pricing-snapshot-evidence {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .operation-request-pricing-snapshot-selections > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
