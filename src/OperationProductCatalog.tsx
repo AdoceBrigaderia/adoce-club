@@ -50,6 +50,12 @@ type WorkspaceOption = {
   sort_order: number;
 };
 
+type WorkspacePriceTier = {
+  quantity: number;
+  price: number;
+  maximumFlavors?: number;
+};
+
 type Workspace = { products: WorkspaceProduct[]; options: WorkspaceOption[] };
 
 const emptyProduct = (): WorkspaceProduct => ({
@@ -79,6 +85,9 @@ const emptyProduct = (): WorkspaceProduct => ({
     minimumQuantityPerFlavor: 1,
     requireExactTotal: false,
     allowAddons: true,
+    priceTiers: [],
+    groupLimits: {},
+    groupMinimums: {},
   },
 });
 
@@ -102,6 +111,11 @@ const typeDefaults: Record<ProductType, { segment: string; mode: ProductCustomiz
   cookie: { segment: "cookies", mode: "option_groups" },
   school_kit: { segment: "school", mode: "option_groups" },
   fixed: { segment: "events", mode: "none" },
+};
+
+const numberValue = (value: unknown, fallback: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 export default function OperationProductCatalog() {
@@ -158,9 +172,13 @@ export default function OperationProductCatalog() {
       product_type: productType,
       segment: defaults.segment,
       customization_mode: defaults.mode,
-      configuration_rules: productType === "sweet"
-        ? { ...current.configuration_rules, maximumFlavors: 5, minimumQuantityPerFlavor: 10, requireExactTotal: true }
-        : current.configuration_rules,
+      configuration_rules: {
+        ...current.configuration_rules,
+        minimumTotalQuantity: Math.max(1, current.minimum_quantity),
+        minimumQuantityPerFlavor: 1,
+        requireExactTotal: productType === "sweet",
+        allowAddons: productType !== "fixed",
+      },
     }));
   };
 
@@ -170,10 +188,42 @@ export default function OperationProductCatalog() {
       configuration_rules: { ...current.configuration_rules, [key]: value },
     }));
 
+  const priceTiers = useMemo<WorkspacePriceTier[]>(() => {
+    const value = product.configuration_rules.priceTiers;
+    if (!Array.isArray(value)) return [];
+    return value.map((tier) => {
+      const row = tier && typeof tier === "object" ? tier as Record<string, unknown> : {};
+      return {
+        quantity: numberValue(row.quantity, 1),
+        price: numberValue(row.price, 0),
+        maximumFlavors: row.maximumFlavors ? numberValue(row.maximumFlavors, 1) : undefined,
+      };
+    });
+  }, [product.configuration_rules]);
+
+  const setPriceTiers = (next: WorkspacePriceTier[]) => setRule("priceTiers", next);
+  const updatePriceTier = (index: number, patch: Partial<WorkspacePriceTier>) =>
+    setPriceTiers(priceTiers.map((tier, tierIndex) => tierIndex === index ? { ...tier, ...patch } : tier));
+
   const optionGroups = useMemo(
     () => [...new Set(options.map((option) => option.group_key).filter(Boolean))],
     [options],
   );
+
+  const readGroupRules = (key: "groupLimits" | "groupMinimums") => {
+    const value = product.configuration_rules[key];
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+  };
+
+  const setGroupRule = (key: "groupLimits" | "groupMinimums", group: string, nextValue: number) => {
+    const current = readGroupRules(key);
+    const next = { ...current };
+    if (nextValue > 0) next[group] = nextValue;
+    else delete next[group];
+    setRule(key, next);
+  };
 
   const updateOption = (index: number, patch: Partial<WorkspaceOption>) =>
     setOptions((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
@@ -193,6 +243,18 @@ export default function OperationProductCatalog() {
       if (!product.slug.trim()) throw new Error("Informe o identificador do produto.");
       if (product.customization_mode === "option_groups" && !options.some((option) => option.active)) {
         throw new Error("Cadastre pelo menos uma opção ativa para este produto.");
+      }
+      const invalidOption = options.find((option) => option.active && (!option.group_key.trim() || !option.option_code.trim() || !option.label.trim()));
+      if (invalidOption) throw new Error("Todas as opções ativas precisam de grupo, código e nome.");
+      if (priceTiers.some((tier) => tier.quantity < 1 || tier.price < 0)) {
+        throw new Error("Revise as quantidades e os preços dos pacotes.");
+      }
+      for (const group of optionGroups) {
+        const minimum = numberValue(readGroupRules("groupMinimums")[group], 0);
+        const maximum = numberValue(readGroupRules("groupLimits")[group], 0);
+        if (minimum > 0 && maximum > 0 && minimum > maximum) {
+          throw new Error(`O mínimo do grupo ${group.replace(/_/g, " ")} não pode superar o máximo.`);
+        }
       }
       const result = await bffRpc<{ product_id: string; saved: boolean }>(
         "manager_save_configurable_product",
@@ -228,7 +290,7 @@ export default function OperationProductCatalog() {
         <form onSubmit={submit}>
           <fieldset className="operation-product-grid">
             <label>Tipo do produto<select value={product.product_type} onChange={(event) => setProductType(event.target.value as ProductType)}><option value="cake">Torta</option><option value="sweet">Docinho</option><option value="cookie">Biscoito</option><option value="school_kit">Kit Adoce na Escola</option><option value="fixed">Produto fixo</option></select></label>
-            <label>Modo de venda<select value={product.customization_mode} onChange={(event) => setProduct({ ...product, customization_mode: event.target.value as ProductCustomizationMode })}><option value="none">Compra direta</option><option value="cake_builder">Montador de tortas</option><option value="option_groups">Grupos de opções</option></select></label>
+            <label>Modo definido pelo tipo<select value={product.customization_mode} disabled><option value="none">Compra direta</option><option value="cake_builder">Montador de tortas</option><option value="option_groups">Grupos de opções</option></select></label>
             <label>Nome<input value={product.name} onChange={(event) => setProduct({ ...product, name: event.target.value })} /></label>
             <label>Identificador<input value={product.slug} onChange={(event) => setProduct({ ...product, slug: event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })} /></label>
             <label>Segmento<select value={product.segment} onChange={(event) => setProduct({ ...product, segment: event.target.value })}><option value="cakes">Tortas</option><option value="sweets">Docinhos</option><option value="cookies">Biscoitos</option><option value="school">Adoce na Escola</option><option value="events">Eventos</option><option value="rentals">Aluguel</option></select></label>
@@ -240,15 +302,31 @@ export default function OperationProductCatalog() {
           </fieldset>
 
           {product.customization_mode === "option_groups" ? <section className="operation-product-rules">
-            <header><div><small>Regras do montador</small><h4>Quantidade, sabores e adicionais</h4></div></header>
+            <header><div><small>Regras do montador</small><h4>Quantidade, sabores, pacotes e adicionais</h4></div></header>
             <div>
               <label>Máximo de sabores<input type="number" min="1" value={Number(product.configuration_rules.maximumFlavors || 1)} onChange={(event) => setRule("maximumFlavors", Number(event.target.value))} /></label>
               <label>Mínimo por sabor<input type="number" min="1" value={Number(product.configuration_rules.minimumQuantityPerFlavor || 1)} onChange={(event) => setRule("minimumQuantityPerFlavor", Number(event.target.value))} /></label>
               <label>Total mínimo<input type="number" min="1" value={Number(product.configuration_rules.minimumTotalQuantity || product.minimum_quantity)} onChange={(event) => setRule("minimumTotalQuantity", Number(event.target.value))} /></label>
               <label>Total máximo<input type="number" min="1" value={Number(product.configuration_rules.maximumTotalQuantity || 10000)} onChange={(event) => setRule("maximumTotalQuantity", Number(event.target.value))} /></label>
+              <label>Quantidade incluída<input type="number" min="1" value={Number(product.configuration_rules.includedQuantity || product.minimum_quantity)} onChange={(event) => setRule("includedQuantity", Number(event.target.value))} /></label>
+              <label>Acréscimo por unidade excedente<input type="number" min="0" step="0.01" value={Number(product.configuration_rules.additionalUnitPrice || 0)} onChange={(event) => setRule("additionalUnitPrice", Number(event.target.value))} /></label>
               <label className="check"><input type="checkbox" checked={product.configuration_rules.requireExactTotal === true} onChange={(event) => setRule("requireExactTotal", event.target.checked)} /> Exigir que a soma dos sabores seja igual à quantidade</label>
               <label className="check"><input type="checkbox" checked={product.configuration_rules.allowAddons !== false} onChange={(event) => setRule("allowAddons", event.target.checked)} /> Permitir adicionais</label>
             </div>
+
+            <header><div><small>Pacotes fechados</small><h4>Quantidade, preço e limite de sabores</h4><p>Quando houver pacotes, o cliente somente poderá escolher uma destas quantidades.</p></div><button type="button" onClick={() => setPriceTiers([...priceTiers, { quantity: product.minimum_quantity, price: Number(product.base_price || 0), maximumFlavors: 1 }])}><Plus /> Adicionar pacote</button></header>
+            <div>{priceTiers.map((tier, index) => <article key={`tier-${index}`}>
+              <label>Quantidade<input type="number" min="1" value={tier.quantity} onChange={(event) => updatePriceTier(index, { quantity: Number(event.target.value) })} /></label>
+              <label>Preço<input type="number" min="0" step="0.01" value={tier.price} onChange={(event) => updatePriceTier(index, { price: Number(event.target.value) })} /></label>
+              <label>Máximo de sabores<input type="number" min="1" value={tier.maximumFlavors || ""} onChange={(event) => updatePriceTier(index, { maximumFlavors: event.target.value ? Number(event.target.value) : undefined })} /></label>
+              <button type="button" className="danger" onClick={() => setPriceTiers(priceTiers.filter((_, tierIndex) => tierIndex !== index))}><Trash2 /> Remover pacote</button>
+            </article>)}</div>
+
+            {optionGroups.length ? <><header><div><small>Regras por grupo</small><h4>Mínimo e máximo de escolhas</h4></div></header><div>{optionGroups.map((group) => <article key={group}>
+              <strong>{group.replace(/_/g, " ")}</strong>
+              <label>Mínimo<input type="number" min="0" value={numberValue(readGroupRules("groupMinimums")[group], 0)} onChange={(event) => setGroupRule("groupMinimums", group, Number(event.target.value))} /></label>
+              <label>Máximo<input type="number" min="0" value={numberValue(readGroupRules("groupLimits")[group], 0)} onChange={(event) => setGroupRule("groupLimits", group, Number(event.target.value))} /></label>
+            </article>)}</div></> : null}
           </section> : null}
 
           {product.customization_mode === "option_groups" ? <section className="operation-product-options-editor">
