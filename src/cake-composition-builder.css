@@ -1,0 +1,356 @@
+.cake-builder {
+  margin: 0 0 1.5rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid #ead3ca;
+  border-radius: 24px;
+  background: #fffaf7;
+  box-shadow: 0 18px 45px rgb(78 36 29 / 8%);
+  color: #3b1c16;
+}
+
+.cake-builder.loading {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 96px;
+}
+
+.cake-builder.loading svg {
+  width: 34px;
+  height: 34px;
+  color: #a6496d;
+}
+
+.cake-builder.loading strong,
+.cake-builder.loading small {
+  display: block;
+}
+
+.cake-builder-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cake-builder-heading small,
+.cake-builder-heading h3,
+.cake-builder-heading p {
+  display: block;
+  margin: 0;
+}
+
+.cake-builder-heading small {
+  color: #a6496d;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cake-builder-heading h3 {
+  margin-top: 0.25rem;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1.08;
+}
+
+.cake-builder-heading p {
+  max-width: 720px;
+  margin-top: 0.55rem;
+  color: #76564e;
+  line-height: 1.5;
+}
+
+.cake-builder-heading > svg {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  color: #a6496d;
+}
+
+.cake-builder-notice {
+  margin: 1rem 0 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e4b4c6;
+  border-radius: 14px;
+  background: #fff0f5;
+  color: #6b3047;
+}
+
+.cake-builder-structure {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.7rem;
+  margin: 1.2rem 0;
+}
+
+.cake-builder-structure span {
+  min-height: 84px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 0.75rem;
+  border-radius: 18px;
+  background: #3b1c16;
+  color: #fff;
+  text-align: center;
+}
+
+.cake-builder-structure strong,
+.cake-builder-structure small {
+  display: block;
+}
+
+.cake-builder-structure strong {
+  font-size: 1.6rem;
+}
+
+.cake-builder-structure small {
+  margin-top: 0.15rem;
+  color: #f4deda;
+}
+
+.cake-builder-layer-group,
+.cake-builder-option-fieldset,
+.cake-builder-summary {
+  margin: 1rem 0 0;
+  padding: 1rem;
+  border: 1px solid #ead3ca;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.cake-builder-layer-group > header,
+.cake-builder-summary > header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
+}
+
+.cake-builder-layer-group > header svg,
+.cake-builder-summary > header svg {
+  width: 28px;
+  height: 28px;
+  color: #a6496d;
+}
+
+.cake-builder-layer-group header small,
+.cake-builder-layer-group header h4,
+.cake-builder-summary header small,
+.cake-builder-summary header h4 {
+  display: block;
+  margin: 0;
+}
+
+.cake-builder-layer-group header small,
+.cake-builder-summary header small {
+  color: #a6496d;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cake-builder-layer-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.cake-builder-layer-list label {
+  display: grid;
+  gap: 0.4rem;
+  font-weight: 800;
+}
+
+.cake-builder-layer-list label > div {
+  position: relative;
+}
+
+.cake-builder-layer-list select {
+  width: 100%;
+  min-height: 54px;
+  appearance: none;
+  padding: 0 2.7rem 0 0.85rem;
+  border: 1px solid #dcc2b9;
+  border-radius: 14px;
+  background: #fffaf7;
+  color: #3b1c16;
+  font: inherit;
+}
+
+.cake-builder-layer-list label > div > svg {
+  position: absolute;
+  top: 50%;
+  right: 0.8rem;
+  width: 20px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.cake-builder-topping-options,
+.cake-builder-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.cake-builder-topping-options button,
+.cake-builder-chips button {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #dcc2b9;
+  border-radius: 15px;
+  background: #fffaf7;
+  color: #3b1c16;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cake-builder-topping-options button.active,
+.cake-builder-chips button.active {
+  border-color: #bd6487;
+  background: #fff0f5;
+  box-shadow: 0 8px 20px rgb(166 73 109 / 10%);
+}
+
+.cake-builder-topping-options button > svg,
+.cake-builder-chips button > svg {
+  flex: 0 0 auto;
+  width: 23px;
+  height: 23px;
+  color: #a6496d;
+}
+
+.cake-builder-topping-options strong,
+.cake-builder-topping-options small,
+.cake-builder-chips strong,
+.cake-builder-chips small {
+  display: block;
+}
+
+.cake-builder-topping-options small,
+.cake-builder-chips small {
+  margin-top: 0.1rem;
+  color: #83665e;
+}
+
+.cake-builder-option-fieldset legend {
+  padding: 0;
+  font-weight: 900;
+  font-size: 1.05rem;
+}
+
+.cake-builder-option-fieldset > p {
+  margin: 0.2rem 0 0.8rem;
+  color: #76564e;
+}
+
+.cake-builder-summary {
+  background: linear-gradient(135deg, #3b1c16, #673025);
+  color: #fff;
+}
+
+.cake-builder-summary > header {
+  justify-content: space-between;
+}
+
+.cake-builder-summary header small,
+.cake-builder-summary header svg {
+  color: #f1bfd2;
+}
+
+.cake-builder-summary ul {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cake-builder-summary li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  color: #f8eae6;
+  line-height: 1.4;
+}
+
+.cake-builder-summary li svg {
+  flex: 0 0 auto;
+  width: 18px;
+  color: #f1bfd2;
+}
+
+.cake-builder-summary > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(255 255 255 / 18%);
+}
+
+.cake-builder-summary > div strong {
+  font-size: clamp(1.45rem, 4vw, 2rem);
+}
+
+.cake-builder-summary > p {
+  margin: 0.5rem 0 0;
+  color: #ead4ce;
+  font-size: 0.86rem;
+}
+
+.cake-builder-errors {
+  margin-top: 0.8rem;
+  padding: 0.8rem;
+  border-radius: 14px;
+  background: #fff1ef;
+  color: #8a2d24;
+}
+
+.cake-builder-errors p {
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 680px) {
+  .cake-builder {
+    margin-inline: -0.35rem;
+    padding: 0.9rem;
+    border-radius: 19px;
+  }
+
+  .cake-builder-heading > svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .cake-builder-structure {
+    gap: 0.4rem;
+  }
+
+  .cake-builder-structure span {
+    min-height: 74px;
+    padding: 0.5rem 0.3rem;
+  }
+
+  .cake-builder-layer-list,
+  .cake-builder-topping-options,
+  .cake-builder-chips {
+    grid-template-columns: 1fr;
+  }
+
+  .cake-builder-layer-group,
+  .cake-builder-option-fieldset,
+  .cake-builder-summary {
+    padding: 0.85rem;
+  }
+
+  .cake-builder-topping-options button,
+  .cake-builder-chips button {
+    min-height: 58px;
+  }
+}
