@@ -39,6 +39,7 @@ export type PublicInstantOrderLoyaltyPreview = {
 
 export type PublicInstantOrderSubmission = {
   accepted: boolean;
+  idempotent?: boolean;
   order_number?: string;
   token?: string;
   status?: string;
@@ -156,7 +157,9 @@ export function submitPublicInstantOrder(input: {
   paymentMethod: string;
   reward?: PublicInstantOrderReward | null;
 }) {
+  const operationKey = crypto.randomUUID();
   return call<PublicInstantOrderSubmission>("submit", {
+    requested_operation_key: operationKey,
     requested_customer_name: input.customerName,
     requested_customer_phone: input.customerPhone,
     requested_items: input.items,

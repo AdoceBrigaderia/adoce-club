@@ -99,7 +99,7 @@ export default function CustomerRegistrationBffPage() {
       setMessage(
         whatsAppVerified
           ? "WhatsApp confirmado. Agora enviamos o código final para seu e-mail."
-          : "Enviamos um código para seu e-mail. Seu WhatsApp poderá ser validado depois.",
+          : "Enviamos um código para seu e-mail. WhatsApp e promoções ficarão desativados até uma validação.",
       );
     } catch (error) {
       setMessage(
@@ -131,8 +131,8 @@ export default function CustomerRegistrationBffPage() {
     } catch (error) {
       setMessage(
         error instanceof Error
-          ? `${error.message} Você pode continuar pelo e-mail.`
-          : "Não foi possível enviar o código pelo WhatsApp. Você pode continuar pelo e-mail.",
+          ? `${error.message} Você pode continuar pelo e-mail, com WhatsApp e promoções desativados.`
+          : "Não foi possível enviar o código pelo WhatsApp. Você pode continuar pelo e-mail, sem ativar esse canal.",
       );
     } finally {
       setBusy(false);
@@ -163,22 +163,32 @@ export default function CustomerRegistrationBffPage() {
   };
 
   const completeRegistration = async () => {
+    if (!legalAccepted) {
+      setStage("form");
+      setMessage("Confirme os Termos do Clube e a Política de Privacidade.");
+      return;
+    }
     if (emailCode.length !== 6 || busy) return;
     setBusy(true);
     setMessage("");
     try {
-      await bffCompleteRegistration({
+      const result = await bffCompleteRegistration({
         email: normalizedEmail,
         token: emailCode,
         fullName: normalizedName,
         phone: normalizeBrazilPhone(phone),
+        legalAccepted,
         marketingAccepted,
         whatsappChallengeId: whatsAppVerified ? challengeId : null,
         referralCode: referralCode() || null,
         remember: true,
       });
       setStage("complete");
-      setMessage("Cadastro concluído. Abrindo seu Clube Adoce...");
+      setMessage(
+        result.registration.whatsapp_verified
+          ? "Cadastro concluído com WhatsApp validado. Abrindo seu Clube Adoce..."
+          : "Cadastro concluído por e-mail. WhatsApp e promoções permanecem desativados até uma validação.",
+      );
       window.setTimeout(() => {
         location.hash = "minha-conta";
       }, 700);

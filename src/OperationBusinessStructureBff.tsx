@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import { bffRpc } from "./services/bff-rpc";
 import {
+  completeOperation,
+  pendingOperationKey,
+} from "./services/operation-idempotency";
+import {
   cashMovementLabels,
   formatBusinessMoney,
   slugifyBusinessCode,
@@ -271,18 +275,27 @@ export default function OperationBusinessStructureBff({ userId }: { userId: stri
   const recordMovement = async (event: FormEvent) => {
     event.preventDefault();
     if (!openSession) return;
+    const operationPayload = {
+      target_session_id: openSession.id,
+      movement_kind: movementKind,
+      requested_payment_method: "cash",
+      requested_amount: movementAmount,
+      next_notes: movementNotes,
+      target_order_id: null,
+    };
+    const operation = pendingOperationKey(
+      "business-structure-cash-movement",
+      operationPayload,
+    );
     const ok = await run(
-      () => bffRpc("staff_record_cash_movement", {
-        target_session_id: openSession.id,
-        movement_kind: movementKind,
-        requested_payment_method: "cash",
-        requested_amount: movementAmount,
-        next_notes: movementNotes,
-        target_order_id: null,
+      () => bffRpc("staff_record_cash_movement_v2", {
+        requested_operation_key: operation.value,
+        ...operationPayload,
       }),
       `${cashMovementLabels[movementKind] || "Movimentação"} registrada no caixa.`,
     );
     if (ok) {
+      completeOperation(operation.fingerprint);
       setMovementAmount(0);
       setMovementNotes("");
     }

@@ -25,8 +25,9 @@ export type BffRegistrationResult = {
     completed: true;
     profile_id: string;
     full_name: string;
-    phone_e164: string;
+    phone_e164: string | null;
     whatsapp_verified_at: string | null;
+    whatsapp_verified: boolean;
     marketing_consent: boolean;
     referral_status: string;
   };
@@ -96,6 +97,7 @@ export async function bffCompleteRegistration(input: {
   token: string;
   fullName: string;
   phone: string;
+  legalAccepted: boolean;
   marketingAccepted: boolean;
   whatsappChallengeId?: string | null;
   referralCode?: string | null;

@@ -4,6 +4,10 @@ import {
   parseCookies,
   secureJson,
 } from "./_shared/session-security";
+import {
+  consumePublicRateLimits,
+  ipRateLimitRule,
+} from "./_shared/public-rate-limit";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -231,6 +235,9 @@ export default async (request: Request) => {
     return secureJson({ error: "Método não permitido." }, 405);
   if (!strictAllowedOrigin(request))
     return secureJson({ error: "Origem não autorizada." }, 403);
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 16_384)
+    return secureJson({ error: "Solicitação maior que o permitido." }, 413);
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const secretKey =
@@ -248,6 +255,7 @@ export default async (request: Request) => {
       return secureJson({ data: await catalog(supabaseUrl, secretKey) });
 
     if (action === "create") {
+      const operationKey = text(body.requested_operation_key, 36);
       const groupName = text(body.group_name, 60);
       const organizerName = text(body.organizer_name, 80);
       const organizerPhone = digits(body.organizer_phone);
@@ -257,14 +265,44 @@ export default async (request: Request) => {
         groupName.length < 3 ||
         organizerName.length < 2 ||
         organizerPhone.length < 10 ||
-        deliveryAddress.length < 8
+        deliveryAddress.length < 8 ||
+        !UUID.test(operationKey)
       )
         return secureJson({ error: "Revise os dados do novo grupo." }, 400);
+      const rateLimit = await consumePublicRateLimits({
+        supabaseUrl,
+        secretKey,
+        pepper:
+          env("PUBLIC_RATE_LIMIT_PEPPER") ||
+          env("WHATSAPP_OTP_PEPPER") ||
+          secretKey,
+        rules: [
+          ipRateLimitRule(request, "pede-junto-create:ip", 3600, 12),
+          {
+            bucket: "pede-junto-create:phone",
+            subject: `phone:${organizerPhone}`,
+            windowSeconds: 6 * 3600,
+            maxRequests: 4,
+          },
+        ],
+      });
+      if (!rateLimit.allowed)
+        return secureJson(
+          {
+            error: rateLimit.failed
+              ? "Pede Junto temporariamente indisponível."
+              : "Muitas tentativas. Aguarde antes de criar outro grupo.",
+            code: rateLimit.failed ? "rate_limit_unavailable" : "rate_limited",
+            retry_after_seconds: rateLimit.retryAfterSeconds,
+          },
+          rateLimit.failed ? 503 : 429,
+        );
       const result = (await rpc(
         supabaseUrl,
         secretKey,
-        "create_pede_junto_group",
+        "create_pede_junto_group_v2",
         {
+          requested_operation_key: operationKey,
           group_name: groupName,
           organizer_name: organizerName,
           organizer_phone: organizerPhone,
@@ -304,23 +342,56 @@ export default async (request: Request) => {
       return secureJson({ error: "Código do grupo inválido." }, 400);
 
     if (action === "join") {
+      const operationKey = text(body.requested_operation_key, 36);
       const participantName = text(body.participant_name, 80);
       const participantPhone = digits(body.participant_phone);
       if (
         !TOKEN.test(invitationToken) ||
         participantName.length < 2 ||
-        participantPhone.length < 10
+        participantPhone.length < 10 ||
+        !UUID.test(operationKey)
       )
         return secureJson({ error: "Revise os dados para entrar no grupo." }, 400);
+      const rateLimit = await consumePublicRateLimits({
+        supabaseUrl,
+        secretKey,
+        pepper:
+          env("PUBLIC_RATE_LIMIT_PEPPER") ||
+          env("WHATSAPP_OTP_PEPPER") ||
+          secretKey,
+        rules: [
+          ipRateLimitRule(request, "pede-junto-join:ip", 3600, 40),
+          {
+            bucket: "pede-junto-join:phone",
+            subject: `phone:${participantPhone}`,
+            windowSeconds: 3600,
+            maxRequests: 10,
+          },
+        ],
+      });
+      if (!rateLimit.allowed)
+        return secureJson(
+          {
+            error: rateLimit.failed
+              ? "Pede Junto temporariamente indisponível."
+              : "Muitas tentativas. Aguarde antes de entrar novamente.",
+            code: rateLimit.failed ? "rate_limit_unavailable" : "rate_limited",
+            retry_after_seconds: rateLimit.retryAfterSeconds,
+          },
+          rateLimit.failed ? 503 : 429,
+        );
       const result = (await rpc(
         supabaseUrl,
         secretKey,
-        "join_pede_junto_group",
+        "join_pede_junto_group_v3",
         {
+          requested_operation_key: operationKey,
           group_code: code,
           invitation_token: invitationToken,
           participant_name: participantName,
           participant_phone: participantPhone,
+          current_participant_token:
+            storedAccess?.code === code ? storedAccess.participantToken : null,
         },
       )) as JoinResult;
       if (!TOKEN.test(result.participant_token))

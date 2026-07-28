@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import { formatBusinessMoney } from "./cash-workspace";
 import { bffRpc } from "./services/bff-rpc";
+import {
+  completeOperation,
+  pendingOperationKey,
+} from "./services/operation-idempotency";
 import "./operation-quick-cash.css";
 
 type CashSession = {
@@ -123,15 +127,21 @@ export default function OperationQuickCash() {
 
     setBusy(true);
     setNotice("");
+    const operationPayload = {
+      target_session_id: sessionId,
+      movement_kind: kind,
+      requested_payment_method: "cash",
+      requested_amount: amount,
+      next_notes: reason.trim(),
+      target_order_id: null,
+    };
+    const operation = pendingOperationKey("cash-movement", operationPayload);
     try {
-      await bffRpc("staff_record_cash_movement", {
-        target_session_id: sessionId,
-        movement_kind: kind,
-        requested_payment_method: "cash",
-        requested_amount: amount,
-        next_notes: reason.trim(),
-        target_order_id: null,
+      await bffRpc("staff_record_cash_movement_v2", {
+        requested_operation_key: operation.value,
+        ...operationPayload,
       });
+      completeOperation(operation.fingerprint);
       const selected = movementOptions.find((option) => option.kind === kind);
       setNotice(`${selected?.label || "Movimentação"} de ${formatBusinessMoney(amount)} registrada.`);
       setAmount(0);

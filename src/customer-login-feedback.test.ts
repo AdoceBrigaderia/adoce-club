@@ -17,16 +17,18 @@ describe("acesso do cliente por celular e senha", () => {
     expect(bffAuth).not.toContain("refresh_token");
   });
 
-  it("mantém a identificação interna fora da resposta de erro", () => {
-    const endpoint = source("../netlify/functions/customer-phone-login.ts");
-    expect(endpoint).toContain('.from("profiles")');
-    expect(endpoint).toContain("id,active,account_status,auth_upgraded_at");
-    expect(endpoint).toContain("must_change_password");
-    expect(endpoint).toContain("temporary_password_expires_at");
-    expect(endpoint).toContain("auth.admin.getUserById");
-    expect(endpoint).toContain("/auth/v1/token?grant_type=password");
-    expect(endpoint).toContain('json({ error: "Celular ou senha incorretos." }, 401)');
-    expect(endpoint).toContain("temporary_password_expired");
+  it("desativa o endpoint legado que devolvia tokens no corpo", () => {
+    const customerEndpoint = source(
+      "../netlify/functions/customer-phone-login.ts",
+    );
+    const staffEndpoint = source("../netlify/functions/staff-phone-login.ts");
+    [customerEndpoint, staffEndpoint].forEach((endpoint) => {
+      expect(endpoint).toContain("legacy_phone_login_disabled");
+      expect(endpoint).toContain("410");
+      expect(endpoint).not.toContain("access_token");
+      expect(endpoint).not.toContain("refresh_token");
+      expect(endpoint).not.toContain("grant_type=password");
+    });
   });
 });
 

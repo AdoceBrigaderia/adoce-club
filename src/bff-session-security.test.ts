@@ -4,6 +4,7 @@ import {
   ACCESS_COOKIE,
   CSRF_COOKIE,
   REFRESH_COOKIE,
+  SESSION_MODE_COOKIE,
   clearedSessionCookies,
   sessionCookies,
   validCsrf,
@@ -38,6 +39,9 @@ describe("sessão BFF protegida", () => {
     const access = issued.values.find((value) => value.startsWith(`${ACCESS_COOKIE}=`));
     const refresh = issued.values.find((value) => value.startsWith(`${REFRESH_COOKIE}=`));
     const csrf = issued.values.find((value) => value.startsWith(`${CSRF_COOKIE}=`));
+    const sessionMode = issued.values.find((value) =>
+      value.startsWith(`${SESSION_MODE_COOKIE}=`),
+    );
 
     expect(access).toContain("HttpOnly");
     expect(refresh).toContain("HttpOnly");
@@ -45,7 +49,34 @@ describe("sessão BFF protegida", () => {
     expect(refresh).toContain("SameSite=Lax");
     expect(csrf).toContain("SameSite=Strict");
     expect(csrf).not.toContain("HttpOnly");
+    expect(sessionMode).toContain("HttpOnly");
+    expect(sessionMode).toContain("remembered");
     expect(issued.values.join("\n")).not.toContain("Domain=");
+  });
+
+  it("preserva a duração curta ao rotacionar uma sessão não lembrada", () => {
+    const shortSession = sessionCookies(
+      {
+        access_token: "access-secret",
+        refresh_token: "refresh-secret",
+        expires_in: 900,
+      },
+      "client",
+      false,
+      "e".repeat(64),
+    );
+    expect(shortSession.values.join("\n")).toContain(
+      `${SESSION_MODE_COOKIE}=session`,
+    );
+    expect(sessionSource).toContain(
+      'cookies.get(SESSION_MODE_COOKIE) === "remembered"',
+    );
+    expect(sessionSource).toContain(
+      "sessionCookies(rotated, surface as AuthSurface, remembered)",
+    );
+    expect(sessionSource).not.toContain(
+      "sessionCookies(rotated, surface as AuthSurface, true)",
+    );
   });
 
   it("exige double-submit CSRF no logout", () => {
@@ -70,7 +101,7 @@ describe("sessão BFF protegida", () => {
 
   it("remove integralmente os cookies no logout", () => {
     const cleared = clearedSessionCookies();
-    expect(cleared).toHaveLength(4);
+    expect(cleared).toHaveLength(5);
     cleared.forEach((value) => {
       expect(value).toContain("Max-Age=0");
       expect(value).toContain("Secure");

@@ -12,12 +12,8 @@ const resetFunction = readFileSync(
   new URL("../netlify/functions/admin-reset-user-password.ts", import.meta.url),
   "utf8",
 );
-const staffLogin = readFileSync(
-  new URL("../netlify/functions/staff-phone-login.ts", import.meta.url),
-  "utf8",
-);
-const customerLogin = readFileSync(
-  new URL("../netlify/functions/customer-phone-login.ts", import.meta.url),
+const bffLogin = readFileSync(
+  new URL("../netlify/functions/auth-bff-login.ts", import.meta.url),
   "utf8",
 );
 
@@ -57,11 +53,9 @@ describe("credenciais temporárias com expiração", () => {
   });
 
   it("bloqueia e revoga tentativas com senha temporária vencida", () => {
-    [staffLogin, customerLogin].forEach((source) => {
-      expect(source).toContain("temporary_password_expires_at");
-      expect(source).toContain("temporary_password_expired");
-      expect(source).toContain("logout?scope=global");
-      expect(source).toContain("expiresAt <= Date.now()");
-    });
+    expect(bffLogin).toContain("temporary_password_expires_at");
+    expect(bffLogin).toContain("temporary_password_expired");
+    expect(bffLogin).toContain("logout?scope=global");
+    expect(bffLogin).toContain("Date.parse(expiresAt) <= Date.now()");
   });
 });

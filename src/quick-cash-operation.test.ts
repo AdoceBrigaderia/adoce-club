@@ -17,7 +17,8 @@ const styles = readFileSync(
 describe("caixa rápido na operação", () => {
   it("usa somente RPCs protegidos pelo BFF", () => {
     expect(source).toContain('"staff_get_business_workspace"');
-    expect(source).toContain('"staff_record_cash_movement"');
+    expect(source).toContain('"staff_record_cash_movement_v2"');
+    expect(source).toContain("pendingOperationKey");
     expect(source).not.toContain("requireSupabase");
     expect(source).not.toContain("Authorization");
   });

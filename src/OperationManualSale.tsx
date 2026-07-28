@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { resolvePublicImageSource } from "./public-image-fallbacks";
 import { bffRpc } from "./services/bff-rpc";
+import {
+  completeOperation,
+  pendingOperationKey,
+} from "./services/operation-idempotency";
 import "./operation-commerce-tools.css";
 import "./operation-quick-sale-ranking.css";
 
@@ -229,18 +233,24 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
 
     setBusy(true);
     setNotice("");
+    const operationPayload = {
+      target_session_id: cashSessionId,
+      requested_customer_name: name,
+      requested_customer_phone: phone,
+      requested_items: items,
+      requested_payment_method: method,
+      requested_notes: notes,
+    };
+    const operation = pendingOperationKey("manual-sale", operationPayload);
     try {
       const data = await bffRpc<{ order_number?: string }>(
-        "staff_create_manual_sale_in_cash",
+        "staff_create_manual_sale_in_cash_v2",
         {
-          target_session_id: cashSessionId,
-          requested_customer_name: name,
-          requested_customer_phone: phone,
-          requested_items: items,
-          requested_payment_method: method,
-          requested_notes: notes,
+          requested_operation_key: operation.value,
+          ...operationPayload,
         },
       );
+      completeOperation(operation.fingerprint);
       setNotice(
         `Venda ${data?.order_number || ""} registrada, estoque baixado e caixa atualizado.`,
       );

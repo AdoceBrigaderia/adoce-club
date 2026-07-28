@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
+  SESSION_MODE_COOKIE,
   SURFACE_COOKIE,
   allowedOrigin,
   clearedSessionCookies,
@@ -82,6 +83,7 @@ export default async (request: Request) => {
   let accessToken = cookies.get(ACCESS_COOKIE) || "";
   const surface =
     cookies.get(SURFACE_COOKIE) === "operation" ? "operation" : "client";
+  const remembered = cookies.get(SESSION_MODE_COOKIE) === "remembered";
   if (!refreshToken)
     return secureJson(
       { authenticated: false },
@@ -151,7 +153,7 @@ export default async (request: Request) => {
   }
 
   const responseCookies = rotated
-    ? sessionCookies(rotated, surface as AuthSurface, true).values
+    ? sessionCookies(rotated, surface as AuthSurface, remembered).values
     : [];
   return secureJson(
     {

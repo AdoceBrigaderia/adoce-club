@@ -17,7 +17,9 @@ const clientSource = readFileSync(
 describe("RPCs protegidos pelo BFF", () => {
   it("mantém allowlist explícita das operações liberadas", () => {
     expect(OPERATION_RPC_ALLOWLIST).toContain("staff_get_business_workspace");
-    expect(OPERATION_RPC_ALLOWLIST).toContain("staff_create_manual_sale_in_cash");
+    expect(OPERATION_RPC_ALLOWLIST).toContain(
+      "staff_create_manual_sale_in_cash_v2",
+    );
     expect(OPERATION_RPC_ALLOWLIST).toContain("manager_update_staff_member");
     expect(isAllowedOperationRpc("staff_open_cash_session")).toBe(true);
     expect(isAllowedOperationRpc("qualquer_rpc_injetada")).toBe(false);

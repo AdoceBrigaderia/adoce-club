@@ -2,6 +2,7 @@ export const ACCESS_COOKIE = "__Host-adoce-access";
 export const REFRESH_COOKIE = "__Host-adoce-refresh";
 export const SURFACE_COOKIE = "__Host-adoce-surface";
 export const CSRF_COOKIE = "__Host-adoce-csrf";
+export const SESSION_MODE_COOKIE = "__Host-adoce-session-mode";
 
 export type AuthSurface = "client" | "operation";
 
@@ -99,16 +100,32 @@ export function sessionCookies(
         httpOnly: false,
         sameSite: "Strict",
       }),
+      cookie(SESSION_MODE_COOKIE, remember ? "remembered" : "session", {
+        maxAge: refreshMaxAge,
+        httpOnly: true,
+        sameSite: "Strict",
+      }),
     ],
   };
 }
 
 export function clearedSessionCookies() {
-  return [ACCESS_COOKIE, REFRESH_COOKIE, SURFACE_COOKIE, CSRF_COOKIE].map((name) =>
+  return [
+    ACCESS_COOKIE,
+    REFRESH_COOKIE,
+    SURFACE_COOKIE,
+    CSRF_COOKIE,
+    SESSION_MODE_COOKIE,
+  ].map((name) =>
     cookie(name, "", {
       maxAge: 0,
       httpOnly: name !== CSRF_COOKIE,
-      sameSite: name === SURFACE_COOKIE || name === CSRF_COOKIE ? "Strict" : "Lax",
+      sameSite:
+        name === SURFACE_COOKIE ||
+        name === CSRF_COOKIE ||
+        name === SESSION_MODE_COOKIE
+          ? "Strict"
+          : "Lax",
     }),
   );
 }

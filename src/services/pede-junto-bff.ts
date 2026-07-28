@@ -6,6 +6,16 @@ export type PedeJuntoAccess = {
 };
 
 type Envelope<T> = { data?: T; error?: string };
+const pendingOperationKeys = new Map<string, string>();
+
+function operationKey(action: "create" | "join", payload: Record<string, unknown>) {
+  const fingerprint = `${action}:${JSON.stringify(payload)}`;
+  const current = pendingOperationKeys.get(fingerprint);
+  if (current) return { fingerprint, value: current };
+  const value = crypto.randomUUID();
+  pendingOperationKeys.set(fingerprint, value);
+  return { fingerprint, value };
+}
 
 function readCookie(name: string) {
   const prefix = `${name}=`;
@@ -51,39 +61,56 @@ export function loadPedeJuntoCatalog() {
   return request<PedeJuntoFlavor[]>("catalog");
 }
 
-export function createPedeJuntoGroup(input: {
+export async function createPedeJuntoGroup(input: {
   groupName: string;
   organizerName: string;
   organizerPhone: string;
   deliveryAddress: string;
   deliveryReference?: string;
 }) {
-  return request<{
-    public_code: string;
-    invitation_token: string;
-    room: PedeJuntoRoom;
-    access: PedeJuntoAccess;
-  }>("create", {
+  const payload = {
     group_name: input.groupName,
     organizer_name: input.organizerName,
     organizer_phone: input.organizerPhone,
     delivery_address: input.deliveryAddress,
     delivery_reference: input.deliveryReference || null,
+  };
+  const key = operationKey("create", payload);
+  const result = await request<{
+    public_code: string;
+    invitation_token: string;
+    room: PedeJuntoRoom;
+    access: PedeJuntoAccess;
+  }>("create", {
+    ...payload,
+    requested_operation_key: key.value,
   });
+  pendingOperationKeys.delete(key.fingerprint);
+  return result;
 }
 
-export function joinPedeJuntoGroup(input: {
+export async function joinPedeJuntoGroup(input: {
   code: string;
   invitationToken: string;
   participantName: string;
   participantPhone: string;
 }) {
-  return request<{ room: PedeJuntoRoom; access: PedeJuntoAccess }>("join", {
+  const payload = {
     group_code: input.code,
     invitation_token: input.invitationToken,
     participant_name: input.participantName,
     participant_phone: input.participantPhone,
+  };
+  const key = operationKey("join", payload);
+  const result = await request<{
+    room: PedeJuntoRoom;
+    access: PedeJuntoAccess;
+  }>("join", {
+    ...payload,
+    requested_operation_key: key.value,
   });
+  pendingOperationKeys.delete(key.fingerprint);
+  return result;
 }
 
 export function loadPedeJuntoRoom(code: string, invitationToken: string) {

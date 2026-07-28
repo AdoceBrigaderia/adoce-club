@@ -6,6 +6,10 @@ import {
   secureJson,
   validCsrf,
 } from "./_shared/session-security";
+import {
+  consumePublicRateLimits,
+  ipRateLimitRule,
+} from "./_shared/public-rate-limit";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -172,6 +176,10 @@ export default async (request: Request) => {
   if (!allowedOrigin(request, env("SITE_URL")))
     return secureJson({ error: "Origem não autorizada." }, 403);
 
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > 32_768)
+    return secureJson({ error: "Pedido maior que o permitido." }, 413);
+
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
     env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
@@ -269,22 +277,57 @@ export default async (request: Request) => {
 
     const customerName = text(body.requested_customer_name, 120);
     const customerPhone = text(body.requested_customer_phone, 32);
+    const customerPhoneDigits = customerPhone.replace(/\D/g, "");
     const notes = text(body.requested_notes, 2000);
     const paymentMethod = text(body.requested_payment_method, 40);
+    const operationKey = text(body.requested_operation_key, 36);
     if (
       customerName.length < 3 ||
-      customerPhone.replace(/\D/g, "").length < 10
+      customerPhoneDigits.length < 10
     )
       return secureJson({ error: "Informe nome e WhatsApp válidos." }, 400);
     if (!PAYMENT_CODE.test(paymentMethod))
       return secureJson({ error: "Forma de pagamento inválida." }, 400);
+    if (!UUID.test(operationKey))
+      return secureJson({ error: "Identificação do pedido inválida." }, 400);
+
+    const rateLimit = await consumePublicRateLimits({
+      supabaseUrl,
+      secretKey,
+      pepper:
+        env("PUBLIC_RATE_LIMIT_PEPPER") ||
+        env("WHATSAPP_OTP_PEPPER") ||
+        secretKey,
+      rules: [
+        ipRateLimitRule(request, "instant-order:ip", 3600, 30),
+        {
+          bucket: "instant-order:phone",
+          subject: `phone:${customerPhoneDigits}`,
+          windowSeconds: 3600,
+          maxRequests: 8,
+        },
+      ],
+    });
+    if (!rateLimit.allowed) {
+      return secureJson(
+        {
+          error: rateLimit.failed
+            ? "Pedidos temporariamente indisponíveis."
+            : "Muitas tentativas. Aguarde antes de enviar outro pedido.",
+          code: rateLimit.failed ? "rate_limit_unavailable" : "rate_limited",
+          retry_after_seconds: rateLimit.retryAfterSeconds,
+        },
+        rateLimit.failed ? 503 : 429,
+      );
+    }
 
     const upstream = await rpc(
       supabaseUrl,
       apiKey,
       bearer,
-      "submit_instant_order_v5",
+      "submit_instant_order_v6",
       {
+        requested_operation_key: operationKey,
         requested_customer_name: customerName,
         requested_customer_phone: customerPhone,
         requested_items: items,

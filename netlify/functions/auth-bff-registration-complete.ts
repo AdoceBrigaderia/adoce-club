@@ -48,6 +48,7 @@ export default async (request: Request) => {
     token?: string;
     fullName?: string;
     phone?: string;
+    legalAccepted?: boolean;
     marketingAccepted?: boolean;
     whatsappChallengeId?: string | null;
     referralCode?: string | null;
@@ -62,6 +63,14 @@ export default async (request: Request) => {
 
   if (!/^\S+@\S+\.\S+$/.test(email) || token.length !== 6 || !phone || fullName.length < 5)
     return secureJson({ error: "Revise os dados e o código informado." }, 400);
+  if (body.legalAccepted !== true)
+    return secureJson(
+      {
+        error:
+          "Confirme os Termos do Clube e a Política de Privacidade para concluir o cadastro.",
+      },
+      400,
+    );
   if (challengeId && !/^[0-9a-f-]{36}$/i.test(challengeId))
     return secureJson({ error: "Validação do WhatsApp inválida." }, 400);
 
@@ -93,6 +102,7 @@ export default async (request: Request) => {
     {
       next_full_name: fullName,
       next_phone_e164: phone,
+      next_legal_accepted: true,
       next_marketing: Boolean(body.marketingAccepted),
       target_whatsapp_challenge_id: challengeId,
       target_referral_code: referralCode,

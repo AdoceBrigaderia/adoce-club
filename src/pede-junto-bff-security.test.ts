@@ -14,6 +14,13 @@ const endpoint = readFileSync(
   new URL("../netlify/functions/pede-junto-bff.ts", import.meta.url),
   "utf8",
 );
+const hardeningMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260728170307_harden_pede_junto_public_writes.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("Pede Junto pelo BFF", () => {
   it("remove tokens e Supabase direto da superfície pública", () => {
@@ -57,5 +64,24 @@ describe("Pede Junto pelo BFF", () => {
     expect(page).toContain("submitPedeJuntoGroup");
     expect(page).toContain("Convidar no WhatsApp");
     expect(page).toContain("Cada um paga o seu");
+  });
+
+  it("limita e torna idempotentes as escritas públicas de criação e entrada", () => {
+    expect(endpoint).toContain("consumePublicRateLimits");
+    expect(endpoint).toContain("pede-junto-create:ip");
+    expect(endpoint).toContain("pede-junto-join:phone");
+    expect(endpoint).toContain('"create_pede_junto_group_v2"');
+    expect(endpoint).toContain('"join_pede_junto_group_v3"');
+    expect(client).toContain("pendingOperationKeys");
+    expect(client).toContain("crypto.randomUUID()");
+    expect(client).toContain("requested_operation_key: key.value");
+    expect(hardeningMigration).toContain("pg_advisory_xact_lock");
+    expect(hardeningMigration).toContain(
+      "private.pede_junto_write_requests",
+    );
+    expect(hardeningMigration).toContain("jsonb_build_object('idempotent', true)");
+    expect(hardeningMigration).toMatch(
+      /revoke all on function public\.create_pede_junto_group\([\s\S]*service_role;/,
+    );
   });
 });

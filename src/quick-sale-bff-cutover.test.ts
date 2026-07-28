@@ -23,7 +23,8 @@ describe("venda rápida protegida pelo BFF", () => {
     expect(OPERATION_RPC_ALLOWLIST).toContain("staff_get_quick_sale_catalog");
     expect(source).toContain('"staff_get_quick_sale_catalog"');
     expect(source).toContain('"staff_get_business_workspace"');
-    expect(source).toContain('"staff_create_manual_sale_in_cash"');
+    expect(source).toContain('"staff_create_manual_sale_in_cash_v2"');
+    expect(source).toContain("pendingOperationKey");
   });
 
   it("permite adicionar produto com um toque e ajustar quantidade sem modal", () => {

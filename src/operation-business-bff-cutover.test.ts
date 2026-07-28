@@ -19,7 +19,7 @@ describe("corte BFF da estrutura operacional", () => {
   it("executa todas as operações do caixa pelo proxy BFF", () => {
     expect(workspace).toContain('bffRpc<Workspace>("staff_get_business_workspace")');
     expect(workspace).toContain('bffRpc("staff_open_cash_session"');
-    expect(workspace).toContain('bffRpc("staff_record_cash_movement"');
+    expect(workspace).toContain('bffRpc("staff_record_cash_movement_v2"');
     expect(workspace).toContain('bffRpc("staff_close_cash_session"');
     expect(workspace).not.toContain("requireSupabase");
   });
