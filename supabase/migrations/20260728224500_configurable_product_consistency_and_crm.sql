@@ -464,7 +464,7 @@ create or replace function private.capture_service_request_pricing_snapshot(
   target_product_id uuid,
   target_quantity integer,
   target_selections jsonb default '{}'::jsonb,
-  target_configuration_quote jsonb default null
+  target_cake_quote jsonb default null
 )
 returns boolean
 language plpgsql
@@ -479,7 +479,7 @@ declare
     else '{}'::jsonb
   end;
   normalized_quote jsonb := case
-    when jsonb_typeof(target_configuration_quote) = 'object' then target_configuration_quote
+    when jsonb_typeof(target_cake_quote) = 'object' then target_cake_quote
     else null
   end;
   effective_total_cost numeric(14,4);

@@ -29,6 +29,8 @@ describe("consistência dos produtos configuráveis", () => {
   });
 
   it("trata a cotação como total do pedido sem multiplicar novamente as opções", () => {
+    expect(migration).toContain("target_cake_quote jsonb default null");
+    expect(migration).not.toContain("target_configuration_quote");
     expect(migration).toContain("resolved_total_cost := round(resolved_base_cost + quote_option_cost, 4)");
     expect(migration).toContain("resolved_total_price := quote_estimated_price");
     expect(migration).toContain("resolved_unit_cost := round(resolved_total_cost / target_quantity, 4)");
