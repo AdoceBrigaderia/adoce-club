@@ -23,6 +23,11 @@ test('aplicação de migrations é manual, isolada e exige commit exato', () => 
   assert.match(workflow, /BACKUP CONFIRMADO/);
 });
 
+test('não permite aplicadores automáticos, parciais ou vinculados por mensagem de commit', () => {
+  assert.equal(fs.existsSync('.github/workflows/homologation-apply-products-one-shot.yml'), false);
+  assert.equal(fs.existsSync('.github/workflows/apply-homologation-linked.yml'), false);
+});
+
 test('workflow executa dry-run antes da aplicação e não permite conjunto parcial', () => {
   const dryRunPosition = workflow.indexOf('--dry-run');
   const applyPosition = workflow.indexOf('Aplicar exatamente o conjunto aprovado');
