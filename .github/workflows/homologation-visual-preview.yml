@@ -16,6 +16,9 @@ on:
       - reestruturacao/ux-crm-operacao-imagens-v1
     paths:
       - .github/workflows/homologation-visual-preview.yml
+      - package.json
+      - scripts/serve-homologation-preview.mjs
+      - scripts/serve-homologation-preview.test.mjs
       - src/HomologationValidationBanner.tsx
       - src/HomologationVisualNavigator.tsx
       - src/homologation-visual-review.ts
@@ -95,25 +98,78 @@ jobs:
           set -euo pipefail
           export VITE_ADOCE_PREVIEW_BUILT_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           npm run build
-          mkdir -p artifacts/homologacao-visual-offline
-          cp -R dist artifacts/homologacao-visual-offline/dist
-          cat > artifacts/homologacao-visual-offline/LEIA-ME.txt <<'EOF'
+          package_dir="artifacts/homologacao-visual-offline"
+          mkdir -p "$package_dir"
+          cp -R dist "$package_dir/dist"
+          cp scripts/serve-homologation-preview.mjs "$package_dir/servidor-preview.mjs"
+
+          cat > "$package_dir/INICIAR-PREVIEW-WINDOWS.cmd" <<'EOF_WINDOWS'
+          @echo off
+          cd /d "%~dp0"
+          where node >nul 2>nul
+          if errorlevel 1 (
+            echo Node.js 22 ou superior nao foi encontrado.
+            echo Instale o Node.js e execute este arquivo novamente.
+            pause
+            exit /b 1
+          )
+          node servidor-preview.mjs --open
+          if errorlevel 1 pause
+          EOF_WINDOWS
+
+          cat > "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command" <<'EOF_UNIX'
+          #!/usr/bin/env sh
+          set -eu
+          cd "$(dirname "$0")"
+          if ! command -v node >/dev/null 2>&1; then
+            echo "Node.js 22 ou superior não foi encontrado."
+            exit 1
+          fi
+          exec node servidor-preview.mjs --open
+          EOF_UNIX
+          chmod +x "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command"
+
+          cat > "$package_dir/LEIA-ME.txt" <<'EOF_README'
           PORTAL ADOCE — PREVIEW VISUAL OFFLINE
 
-          1. Instale Node.js 22 ou superior.
-          2. Abra o terminal nesta pasta.
-          3. Execute: npx --yes serve@14.2.4 -s dist -l 4173
-          4. Acesse: http://localhost:4173
+          INÍCIO RÁPIDO
+          - Windows: dê dois cliques em INICIAR-PREVIEW-WINDOWS.cmd
+          - macOS/Linux: execute INICIAR-PREVIEW-LINUX-MAC.command
+          - Alternativa: node servidor-preview.mjs --open
+
+          O navegador abrirá http://127.0.0.1:4173. Para encerrar, feche o terminal ou pressione Ctrl+C.
+          Requisito: Node.js 22 ou superior. Não é necessário instalar pacotes nem acessar a internet.
 
           Este pacote é somente para validação visual. Integrações externas e ações transacionais podem estar indisponíveis.
+          O servidor aceita conexões apenas do próprio computador.
           Produção não foi alterada.
-          EOF
+          EOF_README
+
           printf '%s\n' \
             "Commit: ${GITHUB_SHA}" \
             "Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}" \
             "Modo: validação visual offline" \
+            "Servidor: localhost/127.0.0.1" \
             "Produção: não alterada" \
-            > artifacts/homologacao-visual-offline/EVIDENCIA.txt
+            > "$package_dir/EVIDENCIA.txt"
+
+          node "$package_dir/servidor-preview.mjs" --port 4187 > "$package_dir/SERVIDOR-TESTE.log" 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl -sS -o "$package_dir/SMOKE-INDEX.html" -w '%{http_code}' http://127.0.0.1:4187/ || true)"
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          test "$status" = "200"
+          grep -q 'id="root"' "$package_dir/SMOKE-INDEX.html"
+          route_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:4187/operacao/venda-rapida)"
+          test "$route_status" = "200"
+          cleanup
+          wait "$server_pid" 2>/dev/null || true
+          trap - EXIT
 
       - name: Preservar preview offline para teste imediato
         id: offline-upload
@@ -232,6 +288,7 @@ jobs:
               `- URL: ${process.env.HOMOLOGATION_VISUAL_URL}`,
               `- [Baixar preview offline](${process.env.OFFLINE_ARTIFACT_URL})`,
               `- Digest offline: \`${process.env.OFFLINE_ARTIFACT_DIGEST}\``,
+              "- Execução offline: use o iniciador do seu sistema; não é necessário instalar pacotes.",
               "- Escopo: validação visual em celular, tablet e computador.",
               "- Roteiro: checklist guiado, status por tela, observações e relatório copiável.",
               "- Limite: ações transacionais e integrações externas podem estar indisponíveis neste preview estático.",
@@ -260,7 +317,10 @@ jobs:
               `- Commit: \`${context.sha}\``,
               `- [Baixar pacote para teste local](${process.env.OFFLINE_ARTIFACT_URL})`,
               `- Digest: \`${process.env.OFFLINE_ARTIFACT_DIGEST}\``,
-              "- Execução local: `npx --yes serve@14.2.4 -s dist -l 4173`.",
+              "- Windows: dois cliques em `INICIAR-PREVIEW-WINDOWS.cmd`.",
+              "- macOS/Linux: execute `INICIAR-PREVIEW-LINUX-MAC.command`.",
+              "- Alternativa: `node servidor-preview.mjs --open`.",
+              "- Não é necessário instalar pacotes nem acessar a internet após o download.",
               "- A publicação web foi ignorada porque `NETLIFY_AUTH_TOKEN` não está configurado.",
               "- Produção: **não alterada**.",
             ].join("\n");
