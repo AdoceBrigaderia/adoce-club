@@ -112,6 +112,7 @@ begin
       product.slug in ('docinhos-tradicionais', 'docinhos-especiais')
       and product.product_type = 'sweet'
       and product.customization_mode = 'option_groups'
+      and coalesce((product.configuration_rules->>'allowAddons')::boolean, true) = false
     ) or (
       product.slug in (
         'escola-alegria',
@@ -121,6 +122,7 @@ begin
       )
       and product.product_type = 'school_kit'
       and product.customization_mode = 'option_groups'
+      and coalesce((product.configuration_rules->>'allowAddons')::boolean, false) = true
     );
 
   if configured_catalog_count <> 6 then
