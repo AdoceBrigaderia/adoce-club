@@ -116,13 +116,37 @@ jobs:
             --include-all \
             --dry-run \
             > artifacts/homologation-migration-apply/dry-run.log 2>&1
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+            --command="select version from supabase_migrations.schema_migrations where version >= '20260728000000' order by version" \
+            > artifacts/homologation-migration-apply/already-applied-versions.txt
           node - <<'NODE'
           const fs = require('fs');
           const plan = JSON.parse(fs.readFileSync(process.env.PENDING_PLAN, 'utf8'));
           const output = fs.readFileSync('artifacts/homologation-migration-apply/dry-run.log', 'utf8');
-          const missing = plan.pending_migrations
-            .map((migration) => migration.version)
-            .filter((version) => !output.includes(version));
+          const expected = plan.pending_migrations.map((migration) => migration.version).sort();
+          const applied = fs.readFileSync(
+            'artifacts/homologation-migration-apply/already-applied-versions.txt',
+            'utf8',
+          ).trim().split(/\s+/).filter(Boolean).sort();
+          const pending = [...output.matchAll(/(\d{14})_[^\s]+\.sql/g)]
+            .map((match) => match[1])
+            .sort();
+          const expectedPending = expected.filter((version) => !applied.includes(version));
+          const missing = expected.filter(
+            (version) => !output.includes(version) && !applied.includes(version),
+          );
+          if (applied.some((version) => !expected.includes(version))) {
+            throw new Error('HistÃ³rico remoto contÃ©m migration extra fora do plano aprovado.');
+          }
+          if (JSON.stringify(pending) !== JSON.stringify(expectedPending)) {
+            throw new Error(
+              `Retomada divergente: ${applied.length} aplicadas e ${pending.length} pendentes.`,
+            );
+          }
+          if (new Set([...applied, ...pending]).size !== 22) {
+            throw new Error('O conjunto aplicado mais pendente nÃ£o totaliza exatamente 22 migrations.');
+          }
           if (plan.pending_migrations.length !== 22) throw new Error('Plano não contém 22 migrations.');
           if (missing.length) throw new Error(`Dry-run não listou: ${missing.join(', ')}`);
           NODE

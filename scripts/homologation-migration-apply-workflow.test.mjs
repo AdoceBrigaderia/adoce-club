@@ -47,6 +47,9 @@ test('workflow executa dry-run antes da aplicação e não permite conjunto parc
   assert.ok(dryRunPosition > 0, 'dry-run precisa existir');
   assert.ok(applyPosition > dryRunPosition, 'aplicação precisa ocorrer depois do dry-run');
   assert.match(workflow, /pending_count !== 22/);
+  assert.match(workflow, /already-applied-versions\.txt/);
+  assert.match(workflow, /expectedPending/);
+  assert.match(workflow, /new Set\(\[\.\.\.applied, \.\.\.pending\]\)\.size !== 22/);
   assert.match(workflow, /--include-all/);
   assert.match(workflow, /expected-versions\.txt/);
   assert.match(workflow, /diff -u/);
