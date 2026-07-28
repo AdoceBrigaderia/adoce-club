@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, PackageCheck, ShieldCheck } from "lucide-react";
 import ConfigurableProductBuilder from "./ConfigurableProductBuilder";
 import {
+  normalizeProductConfigurationRules,
   productConfigurationPayload,
   quoteProductConfiguration,
   type ConfigurableCommercialProduct,
@@ -67,17 +68,23 @@ export default function ConfigurableProductCatalogPage({ segment }: { segment: S
   }, [segment]);
 
   const selected = useMemo(() => products.find((product) => product.id === selectedId) || null, [products, selectedId]);
+  const rules = useMemo(
+    () => normalizeProductConfigurationRules(selected?.configuration_rules),
+    [selected],
+  );
+  const priceTiers = rules.priceTiers;
   const minimumDate = selected ? businessDateAfter(new Date(), selected.lead_business_days) : "";
 
   useEffect(() => {
     if (!selected) return;
-    setQuantity(selected.minimum_quantity);
+    const initialQuantity = priceTiers[0]?.quantity || selected.minimum_quantity;
+    setQuantity(initialQuantity);
     setDraft({});
     setQuote(null);
     setConfigurationError("");
     setRequestNumber("");
     setForm((current) => ({ ...current, date: businessDateAfter(new Date(), selected.lead_business_days) }));
-  }, [selected]);
+  }, [selected, priceTiers]);
 
   const updateQuantity = (next: number) => {
     if (!selected) return;
@@ -164,13 +171,23 @@ export default function ConfigurableProductCatalogPage({ segment }: { segment: S
 
       {selected ? <form className="configurable-order-form" onSubmit={submit} noValidate>
         <section className="configurable-order-quantity">
-          <div><small>Etapa 2</small><h2>Defina a quantidade</h2><p>Mínimo: {selected.minimum_quantity} unidade(s).</p></div>
-          <input type="number" min={selected.minimum_quantity} value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} />
+          <div>
+            <small>Etapa 2</small>
+            <h2>{priceTiers.length ? "Escolha o pacote" : "Defina a quantidade"}</h2>
+            <p>{priceTiers.length ? "Os valores e o limite de sabores mudam conforme o pacote." : `Mínimo: ${selected.minimum_quantity} unidade(s).`}</p>
+          </div>
+          {priceTiers.length ? (
+            <select value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} aria-label="Pacote da encomenda">
+              {priceTiers.map((tier) => <option value={tier.quantity} key={tier.quantity}>{tier.quantity} unidades — {money(tier.price)}</option>)}
+            </select>
+          ) : (
+            <input type="number" min={selected.minimum_quantity} max={rules.maximumTotalQuantity} value={quantity} onChange={(event) => updateQuantity(Number(event.target.value))} />
+          )}
         </section>
 
         <ConfigurableProductBuilder product={selected} quantity={quantity} draft={draft} onDraftChange={setDraft} onQuoteChange={(next, error) => { setQuote(next); setConfigurationError(error); }} />
         {configurationError ? <p className="configurable-catalog-error" role="alert">{configurationError}</p> : null}
-        {quote ? <aside className="configurable-quote"><strong>Resumo registrado</strong><p>{quote.summary.join(" · ") || "Produto sem personalização"}</p><small>Estimativa adicional: {money(quote.priceAdjustment)}</small></aside> : null}
+        {quote ? <aside className="configurable-quote"><strong>Resumo registrado</strong><p>{quote.summary.join(" · ") || "Produto sem personalização"}</p><small>Total estimado: {money(quote.estimatedPrice)}{quote.priceAdjustment > 0 ? ` · adicionais: ${money(quote.priceAdjustment)}` : ""}</small></aside> : null}
 
         <section className="configurable-customer-data">
           <header><small>Etapa 3</small><h2>Seus dados e a data</h2></header>
