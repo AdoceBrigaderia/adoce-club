@@ -1,0 +1,79 @@
+name: Gate das configurações da operação
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/operation-settings-preview-gate.yml
+      - src/HomologationOperationPreview.tsx
+      - src/HomologationOperationSettings.tsx
+      - src/homologation-operation-settings.css
+      - src/homologation-operation-settings.test.ts
+      - src/homologation-visual-preview.test.ts
+
+concurrency:
+  group: operation-settings-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: TypeScript, testes e build visual
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_ADOCE_VALIDATION_MODE: visual
+      VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, commit e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes direcionados
+        run: |
+          npx vitest run \
+            src/homologation-operation-settings.test.ts \
+            src/homologation-visual-preview.test.ts
+
+      - name: Gerar build visual isolado
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: npx vite build
+
+      - name: Confirmar isolamento de produção
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          ! grep -R "uefwywizqhfvvijaopcn" dist
+          ! grep -R "adocebrigaderia.com.br" dist
