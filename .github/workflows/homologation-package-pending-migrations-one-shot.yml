@@ -2,17 +2,23 @@ name: Empacotar migrations pendentes da homologação
 
 on:
   pull_request:
-    types: [synchronize]
+    types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/homologation-package-pending-migrations-one-shot.yml
+      - docs/evidence/homologation-pending-migrations-20260728.json
+      - supabase/migrations/**
+
+concurrency:
+  group: homologation-pending-migrations-package-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
-  AUTHORIZED_PARENT: fac078e853e0760d51b7733c043ca3d139b9d463
   PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
   PRODUCTION_REF: uefwywizqhfvvijaopcn
 
 jobs:
@@ -26,17 +32,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 2
+          fetch-depth: 1
           persist-credentials: false
 
-      - name: Validar commit e alteração única
+      - name: Validar branch, commit e isolamento
         shell: bash
         run: |
           set -euo pipefail
           test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
-          test "$(git rev-parse HEAD^)" = "$AUTHORIZED_PARENT"
-          test "$(git diff --name-only "$AUTHORIZED_PARENT" HEAD)" = ".github/workflows/homologation-package-pending-migrations-one-shot.yml"
+          test "$HOMOLOGATION_REF" = "vazozolhbehnriytzcdc"
+          test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
+          test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
 
       - name: Validar plano e empacotar exatamente as 22 migrations
         shell: bash
@@ -48,7 +55,8 @@ jobs:
           const path = require('path');
           const crypto = require('crypto');
           const plan = JSON.parse(fs.readFileSync(process.env.PENDING_PLAN, 'utf8'));
-          if (plan.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Projeto de homologação inválido.');
+          if (plan.project_id !== process.env.HOMOLOGATION_REF) throw new Error('Projeto de homologação inválido.');
+          if (plan.production_project_id !== process.env.PRODUCTION_REF) throw new Error('Referência produtiva esperada não está declarada.');
           if (plan.production_forbidden !== true) throw new Error('Bloqueio produtivo ausente.');
           if (plan.pending_migrations.length !== 22) throw new Error(`Esperadas 22 migrations; recebidas ${plan.pending_migrations.length}.`);
           const manifest = [];
@@ -74,7 +82,7 @@ jobs:
               repository: 'AdoceBrigaderia/adoce-club',
               branch: process.env.EXPECTED_BRANCH,
               commit: process.env.GITHUB_SHA,
-              project_id: 'vazozolhbehnriytzcdc',
+              project_id: process.env.HOMOLOGATION_REF,
               production_forbidden: true,
               migrations: manifest,
             }, null, 2),
