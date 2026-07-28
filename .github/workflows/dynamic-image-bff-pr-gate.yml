@@ -1,0 +1,87 @@
+name: Gate das capas dinâmicas
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/dynamic-image-bff-pr-gate.yml
+      - src/services/bff-dynamic-images.ts
+      - src/OperationDynamicImageLibraryBff.tsx
+      - src/OperationDynamicImageAssetHistoryBff.tsx
+      - src/OperationSiteVisualSettingsBff.tsx
+      - src/dynamic-image-assets-bff.test.ts
+      - netlify/functions/auth-bff-dynamic-image-upload.ts
+      - netlify/functions/_shared/bff-rpc-policy.ts
+      - supabase/migrations/20260728164000_dynamic_image_assets_bff.sql
+
+concurrency:
+  group: dynamic-image-bff-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: TypeScript, segurança, testes e build
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_ADOCE_VALIDATION_MODE: visual
+      VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, commit e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes direcionados
+        run: |
+          npx vitest run \
+            src/dynamic-image-assets-bff.test.ts \
+            src/image-library-dynamic.test.ts \
+            src/dynamic-image-asset-history.test.ts \
+            src/site-visual-assets-bff.test.ts \
+            src/bff-rpc-security.test.ts
+
+      - name: Gerar build visual isolado
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: npx vite build
+
+      - name: Confirmar isolamento e ausência de segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          ! grep -R "uefwywizqhfvvijaopcn" dist
+          ! grep -R "SUPABASE_SECRET_KEY" dist
+          ! grep -R "service_role" dist
+          grep -R "vazozolhbehnriytzcdc" dist >/dev/null
