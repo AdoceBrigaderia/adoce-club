@@ -16,6 +16,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import CustomerServiceRequestHistory from "./CustomerServiceRequestHistory";
 import { bffRpc } from "./services/bff-rpc";
 import "./operation-customer-360.css";
 
@@ -438,6 +439,8 @@ export default function OperationCustomer360() {
                   </details>
                 </section>
               </div>
+
+              <CustomerServiceRequestHistory profileId={workspace.profile.id} />
 
               <section className="customer-360-footer-summary">
                 <span><CalendarDays /><small>Último pedido</small><strong>{dateTime(workspace.summary.last_order_at)}</strong></span>
