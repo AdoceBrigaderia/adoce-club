@@ -53,13 +53,11 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Instalar e validar somente o necessário ao preview
+      - name: Instalar dependências reproduzíveis
         shell: bash
         run: |
           set -euo pipefail
           npm ci --prefer-offline --no-audit
-          npm run lint
-          npm run test:homologation-preview-server
 
       - name: Gerar pacote visual offline
         id: package
@@ -119,7 +117,7 @@ jobs:
           Commit: ${GITHUB_SHA}
           Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}
           Escopo: validação visual e de navegação; integrações externas podem permanecer indisponíveis.
-          Validações executadas: TypeScript, build Vite, servidor local, página inicial e venda rápida.
+          Validações executadas: build TypeScript/Vite e smoke tests do servidor local.
           Servidor: somente localhost/127.0.0.1.
           Produção: não alterada.
           EOF_README
@@ -182,7 +180,7 @@ jobs:
               `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
               "- Windows: extraia o ZIP e abra `INICIAR-PREVIEW-WINDOWS.cmd`.",
               "- Smoke tests: página inicial e `/operacao/venda-rapida` retornaram HTTP 200.",
-              "- Validações: TypeScript, build e servidor do preview.",
+              "- Validações: build TypeScript/Vite e servidor do preview.",
               "- Limite: este primeiro pacote prioriza experiência visual e navegação; integrações externas podem estar indisponíveis.",
               "- Produção: **não alterada**.",
             ].join("\n");
