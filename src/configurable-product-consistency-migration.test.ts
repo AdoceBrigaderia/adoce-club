@@ -72,6 +72,18 @@ describe("consistência dos produtos configuráveis", () => {
     expect(seed).not.toContain("biscoitos personalizados");
   });
 
+  it("lê corretamente os elementos JSON dos pacotes e preserva grupos reais", () => {
+    expect(seed).toContain("package(value)");
+    expect(seed).toContain("package.value->>'quantity'");
+    expect(seed).toContain("package.value->>'flavors'");
+    expect(seed).toContain("package.value->>'price'");
+    expect(seed).not.toMatch(/package->>'(?:quantity|flavors|price)'/);
+    expect(seed).toContain("with ordinality flavor(label, ordinality)");
+    expect(seed).toContain("with ordinality juice(label, ordinality)");
+    expect(seed).toContain("'groupLimits', jsonb_build_object('sucos', 2)");
+    expect(seed).toContain("'groupMinimums', jsonb_build_object('sucos', 2)");
+  });
+
   it("permanece transacional e isolado da produção", () => {
     for (const sql of [migration, seed]) {
       expect(sql.trimStart()).toMatch(/^begin;/);
