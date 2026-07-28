@@ -9,7 +9,14 @@ const styles = readFileSync(
   new URL("./operation-product-profitability.css", import.meta.url),
   "utf8",
 );
-const hub = readFileSync(new URL("./OperationBusinessHub.tsx", import.meta.url), "utf8");
+const hub = readFileSync(
+  new URL("./OperationBusinessHub.tsx", import.meta.url),
+  "utf8",
+);
+const adminCenter = readFileSync(
+  new URL("./OperationAdminCenter.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("painel de rentabilidade dos produtos", () => {
   it("mostra custo, preço, lucro, margem, markup e rendimento", () => {
@@ -34,17 +41,26 @@ describe("painel de rentabilidade dos produtos", () => {
   });
 
   it("usa apenas RPCs internas do BFF", () => {
-    expect(component).toContain('bffRpc<Workspace>("manager_get_product_profitability_workspace"');
-    expect(component).toContain('bffRpc<Workspace>("manager_save_product_costing_settings"');
+    expect(component).toContain(
+      'bffRpc<Workspace>("manager_get_product_profitability_workspace"',
+    );
+    expect(component).toContain(
+      'bffRpc<Workspace>("manager_save_product_costing_settings"',
+    );
     expect(component).not.toContain("requireSupabase");
     expect(component).not.toContain("localStorage");
     expect(component).not.toContain("sessionStorage");
   });
 
-  it("mantém custos restritos a owner e manager no hub operacional", () => {
+  it("mantém custos restritos a owner e manager na central administrativa", () => {
     expect(hub).toContain('const canConfigureProduction = ["owner", "manager"]');
-    expect(hub).toContain("<OperationProductProfitability />");
-    expect(hub).toContain("canConfigureProduction ? <OperationProductProfitability />");
+    expect(hub).toContain("<OperationAdminCenter userId={session.user.id} />");
+    expect(adminCenter).toContain(
+      'import OperationProductProfitability from "./OperationProductProfitability"',
+    );
+    expect(adminCenter).toContain(
+      'activeArea === "profitability" ? <OperationProductProfitability /> : null',
+    );
   });
 
   it("prioriza botões grandes e adaptação para celular e tablet", () => {
