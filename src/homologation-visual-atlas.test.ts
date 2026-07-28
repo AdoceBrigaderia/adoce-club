@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 const script = "scripts/generate-homologation-visual-atlas.mjs";
+const workflow = readFileSync(
+  ".github/workflows/homologation-visual-atlas.yml",
+  "utf8",
+);
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -39,5 +43,17 @@ describe("atlas visual de homologação", () => {
     expect(html).not.toContain("adocebrigaderia.com.br");
     expect(html).not.toContain("uefwywizqhfvvijaopcn");
     expect(html).not.toContain("bb0c96cd-5af2-4270-a9a8-b63b9637b1f4");
+  });
+
+  it("empacota o atlas sem npm, deploy ou credenciais externas", () => {
+    expect(workflow).toContain("timeout-minutes: 8");
+    expect(workflow).toContain("node scripts/generate-homologation-visual-atlas.mjs --check");
+    expect(workflow).toContain("validacao-visual-98.html");
+    expect(workflow).toContain("actions/upload-artifact@v4");
+    expect(workflow).toContain("retention-days: 30");
+    expect(workflow).not.toContain("npm ci");
+    expect(workflow).not.toContain("NETLIFY_AUTH_TOKEN");
+    expect(workflow).not.toContain("--prod");
+    expect(workflow).not.toContain("supabase");
   });
 });
