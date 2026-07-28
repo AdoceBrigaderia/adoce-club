@@ -39,9 +39,11 @@ declare
     '20260728220000',
     '20260728221500',
     '20260728223000',
-    '20260728224500'
+    '20260728224500',
+    '20260728225000'
   ];
   applied_count integer;
+  configured_catalog_count integer;
 begin
   foreach relation_name in array expected_relations loop
     if to_regclass(format('public.%I', relation_name)) is null then
@@ -101,6 +103,66 @@ begin
       and constraint_record.conname = 'commercial_products_type_mode_check'
   ) then
     raise exception 'Restrição entre tipo de produto e montador não foi criada';
+  end if;
+
+  select count(*)
+  into configured_catalog_count
+  from public.commercial_products product
+  where (
+      product.slug in ('docinhos-tradicionais', 'docinhos-especiais')
+      and product.product_type = 'sweet'
+      and product.customization_mode = 'option_groups'
+    ) or (
+      product.slug in (
+        'escola-alegria',
+        'escola-recreio-doce',
+        'escola-intervalo-animado',
+        'escola-recreio-completo'
+      )
+      and product.product_type = 'school_kit'
+      and product.customization_mode = 'option_groups'
+    );
+
+  if configured_catalog_count <> 6 then
+    raise exception 'Catálogo configurável real incompleto: % de 6 produtos configurados', configured_catalog_count;
+  end if;
+
+  if exists (
+    select 1
+    from public.commercial_products product
+    where product.slug in ('docinhos-tradicionais', 'docinhos-especiais')
+      and not exists (
+        select 1
+        from public.commercial_product_options option
+        where option.product_id = product.id
+          and option.group_key = 'sabores'
+          and option.option_kind = 'flavor'
+          and option.active
+          and option.published
+      )
+  ) then
+    raise exception 'Um produto de docinhos não possui sabores configuráveis publicados';
+  end if;
+
+  if exists (
+    select 1
+    from public.commercial_products product
+    where product.slug in (
+      'escola-alegria',
+      'escola-recreio-doce',
+      'escola-intervalo-animado',
+      'escola-recreio-completo'
+    )
+      and (
+        select count(*)
+        from public.commercial_product_options option
+        where option.product_id = product.id
+          and option.group_key = 'sucos'
+          and option.active
+          and option.published
+      ) < 2
+  ) then
+    raise exception 'Um kit escolar não possui ao menos duas opções de suco publicadas';
   end if;
 
   select count(*)
