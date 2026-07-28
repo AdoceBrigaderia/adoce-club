@@ -68,15 +68,40 @@ describe("imagens separadas do atlas visual", () => {
     expect(index).toContain("Produção não alterada");
   });
 
-  it("empacota as imagens sem deploy ou credenciais externas", async () => {
+  it("empacota o commit exato com ZIP e checksums verificáveis", async () => {
     const workflow = await readFile(workflowPath, "utf8");
 
-    expect(workflow).toContain("export-homologation-visual-atlas-images.mjs --check");
+    expect(workflow).toContain("ref: ${{ github.sha }}");
+    expect(workflow).not.toContain(
+      "ref: reestruturacao/ux-crm-operacao-imagens-v1",
+    );
+    expect(workflow).toContain(
+      'test "${GITHUB_REF_NAME}" = "${AUTHORIZED_BRANCH}"',
+    );
+    expect(workflow).toContain(
+      'test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"',
+    );
+    expect(workflow).toContain(
+      "export-homologation-visual-atlas-images.mjs --check",
+    );
     expect(workflow).toContain("Imagens separadas: 98 SVGs");
-    expect(workflow).toContain("atlas-visual-adoce-98-imagens-separadas-");
     expect(workflow).toContain("Confirmar isolamento dos artefatos");
     expect(workflow).toMatch(/grep -R[\s\S]+artifacts\/atlas-visual/);
-    expect(workflow).not.toMatch(/grep -R[\s\S]+scripts\/export-homologation-visual-atlas-images\.mjs/);
+    expect(workflow).not.toMatch(
+      /grep -R[\s\S]+scripts\/export-homologation-visual-atlas-images\.mjs/,
+    );
+    expect(workflow).toContain("Gerar pacote ZIP verificável");
+    expect(workflow).toContain("SHA256SUMS.txt");
+    expect(workflow).toContain("sha256sum \"${package_file}\"");
+    expect(workflow).toContain("unzip -tq \"${package_file}\"");
+    expect(workflow).toContain(
+      "grep -Ec '^artifacts/atlas-visual/imagens-separadas/imagens/[^/]+\\.svg$'",
+    );
+    expect(workflow).toContain("GITHUB_STEP_SUMMARY");
+    expect(workflow).toContain(
+      "atlas-visual-adoce-98-imagens-separadas-${{ github.run_number }}",
+    );
+    expect(workflow).toContain("artifacts/entrega");
     expect(workflow).toContain("retention-days: 30");
     expect(workflow).not.toContain("npm ci");
     expect(workflow).not.toContain("NETLIFY_AUTH_TOKEN");
