@@ -73,6 +73,9 @@ export default function ConfigurableProductBuilder({
             {options.map((option) => {
               const value = Number(draft[option.id] || 0);
               const isToggle = option.option_kind !== "flavor" && option.maximum_quantity === 1;
+              const step = option.option_kind === "flavor"
+                ? Math.max(1, option.minimum_quantity)
+                : 1;
               return (
                 <article key={option.id} className={value > 0 ? "selected" : ""}>
                   <div>
@@ -82,6 +85,7 @@ export default function ConfigurableProductBuilder({
                         ? `Acréscimo de R$ ${option.price_adjustment.toFixed(2).replace(".", ",")}`
                         : "Sem acréscimo"}
                     </small>
+                    {!isToggle && step > 1 ? <small>Adicionar de {step} em {step}</small> : null}
                   </div>
                   {isToggle ? (
                     <button type="button" aria-pressed={value > 0} onClick={() => update(option.id, value > 0 ? 0 : 1)}>
@@ -89,11 +93,11 @@ export default function ConfigurableProductBuilder({
                     </button>
                   ) : (
                     <div className="configurable-product-counter">
-                      <button type="button" aria-label={`Diminuir ${option.label}`} onClick={() => update(option.id, value - 1)}>
+                      <button type="button" aria-label={`Diminuir ${option.label} em ${step}`} onClick={() => update(option.id, value - step)}>
                         <Minus />
                       </button>
                       <output aria-label={`Quantidade de ${option.label}`}>{value}</output>
-                      <button type="button" aria-label={`Aumentar ${option.label}`} onClick={() => update(option.id, value + 1)}>
+                      <button type="button" aria-label={`Aumentar ${option.label} em ${step}`} onClick={() => update(option.id, value + step)}>
                         <Plus />
                       </button>
                     </div>
