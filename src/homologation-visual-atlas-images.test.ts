@@ -74,6 +74,9 @@ describe("imagens separadas do atlas visual", () => {
     expect(workflow).toContain("export-homologation-visual-atlas-images.mjs --check");
     expect(workflow).toContain("Imagens separadas: 98 SVGs");
     expect(workflow).toContain("atlas-visual-adoce-98-imagens-separadas-");
+    expect(workflow).toContain("Confirmar isolamento dos artefatos");
+    expect(workflow).toMatch(/grep -R[\s\S]+artifacts\/atlas-visual/);
+    expect(workflow).not.toMatch(/grep -R[\s\S]+scripts\/export-homologation-visual-atlas-images\.mjs/);
     expect(workflow).toContain("retention-days: 30");
     expect(workflow).not.toContain("npm ci");
     expect(workflow).not.toContain("NETLIFY_AUTH_TOKEN");
