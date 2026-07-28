@@ -25,6 +25,7 @@ on:
       - supabase/migrations/20260728093000_costing_commercial_catalog.sql
       - supabase/migrations/20260728103000_cake_builder_costing_catalog_links.sql
       - supabase/migrations/20260728115000_product_profitability_workspace.sql
+      - supabase/migrations/20260728115100_product_profitability_autoprofile.sql
 
 concurrency:
   group: costing-catalog-pr-gate-${{ github.event.pull_request.number }}
