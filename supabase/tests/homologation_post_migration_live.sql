@@ -36,7 +36,8 @@ declare
     '20260728170941',
     '20260728174500',
     '20260728220000',
-    '20260728221500'
+    '20260728221500',
+    '20260728223000'
   ];
   applied_count integer;
 begin
@@ -81,6 +82,9 @@ begin
   end if;
   if to_regprocedure('public.get_configurable_product_catalog(text)') is null then
     raise exception 'Catálogo público configurável não foi criado';
+  end if;
+  if to_regprocedure('public.staff_get_service_request_workspace(text,text,integer)') is null then
+    raise exception 'Central segura de encomendas não foi criada';
   end if;
   if not exists (
     select 1
