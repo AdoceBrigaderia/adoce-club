@@ -12,8 +12,10 @@ on:
       - netlify/functions/_shared/product-configuration-input.ts
       - netlify/functions/_shared/product-configuration-input.test.ts
       - netlify/functions/public-service-request.ts
+      - scripts/expose-homologation-migration-bundle.mjs
       - scripts/homologation-migration-apply-workflow.test.mjs
       - scripts/homologation-pending-migrations.test.mjs
+      - package.json
       - src/App.tsx
       - src/ConfigurableProductBuilder.tsx
       - src/ConfigurableProductCatalogPage.tsx
@@ -62,6 +64,7 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
       PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
       PRODUCTION_REF: uefwywizqhfvvijaopcn
+      MIGRATION_BUNDLE: dist/homologation-internal/migrations-2f2e6bd6b6154fc184622467a54e62ca.sql
     steps:
       - name: Baixar head exato
         uses: actions/checkout@v4
@@ -107,16 +110,20 @@ jobs:
           npm run test:homologation-pending-migrations
           npm run test:homologation-migration-apply
 
-      - name: Gerar build visual isolado
+      - name: Gerar build completo e isolado
         env:
           VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
-        run: npx vite build
+        run: npm run build
 
-      - name: Confirmar isolamento e ausência de segredos
+      - name: Confirmar isolamento, bundle e ausência de segredos
         shell: bash
         run: |
           set -euo pipefail
           test -f dist/index.html
+          test -s "$MIGRATION_BUNDLE"
+          test -s "$MIGRATION_BUNDLE.json"
+          test "$(grep -c '^-- BEGIN ' "$MIGRATION_BUNDLE")" -eq 22
+          test "$(grep -c 'insert into supabase_migrations.schema_migrations' "$MIGRATION_BUNDLE")" -eq 22
           ! grep -R "uefwywizqhfvvijaopcn" dist
           ! grep -R "SUPABASE_SECRET_KEY" dist
           ! grep -R "service_role" dist
@@ -167,6 +174,35 @@ jobs:
           cp "$PENDING_PLAN" artifacts/homologation-pending-migrations/plan.json
           test "$(find artifacts/homologation-pending-migrations/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)" -eq 22
 
+      - name: Preparar source estático mínimo para a Netlify
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_dir=artifacts/homologation-static-deploy
+          mkdir -p "$deploy_dir/site"
+          cp -a dist/. "$deploy_dir/site/"
+          cat > "$deploy_dir/package.json" <<'JSON'
+          {
+            "name": "adoce-homologacao-static-deploy",
+            "version": "1.0.0",
+            "private": true,
+            "type": "module",
+            "scripts": { "build": "node build.mjs" }
+          }
+          JSON
+          cat > "$deploy_dir/build.mjs" <<'JS'
+          import fs from 'node:fs';
+          fs.rmSync('dist', { recursive: true, force: true });
+          fs.cpSync('site', 'dist', { recursive: true });
+          JS
+          cat > "$deploy_dir/netlify.toml" <<'TOML'
+          [build]
+            command = "npm run build"
+            publish = "dist"
+          TOML
+          printf '%s\n' "${{ github.event.pull_request.head.sha }}" > "$deploy_dir/commit.txt"
+          test -s "$deploy_dir/site/homologation-internal/migrations-2f2e6bd6b6154fc184622467a54e62ca.sql"
+
       - name: Publicar pacote das migrations pendentes
         uses: actions/upload-artifact@v4
         with:
@@ -174,4 +210,13 @@ jobs:
           path: artifacts/homologation-pending-migrations
           if-no-files-found: error
           retention-days: 7
+          compression-level: 6
+
+      - name: Publicar build estático da homologação
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-estatico-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-static-deploy
+          if-no-files-found: error
+          retention-days: 2
           compression-level: 6
