@@ -60,6 +60,8 @@ jobs:
       VITE_ADOCE_VALIDATION_MODE: visual
       VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+      PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
+      PRODUCTION_REF: uefwywizqhfvvijaopcn
     steps:
       - name: Baixar head exato
         uses: actions/checkout@v4
@@ -119,3 +121,57 @@ jobs:
           ! grep -R "SUPABASE_SECRET_KEY" dist
           ! grep -R "service_role" dist
           grep -R "vazozolhbehnriytzcdc" dist >/dev/null
+
+      - name: Empacotar exatamente as migrations pendentes validadas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-pending-migrations/migrations
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const plan = JSON.parse(fs.readFileSync(process.env.PENDING_PLAN, 'utf8'));
+          if (plan.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Projeto de homologação inválido.');
+          if (plan.production_forbidden !== true) throw new Error('Bloqueio produtivo ausente.');
+          if (plan.pending_migrations.length !== 22) throw new Error(`Esperadas 22 migrations; recebidas ${plan.pending_migrations.length}.`);
+          const migrations = [];
+          for (const migration of plan.pending_migrations) {
+            const file = `${migration.version}_${migration.name}.sql`;
+            const source = path.join('supabase', 'migrations', file);
+            if (!fs.existsSync(source)) throw new Error(`Migration ausente: ${file}`);
+            const content = fs.readFileSync(source);
+            if (content.includes(Buffer.from(process.env.PRODUCTION_REF))) throw new Error(`Referência produtiva encontrada em ${file}`);
+            fs.copyFileSync(source, path.join('artifacts', 'homologation-pending-migrations', 'migrations', file));
+            migrations.push({
+              version: migration.version,
+              name: migration.name,
+              file,
+              bytes: content.length,
+              sha256: crypto.createHash('sha256').update(content).digest('hex'),
+            });
+          }
+          fs.writeFileSync(
+            'artifacts/homologation-pending-migrations/manifest.json',
+            JSON.stringify({
+              schema_version: 1,
+              repository: 'AdoceBrigaderia/adoce-club',
+              branch: process.env.GITHUB_HEAD_REF,
+              commit: process.env.GITHUB_SHA,
+              project_id: 'vazozolhbehnriytzcdc',
+              production_forbidden: true,
+              migrations,
+            }, null, 2),
+          );
+          NODE
+          cp "$PENDING_PLAN" artifacts/homologation-pending-migrations/plan.json
+          test "$(find artifacts/homologation-pending-migrations/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)" -eq 22
+
+      - name: Publicar pacote das migrations pendentes
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrations-pendentes-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-pending-migrations
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
