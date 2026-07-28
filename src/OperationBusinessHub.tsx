@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
+import OperationCakeBuilderSettings from "./OperationCakeBuilderSettings";
 import OperationCashReconciliation from "./OperationCashReconciliation";
 import OperationContingencySale from "./OperationContingencySale";
 import OperationCustomer360 from "./OperationCustomer360";
@@ -59,6 +60,7 @@ export default function OperationBusinessHub() {
 
   const refreshBusinessViews = () =>
     setBusinessRevision((current) => current + 1);
+  const canConfigureProduction = ["owner", "manager"].includes(session.user.role);
 
   return (
     <>
@@ -73,6 +75,7 @@ export default function OperationBusinessHub() {
       <OperationQuickCash key={`cash-${businessRevision}`} />
       <OperationWhatsAppHealth />
       <OperationReports key={`reports-${businessRevision}`} />
+      {canConfigureProduction ? <OperationCakeBuilderSettings /> : null}
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
   );
