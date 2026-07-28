@@ -21,11 +21,13 @@ on:
       - src/product-profitability-migration.test.ts
       - src/product-profitability-ui.test.ts
       - src/cake-builder-costing-links.test.ts
+      - src/service-request-pricing-snapshot.test.ts
       - supabase/migrations/20260728090000_costing_core_foundation.sql
       - supabase/migrations/20260728093000_costing_commercial_catalog.sql
       - supabase/migrations/20260728103000_cake_builder_costing_catalog_links.sql
       - supabase/migrations/20260728115000_product_profitability_workspace.sql
       - supabase/migrations/20260728115100_product_profitability_autoprofile.sql
+      - supabase/migrations/20260728130000_service_request_pricing_snapshots.sql
 
 concurrency:
   group: costing-catalog-pr-gate-${{ github.event.pull_request.number }}
@@ -86,6 +88,7 @@ jobs:
             src/product-profitability-migration.test.ts \
             src/product-profitability-ui.test.ts \
             src/cake-builder-costing-links.test.ts \
+            src/service-request-pricing-snapshot.test.ts \
             src/bff-rpc-security.test.ts
 
       - name: Gerar build visual isolado
@@ -109,11 +112,11 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = [
-              "## Gate de custos, margens e produtos aprovado",
+              "## Gate de custos, margens e snapshots aprovado",
               "",
               `- Commit: \`${context.payload.pull_request.head.sha}\``,
               "- TypeScript: aprovado.",
-              "- Testes: motor de custos, catálogo, rentabilidade de produtos, montador e BFF aprovados.",
+              "- Testes: motor de custos, catálogo, rentabilidade, montador, snapshot imutável de encomendas e BFF aprovados.",
               "- Build visual: aprovado.",
               "- Isolamento: Supabase de homologação; referências produtivas e segredos ausentes do build.",
               "- Produção: **não alterada**.",
@@ -132,7 +135,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const body = [
-              "## Gate de custos, margens e produtos com falha",
+              "## Gate de custos, margens e snapshots com falha",
               "",
               `- Commit: \`${context.payload.pull_request.head.sha}\``,
               `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
