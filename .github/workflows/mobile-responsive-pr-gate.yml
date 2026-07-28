@@ -1,0 +1,190 @@
+name: Gate de responsividade móvel
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/mobile-responsive-pr-gate.yml
+      - src/main.tsx
+      - src/MarketingLanding.tsx
+      - src/PublicHeader.tsx
+      - src/HomologationValidationBanner.tsx
+      - src/HomologationVisualNavigator.tsx
+      - src/public-site.css
+      - src/public-commercial-polish.css
+      - src/homologation-validation.css
+      - src/mobile-responsive-fixes.css
+      - src/mobile-responsive-regression.test.ts
+      - src/homologation-visual-preview.test.ts
+      - scripts/serve-homologation-preview.mjs
+
+concurrency:
+  group: mobile-responsive-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  DELIVERY_ISSUE_NUMBER: "13"
+  VITE_ADOCE_VALIDATION_MODE: visual
+  VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
+  VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+
+jobs:
+  validate:
+    name: TypeScript, testes, build e preview móvel
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, commit e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes responsivos direcionados
+        run: |
+          npx vitest run \
+            src/mobile-responsive-regression.test.ts \
+            src/homologation-visual-preview.test.ts
+
+      - name: Gerar build visual isolado
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
+          VITE_ADOCE_PREVIEW_BUILT_AT: ${{ github.event.pull_request.updated_at }}
+        run: npx vite build
+
+      - name: Confirmar isolamento e arquivos principais
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          ! grep -R "uefwywizqhfvvijaopcn" dist
+          grep -R "vazozolhbehnriytzcdc" dist >/dev/null
+
+      - name: Preparar pacote móvel testável
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="artifacts/portal-adoce-mobile-validado"
+          mkdir -p "$package_dir"
+          cp -R dist "$package_dir/dist"
+          cp scripts/serve-homologation-preview.mjs "$package_dir/servidor-preview.mjs"
+
+          cat > "$package_dir/INICIAR-PREVIEW-WINDOWS.cmd" <<'EOF_WINDOWS'
+          @echo off
+          cd /d "%~dp0"
+          where node >nul 2>nul
+          if errorlevel 1 (
+            echo Node.js 22 ou superior nao foi encontrado.
+            pause
+            exit /b 1
+          )
+          node servidor-preview.mjs --open
+          if errorlevel 1 pause
+          EOF_WINDOWS
+
+          cat > "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command" <<'EOF_UNIX'
+          #!/usr/bin/env sh
+          set -eu
+          cd "$(dirname "$0")"
+          exec node servidor-preview.mjs --open
+          EOF_UNIX
+          chmod +x "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command"
+
+          cat > "$package_dir/LEIA-ME.txt" <<EOF_README
+          PORTAL ADOCE — PREVIEW RESPONSIVO VALIDADO
+
+          Windows: extraia o ZIP e abra INICIAR-PREVIEW-WINDOWS.cmd.
+          macOS/Linux: execute INICIAR-PREVIEW-LINUX-MAC.command.
+          URL local: http://127.0.0.1:4173
+
+          Commit: ${{ github.event.pull_request.head.sha }}
+          Prioridade: celulares iOS e Android, roteiro de validação e hero público.
+          Gates: TypeScript, testes responsivos, build visual, isolamento e smoke tests.
+          Produção: não alterada.
+          EOF_README
+
+          node "$package_dir/servidor-preview.mjs" --port 4187 > "$package_dir/SMOKE.log" 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl -sS -o /tmp/adoce-mobile-index.html -w '%{http_code}' http://127.0.0.1:4187/ || true)"
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          test "$status" = "200"
+          grep -q 'id="root"' /tmp/adoce-mobile-index.html
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:4187/operacao/venda-rapida)" = "200"
+
+          cleanup
+          wait "$server_pid" 2>/dev/null || true
+          trap - EXIT
+
+      - name: Publicar pacote móvel validado
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-adoce-mobile-validado-${{ github.event.pull_request.head.sha }}
+          path: artifacts/portal-adoce-mobile-validado
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Registrar entrega móvel
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '## Preview móvel corrigido e validado',
+              '',
+              `- Commit: \`${context.payload.pull_request.head.sha}\``,
+              `- [Baixar pacote para iOS/Android](${process.env.ARTIFACT_URL})`,
+              `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
+              '- Corrigidos: hero público, CTAs, aviso de homologação e roteiro aberto em telas estreitas.',
+              '- Gates: TypeScript, testes responsivos, build, isolamento e smoke tests HTTP 200.',
+              '- Produção: **não alterada**.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });
