@@ -51,6 +51,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_list_active_customer_checkins",
   "staff_apply_customer_checkin_stamps",
   "staff_get_customer_360",
+  "staff_get_customer_service_request_history",
   "staff_add_customer_crm_note",
   "staff_set_customer_crm_tag",
   "staff_get_operational_reports",
