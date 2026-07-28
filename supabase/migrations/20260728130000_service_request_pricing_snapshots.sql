@@ -46,6 +46,7 @@ set search_path = ''
 as $$
 begin
   raise exception 'O snapshot financeiro da encomenda é imutável';
+  return null;
 end;
 $$;
 
@@ -83,7 +84,7 @@ declare
   resolved_profit numeric(16,4);
   resolved_margin numeric(9,6);
   resolved_markup numeric(12,6);
-  inserted boolean := false;
+  inserted_count integer := 0;
 begin
   if target_request_id is null then raise exception 'Solicitação inválida para snapshot'; end if;
   if target_product_id is null then raise exception 'Produto inválido para snapshot'; end if;
@@ -188,8 +189,8 @@ begin
   )
   on conflict (request_id) do nothing;
 
-  get diagnostics inserted = row_count;
-  return inserted;
+  get diagnostics inserted_count = row_count;
+  return inserted_count > 0;
 end;
 $$;
 
