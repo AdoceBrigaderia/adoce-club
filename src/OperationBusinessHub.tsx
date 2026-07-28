@@ -9,6 +9,7 @@ import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
 import OperationManualSale from "./OperationManualSale";
 import OperationPrivacyAnonymization from "./OperationPrivacyAnonymization";
 import OperationPrivacyRequests from "./OperationPrivacyRequests";
+import OperationProductProfitability from "./OperationProductProfitability";
 import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
@@ -77,6 +78,7 @@ export default function OperationBusinessHub() {
       <OperationWhatsAppHealth />
       <OperationReports key={`reports-${businessRevision}`} />
       {canConfigureProduction ? <OperationCostCatalog /> : null}
+      {canConfigureProduction ? <OperationProductProfitability /> : null}
       {canConfigureProduction ? <OperationCakeBuilderSettings /> : null}
       <OperationBusinessStructureBff userId={session.user.id} />
     </>
