@@ -190,7 +190,6 @@ jobs:
           cleanup
           wait "$server_pid" 2>/dev/null || true
           trap - EXIT
-          echo "short_sha=${{ github.event.pull_request.head.sha }}" | cut -c1-18 >> "$GITHUB_OUTPUT"
 
       - name: Publicar pacote validado
         id: preview-upload
@@ -281,7 +280,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cake-builder-gate-${{ github.event.pull_request.head.sha }}
-          path: artifacts/typescript.txt
+          path: |
+            artifacts/typescript.txt
             artifacts/tests.txt
             artifacts/build.txt
           if-no-files-found: warn
