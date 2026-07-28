@@ -88,6 +88,7 @@ describe("configuração estruturada de produtos", () => {
     expect(quote.selectedFlavorCount).toBe(2);
     expect(quote.internalCost).toBe(100);
     expect(quote.priceAdjustment).toBe(32);
+    expect(quote.estimatedPrice).toBe(192);
     expect(quote.summary).toEqual(["60× Brigadeiro", "40× Ferrero", "1× Embalagem premium"]);
     expect(productConfigurationPayload(quote)).toEqual({
       schema_version: 1,
@@ -119,6 +120,53 @@ describe("configuração estruturada de produtos", () => {
         "10000000-0000-4000-8000-000000000002": 50,
       }),
     ).toThrow(/no máximo 1 sabor/);
+  });
+
+  it("usa o preço e o limite de sabores do pacote exato", () => {
+    const packaged = {
+      ...product,
+      minimum_quantity: 25,
+      configuration_rules: {
+        ...product.configuration_rules,
+        minimumTotalQuantity: 25,
+        maximumTotalQuantity: 100,
+        minimumQuantityPerFlavor: 1,
+        priceTiers: [
+          { quantity: 25, price: 35, maximumFlavors: 1 },
+          { quantity: 100, price: 140, maximumFlavors: 4 },
+        ],
+      },
+    };
+
+    expect(quoteProductConfiguration(packaged, 25, {
+      "10000000-0000-4000-8000-000000000001": 25,
+    }).estimatedPrice).toBe(35);
+    expect(() => quoteProductConfiguration(packaged, 50, {})).toThrow(/pacotes disponíveis/);
+    expect(() => quoteProductConfiguration(packaged, 25, {
+      "10000000-0000-4000-8000-000000000001": 15,
+      "10000000-0000-4000-8000-000000000002": 10,
+    })).toThrow(/no máximo 1 sabor/);
+  });
+
+  it("exige o mínimo configurado para um grupo", () => {
+    const schoolKit = {
+      ...product,
+      product_type: "school_kit" as const,
+      minimum_quantity: 15,
+      configuration_rules: {
+        minimumTotalQuantity: 15,
+        maximumTotalQuantity: 100,
+        requireExactTotal: false,
+        groupLimits: { adicionais: 1 },
+        groupMinimums: { adicionais: 1 },
+      },
+    };
+    expect(() => quoteProductConfiguration(schoolKit, 15, {})).toThrow(/pelo menos 1 opção/);
+  });
+
+  it("rejeita quantidade do pedido acima do máximo", () => {
+    const limited = { ...product, configuration_rules: { ...product.configuration_rules, maximumTotalQuantity: 100 } };
+    expect(() => quoteProductConfiguration(limited, 101, {})).toThrow(/quantidade máxima é 100/);
   });
 
   it("não inventa montagem para produto fixo", () => {
