@@ -3,11 +3,11 @@
   "environment": "homologation",
   "repository": "AdoceBrigaderia/adoce-club",
   "branch": "reestruturacao/ux-crm-operacao-imagens-v1",
-  "head_evaluated": "268f2bc538af9dff213fc40a8144fa7680274a49",
+  "head_evaluated": "feb4f9a2e1e8f6c9ff8b8c72fd0f0f659bad15f2",
   "project_id": "vazozolhbehnriytzcdc",
   "production_project_id": "uefwywizqhfvvijaopcn",
   "production_forbidden": true,
-  "captured_at": "2026-07-28T19:52:29-03:00",
+  "captured_at": "2026-07-28T19:57:21-03:00",
   "remote_last_applied": {
     "version": "20260727113349",
     "name": "privacy_anonymization_preserve_member_code"
@@ -78,7 +78,8 @@
     { "version": "20260728220000", "name": "unified_configurable_products", "stage": "product_catalog" },
     { "version": "20260728221500", "name": "configurable_product_constraints", "stage": "product_catalog" },
     { "version": "20260728223000", "name": "service_request_configuration_workspace", "stage": "operations" },
-    { "version": "20260728224500", "name": "configurable_product_consistency_and_crm", "stage": "operations" }
+    { "version": "20260728224500", "name": "configurable_product_consistency_and_crm", "stage": "operations" },
+    { "version": "20260728225000", "name": "real_configurable_product_catalog", "stage": "product_catalog" }
   ],
   "apply_policy": {
     "partial_apply_forbidden": true,
