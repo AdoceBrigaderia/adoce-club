@@ -15,6 +15,12 @@ const CustomerRegistrationPage = lazy(() =>
 );
 const PasskeyClientGateway = lazy(() => import("./PasskeyClientGateway"));
 const PasskeyOperationGateway = lazy(() => import("./PasskeyOperationGateway"));
+const HomologationClientAccountPreview = lazy(() =>
+  import("./HomologationClientAccountPreview"),
+);
+const HomologationOperationPreview = lazy(() =>
+  import("./HomologationOperationPreview"),
+);
 const SocialCampaign = lazy(() => import("./SocialCampaign"));
 const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 
@@ -47,7 +53,7 @@ export function titleForRoute(hash: string) {
     return "Pede Junto Adoce · Adoce Brigaderia";
   if (hash.startsWith("#politica-de-pedidos"))
     return "Política de pedidos · Adoce Brigaderia";
-  if (hash.startsWith("#clube"))
+  if (hash.startsWith("#clube") || hash.startsWith("#minha-conta"))
     return "Clube Adoce · Adoce Brigaderia";
   if (hash.startsWith("#privacidade"))
     return "Política de Privacidade · Adoce Brigaderia";
@@ -72,6 +78,9 @@ export default function App() {
   }, []);
 
   const host = location.hostname.toLowerCase();
+  const visualValidationMode =
+    import.meta.env.VITE_ADOCE_VALIDATION_MODE === "visual";
+
   if (location.hash.startsWith("#campanha-story"))
     return (
       <Suspense fallback={loading}>
@@ -124,6 +133,32 @@ export default function App() {
         <CustomerRegistrationPage />
       </Suspense>
     );
+
+  if (
+    visualValidationMode &&
+    (host.startsWith("operacao.") || location.hash.startsWith("#operacao"))
+  )
+    return (
+      <Suspense fallback={loading}>
+        <HomologationOperationPreview />
+      </Suspense>
+    );
+
+  if (
+    visualValidationMode &&
+    (host.startsWith("clube.") ||
+      location.hash.startsWith("#clube") ||
+      location.hash.startsWith("#entrar") ||
+      location.hash.startsWith("#minha-conta") ||
+      location.hash.startsWith("#acesso-direto") ||
+      location.hash.startsWith("#cartao/"))
+  )
+    return (
+      <Suspense fallback={loading}>
+        <HomologationClientAccountPreview />
+      </Suspense>
+    );
+
   if (host.startsWith("operacao.") || location.hash.startsWith("#operacao"))
     return (
       <Suspense fallback={loading}>
