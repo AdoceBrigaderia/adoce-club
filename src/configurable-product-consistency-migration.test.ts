@@ -84,6 +84,12 @@ describe("consistência dos produtos configuráveis", () => {
     expect(seed).toContain("'groupMinimums', jsonb_build_object('sucos', 2)");
   });
 
+  it("mantém docinhos fechados e permite adicionais administráveis nos kits escolares", () => {
+    expect(seed).toMatch(/product_type = 'sweet'[\s\S]*?'allowAddons', false/);
+    expect(seed).toMatch(/product_type = 'school_kit'[\s\S]*?'allowAddons', true/);
+    expect(seed).toContain("incluindo pacotes, quantidade incluída, adicionais");
+  });
+
   it("permanece transacional e isolado da produção", () => {
     for (const sql of [migration, seed]) {
       expect(sql.trimStart()).toMatch(/^begin;/);
