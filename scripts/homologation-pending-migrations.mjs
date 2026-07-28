@@ -16,7 +16,7 @@ const duplicates = (values) => {
   return [...repeated].sort();
 };
 
-export function inspectPendingMigrationPlan(plan, files) {
+export function inspectPendingMigrationPlan(plan, files, remoteNames = []) {
   const errors = [];
   if (plan?.schema_version !== 1) errors.push("schema_version inválido");
   if (plan?.environment !== "homologation") errors.push("ambiente inválido");
@@ -46,12 +46,13 @@ export function inspectPendingMigrationPlan(plan, files) {
     if (!item.stage) errors.push(`stage ausente: ${item.file}`);
   }
 
+  const representedRemoteNames = new Set(remoteNames.map((name) => String(name)));
   const localPending = files
     .map((file) => {
       const match = FILE_PATTERN.exec(file);
-      return match ? { file, version: match[1] } : null;
+      return match ? { file, version: match[1], name: match[2] } : null;
     })
-    .filter((item) => item && item.version > lastVersion)
+    .filter((item) => item && item.version > lastVersion && !representedRemoteNames.has(item.name))
     .map((item) => item.file)
     .sort();
   const plannedFiles = normalized.map((item) => item.file).sort();
@@ -76,6 +77,7 @@ export function inspectPendingMigrationPlan(plan, files) {
     project_id: plan?.project_id || null,
     head_evaluated: plan?.head_evaluated || null,
     remote_last_applied: plan?.remote_last_applied || null,
+    represented_remote_names_count: representedRemoteNames.size,
     pending_count: normalized.length,
     pending_migrations: normalized,
     missing_planned_files: missing,
@@ -94,6 +96,7 @@ export function renderPendingMigrationMarkdown(report) {
     `- Plano estrutural: **${report.structural_passed ? "aprovado" : "reprovado"}**`,
     `- Pronto para aplicação: **${report.ready_for_apply ? "sim" : "não"}**`,
     `- Projeto: \`${report.project_id || "não informado"}\``,
+    `- Nomes já representados no histórico remoto: **${report.represented_remote_names_count}**`,
     `- Migrations pendentes: **${report.pending_count}**`,
     "",
     "## Ordem obrigatória",
@@ -113,9 +116,14 @@ export async function runPendingMigrationCli(argv = process.argv.slice(2)) {
   const strict = argv.includes("--strict");
   const requireReady = argv.includes("--require-ready");
   const planPath = "docs/evidence/homologation-pending-migrations-20260728.json";
+  const remoteSnapshotPath = "docs/evidence/homologation-migrations-20260727.json";
   const plan = JSON.parse(await readFile(planPath, "utf8"));
+  const remoteSnapshot = JSON.parse(await readFile(remoteSnapshotPath, "utf8"));
+  const remoteNames = Array.isArray(remoteSnapshot.migrations)
+    ? remoteSnapshot.migrations.map((migration) => migration.name)
+    : [];
   const files = (await readdir("supabase/migrations")).filter((file) => file.endsWith(".sql"));
-  const report = inspectPendingMigrationPlan(plan, files);
+  const report = inspectPendingMigrationPlan(plan, files, remoteNames);
   await mkdir("artifacts", { recursive: true });
   await writeFile("artifacts/homologation-pending-migrations.json", `${JSON.stringify(report, null, 2)}\n`);
   await writeFile("artifacts/homologation-pending-migrations.md", renderPendingMigrationMarkdown(report));
