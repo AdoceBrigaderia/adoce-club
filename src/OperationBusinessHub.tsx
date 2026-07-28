@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import OperationAdminCenter from "./OperationAdminCenter";
 import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
 import OperationCashReconciliation from "./OperationCashReconciliation";
+import OperationConfiguredOrders from "./OperationConfiguredOrders";
 import OperationContingencySale from "./OperationContingencySale";
 import OperationCustomer360 from "./OperationCustomer360";
 import OperationCustomerCheckIns from "./OperationCustomerCheckIns";
@@ -65,6 +66,7 @@ export default function OperationBusinessHub() {
   return (
     <>
       <OperationCustomerCheckIns />
+      <OperationConfiguredOrders key={`orders-${businessRevision}`} />
       <OperationManualSale onCreated={refreshBusinessViews} />
       <OperationQuickLoyalty />
       <OperationPrivacyRequests />
