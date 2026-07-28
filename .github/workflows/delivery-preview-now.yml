@@ -67,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           export VITE_ADOCE_PREVIEW_BUILT_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          npm run build
+          npx vite build
 
           package_dir="artifacts/portal-adoce-preview"
           mkdir -p "$package_dir"
@@ -117,7 +117,8 @@ jobs:
           Commit: ${GITHUB_SHA}
           Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}
           Escopo: validação visual e de navegação; integrações externas podem permanecer indisponíveis.
-          Validações executadas: build TypeScript/Vite e smoke tests do servidor local.
+          Validações executadas: build Vite e smoke tests do servidor local.
+          Observação: TypeScript e testes integrais continuam sendo tratados no quality gate separado.
           Servidor: somente localhost/127.0.0.1.
           Produção: não alterada.
           EOF_README
@@ -126,6 +127,7 @@ jobs:
             "Commit: ${GITHUB_SHA}" \
             "Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}" \
             "Supabase: vazozolhbehnriytzcdc (homologação)" \
+            "Modo: visual, não transacional" \
             "Produção: não alterada" \
             > "$package_dir/EVIDENCIA.txt"
 
@@ -180,8 +182,9 @@ jobs:
               `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
               "- Windows: extraia o ZIP e abra `INICIAR-PREVIEW-WINDOWS.cmd`.",
               "- Smoke tests: página inicial e `/operacao/venda-rapida` retornaram HTTP 200.",
-              "- Validações: build TypeScript/Vite e servidor do preview.",
-              "- Limite: este primeiro pacote prioriza experiência visual e navegação; integrações externas podem estar indisponíveis.",
+              "- Validação desta entrega: build Vite e servidor do preview.",
+              "- TypeScript e testes integrais continuam no quality gate separado e não bloqueiam esta revisão visual inicial.",
+              "- Limite: integrações externas e ações transacionais podem estar indisponíveis.",
               "- Produção: **não alterada**.",
             ].join("\n");
 
