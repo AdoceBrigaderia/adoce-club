@@ -5,16 +5,19 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/homologation-pending-migrations-preflight.yml
+      - .github/workflows/homologation-apply-pending-migrations.yml
       - docs/evidence/homologation-backup-confirmed-20260728.json
       - docs/evidence/homologation-pending-migrations-20260728.json
       - docs/evidence/homologation-migrations-20260727.json
       - docs/evidence/homologation-migration-repair-plan-20260727.json
       - scripts/homologation-pending-migrations.mjs
       - scripts/homologation-pending-migrations.test.mjs
+      - scripts/homologation-migration-apply-workflow.test.mjs
       - scripts/reconcile-homologation-migration-filenames.mjs
       - scripts/reconcile-homologation-migration-filenames.test.mjs
       - package.json
       - supabase/migrations/**
+      - supabase/tests/homologation_post_migration_live.sql
 
 concurrency:
   group: homologation-migrations-preflight-${{ github.event.pull_request.number }}
@@ -30,7 +33,7 @@ env:
 
 jobs:
   validate:
-    name: Inventário, ordem e bloqueios
+    name: Inventário, ordem, aplicação e bloqueios
     if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -62,6 +65,7 @@ jobs:
         run: |
           npm ci --prefer-offline --no-audit
           npm run test:homologation-pending-migrations
+          npm run test:homologation-migration-apply
           npm run report:homologation-pending-migrations
 
       - name: Confirmar inventário completo
