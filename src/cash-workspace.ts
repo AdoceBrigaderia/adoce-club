@@ -1,4 +1,11 @@
-export type BusinessRole = "owner" | "manager" | "attendant" | "viewer" | string;
+export type BusinessRole =
+  | "owner"
+  | "manager"
+  | "attendant"
+  | "cashier"
+  | "production"
+  | "viewer"
+  | string;
 
 export type CashMovementLike = {
   direction: "in" | "out" | string;
@@ -30,6 +37,31 @@ export const cashMovementLabels: Record<string, string> = {
   expense: "Despesa",
   adjustment_in: "Ajuste de entrada",
   adjustment_out: "Ajuste de saída",
+};
+
+const roleCapabilityCeiling: Record<string, ReadonlySet<AssignmentCapability>> = {
+  owner: new Set<AssignmentCapability>([
+    "can_sell",
+    "can_open_cash",
+    "can_close_cash",
+    "can_manage_stock",
+    "can_view_finance",
+  ]),
+  manager: new Set<AssignmentCapability>([
+    "can_sell",
+    "can_open_cash",
+    "can_close_cash",
+    "can_manage_stock",
+    "can_view_finance",
+  ]),
+  attendant: new Set<AssignmentCapability>(["can_sell"]),
+  cashier: new Set<AssignmentCapability>([
+    "can_sell",
+    "can_open_cash",
+    "can_close_cash",
+  ]),
+  production: new Set<AssignmentCapability>(["can_manage_stock"]),
+  viewer: new Set<AssignmentCapability>(),
 };
 
 const cents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -66,11 +98,19 @@ export function isManagerRole(role: BusinessRole) {
   return role === "owner" || role === "manager";
 }
 
+export function roleAllowsCapability(
+  role: BusinessRole,
+  capability: AssignmentCapability,
+) {
+  return roleCapabilityCeiling[role]?.has(capability) ?? false;
+}
+
 export function assignmentAllows(
   role: BusinessRole,
   assignment: StoreAssignmentLike | null | undefined,
   capability: AssignmentCapability,
 ) {
+  if (!roleAllowsCapability(role, capability)) return false;
   if (isManagerRole(role)) return true;
   return Boolean(assignment?.active && assignment[capability]);
 }
