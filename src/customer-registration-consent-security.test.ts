@@ -27,12 +27,12 @@ const migration = readFileSync(
 
 function completionRequest(legalAccepted?: boolean) {
   return new Request(
-    "https://clube.adocebrigaderia.com.br/api/auth-bff-registration-complete",
+    "http://localhost:5173/api/auth-bff-registration-complete",
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Origin: "https://clube.adocebrigaderia.com.br",
+        Origin: "http://localhost:5173",
       },
       body: JSON.stringify({
         email: "cliente@example.com",
