@@ -69,6 +69,11 @@ type ServiceRequestWorkspaceItem = {
     name: string;
     public_label: string;
   };
+  permissions: {
+    manage_orders: boolean;
+    manage_production: boolean;
+    view_finance: boolean;
+  };
   status: string;
   source: string;
   customer_name: string;
@@ -85,8 +90,8 @@ type ServiceRequestWorkspaceItem = {
   deposit_amount: number | null;
   deposit_paid_at: string | null;
   deposit_payment_method: string | null;
-  payment_status: string;
-  paid_amount: number;
+  payment_status: string | null;
+  paid_amount: number | null;
   balance_paid_at: string | null;
   balance_payment_method: string | null;
   production_started_at: string | null;
@@ -233,26 +238,23 @@ function configurationLines(configuration: RequestConfiguration) {
 }
 
 function quickActions(item: ServiceRequestWorkspaceItem): LifecycleAction[] {
-  if (item.status === "prebooked") return ["send_quote", "request_deposit", "confirm_order", "cancel"];
-  if (item.status === "quoted") return ["request_deposit", "confirm_order", "cancel"];
-  if (item.status === "awaiting_deposit") return ["confirm_deposit", "confirm_order", "cancel"];
-  if (item.status === "confirmed") {
-    return item.payment_status === "paid"
-      ? ["start_production", "cancel"]
-      : ["confirm_payment", "start_production", "cancel"];
+  const actions: LifecycleAction[] = [];
+  if (item.permissions.manage_orders) {
+    if (item.status === "prebooked") actions.push("send_quote", "request_deposit", "confirm_order");
+    if (item.status === "quoted") actions.push("request_deposit", "confirm_order");
+    if (item.status === "awaiting_deposit") actions.push("confirm_deposit", "confirm_order");
+    if (["confirmed", "in_production", "ready"].includes(item.status) && item.payment_status !== "paid") {
+      actions.push("confirm_payment");
+    }
+    if (item.status === "ready" && item.payment_status === "paid") actions.push("complete");
+    if (activeStatuses.has(item.status)) actions.push("cancel");
+    if (item.status === "cancelled" && item.payment_status === "refund_pending") actions.push("confirm_refund");
   }
-  if (item.status === "in_production") {
-    return item.payment_status === "paid"
-      ? ["mark_ready", "cancel"]
-      : ["confirm_payment", "mark_ready", "cancel"];
+  if (item.permissions.manage_production) {
+    if (item.status === "confirmed") actions.unshift("start_production");
+    if (item.status === "in_production") actions.unshift("mark_ready");
   }
-  if (item.status === "ready") {
-    return item.payment_status === "paid"
-      ? ["complete", "cancel"]
-      : ["confirm_payment", "cancel"];
-  }
-  if (item.status === "cancelled" && item.payment_status === "refund_pending") return ["confirm_refund"];
-  return [];
+  return [...new Set(actions)];
 }
 
 const actionLabels: Record<LifecycleAction, string> = {
@@ -331,19 +333,27 @@ export default function OperationServiceRequests() {
       note = answer.trim();
     }
 
+    const productionAction = ["start_production", "mark_ready"].includes(action);
     const needsPaymentMethod = ["confirm_deposit", "confirm_payment", "confirm_refund"].includes(action);
     const paymentMethod = selectedPaymentMethods[item.id] || "pix";
     setBusyId(item.id);
     setNotice("");
     try {
-      const result = await bffRpc<LifecycleResult>("staff_transition_service_request", {
-        target_request_id: item.id,
-        operation_key: crypto.randomUUID(),
-        requested_action: action,
-        requested_deposit_fraction: 0.5,
-        requested_payment_method: needsPaymentMethod ? paymentMethod : null,
-        requested_note: note,
-      });
+      const result = productionAction
+        ? await bffRpc<LifecycleResult>("staff_transition_service_request_production", {
+            target_request_id: item.id,
+            operation_key: crypto.randomUUID(),
+            requested_action: action,
+            requested_note: note,
+          })
+        : await bffRpc<LifecycleResult>("staff_transition_service_request", {
+            target_request_id: item.id,
+            operation_key: crypto.randomUUID(),
+            requested_action: action,
+            requested_deposit_fraction: 0.5,
+            requested_payment_method: needsPaymentMethod ? paymentMethod : null,
+            requested_note: note,
+          });
       setNotice(
         `${result.request_number}: ${statusLabels[result.status] || result.status}` +
         (result.refund_required ? " · estorno pendente." : "."),
@@ -462,19 +472,25 @@ export default function OperationServiceRequests() {
               <div className="operation-service-request-meta">
                 <span><CalendarDays /><small>Data desejada</small><strong>{dateTime(item.desired_start)}</strong></span>
                 <span><Clock3 /><small>Recebida em</small><strong>{dateTime(item.created_at)}</strong></span>
-                <span><CircleDollarSign /><small>Total calculado</small><strong>{money(total)}</strong></span>
+                {item.permissions.view_finance ? (
+                  <span><CircleDollarSign /><small>Total calculado</small><strong>{money(total)}</strong></span>
+                ) : (
+                  <span><ShieldCheck /><small>Visão protegida</small><strong>Dados financeiros ocultos</strong></span>
+                )}
               </div>
 
-              <div className="operation-service-request-payment">
-                <span className={`payment-${item.payment_status || "pending"}`}>
-                  <Banknote />
-                  <small>{paymentStatusLabels[item.payment_status] || "Pagamento pendente"}</small>
-                  <strong>{money(paid)} recebido · {money(remaining)} restante</strong>
-                </span>
-                {item.deposit_amount ? (
-                  <span><small>Sinal calculado</small><strong>{money(item.deposit_amount)}</strong></span>
-                ) : null}
-              </div>
+              {item.permissions.view_finance ? (
+                <div className="operation-service-request-payment">
+                  <span className={`payment-${item.payment_status || "pending"}`}>
+                    <Banknote />
+                    <small>{paymentStatusLabels[item.payment_status || "pending"] || "Pagamento pendente"}</small>
+                    <strong>{money(paid)} recebido · {money(remaining)} restante</strong>
+                  </span>
+                  {item.deposit_amount ? (
+                    <span><small>Sinal calculado</small><strong>{money(item.deposit_amount)}</strong></span>
+                  ) : null}
+                </div>
+              ) : null}
 
               <section className="operation-service-request-choices">
                 <header><ShieldCheck /><div><small>Composição registrada</small><strong>Sabores, montagem e adicionais</strong></div></header>
@@ -525,9 +541,11 @@ export default function OperationServiceRequests() {
               ) : null}
 
               <footer>
-                <a href={`https://wa.me/${phone}?text=${whatsappText}`} target="_blank" rel="noreferrer">
-                  <MessageCircle /> Falar no WhatsApp
-                </a>
+                {phone ? (
+                  <a href={`https://wa.me/${phone}?text=${whatsappText}`} target="_blank" rel="noreferrer">
+                    <MessageCircle /> Falar no WhatsApp
+                  </a>
+                ) : <span>Contato protegido para a equipe de produção.</span>}
                 {item.pricing?.margin_alert ? <span className="margin-alert"><AlertTriangle /> Margem abaixo do mínimo</span> : null}
               </footer>
             </article>
