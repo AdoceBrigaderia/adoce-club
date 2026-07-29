@@ -42,6 +42,24 @@ test("aprova a superfície RPC versionada do repositório", () => {
   assert.deepEqual(result.violations, []);
 });
 
+test("mantém teste e auditoria conectados aos dois gates locais", () => {
+  const packageJson = JSON.parse(
+    readFileSync(resolve(repositoryRoot, "package.json"), "utf8"),
+  );
+  assert.equal(
+    packageJson.scripts["test:rpc-surface"],
+    "node --test scripts/rpc-surface-audit-core.test.mjs",
+  );
+  assert.equal(
+    packageJson.scripts["audit:rpc-surface"],
+    "node scripts/audit-rpc-surface.mjs",
+  );
+  for (const gate of ["verify:fast", "verify"]) {
+    assert.match(packageJson.scripts[gate], /npm run test:rpc-surface/);
+    assert.match(packageJson.scripts[gate], /npm run audit:rpc-surface/);
+  }
+});
+
 test("reprova drift entre manifesto e allowlist operacional do BFF", () => {
   const root = fixture();
   mutate(root, "netlify/functions/_shared/bff-rpc-policy.ts", (source) =>
