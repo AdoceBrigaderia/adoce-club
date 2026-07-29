@@ -1,0 +1,86 @@
+# Superfície RPC e fronteira RLS por loja — homologação
+
+Este roteiro consolida a validação da superfície autenticada do Portal Adoce e do isolamento das tabelas operacionais por loja. Ele não autoriza deploy, merge ou qualquer ação em produção.
+
+## Estado esperado
+
+A interface web não escolhe livremente funções do banco. As operações genéricas passam pelas allowlists de `auth-bff-rpc` e `auth-bff-client-rpc`; integrações dedicadas, como cadastro, Wallet e uploads, permanecem em Functions específicas. Todas usam o JWT da sessão correspondente ou uma fronteira server-side explicitamente isolada.
+
+As versões transacionais atuais são:
+
+- `staff_create_manual_sale_in_cash_v2`;
+- `staff_record_cash_movement_v2`;
+- `submit_instant_order_v6`.
+
+As versões substituídas sem sufixo ou `v5` devem permanecer sem `EXECUTE` para `public`, `anon` e `authenticated`. A migration `20260729120500_lock_superseded_rpc_versions.sql` faz esse corte e falha se as versões atuais não estiverem disponíveis como `SECURITY DEFINER` para `authenticated`.
+
+## Allowlist autenticada
+
+O arquivo `supabase/tests/authenticated_rpc_allowlist_live.sql` trata a lista controlada como exata:
+
+- qualquer `SECURITY DEFINER` executável por `authenticated` fora da lista bloqueia o ensaio;
+- qualquer entrada esperada ausente bloqueia o ensaio;
+- não há tolerância entre versões antigas e atuais;
+- a superfície anônima aceita somente os catálogos públicos expressamente listados;
+- o teste começa com `BEGIN` e termina com `ROLLBACK`.
+
+A allowlist cobre as RPCs genéricas do BFF e as RPCs autenticadas chamadas por endpoints dedicados, incluindo cadastro, Google Wallet e gestão de imagens.
+
+## Fronteira RLS por loja
+
+O arquivo `supabase/tests/store_rls_boundary_live.sql` valida as tabelas:
+
+- `stores`;
+- `cash_registers`;
+- `staff_store_assignments`;
+- `cash_sessions`;
+- `cash_movements`.
+
+O ensaio bloqueia quando:
+
+- alguma tabela não existe ou está sem RLS;
+- `anon` possui privilégio direto de leitura ou escrita;
+- `authenticated` possui `INSERT`, `UPDATE`, `DELETE` ou `TRUNCATE` direto;
+- existe policy para `anon` ou `public`;
+- falta policy de leitura para `authenticated`;
+- a policy deixa de usar `private.can_access_store`, ou a atribuição de equipe deixa de restringir por gestor/usuário atual.
+
+A escrita operacional permanece concentrada em RPCs transacionais e auditadas. RLS e funções privadas continuam sendo a fonte de verdade; flags do navegador não autorizam ações.
+
+## Execução isolada
+
+### Allowlist e matriz integrada
+
+O workflow **Testar segurança viva na homologação** executa `authenticated_rpc_allowlist_live.sql` junto aos demais ensaios de segurança. Ele exige:
+
+- branch `reestruturacao/ux-crm-operacao-imagens-v1`;
+- SHA completo autorizado;
+- confirmação exata `TESTAR SOMENTE HOMOLOGACAO`;
+- URL PostgreSQL pertencente ao projeto de homologação e diferente de produção.
+
+### Fronteira RLS
+
+O workflow **Auditar fronteira RLS por loja na homologação** exige:
+
+- SHA completo do topo da branch;
+- confirmação `AUDITAR RLS SOMENTE HOMOLOGACAO <project-ref-homologacao>`;
+- `ADOCE_HOMOLOGATION_SUPABASE_REF` e `ADOCE_PRODUCTION_SUPABASE_REF` diferentes;
+- secret `SUPABASE_HOMOLOGATION_DB_URL` contendo apenas a conexão de homologação.
+
+O job executa somente o SQL de auditoria, confirma o `ROLLBACK` e preserva artefato redigido por 30 dias. Ele não aplica migration, não executa `db push` e não publica Netlify.
+
+## Critérios de bloqueio
+
+Tratar como bloqueador de homologação:
+
+- RPC inesperada exposta a `anon` ou `authenticated`;
+- versão antiga ainda executável pelo navegador;
+- versão atual ausente ou fora de `SECURITY DEFINER`;
+- escrita direta em tabela operacional por `authenticated`;
+- policy anônima nas tabelas por loja;
+- ausência de isolamento por loja ou por identidade;
+- ensaio sem `ROLLBACK` confirmado.
+
+## Produção
+
+Nenhuma migration deste marco foi aplicada por este roteiro. Produção permanece proibida sem aprovação expressa, backup confirmado, plano de rollback e smoke tests no commit exato.
