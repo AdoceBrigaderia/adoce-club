@@ -85,3 +85,16 @@ test("a composição de Vary deduplica tokens sem perder casing canônico", () =
     /CANONICAL_VARY_TOKENS\.get\(key\) \|\| token/,
   );
 });
+
+test("cache sensível não pode ser rebaixado por opções ou headers", () => {
+  assert.match(
+    responseSecuritySource,
+    /SENSITIVE_CACHE_CONTROL\s*=\s*["']no-store, max-age=0["']/,
+  );
+  assert.match(
+    responseSecuritySource,
+    /headers\.set\(["']Cache-Control["'], SENSITIVE_CACHE_CONTROL\)/,
+  );
+  assert.doesNotMatch(responseSecuritySource, /cacheControl\?:/);
+  assert.doesNotMatch(responseSecuritySource, /options\.cacheControl/);
+});
