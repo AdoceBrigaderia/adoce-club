@@ -43,19 +43,21 @@ A allowlist cobre as RPCs genéricas do BFF e as RPCs autenticadas chamadas por 
 
 ## Manifesto versionado da fronteira RLS
 
-`security/store-rls-surface.json` é a fonte controlada das tabelas por loja, do modo de acesso permitido e dos predicados obrigatórios de leitura. O schema v2 separa:
+`security/store-rls-surface.json` é a fonte controlada das tabelas por loja, do modo de acesso permitido e dos predicados obrigatórios de leitura. O schema v3 separa:
 
 - `authenticated_read`: leitura direta autenticada somente com RLS e predicados de loja/identidade;
-- `rpc_only`: nenhum privilégio ou policy para o navegador; toda leitura e mutação passa por RPC/Function autorizada.
+- `rpc_only`: nenhum privilégio ou policy para o navegador; toda leitura e mutação passa por RPC/Function autorizada;
+- `historicalPolicies`: policies criadas por migrations anteriores que obrigatoriamente precisam ser removidas pela migration final de lockdown.
 
 O manifesto está ligado a:
 
 - `supabase/tests/store_rls_boundary_live.sql`;
 - `supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql`;
 - `.github/workflows/store-rls-boundary-live-homologation.yml`;
-- migrations de definição das tabelas marcadas como `rpc_only`.
+- migrations de definição das tabelas marcadas como `rpc_only`;
+- migrations históricas que chegaram a criar policies nessas tabelas.
 
-`npm run audit:store-rls-surface` reprova drift entre os arquivos, perda de tabela, alteração indevida do modo de acesso, remoção de predicado, enfraquecimento do lockdown, criação de policy em tabela RPC-only, execução automática do ensaio vivo ou inclusão de comandos que alterem banco ou publiquem a aplicação. `npm run test:store-rls-surface` executa mutações controladas para confirmar que o auditor falha fechado. Ambos integram `verify:fast` e `verify`.
+`npm run audit:store-rls-surface` reprova drift entre os arquivos, perda de tabela, alteração indevida do modo de acesso, remoção de predicado, enfraquecimento do lockdown, criação de policy em migration de definição RPC-only, ausência da limpeza de uma policy histórica, execução automática do ensaio vivo ou inclusão de comandos que alterem banco ou publiquem a aplicação. `npm run test:store-rls-surface` executa mutações controladas para confirmar que o auditor falha fechado. Ambos integram `verify:fast` e `verify`.
 
 ## Fronteira RLS por loja
 
@@ -78,6 +80,8 @@ O navegador não pode possuir `SELECT`, escrita ou qualquer policy nas tabelas:
 
 As migrations de definição dessas tabelas também são verificadas pelo auditor determinístico. Elas devem criar a coluna obrigatória `store_id`, habilitar RLS e revogar o acesso direto do navegador.
 
+A migration `20260727035116_backend_only_tables_explicit_deny.sql` criou anteriormente a policy documental `backend_only_no_direct_access` nessas duas tabelas. Embora a policy use `false`, ela contradiz o contrato canônico que exige ausência total de policies do navegador em superfícies RPC-only. O schema v3 registra essa origem histórica e exige que `20260729155500_lock_store_scoped_table_writes.sql` remova explicitamente a policy das duas tabelas antes da pós-validação.
+
 ### Bloqueios do ensaio
 
 O ensaio bloqueia quando:
@@ -91,9 +95,10 @@ O ensaio bloqueia quando:
 - falta policy de leitura em uma tabela `authenticated_read`;
 - a policy deixa de usar `private.can_access_store`, ou a atribuição de equipe deixa de restringir por gestor/usuário atual;
 - uma policy de leitura fica vazia ou assume forma tautológica conhecida, como `true` ou `OR true`;
-- uma tabela `rpc_only` expõe qualquer privilégio ou policy para `anon`, `authenticated` ou `public`.
+- uma tabela `rpc_only` expõe qualquer privilégio ou policy para `anon`, `authenticated` ou `public`;
+- uma policy histórica declarada no manifesto não possui remoção explícita no lockdown final.
 
-A migration `20260729155500_lock_store_scoped_table_writes.sql` revoga escrita direta dos papéis do navegador, remove as policies legadas de administração e aplica revogação total nas tabelas RPC-only. A própria migration valida privilégios e policies antes do `COMMIT`. As alterações administrativas continuam nas RPCs `SECURITY DEFINER`, que aplicam autorização, capacidade, idempotência e auditoria no backend.
+A migration `20260729155500_lock_store_scoped_table_writes.sql` revoga escrita direta dos papéis do navegador, remove as policies legadas de administração, elimina as policies históricas de deny-all e aplica revogação total nas tabelas RPC-only. A própria migration valida privilégios e policies antes do `COMMIT`. As alterações administrativas continuam nas RPCs `SECURITY DEFINER`, que aplicam autorização, capacidade, idempotência e auditoria no backend.
 
 A migration foi apenas versionada neste marco. Ela ainda precisa passar pelo gate de migrations e ser aplicada exclusivamente na homologação antes do ensaio vivo.
 
@@ -140,12 +145,13 @@ Tratar como bloqueador de homologação:
 - drift entre manifesto RLS, migrations, ensaio vivo e workflow;
 - RPC inesperada exposta a `anon` ou `authenticated`;
 - versão antiga ainda executável pelo navegador;
-- versão atual ausente ou fora de `SECURITY DEFINER`;
+- versão atual ausente ou fora de `SECURITY DEFININER`;
 - escrita direta em tabela operacional por `authenticated`;
 - policy anônima ou policy autenticada de escrita nas tabelas por loja;
 - ausência de isolamento por loja ou por identidade;
 - policy de leitura vazia ou tautológica;
 - privilégio ou policy do navegador em tabela `rpc_only`;
+- policy histórica RPC-only sem remoção explícita na migration final;
 - ensaio sem `ROLLBACK` confirmado.
 
 ## Produção
