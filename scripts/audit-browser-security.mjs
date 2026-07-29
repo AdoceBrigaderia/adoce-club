@@ -1,4 +1,10 @@
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,17 +15,29 @@ import {
 
 const scriptsDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptsDirectory, "..");
-const sourceRoot = join(repositoryRoot, "src");
+const browserDirectories = [
+  join(repositoryRoot, "src"),
+  join(repositoryRoot, "public"),
+];
+const browserEntrypoints = [join(repositoryRoot, "index.html")];
 const artifactsRoot = join(repositoryRoot, "artifacts");
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isSymbolicLink()) return [];
     const target = join(directory, entry.name);
     return entry.isDirectory() ? walk(target) : [target];
   });
 }
 
-const files = walk(sourceRoot)
+const absoluteBrowserFiles = [
+  ...browserDirectories.flatMap((directory) =>
+    existsSync(directory) ? walk(directory) : [],
+  ),
+  ...browserEntrypoints.filter((entrypoint) => existsSync(entrypoint)),
+];
+
+const files = [...new Set(absoluteBrowserFiles)]
   .map((absolutePath) => ({
     absolutePath,
     path: relativeSourcePath(repositoryRoot, absolutePath),
@@ -39,6 +57,8 @@ writeFileSync(
 
 const markdown = [
   "# Auditoria da fronteira de segurança do navegador",
+  "",
+  "Escopo: `src/`, arquivos executáveis/HTML em `public/` e `index.html`.",
   "",
   `- Arquivos analisados: **${report.filesScanned}**`,
   `- Violações críticas: **${report.critical.length}**`,
