@@ -26,8 +26,12 @@ describe("RPCs protegidos pelo BFF", () => {
   });
 
   it("exige cookie operacional, origem confiável e CSRF", () => {
-    expect(serverSource).toContain("allowedOrigin(request");
-    expect(serverSource).toContain("validCsrf(request)");
+    expect(serverSource).toContain("guardBffRequest(request");
+    expect(serverSource).toContain('methods: ["POST"]');
+    expect(serverSource).toContain('configuredSiteUrl: env("SITE_URL")');
+    expect(serverSource).toContain("requireCsrf: true");
+    expect(serverSource).not.toContain("allowedOrigin(request");
+    expect(serverSource).not.toContain("validCsrf(request)");
     expect(serverSource).toContain('cookies.get(SURFACE_COOKIE) !== "operation"');
     expect(serverSource).toContain("cookies.get(ACCESS_COOKIE)");
   });
