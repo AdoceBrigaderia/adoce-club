@@ -12,6 +12,7 @@ console.log(
       tableCount: result.tableCount,
       parentScopedTableCount: result.parentScopedTableCount,
       evidenceCount: result.evidenceCount,
+      lifecycleMigrationCount: result.lifecycleMigrationCount,
       controlledFileCount: result.controlledFileCount,
     },
     null,
