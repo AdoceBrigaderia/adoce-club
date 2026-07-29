@@ -16,8 +16,10 @@ declare
   anonymous_privileges text[];
   authenticated_write_privileges text[];
   anonymous_policies text[];
+  authenticated_write_policies text[];
   missing_read_policies text[];
   weak_read_policies text[];
+  dangerous_read_policies text[];
 begin
   select array_agg(table_name order by table_name)
   into missing_tables
@@ -91,6 +93,21 @@ begin
       anonymous_policies;
   end if;
 
+  select array_agg(format('%s:%s:%s', policy.tablename, policy.policyname, role_name)
+    order by policy.tablename, policy.policyname, role_name)
+  into authenticated_write_policies
+  from pg_policies policy
+  cross join lateral unnest(policy.roles) expanded_role(role_name)
+  where policy.schemaname = 'public'
+    and policy.tablename = any(required_tables)
+    and role_name::text = 'authenticated'
+    and lower(policy.cmd) in ('all', 'insert', 'update', 'delete');
+
+  if coalesce(cardinality(authenticated_write_policies), 0) > 0 then
+    raise exception 'Authenticated write policies remain inside the RPC-only store boundary: %',
+      authenticated_write_policies;
+  end if;
+
   select array_agg(table_name order by table_name)
   into missing_read_policies
   from unnest(required_tables) table_name
@@ -130,6 +147,26 @@ begin
   if coalesce(cardinality(weak_read_policies), 0) > 0 then
     raise exception 'Store isolation predicates missing from read policies: %',
       weak_read_policies;
+  end if;
+
+  select array_agg(format('%s:%s', policy.tablename, policy.policyname)
+    order by policy.tablename, policy.policyname)
+  into dangerous_read_policies
+  from pg_policies policy
+  where policy.schemaname = 'public'
+    and lower(policy.cmd) = 'select'
+    and 'authenticated'::name = any(policy.roles)
+    and policy.tablename = any(required_tables)
+    and (
+      policy.qual is null
+      or lower(btrim(policy.qual)) in ('true', '(true)')
+      or position(' or true' in lower(policy.qual)) > 0
+      or position(' or (true)' in lower(policy.qual)) > 0
+    );
+
+  if coalesce(cardinality(dangerous_read_policies), 0) > 0 then
+    raise exception 'Tautological or empty store read policies detected: %',
+      dangerous_read_policies;
   end if;
 end;
 $$;
