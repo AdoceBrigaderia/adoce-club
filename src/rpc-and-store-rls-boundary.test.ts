@@ -20,6 +20,13 @@ const storeRlsLive = readFileSync(
   new URL("../supabase/tests/store_rls_boundary_live.sql", import.meta.url),
   "utf8",
 );
+const storeWriteLockMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const storeRlsWorkflow = readFileSync(
   new URL(
     "../.github/workflows/store-rls-boundary-live-homologation.yml",
@@ -117,7 +124,7 @@ describe("superfície autenticada de RPCs", () => {
 });
 
 describe("fronteira RLS das tabelas por loja", () => {
-  it("exige RLS e proíbe privilégios anônimos ou escrita direta", () => {
+  it("exige RLS e proíbe privilégios, policies anônimas ou escrita direta", () => {
     for (const table of [
       "stores",
       "cash_registers",
@@ -126,20 +133,45 @@ describe("fronteira RLS das tabelas por loja", () => {
       "cash_movements",
     ]) {
       expect(storeRlsLive).toContain(`'${table}'`);
+      expect(storeWriteLockMigration).toContain(`'${table}'`);
     }
     expect(storeRlsLive).toContain("not class.relrowsecurity");
     expect(storeRlsLive).toContain("has_table_privilege('anon'");
     expect(storeRlsLive).toContain("has_table_privilege('authenticated'");
     expect(storeRlsLive).toContain("Direct authenticated writes bypass the RPC boundary");
     expect(storeRlsLive).toContain("Anonymous RLS policies found");
+    expect(storeRlsLive).toContain("authenticated_write_policies");
+    expect(storeRlsLive).toContain(
+      "Authenticated write policies remain inside the RPC-only store boundary",
+    );
+    expect(storeWriteLockMigration).toContain(
+      "revoke insert, update, delete, truncate on table",
+    );
+    expect(storeWriteLockMigration).toContain("from public, anon, authenticated");
+    for (const policyName of [
+      "stores_manager_insert",
+      "stores_manager_update",
+      "cash_registers_manager_insert",
+      "cash_registers_manager_update",
+      "staff_store_assignments_manager_all",
+    ]) {
+      expect(storeWriteLockMigration).toContain(`drop policy if exists ${policyName}`);
+    }
+    expect(storeWriteLockMigration).toContain(
+      "Store-scoped browser write policies remain after lockdown",
+    );
   });
 
-  it("exige predicados de loja e identidade nas leituras autenticadas", () => {
+  it("exige predicados de loja e recusa policies vazias ou tautológicas", () => {
     expect(storeRlsLive).toContain("private.can_access_store(id)");
     expect(storeRlsLive).toContain("private.can_access_store(store_id)");
     expect(storeRlsLive).toContain("private.is_manager()");
     expect(storeRlsLive).toContain("auth.uid()");
     expect(storeRlsLive).toContain("Store isolation predicates missing");
+    expect(storeRlsLive).toContain("dangerous_read_policies");
+    expect(storeRlsLive).toContain("policy.qual is null");
+    expect(storeRlsLive).toContain("lower(btrim(policy.qual)) in ('true', '(true)')");
+    expect(storeRlsLive).toContain("Tautological or empty store read policies detected");
     expect(storeRlsLive).toMatch(/^begin;/m);
     expect(storeRlsLive).toMatch(/^rollback;/m);
   });
