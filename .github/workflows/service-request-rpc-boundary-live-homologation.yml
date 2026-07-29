@@ -109,6 +109,8 @@ jobs:
           sha256sum security/service-request-table-surface.json > "$output_dir/manifest.sha256"
           sha256sum supabase/migrations/20260729202000_lock_service_request_tables_to_rpc.sql \
             > "$output_dir/lock-migration.sha256"
+          sha256sum supabase/migrations/20260729203000_harden_service_request_store_scope.sql \
+            > "$output_dir/hardening-migration.sha256"
           ! grep -R "$PRODUCTION_REF" "$output_dir"
           ! grep -R "postgresql://\|postgres://" "$output_dir"
 
