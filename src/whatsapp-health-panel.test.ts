@@ -20,7 +20,7 @@ const styles = readFileSync(
 );
 
 describe("painel de saude do WhatsApp", () => {
-  it("usa sessao BFF e RPC gerencial", () => {
+  it("usa sessão BFF, guard central e RPC gerencial", () => {
     expect(OPERATION_RPC_ALLOWLIST).toContain(
       "manager_get_whatsapp_otp_metrics",
     );
@@ -28,9 +28,15 @@ describe("painel de saude do WhatsApp", () => {
     expect(panel).toContain('bffRpc<Metrics>("manager_get_whatsapp_otp_metrics"');
     expect(panel).not.toContain("requireSupabase");
     expect(panel).not.toContain("Authorization");
+    expect(endpoint).toContain("guardBffRequest(request");
+    expect(endpoint).toContain('methods: ["GET"]');
+    expect(endpoint).toContain('configuredSiteUrl: env("SITE_URL")');
+    expect(endpoint).not.toContain("allowedOrigin(request");
+    expect(endpoint).toContain('cookies.get(SURFACE_COOKIE) !== "operation"');
+    expect(endpoint).toContain("cookies.get(ACCESS_COOKIE)");
   });
 
-  it("nao entrega segredos da Meta ao navegador", () => {
+  it("não entrega segredos da Meta ao navegador", () => {
     expect(endpoint).toContain('["owner", "manager"].includes(staff.role)');
     expect(endpoint).toContain("secretsExposed: false");
     expect(endpoint).toContain("phoneNumberId: suffix(");
@@ -40,7 +46,7 @@ describe("painel de saude do WhatsApp", () => {
     expect(endpoint).not.toContain("verifyToken:");
   });
 
-  it("mostra configuracao entrega verificacao falhas e custo", () => {
+  it("mostra configuração, entrega, verificação, falhas e custo", () => {
     expect(panel).toContain("Custo estimado");
     expect(panel).toContain("delivery_rate");
     expect(panel).toContain("verification_rate");
