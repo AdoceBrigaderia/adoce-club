@@ -107,6 +107,11 @@ const protectedEntrypoints = [
     csrf: "authenticated-client",
   },
   {
+    path: "netlify/functions/public-instant-order.ts",
+    methods: ["POST"],
+    csrf: "authenticated-submit",
+  },
+  {
     path: "netlify/functions/google-wallet-pass.ts",
     methods: ["POST"],
     csrf: "always",
@@ -203,6 +208,18 @@ for (const entrypoint of protectedEntrypoints) {
         entrypointSource,
         /const csrfRejection = guardBffCsrf\(request\)/,
       );
+    } else if (entrypoint.csrf === "authenticated-submit") {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+      assert.match(entrypointSource, /if \(accessToken\) \{/);
+      assert.match(
+        entrypointSource,
+        /const csrfRejection = guardBffCsrf\(request\)/,
+      );
+      const quoteIndex = entrypointSource.indexOf('if (action === "quote")');
+      const csrfIndex = entrypointSource.indexOf("if (accessToken)");
+      const submitPayloadIndex = entrypointSource.indexOf("const customerName");
+      assert.ok(quoteIndex >= 0 && quoteIndex < csrfIndex);
+      assert.ok(csrfIndex >= 0 && csrfIndex < submitPayloadIndex);
     } else {
       assert.doesNotMatch(entrypointSource, /requireCsrf:/);
     }
