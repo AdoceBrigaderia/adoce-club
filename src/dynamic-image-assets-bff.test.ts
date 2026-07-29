@@ -38,8 +38,12 @@ describe("capas dinâmicas protegidas pelo BFF", () => {
   });
 
   it("valida sessão, origem, CSRF, arquivos e armazenamento no servidor", () => {
-    expect(upload).toContain("allowedOrigin");
-    expect(upload).toContain("validCsrf");
+    expect(upload).toContain("guardBffRequest(request");
+    expect(upload).toContain('methods: ["POST"]');
+    expect(upload).toContain('configuredSiteUrl: env("SITE_URL")');
+    expect(upload).toContain("requireCsrf: true");
+    expect(upload).not.toContain("allowedOrigin(request");
+    expect(upload).not.toContain("validCsrf(request)");
     expect(upload).toContain('cookies.get(SURFACE_COOKIE) !== "operation"');
     expect(upload).toContain("manager_assert_dynamic_image_access");
     expect(upload).toContain("MAX_ORIGINAL_BYTES");
