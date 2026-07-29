@@ -1,7 +1,12 @@
 import path from "node:path";
 
 const ENTRYPOINT_PATTERN = /^netlify\/functions\/[^/]+\.ts$/;
-const APPROVED_HELPERS = ["secureJson", "secureText", "secureEmpty"];
+const APPROVED_HELPERS = [
+  "secureJson",
+  "secureText",
+  "secureEmpty",
+  "secureRedirect",
+];
 
 function normalizedPath(filePath) {
   return filePath.split(path.sep).join("/");
@@ -44,6 +49,15 @@ export function auditFunctionResponseSecurity(files) {
       });
     }
 
+    if (/\bResponse\.redirect\s*\(/.test(source)) {
+      violations.push({
+        path: filePath,
+        rule: "response-redirect",
+        message:
+          "Response.redirect contorna cache, CSP, Vary e a validação de destino do redirecionamento seguro.",
+      });
+    }
+
     if (
       /JSON\.stringify\s*\([\s\S]{0,240}Content-Type["']?\s*:\s*["']application\/json/i.test(
         source,
@@ -56,12 +70,30 @@ export function auditFunctionResponseSecurity(files) {
       });
     }
 
+    if (/(?:["']Location["']|\bLocation)\s*:/i.test(source)) {
+      violations.push({
+        path: filePath,
+        rule: "local-redirect-header",
+        message:
+          "A Function monta Location diretamente; use secureRedirect para impedir open redirect e preservar os headers obrigatórios.",
+      });
+    }
+
+    if (/["']Access-Control-Allow-(?:Origin|Credentials|Methods|Headers)["']\s*[:),]/i.test(source)) {
+      violations.push({
+        path: filePath,
+        rule: "local-cors-policy",
+        message:
+          "A Function define CORS localmente e pode divergir da política central de origem e credenciais.",
+      });
+    }
+
     if (!hasApprovedHelper(source)) {
       violations.push({
         path: filePath,
         rule: "missing-shared-boundary",
         message:
-          "A Function não usa secureJson, secureText ou secureEmpty da fronteira compartilhada.",
+          "A Function não usa secureJson, secureText, secureEmpty ou secureRedirect da fronteira compartilhada.",
       });
     }
   }
