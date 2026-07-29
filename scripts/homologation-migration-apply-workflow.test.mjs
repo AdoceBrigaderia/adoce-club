@@ -41,6 +41,16 @@ test('empacotamento automático é repetível, sem segredos e incapaz de aplicar
   assert.doesNotMatch(packageWorkflow, /SUPABASE_HOMOLOGATION_DB_URL/);
 });
 
+test('transporte Netlify usa URL HTTPS do deploy antes de qualquer URL HTTP', () => {
+  assert.match(packageWorkflow, /d\.deploy_ssl_url \|\| d\.ssl_url \|\| d\.deploy_url \|\| d\.url/);
+  assert.doesNotMatch(
+    packageWorkflow,
+    /\.url \|\| require\('\.\/artifacts\/netlify-proxy-deploy\/deploy-status\.json'\)\.ssl_url/,
+  );
+  assert.match(packageWorkflow, /if \(url\.protocol !== 'https:'\)/);
+  assert.match(packageWorkflow, /host\.endsWith\(`--\$\{expected\}`\)/);
+});
+
 test('workflow executa dry-run antes da aplicação e não permite conjunto parcial', () => {
   const dryRunPosition = workflow.indexOf('--dry-run');
   const applyPosition = workflow.indexOf('Aplicar exatamente o conjunto aprovado');
@@ -61,8 +71,8 @@ test('segredo do banco fica restrito ao environment e produção é rejeitada', 
   assert.match(workflow, /secrets\.SUPABASE_HOMOLOGATION_DB_URL/);
   assert.doesNotMatch(workflow, /SUPABASE_HOMOLOGATION_DB_URL:\s*(postgres|postgresql):\/\//);
   assert.match(workflow, /Referência produtiva rejeitada/);
-  assert.match(workflow, /! grep -R \"\$PRODUCTION_REF\"/);
-  assert.match(workflow, /! grep -R \"postgresql:\/\/\\\|postgres:\/\/\"/);
+  assert.match(workflow, /! grep -R "\$PRODUCTION_REF"/);
+  assert.match(workflow, /! grep -R "postgresql:\/\/\\\|postgres:\/\/"/);
   assert.doesNotMatch(workflow, /--prod\b/);
 });
 
