@@ -1,11 +1,10 @@
 import {
   ACCESS_COOKIE,
-  allowedOrigin,
   clearedSessionCookies,
   parseCookies,
   secureJson,
-  validCsrf,
 } from "./_shared/session-security";
+import { guardBffRequest } from "./_shared/request-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -16,12 +15,12 @@ const env = (name: string) =>
   process.env[name];
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
-  if (!validCsrf(request))
-    return secureJson({ error: "Validação de segurança inválida." }, 403);
+  const guardResponse = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+    requireCsrf: true,
+  });
+  if (guardResponse) return guardResponse;
 
   const cookies = parseCookies(request);
   const accessToken = cookies.get(ACCESS_COOKIE) || "";
