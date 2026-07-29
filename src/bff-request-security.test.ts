@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { CSRF_COOKIE } from "../netlify/functions/_shared/session-security";
-import { guardBffRequest } from "../netlify/functions/_shared/request-security";
+import {
+  guardBffCsrf,
+  guardBffRequest,
+} from "../netlify/functions/_shared/request-security";
 
 const originalDeployEnvironment = process.env.ADOCE_DEPLOY_ENV;
 const originalAllowedOrigins = process.env.BFF_ALLOWED_ORIGINS;
@@ -102,6 +105,29 @@ describe("guard central dos BFFs", () => {
     );
 
     expect(invalid?.status).toBe(403);
+    expect(await invalid?.json()).toMatchObject({ code: "csrf_validation_failed" });
+    expect(valid).toBeNull();
+  });
+
+  it("permite reutilizar o guard CSRF após classificar a operação", async () => {
+    const token = "c".repeat(64);
+    const invalid = guardBffCsrf(
+      homologationRequest("POST", {
+        Origin: "https://homologacao.example",
+        Cookie: `${CSRF_COOKIE}=${token}`,
+        "X-CSRF-Token": "d".repeat(64),
+      }),
+    );
+    const valid = guardBffCsrf(
+      homologationRequest("POST", {
+        Origin: "https://homologacao.example",
+        Cookie: `${CSRF_COOKIE}=${token}`,
+        "X-CSRF-Token": token,
+      }),
+    );
+
+    expect(invalid?.status).toBe(403);
+    expect(invalid?.headers.get("cache-control")).toBe("no-store, max-age=0");
     expect(await invalid?.json()).toMatchObject({ code: "csrf_validation_failed" });
     expect(valid).toBeNull();
   });
