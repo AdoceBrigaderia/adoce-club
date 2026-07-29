@@ -11,6 +11,8 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Logout revoga a sessão no Supabase e remove access, refresh, superfície e CSRF.
 - CSRF por double-submit token nas alterações autenticadas.
 - Respostas de autenticação usam `no-store` e nunca devolvem access/refresh token ao JavaScript.
+- Respostas JSON das Functions também aplicam `nosniff`, `DENY`, `no-referrer` e CSP restritiva diretamente no servidor, sem depender apenas do arquivo de configuração da hospedagem.
+- Leituras sem cabeçalho `Origin` permanecem disponíveis para health checks e navegação legítima, mas são bloqueadas quando o navegador informa `Sec-Fetch-Site: cross-site` ou `same-site`.
 - Senhas temporárias são aleatórias, expiram em duas horas e exigem troca.
 - Login e gerenciamento de passkeys estão disponíveis para clientes e equipe, com fallback por senha/código.
 - Cadastro público, recuperação por WhatsApp OTP, cartão do cliente e check-in NFC/QR usam a fronteira BFF.
@@ -30,6 +32,7 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 - Endpoints públicos sensíveis possuem rate limit transacional por IP e contato com identificadores anonimizados antes do armazenamento.
 - Tabelas exclusivamente internas têm RLS, privilégios diretos revogados e política explícita de negação.
 - CSP, HSTS, anti-frame, nosniff, Referrer-Policy, Permissions-Policy e COOP/CORP são verificados no build.
+- O contrato de origem do BFF varia também por `Sec-Fetch-Site`, evitando que caches compartilhem respostas entre contextos de navegação distintos.
 
 ### Integridade da operação
 
@@ -107,6 +110,9 @@ Este documento acompanha somente a branch `reestruturacao/ux-crm-operacao-imagen
 
 ## Evidências principais
 
+- `netlify/functions/_shared/session-security.ts`
+- `src/bff-origin-security.test.ts`
+- `src/bff-session-security.test.ts`
 - `scripts/audit-browser-security.mjs`
 - `scripts/browser-security-audit-core.mjs`
 - `scripts/homologation-environment-gate.mjs`
