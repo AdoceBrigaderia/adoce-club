@@ -59,6 +59,7 @@ function validateTables(root, manifest, list) {
     violation(list, "manifest_tables_missing", "tables deve ser um array não vazio");
     return [];
   }
+
   const tables = [];
   for (const entry of manifest.tables) {
     const name = entry?.name;
@@ -162,13 +163,18 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       violations: [{ code: "manifest_missing", detail: "manifesto ausente ou inválido", file: MANIFEST_FILE }],
     };
   }
-  if (manifest.schemaVersion !== 1) {
-    violation(violations, "manifest_schema_unsupported", `schemaVersion esperado=1, recebido=${String(manifest.schemaVersion)}`);
+  if (manifest.schemaVersion !== 2) {
+    violation(violations, "manifest_schema_unsupported", `schemaVersion esperado=2, recebido=${String(manifest.schemaVersion)}`);
   }
 
   const liveFile = controlledPath(manifest.liveTest, "liveTest", violations);
   const lockFile = controlledPath(manifest.lockMigration, "lockMigration", violations);
   const hardeningFile = controlledPath(manifest.hardeningMigration, "hardeningMigration", violations);
+  const workspaceHardeningFile = controlledPath(
+    manifest.workspaceHardeningMigration,
+    "workspaceHardeningMigration",
+    violations,
+  );
   const workflowFile = controlledPath(manifest.workflow, "workflow", violations);
   const tables = validateTables(repositoryRoot, manifest, violations);
   const tableNames = tables.map(({ name }) => name);
@@ -176,6 +182,13 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
   const lock = read(repositoryRoot, lockFile, "lock_migration_missing", "migration de lockdown ausente", violations);
   const live = read(repositoryRoot, liveFile, "live_test_missing", "ensaio vivo ausente", violations);
   const hardening = read(repositoryRoot, hardeningFile, "hardening_migration_missing", "migration de hardening ausente", violations);
+  const workspaceHardening = read(
+    repositoryRoot,
+    workspaceHardeningFile,
+    "workspace_hardening_migration_missing",
+    "migration final do workspace ausente",
+    violations,
+  );
   const workflow = read(repositoryRoot, workflowFile, "workflow_missing", "workflow de homologação ausente", violations);
 
   exactArray(tableNames, sqlArray(lock, "locked_service_request_tables"), "lock_inventory_drift", "locked_service_request_tables", lockFile, violations);
@@ -234,6 +247,34 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     violations,
   );
   requireTokens(
+    workspaceHardening,
+    [
+      "drop function if exists public.staff_get_service_request_workspace(text,text,integer)",
+      "target_store_id uuid default null",
+      "private.staff_has_any_capability('manage_orders')",
+      "private.staff_has_capability(target_store_id, 'manage_orders')",
+      "private.staff_has_capability(request.store_id, 'manage_orders')",
+      "target_store_id is null or request.store_id = target_store_id",
+      "private.staff_has_capability(request.store_id, 'view_finance')",
+      "join public.stores store on store.id = request.store_id",
+      "A assinatura antiga do workspace de encomendas permanece disponível",
+      "O workspace de encomendas perdeu isolamento por loja ou teto financeiro",
+      "begin;",
+      "commit;",
+    ],
+    "workspace_hardening_contract_missing",
+    workspaceHardeningFile,
+    violations,
+  );
+  if (workspaceHardening.includes("staff_get_service_request_workspace_unscoped_internal(")) {
+    violation(
+      violations,
+      "workspace_unscoped_call_forbidden",
+      "hardening final voltou a consultar a implementação global sem escopo",
+      workspaceHardeningFile,
+    );
+  }
+  requireTokens(
     live,
     [
       "Service-request RPC-only tables are missing",
@@ -244,6 +285,10 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       "Service-request child tables lost request_id parent foreign keys",
       "submit_service_request_bff lost the store-scoped signature",
       "staff_get_service_request_workspace lost the store filter signature",
+      "staff_get_service_request_workspace restored the unscoped public signature",
+      "staff_get_service_request_workspace still scans the unscoped implementation",
+      "staff_get_service_request_workspace lost row-level store authorization",
+      "staff_get_service_request_workspace lost the financial capability ceiling",
       "begin;",
       "rollback;",
     ],
@@ -263,7 +308,9 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       "node scripts/audit-service-request-table-surface.mjs",
       liveFile || "supabase/tests/service_request_rpc_boundary_live.sql",
       hardeningFile || "supabase/migrations/20260729203000_harden_service_request_store_scope.sql",
+      workspaceHardeningFile || "supabase/migrations/20260729212000_scope_service_request_workspace_by_store.sql",
       "hardening-migration.sha256",
+      "workspace-hardening-migration.sha256",
       "Referência de produção detectada e bloqueada",
       'psql "$SUPABASE_HOMOLOGATION_DB_URL"',
     ],
@@ -283,6 +330,7 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     liveFile,
     lockFile,
     hardeningFile,
+    workspaceHardeningFile,
     workflowFile,
     ...tables.map(({ definitionMigration }) => definitionMigration),
     ...tables.flatMap(({ definitionEvidence }) => definitionEvidence.map(({ migration }) => migration)),
@@ -300,7 +348,9 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
 export function assertServiceRequestTableSurface(repositoryRoot) {
   const result = auditServiceRequestTableSurface(repositoryRoot);
   if (result.violations.length) {
-    const details = result.violations.map(({ file, code, detail }) => `- ${file || MANIFEST_FILE}: ${code} — ${detail}`).join("\n");
+    const details = result.violations
+      .map(({ file, code, detail }) => `- ${file || MANIFEST_FILE}: ${code} — ${detail}`)
+      .join("\n");
     throw new Error(`Auditoria da superfície RPC das encomendas reprovada:\n${details}`);
   }
   return result;
