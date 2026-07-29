@@ -86,6 +86,15 @@ test("a composição de Vary deduplica tokens sem perder casing canônico", () =
   );
 });
 
+test("Vary ignora wildcard e tokens inválidos antes de preservar o baseline", () => {
+  assert.match(responseSecuritySource, /const VARY_TOKEN_PATTERN\s*=\s*\/\^/);
+  assert.match(
+    responseSecuritySource,
+    /token === ["']\*["'][\s\S]*!VARY_TOKEN_PATTERN\.test\(token\)/,
+  );
+  assert.doesNotMatch(responseSecuritySource, /if \(wildcard\) return ["']\*["']/);
+});
+
 test("cache sensível não pode ser rebaixado por opções ou headers", () => {
   assert.match(
     responseSecuritySource,
@@ -97,4 +106,12 @@ test("cache sensível não pode ser rebaixado por opções ou headers", () => {
   );
   assert.doesNotMatch(responseSecuritySource, /cacheControl\?:/);
   assert.doesNotMatch(responseSecuritySource, /options\.cacheControl/);
+});
+
+test("redirecionamentos usam destino interno e status explícitos", () => {
+  assert.match(responseSecuritySource, /export function secureRedirect/);
+  assert.match(responseSecuritySource, /candidate\.startsWith\(["']\/["']\)/);
+  assert.match(responseSecuritySource, /candidate\.startsWith\(["']\/\/["']\)/);
+  assert.match(responseSecuritySource, /REDIRECT_STATUSES\.has\(status\)/);
+  assert.match(responseSecuritySource, /Location: normalizeRedirectLocation\(location\)/);
 });
