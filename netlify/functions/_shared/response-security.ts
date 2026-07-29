@@ -12,6 +12,7 @@ const RESPONSE_SECURITY_HEADERS = {
     "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
 } as const;
 
+const SENSITIVE_CACHE_CONTROL = "no-store, max-age=0";
 const REQUIRED_VARY_TOKENS = ["Origin", "Sec-Fetch-Site"] as const;
 
 const CANONICAL_VARY_TOKENS = new Map(
@@ -23,7 +24,6 @@ const CANONICAL_VARY_TOKENS = new Map(
 
 type SecureResponseOptions = {
   contentType?: string;
-  cacheControl?: string;
   vary?: string;
   headers?: HeadersInit;
 };
@@ -60,7 +60,7 @@ export function secureResponseHeaders(options: SecureResponseOptions = {}) {
     ...REQUIRED_VARY_TOKENS,
   );
 
-  headers.set("Cache-Control", options.cacheControl || "no-store, max-age=0");
+  headers.set("Cache-Control", SENSITIVE_CACHE_CONTROL);
   headers.set("Pragma", "no-cache");
   headers.set("Vary", protectedVary);
   if (options.contentType) headers.set("Content-Type", options.contentType);
