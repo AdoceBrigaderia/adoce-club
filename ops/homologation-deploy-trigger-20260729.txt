@@ -1,0 +1,2 @@
+Deploy automático da homologação após alinhamento do contexto Netlify.
+Produção Adoce não autorizada e não alterada.
