@@ -9,5 +9,7 @@ process.stdout.write(`${JSON.stringify({
   ok: true,
   schemaVersion: result.schemaVersion,
   tableCount: result.tableCount,
+  readableTableCount: result.readableTableCount,
+  rpcOnlyTableCount: result.rpcOnlyTableCount,
   predicateCount: result.predicateCount,
 }, null, 2)}\n`);
