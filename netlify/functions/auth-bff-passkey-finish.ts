@@ -1,11 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { guardBffCsrf, guardBffRequest } from "./_shared/request-security";
 import {
   ACCESS_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
   sessionCookies,
-  validCsrf,
   type AuthSurface,
   type SupabaseTokenPayload,
 } from "./_shared/session-security";
@@ -40,10 +39,11 @@ function passkeyApi(client: ReturnType<typeof createClient>) {
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const body = (await request.json().catch(() => ({}))) as {
     action?: "authentication" | "registration";
@@ -66,8 +66,9 @@ export default async (request: Request) => {
     return secureJson({ error: "Chaves de acesso indisponíveis neste ambiente." }, 503);
 
   if (action === "registration") {
-    if (!validCsrf(request))
-      return secureJson({ error: "Validação CSRF inválida." }, 403);
+    const csrfRejection = guardBffCsrf(request);
+    if (csrfRejection) return csrfRejection;
+
     const accessToken = parseCookies(request).get(ACCESS_COOKIE) || "";
     if (!accessToken)
       return secureJson({ error: "Entre antes de cadastrar uma chave de acesso." }, 401);
