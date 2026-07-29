@@ -1,4 +1,5 @@
 import { buildHomologationReadiness } from "./_shared/homologation-readiness";
+import { secureEmpty } from "./_shared/response-security";
 import { secureJson } from "./_shared/session-security";
 
 declare const Netlify:
@@ -65,13 +66,7 @@ export default async (request: Request) => {
     return secureJson({ error: "Recurso não encontrado." }, 404);
 
   if (request.method === "HEAD") {
-    return new Response(null, {
-      status: readiness.coreReady ? 204 : 503,
-      headers: {
-        "Cache-Control": "no-store, max-age=0",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return secureEmpty(readiness.coreReady ? 204 : 503);
   }
 
   return secureJson(readiness, readiness.coreReady ? 200 : 503);
