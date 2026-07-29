@@ -35,10 +35,10 @@ begin
   where namespace.nspname = 'public'
     and class.relname = any(locked_tables)
     and (
-      has_table_privilege(role_name, format('%I.%I', namespace.nspname, class.relname), 'INSERT')
-      or has_table_privilege(role_name, format('%I.%I', namespace.nspname, class.relname), 'UPDATE')
-      or has_table_privilege(role_name, format('%I.%I', namespace.nspname, class.relname), 'DELETE')
-      or has_table_privilege(role_name, format('%I.%I', namespace.nspname, class.relname), 'TRUNCATE')
+      has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'INSERT')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'UPDATE')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'DELETE')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'TRUNCATE')
     );
 
   if coalesce(cardinality(exposed_write_privileges), 0) > 0 then
