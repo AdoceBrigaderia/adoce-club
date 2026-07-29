@@ -24,6 +24,7 @@ env:
   HOMOLOGATION_REF: ${{ vars.ADOCE_HOMOLOGATION_SUPABASE_REF }}
   PRODUCTION_REF: ${{ vars.ADOCE_PRODUCTION_SUPABASE_REF }}
   LIVE_TEST_FILE: supabase/tests/service_request_rpc_boundary_live.sql
+  WORKSPACE_HARDENING_FILE: supabase/migrations/20260729212000_scope_service_request_workspace_by_store.sql
 
 jobs:
   service-request-boundary:
@@ -54,6 +55,7 @@ jobs:
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
           test "$CONFIRMATION" = "AUDITAR ENCOMENDAS RPC SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
           test -s "$LIVE_TEST_FILE"
+          test -s "$WORKSPACE_HARDENING_FILE"
           test -n "$SUPABASE_HOMOLOGATION_DB_URL"
           case "$SUPABASE_HOMOLOGATION_DB_URL" in
             postgres://*|postgresql://*) ;;
@@ -68,7 +70,10 @@ jobs:
           esac
           grep -q '^begin;' "$LIVE_TEST_FILE"
           grep -q '^rollback;' "$LIVE_TEST_FILE"
+          grep -q '^begin;' "$WORKSPACE_HARDENING_FILE"
+          grep -q '^commit;' "$WORKSPACE_HARDENING_FILE"
           ! grep -q "$PRODUCTION_REF" "$LIVE_TEST_FILE"
+          ! grep -q "$PRODUCTION_REF" "$WORKSPACE_HARDENING_FILE"
 
       - name: Preparar Node para auditoria determinística
         uses: actions/setup-node@v4
@@ -111,6 +116,8 @@ jobs:
             > "$output_dir/lock-migration.sha256"
           sha256sum supabase/migrations/20260729203000_harden_service_request_store_scope.sql \
             > "$output_dir/hardening-migration.sha256"
+          sha256sum "$WORKSPACE_HARDENING_FILE" \
+            > "$output_dir/workspace-hardening-migration.sha256"
           ! grep -R "$PRODUCTION_REF" "$output_dir"
           ! grep -R "postgresql://\|postgres://" "$output_dir"
 
