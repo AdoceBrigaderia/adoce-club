@@ -70,6 +70,18 @@ jobs:
           grep -q '^rollback;' "$LIVE_TEST_FILE"
           ! grep -q "$PRODUCTION_REF" "$LIVE_TEST_FILE"
 
+      - name: Preparar Node para a auditoria determinística
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Validar manifesto, migration, SQL e workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-store-rls-surface.mjs
+
       - name: Instalar cliente PostgreSQL
         shell: bash
         run: |
@@ -94,6 +106,9 @@ jobs:
           printf '%s\n' "$(git rev-parse HEAD)" > "$output_dir/commit.txt"
           printf '%s\n' "$HOMOLOGATION_REF" > "$output_dir/project-ref.txt"
           sha256sum "$LIVE_TEST_FILE" > "$output_dir/test-sql.sha256"
+          sha256sum security/store-rls-surface.json > "$output_dir/manifest.sha256"
+          sha256sum supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql \
+            > "$output_dir/write-lock-migration.sha256"
           ! grep -R "$PRODUCTION_REF" "$output_dir"
           ! grep -R "postgresql://\|postgres://" "$output_dir"
 
