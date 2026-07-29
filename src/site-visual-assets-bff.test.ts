@@ -49,9 +49,13 @@ describe("central de imagens institucionais pelo BFF", () => {
   });
 
   it("envia arquivo pelo BFF com sessão HttpOnly, CSRF e validação", () => {
-    expect(endpoint).toContain("allowedOrigin(request, env(\"SITE_URL\"))");
-    expect(endpoint).toContain("validCsrf(request)");
-    expect(endpoint).toContain("cookies.get(SURFACE_COOKIE) !== \"operation\"");
+    expect(endpoint).toContain("guardBffRequest(request");
+    expect(endpoint).toContain('methods: ["POST"]');
+    expect(endpoint).toContain('configuredSiteUrl: env("SITE_URL")');
+    expect(endpoint).toContain("requireCsrf: true");
+    expect(endpoint).not.toContain("allowedOrigin(request");
+    expect(endpoint).not.toContain("validCsrf(request)");
+    expect(endpoint).toContain('cookies.get(SURFACE_COOKIE) !== "operation"');
     expect(endpoint).toContain("cookies.get(ACCESS_COOKIE)");
     expect(endpoint).toContain("manager_assert_site_visual_access");
     expect(endpoint).toContain("MAX_ORIGINAL_BYTES = 6 * 1024 * 1024");
