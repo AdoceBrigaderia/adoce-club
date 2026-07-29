@@ -1,10 +1,9 @@
+import { guardBffRequest } from "./_shared/request-security";
 import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
-  validCsrf,
 } from "./_shared/session-security";
 import {
   createGoogleWalletSaveUrl,
@@ -51,15 +50,14 @@ async function preparePass(
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+    requireCsrf: true,
+  });
+  if (requestRejection) return requestRejection;
 
   const siteUrl = env("SITE_URL") || new URL(request.url).origin;
-  if (!allowedOrigin(request, siteUrl))
-    return secureJson({ error: "Origem não autorizada." }, 403);
-  if (!validCsrf(request))
-    return secureJson({ error: "Validação CSRF inválida." }, 403);
-
   const cookies = parseCookies(request);
   if (cookies.get(SURFACE_COOKIE) !== "client")
     return secureJson({ error: "Sessão do Clube obrigatória." }, 403);
