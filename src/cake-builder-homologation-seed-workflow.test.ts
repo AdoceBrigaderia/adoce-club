@@ -11,6 +11,11 @@ const liveAudit = readFileSync(
   "utf8",
 );
 
+const runbook = readFileSync(
+  new URL("../docs/homologation-cake-builder-catalog-runbook.md", import.meta.url),
+  "utf8",
+);
+
 describe("aplicação do catálogo real do montador na homologação", () => {
   it("é manual, isolada e exige commit, backup e confirmação exatos", () => {
     expect(workflow).toContain("workflow_dispatch:");
@@ -57,5 +62,14 @@ describe("aplicação do catálogo real do montador na homologação", () => {
     expect(liveAudit).toContain("invalid_toppings <> 0");
     expect(liveAudit).toContain("provisional_values <> 0");
     expect(liveAudit).toContain("pg_advisory_xact_lock");
+  });
+
+  it("documenta pré-requisitos, repetição e proibição de produção", () => {
+    expect(runbook).toContain("As 22 migrations pendentes precisam estar aplicadas");
+    expect(runbook).toContain("SUPABASE_HOMOLOGATION_DB_URL");
+    expect(runbook).toContain("Falhas transientes");
+    expect(runbook).toContain("repetidas até três vezes");
+    expect(runbook).toContain("não acessa o Supabase produtivo");
+    expect(runbook).toContain("sem aprovação expressa");
   });
 });
