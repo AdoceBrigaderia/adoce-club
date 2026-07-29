@@ -24,6 +24,18 @@ function normalizeMethods(methods: readonly string[]) {
   return normalized;
 }
 
+export function guardBffCsrf(request: Request): Response | null {
+  if (validCsrf(request)) return null;
+
+  return secureJson(
+    {
+      error: "Validação de segurança inválida.",
+      code: "csrf_validation_failed",
+    },
+    403,
+  );
+}
+
 export function guardBffRequest(
   request: Request,
   options: BffRequestGuardOptions,
@@ -55,14 +67,8 @@ export function guardBffRequest(
     );
   }
 
-  if (options.requireCsrf && !validCsrf(request)) {
-    return secureJson(
-      {
-        error: "Validação de segurança inválida.",
-        code: "csrf_validation_failed",
-      },
-      403,
-    );
+  if (options.requireCsrf) {
+    return guardBffCsrf(request);
   }
 
   return null;
