@@ -14,6 +14,8 @@ const RESPONSE_SECURITY_HEADERS = {
 
 const SENSITIVE_CACHE_CONTROL = "no-store, max-age=0";
 const REQUIRED_VARY_TOKENS = ["Origin", "Sec-Fetch-Site"] as const;
+const VARY_TOKEN_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 const CANONICAL_VARY_TOKENS = new Map(
   ["Accept-Encoding", "Cookie", ...REQUIRED_VARY_TOKENS].map((token) => [
@@ -30,16 +32,11 @@ type SecureResponseOptions = {
 
 function composeVaryHeader(...values: Array<string | null | undefined>) {
   const tokens = new Map<string, string>();
-  let wildcard = false;
 
   values.forEach((value) => {
     value?.split(",").forEach((rawToken) => {
       const token = rawToken.trim();
-      if (!token) return;
-      if (token === "*") {
-        wildcard = true;
-        return;
-      }
+      if (!token || token === "*" || !VARY_TOKEN_PATTERN.test(token)) return;
 
       const key = token.toLowerCase();
       if (!tokens.has(key)) {
@@ -48,8 +45,20 @@ function composeVaryHeader(...values: Array<string | null | undefined>) {
     });
   });
 
-  if (wildcard) return "*";
   return Array.from(tokens.values()).join(", ");
+}
+
+function normalizeRedirectLocation(location: string) {
+  const candidate = location.trim();
+  if (
+    !candidate ||
+    !candidate.startsWith("/") ||
+    candidate.startsWith("//") ||
+    /[\u0000-\u001f\u007f]/.test(candidate)
+  ) {
+    throw new TypeError("Redirecionamento externo ou inválido não permitido.");
+  }
+  return candidate;
 }
 
 export function secureResponseHeaders(options: SecureResponseOptions = {}) {
@@ -84,5 +93,17 @@ export function secureEmpty(status = 204, headers?: HeadersInit) {
   return new Response(null, {
     status,
     headers: secureResponseHeaders({ headers }),
+  });
+}
+
+export function secureRedirect(location: string, status = 303) {
+  if (!REDIRECT_STATUSES.has(status)) {
+    throw new RangeError("Status de redirecionamento inválido.");
+  }
+  return new Response(null, {
+    status,
+    headers: secureResponseHeaders({
+      headers: { Location: normalizeRedirectLocation(location) },
+    }),
   });
 }
