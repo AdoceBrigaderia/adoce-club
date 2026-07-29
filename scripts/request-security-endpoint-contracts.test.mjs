@@ -38,7 +38,7 @@ test("readiness da homologação valida método e origem antes de ler o ambiente
   assert.doesNotMatch(entrypoint, /new Set\(\["GET", "HEAD"\]\)/);
   assert.ok(
     entrypoint.indexOf("guardBffRequest(request") <
-      entrypoint.indexOf("buildHomologationReadiness"),
+      entrypoint.indexOf("const readiness = buildHomologationReadiness"),
   );
   assert.match(entrypoint, /return secureEmpty\(readiness\.coreReady \? 204 : 503\)/);
 });
