@@ -82,6 +82,16 @@ const protectedEntrypoints = [
     csrf: "always",
   },
   {
+    path: "netlify/functions/whatsapp-otp-request.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/whatsapp-otp-verify.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
     path: "netlify/functions/google-wallet-pass.ts",
     methods: ["POST"],
     csrf: "always",
