@@ -1,10 +1,15 @@
 import { buildHomologationReadiness } from "./_shared/homologation-readiness";
+import { guardBffRequest } from "./_shared/request-security";
 import { secureEmpty } from "./_shared/response-security";
 import { secureJson } from "./_shared/session-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
   | undefined;
+
+const env = (name: string) =>
+  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
+  process.env[name];
 
 const variableNames = [
   "ADOCE_DEPLOY_ENV",
@@ -38,18 +43,15 @@ const variableNames = [
 ] as const;
 
 function readEnvironment() {
-  return Object.fromEntries(
-    variableNames.map((name) => [
-      name,
-      (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-        process.env[name],
-    ]),
-  );
+  return Object.fromEntries(variableNames.map((name) => [name, env(name)]));
 }
 
 export default async (request: Request) => {
-  if (!new Set(["GET", "HEAD"]).has(request.method))
-    return secureJson({ error: "Método não permitido." }, 405);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["GET", "HEAD"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const requestOrigin = (() => {
     try {
