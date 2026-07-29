@@ -1,10 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { guardBffRequest } from "./_shared/request-security";
 import {
   ACCESS_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
-  validCsrf,
 } from "./_shared/session-security";
 
 declare const Netlify:
@@ -39,10 +38,12 @@ function api(client: ReturnType<typeof createClient>) {
 }
 
 export default async (request: Request) => {
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
-  if (!['GET', 'POST'].includes(request.method))
-    return secureJson({ error: "Método não permitido." }, 405);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["GET", "POST"],
+    configuredSiteUrl: env("SITE_URL"),
+    requireCsrf: request.method.toUpperCase() === "POST",
+  });
+  if (requestRejection) return requestRejection;
 
   const accessToken = parseCookies(request).get(ACCESS_COOKIE) || "";
   if (!accessToken)
@@ -70,8 +71,6 @@ export default async (request: Request) => {
     return secureJson({ passkeys: result.data || [] });
   }
 
-  if (!validCsrf(request))
-    return secureJson({ error: "Validação CSRF inválida." }, 403);
   const body = (await request.json().catch(() => ({}))) as {
     action?: "rename" | "delete";
     passkeyId?: string;
