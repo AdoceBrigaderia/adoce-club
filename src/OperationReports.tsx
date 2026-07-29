@@ -11,6 +11,8 @@ import {
   Store,
   Users,
 } from "lucide-react";
+import OperationReportBreakdowns from "./OperationReportBreakdowns";
+import type { OperationalReportBreakdownPayload } from "./operational-report-breakdowns";
 import { bffRpc } from "./services/bff-rpc";
 import "./operation-reports.css";
 
@@ -18,7 +20,7 @@ type StoreRow = { id: string; name: string; active: boolean };
 type BusinessWorkspace = { stores?: StoreRow[] };
 type NullableNumber = number | null;
 
-type ReportsData = {
+type ReportsData = OperationalReportBreakdownPayload & {
   period: { from: string; to: string; store_id: string | null };
   capabilities: {
     finance_authorized: boolean;
@@ -208,12 +210,13 @@ export default function OperationReports() {
   }, [loadStores, loadReport]);
 
   const maxDailyValue = useMemo(
-    () => Math.max(
-      1,
-      ...(report?.sales_by_day || []).map((row) =>
-        report?.capabilities.finance_scope_complete ? row.gross || 0 : row.orders,
+    () =>
+      Math.max(
+        1,
+        ...(report?.sales_by_day || []).map((row) =>
+          report?.capabilities.finance_scope_complete ? row.gross || 0 : row.orders,
+        ),
       ),
-    ),
     [report],
   );
   const maxProductQuantity = useMemo(
@@ -251,10 +254,42 @@ export default function OperationReports() {
           <button type="button" onClick={() => applyPreset(30)}>30 dias</button>
           <button type="button" onClick={() => applyPreset(90)}>90 dias</button>
         </div>
-        <label>De<input type="date" value={from} onChange={(event: ChangeEvent<HTMLInputElement>) => setFrom(event.target.value)} /></label>
-        <label>Até<input type="date" value={to} onChange={(event: ChangeEvent<HTMLInputElement>) => setTo(event.target.value)} /></label>
-        <label>Loja<select value={storeId} onChange={(event: ChangeEvent<HTMLSelectElement>) => setStoreId(event.target.value)}><option value="">Todas acessíveis</option>{stores.map((store) => <option value={store.id} key={store.id}>{store.name}</option>)}</select></label>
-        <button className="operation-reports-refresh" type="button" onClick={() => void loadReport()} disabled={loading}><RefreshCw /> {loading ? "Atualizando…" : "Atualizar"}</button>
+        <label>
+          De
+          <input
+            type="date"
+            value={from}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setFrom(event.target.value)}
+          />
+        </label>
+        <label>
+          Até
+          <input
+            type="date"
+            value={to}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => setTo(event.target.value)}
+          />
+        </label>
+        <label>
+          Loja
+          <select
+            value={storeId}
+            onChange={(event: ChangeEvent<HTMLSelectElement>) => setStoreId(event.target.value)}
+          >
+            <option value="">Todas acessíveis</option>
+            {stores.map((store) => (
+              <option value={store.id} key={store.id}>{store.name}</option>
+            ))}
+          </select>
+        </label>
+        <button
+          className="operation-reports-refresh"
+          type="button"
+          onClick={() => void loadReport()}
+          disabled={loading}
+        >
+          <RefreshCw /> {loading ? "Atualizando…" : "Atualizar"}
+        </button>
       </div>
 
       {notice ? <p className="operation-reports-notice" role="status">{notice}</p> : null}
@@ -285,6 +320,8 @@ export default function OperationReports() {
             <article><small>Canceladas</small><strong>{number(report.summary.service_requests_cancelled)}</strong></article>
             <article><small>Recebido em encomendas</small><strong>{moneyOrProtected(report.summary.service_requests_paid_amount)}</strong></article>
           </section>
+
+          <OperationReportBreakdowns report={report} />
 
           <div className="operation-reports-grid">
             <section className="operation-reports-card sales-chart">
