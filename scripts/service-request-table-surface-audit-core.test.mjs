@@ -16,6 +16,7 @@ const controlledFiles = [
   manifestFile,
   manifest.liveTest,
   manifest.lockMigration,
+  manifest.hardeningMigration,
   manifest.workflow,
   ...manifest.tables.map(({ definitionMigration }) => definitionMigration).filter(Boolean),
   ...manifest.tables.flatMap(({ definitionEvidence = [] }) =>
@@ -135,6 +136,17 @@ test("exige FKs exatas e assinaturas com loja no pós-gate SQL", () => {
   }
   assert.match(liveTest, /submit_service_request_bff lost the store-scoped signature/);
   assert.match(liveTest, /staff_get_service_request_workspace lost the store filter signature/);
+});
+
+test("reprova perda do hardening diferido ou reexposição dos RPCs internos", () => {
+  const root = fixture();
+  mutate(root, manifest.hardeningMigration, (source) =>
+    source
+      .replace("deferrable initially deferred", "not deferrable")
+      .replaceAll("from public, anon, authenticated, service_role;", "from public, anon, authenticated;"),
+  );
+  const result = auditServiceRequestTableSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "hardening_contract_missing"));
 });
 
 test("reprova workflow automático ou mutável", () => {
