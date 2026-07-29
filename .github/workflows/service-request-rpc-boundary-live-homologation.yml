@@ -25,6 +25,9 @@ env:
   PRODUCTION_REF: ${{ vars.ADOCE_PRODUCTION_SUPABASE_REF }}
   LIVE_TEST_FILE: supabase/tests/service_request_rpc_boundary_live.sql
   WORKSPACE_HARDENING_FILE: supabase/migrations/20260729212000_scope_service_request_workspace_by_store.sql
+  LIFECYCLE_FILE: supabase/migrations/20260729221000_manage_service_request_lifecycle.sql
+  PRODUCTION_LIFECYCLE_FILE: supabase/migrations/20260729221200_protect_service_request_production_actions.sql
+  LIFECYCLE_WORKSPACE_FILE: supabase/migrations/20260729221600_redact_service_request_production_workspace.sql
 
 jobs:
   service-request-boundary:
@@ -54,8 +57,14 @@ jobs:
           test -n "$PRODUCTION_REF"
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
           test "$CONFIRMATION" = "AUDITAR ENCOMENDAS RPC SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
-          test -s "$LIVE_TEST_FILE"
-          test -s "$WORKSPACE_HARDENING_FILE"
+          for file in \
+            "$LIVE_TEST_FILE" \
+            "$WORKSPACE_HARDENING_FILE" \
+            "$LIFECYCLE_FILE" \
+            "$PRODUCTION_LIFECYCLE_FILE" \
+            "$LIFECYCLE_WORKSPACE_FILE"; do
+            test -s "$file"
+          done
           test -n "$SUPABASE_HOMOLOGATION_DB_URL"
           case "$SUPABASE_HOMOLOGATION_DB_URL" in
             postgres://*|postgresql://*) ;;
@@ -70,10 +79,16 @@ jobs:
           esac
           grep -q '^begin;' "$LIVE_TEST_FILE"
           grep -q '^rollback;' "$LIVE_TEST_FILE"
-          grep -q '^begin;' "$WORKSPACE_HARDENING_FILE"
-          grep -q '^commit;' "$WORKSPACE_HARDENING_FILE"
+          for file in \
+            "$WORKSPACE_HARDENING_FILE" \
+            "$LIFECYCLE_FILE" \
+            "$PRODUCTION_LIFECYCLE_FILE" \
+            "$LIFECYCLE_WORKSPACE_FILE"; do
+            grep -q '^begin;' "$file"
+            grep -q '^commit;' "$file"
+            ! grep -q "$PRODUCTION_REF" "$file"
+          done
           ! grep -q "$PRODUCTION_REF" "$LIVE_TEST_FILE"
-          ! grep -q "$PRODUCTION_REF" "$WORKSPACE_HARDENING_FILE"
 
       - name: Preparar Node para auditoria determinística
         uses: actions/setup-node@v4
@@ -118,6 +133,12 @@ jobs:
             > "$output_dir/hardening-migration.sha256"
           sha256sum "$WORKSPACE_HARDENING_FILE" \
             > "$output_dir/workspace-hardening-migration.sha256"
+          sha256sum "$LIFECYCLE_FILE" \
+            > "$output_dir/lifecycle-migration.sha256"
+          sha256sum "$PRODUCTION_LIFECYCLE_FILE" \
+            > "$output_dir/production-lifecycle-migration.sha256"
+          sha256sum "$LIFECYCLE_WORKSPACE_FILE" \
+            > "$output_dir/lifecycle-workspace-migration.sha256"
           ! grep -R "$PRODUCTION_REF" "$output_dir"
           ! grep -R "postgresql://\|postgres://" "$output_dir"
 
