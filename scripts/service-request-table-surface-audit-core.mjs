@@ -159,12 +159,13 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       tableCount: 0,
       parentScopedTableCount: 0,
       evidenceCount: 0,
+      lifecycleMigrationCount: 0,
       controlledFileCount: 0,
       violations: [{ code: "manifest_missing", detail: "manifesto ausente ou inválido", file: MANIFEST_FILE }],
     };
   }
-  if (manifest.schemaVersion !== 2) {
-    violation(violations, "manifest_schema_unsupported", `schemaVersion esperado=2, recebido=${String(manifest.schemaVersion)}`);
+  if (manifest.schemaVersion !== 3) {
+    violation(violations, "manifest_schema_unsupported", `schemaVersion esperado=3, recebido=${String(manifest.schemaVersion)}`);
   }
 
   const liveFile = controlledPath(manifest.liveTest, "liveTest", violations);
@@ -173,6 +174,17 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
   const workspaceHardeningFile = controlledPath(
     manifest.workspaceHardeningMigration,
     "workspaceHardeningMigration",
+    violations,
+  );
+  const lifecycleFile = controlledPath(manifest.lifecycleMigration, "lifecycleMigration", violations);
+  const productionLifecycleFile = controlledPath(
+    manifest.productionLifecycleMigration,
+    "productionLifecycleMigration",
+    violations,
+  );
+  const lifecycleWorkspaceFile = controlledPath(
+    manifest.lifecycleWorkspaceMigration,
+    "lifecycleWorkspaceMigration",
     violations,
   );
   const workflowFile = controlledPath(manifest.workflow, "workflow", violations);
@@ -187,6 +199,21 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     workspaceHardeningFile,
     "workspace_hardening_migration_missing",
     "migration final do workspace ausente",
+    violations,
+  );
+  const lifecycle = read(repositoryRoot, lifecycleFile, "lifecycle_migration_missing", "migration do ciclo das encomendas ausente", violations);
+  const productionLifecycle = read(
+    repositoryRoot,
+    productionLifecycleFile,
+    "production_lifecycle_migration_missing",
+    "migration das ações de produção ausente",
+    violations,
+  );
+  const lifecycleWorkspace = read(
+    repositoryRoot,
+    lifecycleWorkspaceFile,
+    "lifecycle_workspace_migration_missing",
+    "workspace final do ciclo das encomendas ausente",
     violations,
   );
   const workflow = read(repositoryRoot, workflowFile, "workflow_missing", "workflow de homologação ausente", violations);
@@ -274,6 +301,84 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       workspaceHardeningFile,
     );
   }
+
+  requireTokens(
+    lifecycle,
+    [
+      "create or replace function public.staff_transition_service_request(",
+      "pg_advisory_xact_lock",
+      "for update",
+      "audit_logs_service_request_operation_key_idx",
+      "public.service_request_pricing_snapshots",
+      "private.staff_has_capability(request_row.store_id, 'manage_orders')",
+      "private.staff_has_capability(request_row.store_id, 'view_finance')",
+      "backend_total * requested_deposit_fraction",
+      "'confirm_deposit'",
+      "'confirm_payment'",
+      "'complete'",
+      "'cancel'",
+      "'confirm_refund'",
+      "'service_request_transition'",
+      "grant execute on function public.staff_transition_service_request",
+      "begin;",
+      "commit;",
+    ],
+    "lifecycle_contract_missing",
+    lifecycleFile,
+    violations,
+  );
+  if (lifecycle.includes("requested_total") || lifecycle.includes("requested_paid_amount")) {
+    violation(
+      violations,
+      "lifecycle_browser_amount_forbidden",
+      "ciclo das encomendas voltou a aceitar valores financeiros calculados pelo navegador",
+      lifecycleFile,
+    );
+  }
+
+  requireTokens(
+    productionLifecycle,
+    [
+      "create trigger service_requests_production_capability_guard",
+      "private.staff_has_capability(new.store_id, 'manage_production')",
+      "create or replace function public.staff_transition_service_request_production(",
+      "private.staff_has_capability(request_row.store_id, 'manage_production')",
+      "pg_advisory_xact_lock",
+      "for update",
+      "'start_production'",
+      "'mark_ready'",
+      "'service_request_transition'",
+      "grant execute on function public.staff_transition_service_request_production",
+      "begin;",
+      "commit;",
+    ],
+    "production_lifecycle_contract_missing",
+    productionLifecycleFile,
+    violations,
+  );
+
+  requireTokens(
+    lifecycleWorkspace,
+    [
+      "private.staff_has_any_capability('manage_orders')",
+      "private.staff_has_any_capability('manage_production')",
+      "private.staff_has_capability(target_store_id, 'manage_production')",
+      "private.staff_has_capability(request.store_id, 'manage_orders')",
+      "private.staff_has_capability(request.store_id, 'manage_production')",
+      "private.staff_has_capability(request.store_id, 'view_finance')",
+      "target_store_id is null or request.store_id = target_store_id",
+      "'permissions', jsonb_build_object",
+      "else 'Cliente protegido'",
+      "'payment_status', case",
+      "'pricing', case",
+      "begin;",
+      "commit;",
+    ],
+    "lifecycle_workspace_contract_missing",
+    lifecycleWorkspaceFile,
+    violations,
+  );
+
   requireTokens(
     live,
     [
@@ -289,6 +394,12 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       "staff_get_service_request_workspace still scans the unscoped implementation",
       "staff_get_service_request_workspace lost row-level store authorization",
       "staff_get_service_request_workspace lost the financial capability ceiling",
+      "staff_transition_service_request lost its protected signature",
+      "staff_transition_service_request_production lost its protected signature",
+      "Service-request lifecycle columns are missing",
+      "Service-request lifecycle idempotency index is missing",
+      "Service-request lifecycle lost locking or capability checks",
+      "Service-request production guard is missing",
       "begin;",
       "rollback;",
     ],
@@ -309,8 +420,14 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       liveFile || "supabase/tests/service_request_rpc_boundary_live.sql",
       hardeningFile || "supabase/migrations/20260729203000_harden_service_request_store_scope.sql",
       workspaceHardeningFile || "supabase/migrations/20260729212000_scope_service_request_workspace_by_store.sql",
+      lifecycleFile || "supabase/migrations/20260729221000_manage_service_request_lifecycle.sql",
+      productionLifecycleFile || "supabase/migrations/20260729221200_protect_service_request_production_actions.sql",
+      lifecycleWorkspaceFile || "supabase/migrations/20260729221600_redact_service_request_production_workspace.sql",
       "hardening-migration.sha256",
       "workspace-hardening-migration.sha256",
+      "lifecycle-migration.sha256",
+      "production-lifecycle-migration.sha256",
+      "lifecycle-workspace-migration.sha256",
       "Referência de produção detectada e bloqueada",
       'psql "$SUPABASE_HOMOLOGATION_DB_URL"',
     ],
@@ -331,6 +448,9 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     lockFile,
     hardeningFile,
     workspaceHardeningFile,
+    lifecycleFile,
+    productionLifecycleFile,
+    lifecycleWorkspaceFile,
     workflowFile,
     ...tables.map(({ definitionMigration }) => definitionMigration),
     ...tables.flatMap(({ definitionEvidence }) => definitionEvidence.map(({ migration }) => migration)),
@@ -340,6 +460,7 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     tableCount: tableNames.length,
     parentScopedTableCount: childNames.length,
     evidenceCount: tables.reduce((total, table) => total + table.definitionEvidence.length + (table.definitionMigration ? 1 : 0), 0),
+    lifecycleMigrationCount: [lifecycleFile, productionLifecycleFile, lifecycleWorkspaceFile].filter(Boolean).length,
     controlledFileCount: controlledFiles.size,
     violations,
   };
