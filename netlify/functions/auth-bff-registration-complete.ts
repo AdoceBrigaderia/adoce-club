@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { guardBffRequest } from "./_shared/request-security";
 import {
-  allowedOrigin,
   secureJson,
   sessionCookies,
   type SupabaseTokenPayload,
@@ -38,10 +38,11 @@ async function revokeSession(
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const body = (await request.json().catch(() => ({}))) as {
     email?: string;
