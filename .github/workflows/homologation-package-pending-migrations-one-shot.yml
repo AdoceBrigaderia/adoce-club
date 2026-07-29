@@ -7,6 +7,8 @@ on:
       - .github/workflows/homologation-package-pending-migrations-one-shot.yml
       - docs/evidence/homologation-pending-migrations-20260728.json
       - scripts/expose-homologation-migration-bundle.mjs
+      - scripts/atomize-homologation-migration-bundle.mjs
+      - scripts/validate-homologation-migration-bundle.mjs
       - supabase/migrations/**
       - ops/netlify-homologation-proxy.json
 
@@ -100,17 +102,25 @@ jobs:
           cp "$PENDING_PLAN" artifacts/homologation-pending-migrations/plan.json
           test "$(find artifacts/homologation-pending-migrations/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)" -eq 22
 
-      - name: Gerar bundle transacional e transporte mínimo
+      - name: Gerar bundle atômico e transporte mínimo
         shell: bash
         run: |
           set -euo pipefail
           node scripts/expose-homologation-migration-bundle.mjs
+          node scripts/atomize-homologation-migration-bundle.mjs
           source_bundle="public/homologation-internal/$MIGRATION_BUNDLE_NAME"
           source_manifest="$source_bundle.json"
           test -s "$source_bundle"
           test -s "$source_manifest"
+          mkdir -p artifacts/netlify-migration-transport
+          node scripts/validate-homologation-migration-bundle.mjs \
+            --bundle "$source_bundle" \
+            --manifest "$source_manifest" \
+            --report artifacts/netlify-migration-transport/atomicity.json
           test "$(grep -c '^-- BEGIN ' "$source_bundle")" -eq 22
           test "$(grep -c 'insert into supabase_migrations.schema_migrations' "$source_bundle")" -eq 22
+          test "$(grep -c '^begin;$' "$source_bundle")" -eq 1
+          test "$(grep -c '^commit;$' "$source_bundle")" -eq 1
           ! grep -q "$PRODUCTION_REF" "$source_bundle"
 
           upload="$RUNNER_TEMP/adoce-migration-transport"
@@ -153,7 +163,6 @@ jobs:
           size_bytes="$(du -sb "$upload" | awk '{print $1}')"
           test "$size_bytes" -lt 2000000
           printf '%s\n' "$upload" > "$RUNNER_TEMP/netlify-upload-dir.txt"
-          mkdir -p artifacts/netlify-migration-transport
           cp "$upload/commit.txt" artifacts/netlify-migration-transport/commit.txt
           cp "$upload/bundle-sha256.txt" artifacts/netlify-migration-transport/bundle-sha256.txt
           printf '%s\n' "$size_bytes" > artifacts/netlify-migration-transport/upload-bytes.txt
