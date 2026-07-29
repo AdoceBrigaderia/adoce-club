@@ -44,6 +44,19 @@ test("aceita secureEmpty compartilhado", () => {
   );
 });
 
+test("aceita secureRedirect compartilhado", () => {
+  assert.deepEqual(
+    audit(
+      "netlify/functions/redirect.ts",
+      `
+        import { secureRedirect } from "./_shared/response-security";
+        export default () => secureRedirect("/entrar");
+      `,
+    ),
+    [],
+  );
+});
+
 test("rejeita Response direto", () => {
   const violations = audit(
     "netlify/functions/unsafe.ts",
@@ -63,6 +76,47 @@ test("rejeita Response.json", () => {
   assert.deepEqual(
     violations.map((item) => item.rule),
     ["response-json", "missing-shared-boundary"],
+  );
+});
+
+test("rejeita Response.redirect", () => {
+  const violations = audit(
+    "netlify/functions/unsafe.ts",
+    `export default () => Response.redirect("https://example.com");`,
+  );
+  assert.deepEqual(
+    violations.map((item) => item.rule),
+    ["response-redirect", "missing-shared-boundary"],
+  );
+});
+
+test("rejeita Location montado localmente mesmo quando há outro helper seguro", () => {
+  const violations = audit(
+    "netlify/functions/unsafe.ts",
+    `
+      import { secureJson } from "./_shared/session-security";
+      export default () => secureJson({ ok: false }, 302, [], { Location: "/login" });
+    `,
+  );
+  assert.deepEqual(
+    violations.map((item) => item.rule),
+    ["local-redirect-header"],
+  );
+});
+
+test("rejeita política CORS local em entrypoint", () => {
+  const violations = audit(
+    "netlify/functions/unsafe.ts",
+    `
+      import { secureText } from "./_shared/response-security";
+      export default () => secureText("ok", 200, {
+        "Access-Control-Allow-Origin": "*",
+      });
+    `,
+  );
+  assert.deepEqual(
+    violations.map((item) => item.rule),
+    ["local-cors-policy"],
   );
 });
 
