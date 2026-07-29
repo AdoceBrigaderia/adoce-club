@@ -195,6 +195,75 @@ set label = excluded.label,
     sort_order = excluded.sort_order,
     updated_at = now();
 
+-- Reconcilia sem apagar histórico: opções removidas do catálogo comercial deixam de ser publicadas.
+update public.cake_builder_options option
+set active = false,
+    published = false,
+    updated_at = now()
+from public.cake_builder_templates template
+join public.commercial_products product on product.id = template.product_id
+where option.template_id = template.id
+  and product.slug in ('torta-p', 'torta-m', 'torta-g')
+  and option.placement = 'cake_layer'
+  and (option.active or option.published)
+  and not exists (
+    select 1
+    from jsonb_array_elements_text(
+      coalesce(product.details->'choices'->'massas', '[]'::jsonb)
+    ) mass(label)
+    where option.slug = trim(both '-' from regexp_replace(
+      translate(
+        lower(mass.label),
+        'áàâãäéèêëíìîïóòôõöúùûüçñ',
+        'aaaaaeeeeiiiiooooouuuucn'
+      ),
+      '[^a-z0-9]+',
+      '-',
+      'g'
+    ))
+  );
+
+update public.cake_builder_options option
+set active = false,
+    published = false,
+    updated_at = now()
+from public.cake_builder_templates template
+join public.commercial_products product on product.id = template.product_id
+where option.template_id = template.id
+  and product.slug in ('torta-p', 'torta-m', 'torta-g')
+  and option.placement = 'filling_layer'
+  and (option.active or option.published)
+  and not exists (
+    select 1
+    from jsonb_array_elements_text(
+      coalesce(product.details->'choices'->'recheios', '[]'::jsonb)
+    ) filling(label)
+    where option.slug = trim(both '-' from regexp_replace(
+      translate(
+        lower(filling.label),
+        'áàâãäéèêëíìîïóòôõöúùûüçñ',
+        'aaaaaeeeeiiiiooooouuuucn'
+      ),
+      '[^a-z0-9]+',
+      '-',
+      'g'
+    ))
+  );
+
+update public.cake_builder_options option
+set active = false,
+    published = false,
+    updated_at = now()
+from public.cake_builder_templates template
+join public.commercial_products product on product.id = template.product_id
+where option.template_id = template.id
+  and product.slug in ('torta-p', 'torta-m', 'torta-g')
+  and (option.active or option.published)
+  and (
+    (option.placement = 'topping' and option.slug <> 'acabamento-padrao-adoce')
+    or option.placement not in ('cake_layer', 'filling_layer', 'topping')
+  );
+
 do $$
 declare
   expected_products integer;
@@ -245,12 +314,64 @@ begin
       from public.cake_builder_options option
       where option.template_id = template.id
         and option.placement = 'topping'
+        and option.slug = 'acabamento-padrao-adoce'
         and option.active
         and option.published
-    ) = 1;
+    ) = 1
+    and not exists (
+      select 1
+      from public.cake_builder_options option
+      where option.template_id = template.id
+        and option.active
+        and option.published
+        and (
+          option.placement not in ('cake_layer', 'filling_layer', 'topping')
+          or (option.placement = 'topping' and option.slug <> 'acabamento-padrao-adoce')
+        )
+    )
+    and not exists (
+      select 1
+      from public.cake_builder_options option
+      where option.template_id = template.id
+        and option.placement = 'cake_layer'
+        and option.active
+        and option.published
+        and not exists (
+          select 1
+          from jsonb_array_elements_text(
+            coalesce(product.details->'choices'->'massas', '[]'::jsonb)
+          ) mass(label)
+          where option.slug = trim(both '-' from regexp_replace(
+            translate(lower(mass.label), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'),
+            '[^a-z0-9]+',
+            '-',
+            'g'
+          ))
+        )
+    )
+    and not exists (
+      select 1
+      from public.cake_builder_options option
+      where option.template_id = template.id
+        and option.placement = 'filling_layer'
+        and option.active
+        and option.published
+        and not exists (
+          select 1
+          from jsonb_array_elements_text(
+            coalesce(product.details->'choices'->'recheios', '[]'::jsonb)
+          ) filling(label)
+          where option.slug = trim(both '-' from regexp_replace(
+            translate(lower(filling.label), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn'),
+            '[^a-z0-9]+',
+            '-',
+            'g'
+          ))
+        )
+    );
 
   if valid_templates <> 3 then
-    raise exception 'O catálogo real de tortas ficou incompleto: % de 3 templates válidos', valid_templates;
+    raise exception 'O catálogo real de tortas ficou incompleto ou divergente: % de 3 templates válidos', valid_templates;
   end if;
 end;
 $$;
