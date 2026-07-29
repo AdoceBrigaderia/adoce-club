@@ -69,7 +69,8 @@ describe("aplicação do catálogo real do montador na homologação", () => {
     expect(runbook).toContain("SUPABASE_HOMOLOGATION_DB_URL");
     expect(runbook).toContain("Falhas transientes");
     expect(runbook).toContain("repetidas até três vezes");
-    expect(runbook).toContain("não acessa o Supabase produtivo");
+    expect(runbook).toContain("Este procedimento não:");
+    expect(runbook).toContain("acessa o Supabase produtivo");
     expect(runbook).toContain("sem aprovação expressa");
   });
 });
