@@ -19,13 +19,16 @@ const catalog = readFileSync(
 );
 
 describe("corte BFF da pré-reserva comercial", () => {
-  it("valida origem, tamanho e conteúdo antes de chamar o banco", () => {
-    expect(endpoint).toContain('request.headers.get("origin")');
-    expect(endpoint).toContain("allowedOrigin");
+  it("usa o guard central e valida tamanho, conteúdo e unidade antes do banco", () => {
+    expect(endpoint).toContain("guardBffRequest(request");
+    expect(endpoint).toContain('methods: ["POST"]');
+    expect(endpoint).toContain('configuredSiteUrl: env("SITE_URL")');
     expect(endpoint).toContain("contentLength > 16_384");
     expect(endpoint).toContain("UUID.test(operationKey)");
+    expect(endpoint).toContain("storeId && !UUID.test(storeId)");
     expect(endpoint).toContain("EMAIL.test(customerEmail)");
     expect(endpoint).toContain("end <= start");
+    expect(endpoint).not.toContain("allowedOrigin");
   });
 
   it("mantém o segredo somente na Function e vincula cliente apenas por cookie HttpOnly", () => {
@@ -35,6 +38,12 @@ describe("corte BFF da pré-reserva comercial", () => {
     expect(endpoint).toContain("submit_service_request_bff");
     expect(endpoint).not.toContain("VITE_SUPABASE_SECRET_KEY");
     expect(service).not.toContain("SUPABASE_SECRET_KEY");
+  });
+
+  it("propaga a unidade opcional e devolve a unidade resolvida pelo backend", () => {
+    expect(service).toContain("requested_store_id?: string | null");
+    expect(service).toContain("store_id?: string | null");
+    expect(endpoint).toContain("requested_store_id: storeId || null");
   });
 
   it("usa chave idempotente e repete falha transitória sem duplicar", () => {
