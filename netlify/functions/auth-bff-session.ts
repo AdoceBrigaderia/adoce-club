@@ -4,7 +4,6 @@ import {
   REFRESH_COOKIE,
   SESSION_MODE_COOKIE,
   SURFACE_COOKIE,
-  allowedOrigin,
   clearedSessionCookies,
   parseCookies,
   secureJson,
@@ -12,6 +11,7 @@ import {
   type AuthSurface,
   type SupabaseTokenPayload,
 } from "./_shared/session-security";
+import { guardBffRequest } from "./_shared/request-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -64,10 +64,11 @@ async function currentUser(
 }
 
 export default async (request: Request) => {
-  if (request.method !== "GET")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const guardResponse = guardBffRequest(request, {
+    methods: ["GET"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (guardResponse) return guardResponse;
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
