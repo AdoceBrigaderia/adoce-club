@@ -10,6 +10,7 @@ declare
   valid_templates integer;
   missing_mass_options integer;
   missing_filling_options integer;
+  stale_active_options integer;
   invalid_toppings integer;
   provisional_values integer;
 begin
@@ -84,6 +85,43 @@ begin
 
   if missing_filling_options <> 0 then
     raise exception 'Recheios comerciais ausentes no montador: %', missing_filling_options;
+  end if;
+
+  select count(*)
+  into stale_active_options
+  from public.cake_builder_options option
+  join public.cake_builder_templates template on template.id = option.template_id
+  join public.commercial_products product on product.id = template.product_id
+  where product.slug in ('torta-p', 'torta-m', 'torta-g')
+    and option.active
+    and option.published
+    and (
+      option.placement not in ('cake_layer', 'filling_layer', 'topping')
+      or (
+        option.placement = 'cake_layer'
+        and not exists (
+          select 1
+          from jsonb_array_elements_text(
+            coalesce(product.details->'choices'->'massas', '[]'::jsonb)
+          ) mass(label)
+          where option.label = mass.label
+        )
+      )
+      or (
+        option.placement = 'filling_layer'
+        and not exists (
+          select 1
+          from jsonb_array_elements_text(
+            coalesce(product.details->'choices'->'recheios', '[]'::jsonb)
+          ) filling(label)
+          where option.label = filling.label
+        )
+      )
+      or (option.placement = 'topping' and option.slug <> 'acabamento-padrao-adoce')
+    );
+
+  if stale_active_options <> 0 then
+    raise exception 'Opções obsoletas ainda publicadas no montador: %', stale_active_options;
   end if;
 
   select count(*)
