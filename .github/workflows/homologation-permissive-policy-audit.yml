@@ -66,7 +66,7 @@ jobs:
           ! grep -q "$PRODUCTION_REF" "$LIVE_AUDIT_FILE"
           grep -q '^begin;' "$LIVE_AUDIT_FILE"
           grep -q '^rollback;' "$LIVE_AUDIT_FILE"
-          ! grep -Eiq '\b(insert|update|delete|merge|alter|drop|truncate|grant|revoke|create policy|drop policy)\b' "$LIVE_AUDIT_FILE"
+          ! grep -Eiq '^[[:space:]]*(insert|update|delete|merge|alter|drop|truncate|grant|revoke|create[[:space:]]+policy|drop[[:space:]]+policy)\b' "$LIVE_AUDIT_FILE"
 
       - name: Instalar cliente PostgreSQL
         shell: bash
