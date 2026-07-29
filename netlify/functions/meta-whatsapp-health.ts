@@ -79,7 +79,7 @@ export default async (request: Request) => {
     ["META_WA_AUTH_TEMPLATE_NAME", env("META_WA_AUTH_TEMPLATE_NAME")],
     ["WHATSAPP_OTP_PEPPER", env("WHATSAPP_OTP_PEPPER")],
   ] as const;
-  const missing = required
+  const missing: string[] = required
     .filter(([, value]) => !value?.trim())
     .map(([name]) => name);
   const rawVersion = env("META_WA_GRAPH_API_VERSION") || "v23.0";
