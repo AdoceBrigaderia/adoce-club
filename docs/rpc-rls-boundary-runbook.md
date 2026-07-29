@@ -145,7 +145,7 @@ Tratar como bloqueador de homologação:
 - drift entre manifesto RLS, migrations, ensaio vivo e workflow;
 - RPC inesperada exposta a `anon` ou `authenticated`;
 - versão antiga ainda executável pelo navegador;
-- versão atual ausente ou fora de `SECURITY DEFININER`;
+- versão atual ausente ou fora de `SECURITY DEFINER`;
 - escrita direta em tabela operacional por `authenticated`;
 - policy anônima ou policy autenticada de escrita nas tabelas por loja;
 - ausência de isolamento por loja ou por identidade;
