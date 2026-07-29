@@ -5,10 +5,10 @@ import {
 import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
 } from "./_shared/session-security";
+import { guardBffCsrf, guardBffRequest } from "./_shared/request-security";
 import { sanitizeCakeBuilder } from "./_shared/cake-builder-input";
 import { sanitizeProductConfiguration } from "./_shared/product-configuration-input";
 
@@ -77,12 +77,20 @@ async function optionalClientProfile(
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
-  const origin = request.headers.get("origin");
-  if (!origin || !allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const cookies = parseCookies(request);
+  const authenticatedClient =
+    cookies.get(SURFACE_COOKIE) === "client" &&
+    Boolean(cookies.get(ACCESS_COOKIE));
+  if (authenticatedClient) {
+    const csrfRejection = guardBffCsrf(request);
+    if (csrfRejection) return csrfRejection;
+  }
 
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 16_384)
