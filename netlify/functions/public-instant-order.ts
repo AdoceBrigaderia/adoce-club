@@ -1,11 +1,10 @@
 import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
-  validCsrf,
 } from "./_shared/session-security";
+import { guardBffCsrf, guardBffRequest } from "./_shared/request-security";
 import {
   consumePublicRateLimits,
   ipRateLimitRule,
@@ -171,10 +170,11 @@ async function options(supabaseUrl: string, secretKey: string) {
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 32_768)
@@ -272,8 +272,10 @@ export default async (request: Request) => {
       return secureJson({ data });
     }
 
-    if (clientSession && !validCsrf(request))
-      return secureJson({ error: "Validação CSRF inválida." }, 403);
+    if (accessToken) {
+      const csrfRejection = guardBffCsrf(request);
+      if (csrfRejection) return csrfRejection;
+    }
 
     const customerName = text(body.requested_customer_name, 120);
     const customerPhone = text(body.requested_customer_phone, 32);
