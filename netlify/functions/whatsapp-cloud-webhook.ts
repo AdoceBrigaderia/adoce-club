@@ -4,6 +4,7 @@ import {
   extractMetaMessageStatuses,
   verifyMetaWebhookSignature,
 } from "./_shared/meta-whatsapp";
+import { secureText } from "./_shared/response-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -22,15 +23,6 @@ function equalSecret(left: string, right: string) {
   );
 }
 
-const text = (body: string, status = 200) =>
-  new Response(body, {
-    status,
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-
 export default async (request: Request) => {
   const url = new URL(request.url);
   if (request.method === "GET") {
@@ -44,12 +36,13 @@ export default async (request: Request) => {
       expectedToken &&
       equalSecret(suppliedToken, expectedToken)
     ) {
-      return text(challenge);
+      return secureText(challenge);
     }
-    return text("Webhook não autorizado.", 401);
+    return secureText("Webhook não autorizado.", 401);
   }
 
-  if (request.method !== "POST") return text("Método não permitido.", 405);
+  if (request.method !== "POST")
+    return secureText("Método não permitido.", 405);
   const rawBody = await request.text();
   const appSecret = env("META_WA_APP_SECRET") || "";
   if (
@@ -59,22 +52,24 @@ export default async (request: Request) => {
       appSecret,
     )
   ) {
-    return text("Assinatura inválida.", 401);
+    return secureText("Assinatura inválida.", 401);
   }
 
   let payload: unknown;
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    return text("Payload inválido.", 400);
+    return secureText("Payload inválido.", 400);
   }
 
   const statuses = extractMetaMessageStatuses(payload);
-  if (!statuses.length) return text("EVENT_RECEIVED");
+  if (!statuses.length) return secureText("EVENT_RECEIVED");
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
-  const secretKey = env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !secretKey) return text("Backend indisponível.", 503);
+  const secretKey =
+    env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !secretKey)
+    return secureText("Backend indisponível.", 503);
   const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -93,10 +88,10 @@ export default async (request: Request) => {
         error_title: status.errorTitle,
       },
     );
-    if (error) return text("Falha ao registrar evento.", 500);
+    if (error) return secureText("Falha ao registrar evento.", 500);
   }
 
-  return text("EVENT_RECEIVED");
+  return secureText("EVENT_RECEIVED");
 };
 
 export const config = { path: "/api/whatsapp-cloud-webhook" };
