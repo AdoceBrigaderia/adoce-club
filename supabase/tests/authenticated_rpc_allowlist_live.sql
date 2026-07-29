@@ -77,21 +77,21 @@ declare
     'issue_customer_qr',
     'customer_complete_registration',
     'customer_prepare_google_wallet_pass',
-    'get_checkout_payment_methods',
-    'get_configurable_product_catalog',
     'member_instant_order_loyalty_preview',
     'public_quote_instant_order',
     'submit_instant_order_v6',
-    'public_get_cake_builder_catalog',
     'manager_assert_site_visual_access',
     'manager_save_site_visual_asset',
     'manager_assert_dynamic_image_access',
     'manager_assert_gallery_media_access',
-    'manager_save_gallery_media_asset'
+    'manager_save_gallery_media_asset',
+    'get_checkout_payment_methods',
+    'get_configurable_product_catalog',
+    'public_get_cake_builder_catalog'
   ];
   allowed_anon text[] := array[
-    'public_get_cake_builder_catalog',
-    'get_configurable_product_catalog'
+    'get_configurable_product_catalog',
+    'public_get_cake_builder_catalog'
   ];
   unexpected text[];
   missing text[];
