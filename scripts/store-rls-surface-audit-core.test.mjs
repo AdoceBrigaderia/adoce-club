@@ -14,7 +14,10 @@ const controlledFiles = [
   manifest.writeLockMigration,
   manifest.workflow,
   ...manifest.tables.map(({ definitionMigration }) => definitionMigration).filter(Boolean),
-];
+  ...manifest.tables.flatMap(({ historicalPolicies = [] }) =>
+    historicalPolicies.map(({ migration }) => migration),
+  ),
+].filter((value, index, values) => values.indexOf(value) === index);
 
 function fixture() {
   const root = mkdtempSync(resolve(tmpdir(), "adoce-store-rls-surface-"));
@@ -33,11 +36,12 @@ function mutate(root, relative, transform) {
 
 test("aprova a superfície RLS por loja versionada", () => {
   const result = assertStoreRlsSurface(repositoryRoot);
-  assert.equal(result.schemaVersion, 2);
+  assert.equal(result.schemaVersion, 3);
   assert.equal(result.tableCount, 7);
   assert.equal(result.readableTableCount, 5);
   assert.equal(result.rpcOnlyTableCount, 2);
   assert.equal(result.predicateCount, 6);
+  assert.equal(result.historicalPolicyCount, 2);
   assert.deepEqual(result.violations, []);
 });
 
@@ -115,4 +119,35 @@ test("reprova perda dos guards de privilégios e policies RPC-only", () => {
   mutate(root, manifest.liveTest, (source) => source.replaceAll("rpc_only_browser_privileges", "removed_rpc_privileges_guard").replaceAll("rpc_only_browser_policies", "removed_rpc_policies_guard"));
   const result = auditStoreRlsSurface(root);
   assert.ok(result.violations.some(({ code }) => code === "live_fail_closed_contract_missing"));
+});
+
+test("reprova policy histórica sem limpeza no lockdown final", () => {
+  const root = fixture();
+  mutate(root, manifest.writeLockMigration, (source) => source.replace(
+    "drop policy if exists backend_only_no_direct_access on public.customer_checkins;",
+    "-- limpeza removida pelo teste",
+  ));
+  const result = auditStoreRlsSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "rpc_only_historical_policy_cleanup_missing"));
+});
+
+test("reprova referência histórica que não cria a policy declarada", () => {
+  const root = fixture();
+  const migration = "supabase/migrations/20260727035116_backend_only_tables_explicit_deny.sql";
+  mutate(root, migration, (source) => source.replaceAll(
+    "create policy backend_only_no_direct_access",
+    "create policy renamed_backend_only_policy",
+  ));
+  const result = auditStoreRlsSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "historical_policy_contract_missing"));
+});
+
+test("reprova policy histórica declarada em tabela com leitura autenticada", () => {
+  const root = fixture();
+  mutate(root, "security/store-rls-surface.json", (source) => source.replace(
+    '"name": "stores",\n      "accessMode": "authenticated_read",\n      "readPredicates": [',
+    '"name": "stores",\n      "accessMode": "authenticated_read",\n      "historicalPolicies": [{"name":"legacy_policy","migration":"supabase/migrations/20260727035116_backend_only_tables_explicit_deny.sql"}],\n      "readPredicates": [',
+  ));
+  const result = auditStoreRlsSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "manifest_historical_policies_unexpected"));
 });
