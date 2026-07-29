@@ -43,17 +43,25 @@ A allowlist cobre as RPCs genéricas do BFF e as RPCs autenticadas chamadas por 
 
 ## Manifesto versionado da fronteira RLS
 
-`security/store-rls-surface.json` é a fonte controlada das tabelas por loja e dos predicados obrigatórios de leitura. O manifesto está ligado a:
+`security/store-rls-surface.json` é a fonte controlada das tabelas por loja, do modo de acesso permitido e dos predicados obrigatórios de leitura. O schema v2 separa:
+
+- `authenticated_read`: leitura direta autenticada somente com RLS e predicados de loja/identidade;
+- `rpc_only`: nenhum privilégio ou policy para o navegador; toda leitura e mutação passa por RPC/Function autorizada.
+
+O manifesto está ligado a:
 
 - `supabase/tests/store_rls_boundary_live.sql`;
 - `supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql`;
-- `.github/workflows/store-rls-boundary-live-homologation.yml`.
+- `.github/workflows/store-rls-boundary-live-homologation.yml`;
+- migrations de definição das tabelas marcadas como `rpc_only`.
 
-`npm run audit:store-rls-surface` reprova drift entre os três arquivos, perda de tabela, remoção de predicado, enfraquecimento do lockdown, execução automática do ensaio vivo ou inclusão de comandos que alterem banco ou publiquem a aplicação. `npm run test:store-rls-surface` executa mutações controladas para confirmar que o auditor falha fechado. Ambos integram `verify:fast` e `verify`.
+`npm run audit:store-rls-surface` reprova drift entre os arquivos, perda de tabela, alteração indevida do modo de acesso, remoção de predicado, enfraquecimento do lockdown, criação de policy em tabela RPC-only, execução automática do ensaio vivo ou inclusão de comandos que alterem banco ou publiquem a aplicação. `npm run test:store-rls-surface` executa mutações controladas para confirmar que o auditor falha fechado. Ambos integram `verify:fast` e `verify`.
 
 ## Fronteira RLS por loja
 
-O ensaio vivo valida as tabelas:
+### Leitura autenticada com isolamento
+
+O ensaio vivo exige `SELECT` para `authenticated`, policy de leitura e predicados restritivos nas tabelas:
 
 - `stores`;
 - `cash_registers`;
@@ -61,18 +69,31 @@ O ensaio vivo valida as tabelas:
 - `cash_sessions`;
 - `cash_movements`.
 
+### Acesso exclusivamente por RPC
+
+O navegador não pode possuir `SELECT`, escrita ou qualquer policy nas tabelas:
+
+- `customer_checkins`;
+- `cash_reconciliation_queue`.
+
+As migrations de definição dessas tabelas também são verificadas pelo auditor determinístico. Elas devem criar a coluna obrigatória `store_id`, habilitar RLS e revogar o acesso direto do navegador.
+
+### Bloqueios do ensaio
+
 O ensaio bloqueia quando:
 
 - alguma tabela não existe ou está sem RLS;
 - `anon` possui privilégio direto de leitura ou escrita;
 - `authenticated` possui `INSERT`, `UPDATE`, `DELETE` ou `TRUNCATE` direto;
+- uma tabela `authenticated_read` perdeu o grant de `SELECT`;
 - existe policy para `anon` ou `public`;
 - permanece policy de escrita ou `ALL` para `authenticated`;
-- falta policy de leitura para `authenticated`;
+- falta policy de leitura em uma tabela `authenticated_read`;
 - a policy deixa de usar `private.can_access_store`, ou a atribuição de equipe deixa de restringir por gestor/usuário atual;
-- uma policy de leitura fica vazia ou assume forma tautológica conhecida, como `true` ou `OR true`.
+- uma policy de leitura fica vazia ou assume forma tautológica conhecida, como `true` ou `OR true`;
+- uma tabela `rpc_only` expõe qualquer privilégio ou policy para `anon`, `authenticated` ou `public`.
 
-A migration `20260729155500_lock_store_scoped_table_writes.sql` revoga escrita direta dos papéis do navegador, remove as policies legadas de administração dessas tabelas e valida o estado final antes do `COMMIT`. As alterações administrativas continuam nas RPCs `SECURITY DEFINER`, que aplicam autorização, capacidade, idempotência e auditoria no backend.
+A migration `20260729155500_lock_store_scoped_table_writes.sql` revoga escrita direta dos papéis do navegador, remove as policies legadas de administração e aplica revogação total nas tabelas RPC-only. A própria migration valida privilégios e policies antes do `COMMIT`. As alterações administrativas continuam nas RPCs `SECURITY DEFINER`, que aplicam autorização, capacidade, idempotência e auditoria no backend.
 
 A migration foi apenas versionada neste marco. Ela ainda precisa passar pelo gate de migrations e ser aplicada exclusivamente na homologação antes do ensaio vivo.
 
@@ -116,7 +137,7 @@ O job executa somente o SQL de auditoria, confirma o `ROLLBACK` e preserva artef
 Tratar como bloqueador de homologação:
 
 - drift entre manifesto, BFF e ensaio SQL;
-- drift entre manifesto RLS, migration, ensaio vivo e workflow;
+- drift entre manifesto RLS, migrations, ensaio vivo e workflow;
 - RPC inesperada exposta a `anon` ou `authenticated`;
 - versão antiga ainda executável pelo navegador;
 - versão atual ausente ou fora de `SECURITY DEFINER`;
@@ -124,6 +145,7 @@ Tratar como bloqueador de homologação:
 - policy anônima ou policy autenticada de escrita nas tabelas por loja;
 - ausência de isolamento por loja ou por identidade;
 - policy de leitura vazia ou tautológica;
+- privilégio ou policy do navegador em tabela `rpc_only`;
 - ensaio sem `ROLLBACK` confirmado.
 
 ## Produção
