@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "liveTest": "supabase/tests/service_request_rpc_boundary_live.sql",
+  "lockMigration": "supabase/migrations/20260729202000_lock_service_request_tables_to_rpc.sql",
+  "workflow": ".github/workflows/service-request-rpc-boundary-live-homologation.yml",
+  "tables": [
+    {
+      "name": "service_requests",
+      "definitionEvidence": [
+        {
+          "migration": "supabase/migrations/20260727040605_public_service_request_bff_only.sql",
+          "tokens": [
+            "alter table public.service_requests",
+            "create or replace function public.submit_service_request_bff"
+          ]
+        }
+      ],
+      "scope": {
+        "mode": "direct",
+        "column": "store_id",
+        "parentTable": "stores"
+      }
+    },
+    {
+      "name": "service_request_cake_builds",
+      "definitionMigration": "supabase/migrations/20260728073000_cake_builder_configuration.sql",
+      "parentScope": {
+        "table": "service_requests",
+        "foreignKey": "request_id"
+      }
+    },
+    {
+      "name": "service_request_product_configurations",
+      "definitionMigration": "supabase/migrations/20260728220000_unified_configurable_products.sql",
+      "parentScope": {
+        "table": "service_requests",
+        "foreignKey": "request_id"
+      }
+    },
+    {
+      "name": "service_request_pricing_snapshots",
+      "definitionMigration": "supabase/migrations/20260728130000_service_request_pricing_snapshots.sql",
+      "parentScope": {
+        "table": "service_requests",
+        "foreignKey": "request_id"
+      }
+    }
+  ]
+}
