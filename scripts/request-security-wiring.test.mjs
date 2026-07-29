@@ -32,6 +32,16 @@ const protectedEntrypoints = [
     csrf: "always",
   },
   {
+    path: "netlify/functions/auth-bff-registration-request.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/auth-bff-registration-complete.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
     path: "netlify/functions/auth-bff-rpc.ts",
     methods: ["POST"],
     csrf: "always",
