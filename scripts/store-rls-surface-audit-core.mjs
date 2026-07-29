@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const TABLE_NAME = /^[a-z][a-z0-9_]*$/;
+const POLICY_NAME = /^[a-z][a-z0-9_]*$/;
 const SAFE_REPOSITORY_PATH = /^(security|supabase|\.github)\/[a-zA-Z0-9_./-]+$/;
 const ACCESS_MODES = new Set(["authenticated_read", "rpc_only"]);
 const MANIFEST_FILE = "security/store-rls-surface.json";
@@ -63,6 +64,58 @@ function validateRepositoryPath(value, label, violations, file = MANIFEST_FILE) 
   return value;
 }
 
+function validateHistoricalPolicies(entry, tableName, accessMode, violations) {
+  const raw = entry?.historicalPolicies ?? [];
+  if (!Array.isArray(raw)) {
+    addViolation(
+      violations,
+      "manifest_historical_policies_invalid",
+      `${tableName}.historicalPolicies deve ser um array`,
+      MANIFEST_FILE,
+    );
+    return [];
+  }
+  if (accessMode !== "rpc_only" && raw.length > 0) {
+    addViolation(
+      violations,
+      "manifest_historical_policies_unexpected",
+      `${tableName} não é RPC-only e não deve declarar policies históricas`,
+      MANIFEST_FILE,
+    );
+  }
+
+  const policies = [];
+  for (const policy of raw) {
+    const name = policy?.name;
+    if (typeof name !== "string" || !POLICY_NAME.test(name)) {
+      addViolation(
+        violations,
+        "manifest_historical_policy_name_invalid",
+        `${tableName} possui nome de policy histórica inválido: ${String(name)}`,
+        MANIFEST_FILE,
+      );
+      continue;
+    }
+    const migration = validateRepositoryPath(
+      policy?.migration,
+      `${tableName}.historicalPolicies.${name}.migration`,
+      violations,
+    );
+    policies.push({ name, migration });
+  }
+
+  const duplicates = duplicateValues(policies.map(({ name, migration }) => `${name}:${migration}`));
+  if (duplicates.length > 0) {
+    addViolation(
+      violations,
+      "manifest_historical_policy_duplicates",
+      `${tableName} contém policies históricas duplicadas: ${duplicates.join(", ")}`,
+      MANIFEST_FILE,
+    );
+  }
+  return policies;
+}
+
 function validateTables(manifest, violations) {
   if (!Array.isArray(manifest.tables)) {
     addViolation(violations, "manifest_tables_missing", "tables deve ser um array", MANIFEST_FILE);
@@ -120,7 +173,14 @@ function validateTables(manifest, violations) {
       );
     }
 
-    tables.push({ name, accessMode, readPredicates: validPredicates, definitionMigration });
+    const historicalPolicies = validateHistoricalPolicies(entry, name, accessMode, violations);
+    tables.push({
+      name,
+      accessMode,
+      readPredicates: validPredicates,
+      definitionMigration,
+      historicalPolicies,
+    });
   }
 
   const tableDuplicates = duplicateValues(tables.map(({ name }) => name));
@@ -155,20 +215,25 @@ function requireTokens(source, requirements, code, file, violations) {
   }
 }
 
+function readControlledFile(repositoryRoot, file, code, detail, violations) {
+  try {
+    return readFileSync(resolve(repositoryRoot, file), "utf8");
+  } catch {
+    addViolation(violations, code, detail, file);
+    return null;
+  }
+}
+
 function validateRpcOnlyDefinition(repositoryRoot, table, violations) {
   if (!table.definitionMigration) return;
-  let source;
-  try {
-    source = readFileSync(resolve(repositoryRoot, table.definitionMigration), "utf8");
-  } catch {
-    addViolation(
-      violations,
-      "rpc_only_definition_missing",
-      `${table.name} referencia uma migration inexistente`,
-      table.definitionMigration,
-    );
-    return;
-  }
+  const source = readControlledFile(
+    repositoryRoot,
+    table.definitionMigration,
+    "rpc_only_definition_missing",
+    `${table.name} referencia uma migration inexistente`,
+    violations,
+  );
+  if (!source) return;
 
   requireTokens(
     source,
@@ -194,15 +259,45 @@ function validateRpcOnlyDefinition(repositoryRoot, table, violations) {
   }
 }
 
+function validateHistoricalPolicySources(repositoryRoot, table, migration, violations) {
+  for (const policy of table.historicalPolicies) {
+    if (!policy.migration) continue;
+    const source = readControlledFile(
+      repositoryRoot,
+      policy.migration,
+      "historical_policy_migration_missing",
+      `${table.name}.${policy.name} referencia uma migration histórica inexistente`,
+      violations,
+    );
+    if (!source) continue;
+    requireTokens(
+      source,
+      [`'${table.name}'`, `create policy ${policy.name}`],
+      "historical_policy_contract_missing",
+      policy.migration,
+      violations,
+    );
+    const cleanup = `drop policy if exists ${policy.name} on public.${table.name};`;
+    if (!migration.includes(cleanup)) {
+      addViolation(
+        violations,
+        "rpc_only_historical_policy_cleanup_missing",
+        `${table.name} não remove a policy histórica ${policy.name} na migration de lockdown`,
+        MANIFEST_FILE,
+      );
+    }
+  }
+}
+
 export function auditStoreRlsSurface(repositoryRoot) {
   const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, MANIFEST_FILE), "utf8"));
   const violations = [];
 
-  if (manifest.schemaVersion !== 2) {
+  if (manifest.schemaVersion !== 3) {
     addViolation(
       violations,
       "manifest_schema_unsupported",
-      `schemaVersion esperado=2, recebido=${String(manifest.schemaVersion)}`,
+      `schemaVersion esperado=3, recebido=${String(manifest.schemaVersion)}`,
       MANIFEST_FILE,
     );
   }
@@ -220,6 +315,10 @@ export function auditStoreRlsSurface(repositoryRoot) {
     (total, { readPredicates }) => total + readPredicates.length,
     0,
   );
+  const historicalPolicyCount = rpcOnlyTables.reduce(
+    (total, { historicalPolicies }) => total + historicalPolicies.length,
+    0,
+  );
 
   for (const table of rpcOnlyTables) validateRpcOnlyDefinition(repositoryRoot, table, violations);
 
@@ -230,6 +329,7 @@ export function auditStoreRlsSurface(repositoryRoot) {
       readableTableCount: readableTableNames.length,
       rpcOnlyTableCount: rpcOnlyTableNames.length,
       predicateCount,
+      historicalPolicyCount,
       violations,
     };
   }
@@ -237,6 +337,10 @@ export function auditStoreRlsSurface(repositoryRoot) {
   const liveTest = readFileSync(resolve(repositoryRoot, liveTestFile), "utf8");
   const migration = readFileSync(resolve(repositoryRoot, migrationFile), "utf8");
   const workflow = readFileSync(resolve(repositoryRoot, workflowFile), "utf8");
+
+  for (const table of rpcOnlyTables) {
+    validateHistoricalPolicySources(repositoryRoot, table, migration, violations);
+  }
 
   validateExactArray(tableNames, parseSqlArray(liveTest, "required_tables"), "live_table_inventory_drift", "required_tables", liveTestFile, violations);
   validateExactArray(readableTableNames, parseSqlArray(liveTest, "authenticated_read_tables"), "live_read_inventory_drift", "authenticated_read_tables", liveTestFile, violations);
@@ -347,6 +451,7 @@ export function auditStoreRlsSurface(repositoryRoot) {
     readableTableCount: readableTableNames.length,
     rpcOnlyTableCount: rpcOnlyTableNames.length,
     predicateCount,
+    historicalPolicyCount,
     violations,
   };
 }
