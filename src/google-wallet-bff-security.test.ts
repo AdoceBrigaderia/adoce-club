@@ -11,9 +11,13 @@ const button = read("./CustomerGoogleWalletButton.tsx");
 const gateway = read("./PasskeyClientGateway.tsx");
 
 describe("Google Wallet pelo BFF", () => {
-  it("exige origem, CSRF, superfície cliente e cookie HttpOnly", () => {
-    expect(endpoint).toContain("allowedOrigin(request, siteUrl)");
-    expect(endpoint).toContain("validCsrf(request)");
+  it("exige guard central, CSRF, superfície cliente e cookie HttpOnly", () => {
+    expect(endpoint).toContain("guardBffRequest(request");
+    expect(endpoint).toContain('methods: ["POST"]');
+    expect(endpoint).toContain('configuredSiteUrl: env("SITE_URL")');
+    expect(endpoint).toContain("requireCsrf: true");
+    expect(endpoint).not.toContain("allowedOrigin(request");
+    expect(endpoint).not.toContain("validCsrf(request)");
     expect(endpoint).toContain('cookies.get(SURFACE_COOKIE) !== "client"');
     expect(endpoint).toContain("cookies.get(ACCESS_COOKIE)");
     expect(endpoint).toContain('code: "session_refresh_required"');
