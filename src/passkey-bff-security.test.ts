@@ -26,10 +26,22 @@ describe("passkeys protegidas pelo BFF", () => {
 
   it("exige sessão e CSRF para cadastrar nova chave", () => {
     expect(start).toContain('action === "registration"');
-    expect(start).toContain("validCsrf(request)");
+    expect(start).toContain("guardBffCsrf(request)");
     expect(start).toContain("ACCESS_COOKIE");
-    expect(finish).toContain("validCsrf(request)");
+    expect(finish).toContain("guardBffCsrf(request)");
     expect(finish).toContain("ACCESS_COOKIE");
+    expect(start).not.toContain("validCsrf(request)");
+    expect(finish).not.toContain("validCsrf(request)");
+  });
+
+  it("centraliza método e origem e rejeita ações desconhecidas", () => {
+    [start, finish].forEach((source) => {
+      expect(source).toContain("guardBffRequest(request");
+      expect(source).toContain('methods: ["POST"]');
+      expect(source).toContain('configuredSiteUrl: env("SITE_URL")');
+      expect(source).not.toContain("allowedOrigin(request");
+    });
+    expect(finish).toContain('["authentication", "registration"].includes(action)');
   });
 
   it("valida perfil e acesso operacional antes dos cookies", () => {
