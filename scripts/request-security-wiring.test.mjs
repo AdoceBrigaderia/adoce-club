@@ -71,6 +71,16 @@ const protectedEntrypoints = [
     methods: ["POST"],
     csrf: "always",
   },
+  {
+    path: "netlify/functions/google-wallet-pass.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/meta-whatsapp-health.ts",
+    methods: ["GET"],
+    csrf: "none",
+  },
 ];
 
 const passkeyCeremonyEntrypoints = [
