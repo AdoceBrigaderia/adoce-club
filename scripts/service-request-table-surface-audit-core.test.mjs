@@ -17,6 +17,7 @@ const controlledFiles = [
   manifest.liveTest,
   manifest.lockMigration,
   manifest.hardeningMigration,
+  manifest.workspaceHardeningMigration,
   manifest.workflow,
   ...manifest.tables.map(({ definitionMigration }) => definitionMigration).filter(Boolean),
   ...manifest.tables.flatMap(({ definitionEvidence = [] }) =>
@@ -41,7 +42,7 @@ function mutate(root, relative, transform) {
 
 test("aprova a superfície RPC-only das encomendas e snapshots", () => {
   const result = assertServiceRequestTableSurface(repositoryRoot);
-  assert.equal(result.schemaVersion, 1);
+  assert.equal(result.schemaVersion, 2);
   assert.equal(result.tableCount, 4);
   assert.equal(result.parentScopedTableCount, 3);
   assert.equal(result.evidenceCount, 4);
@@ -147,6 +148,44 @@ test("reprova perda do hardening diferido ou reexposição dos RPCs internos", (
   );
   const result = auditServiceRequestTableSurface(root);
   assert.ok(result.violations.some(({ code }) => code === "hardening_contract_missing"));
+});
+
+test("reprova retorno da varredura global ou perda do teto financeiro", () => {
+  const root = fixture();
+  mutate(root, manifest.workspaceHardeningMigration, (source) =>
+    source
+      .replace(
+        "join public.stores store on store.id = request.store_id",
+        "join public.stores store on store.id is not null",
+      )
+      .replaceAll(
+        "private.staff_has_capability(request.store_id, 'view_finance')",
+        "private.is_manager()",
+      )
+      .replace(
+        "from public.service_requests request",
+        "from public.staff_get_service_request_workspace_unscoped_internal('', null, 80) request",
+      ),
+  );
+  const result = auditServiceRequestTableSurface(root);
+  assert.ok(
+    result.violations.some(({ code }) =>
+      ["workspace_hardening_contract_missing", "workspace_unscoped_call_forbidden"].includes(code),
+    ),
+  );
+});
+
+test("reprova remoção da migration final do manifesto", () => {
+  const root = fixture();
+  mutate(root, manifestFile, (source) =>
+    source.replace(/\s*"workspaceHardeningMigration":\s*"[^"]+",?\n/, "\n"),
+  );
+  const result = auditServiceRequestTableSurface(root);
+  assert.ok(
+    result.violations.some(({ code }) =>
+      ["manifest_path_invalid", "workspace_hardening_migration_missing"].includes(code),
+    ),
+  );
 });
 
 test("reprova workflow automático ou mutável", () => {
