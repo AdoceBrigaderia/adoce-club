@@ -241,11 +241,19 @@ function allowedOrigins(configuredSiteUrl?: string) {
   return origins;
 }
 
+function safeRequestWithoutOrigin(request: Request) {
+  const fetchSite = request.headers.get("sec-fetch-site")?.trim().toLowerCase();
+  if (!fetchSite) return true;
+  return fetchSite === "same-origin" || fetchSite === "none";
+}
+
 export function allowedOrigin(request: Request, configuredSiteUrl?: string) {
   const method = request.method.toUpperCase();
   const originHeader = request.headers.get("origin");
-  if (!originHeader)
-    return method === "GET" || method === "HEAD" || method === "OPTIONS";
+  if (!originHeader) {
+    const safeMethod = method === "GET" || method === "HEAD" || method === "OPTIONS";
+    return safeMethod && safeRequestWithoutOrigin(request);
+  }
 
   const origin = normalizedOrigin(originHeader, originPolicy());
   return Boolean(origin && allowedOrigins(configuredSiteUrl).has(origin));
@@ -260,7 +268,11 @@ export function secureJson(
     "Content-Type": "application/json; charset=utf-8",
     "Cache-Control": "no-store, max-age=0",
     Pragma: "no-cache",
-    Vary: "Cookie, Origin",
+    Vary: "Cookie, Origin, Sec-Fetch-Site",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
   }), cookies);
   return new Response(JSON.stringify(body), { status, headers });
 }
