@@ -99,6 +99,7 @@ export default async (request: Request) => {
   const body = (await request.json().catch(() => ({}))) as JsonObject;
   const operationKey = text(body.operation_key, 36);
   const productId = text(body.requested_product_id, 36);
+  const storeId = text(body.requested_store_id, 36);
   const customerName = text(body.requested_customer_name, 120);
   const phoneDigits = text(body.requested_customer_phone, 24).replace(/\D/g, "");
   const customerEmail = text(body.requested_customer_email, 200).toLowerCase();
@@ -141,6 +142,8 @@ export default async (request: Request) => {
   const end = Date.parse(requestedEnd);
   if (!UUID.test(operationKey) || !UUID.test(productId))
     return secureJson({ error: "Solicitação inválida." }, 400);
+  if (storeId && !UUID.test(storeId))
+    return secureJson({ error: "Unidade inválida." }, 400);
   if (customerName.length < 2)
     return secureJson({ error: "Informe seu nome." }, 400);
   if (phoneDigits.length < 10 || phoneDigits.length > 13)
@@ -213,6 +216,7 @@ export default async (request: Request) => {
         body: JSON.stringify({
           requested_operation_key: operationKey,
           requested_product_id: productId,
+          requested_store_id: storeId || null,
           requested_customer_name: customerName,
           requested_customer_phone: phoneDigits,
           requested_customer_email: customerEmail || null,
