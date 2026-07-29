@@ -20,7 +20,8 @@ A consulta operacional aplica simultaneamente:
 1. membro ativo;
 2. teto da função para `manage_orders`;
 3. capacidade `can_manage_orders` na atribuição da loja;
-4. filtro opcional de unidade validado no backend.
+4. filtro opcional de unidade validado no backend;
+5. teto `view_finance` na mesma loja antes de retornar custos e margens.
 
 Owner e manager preservam a visão administrativa. O histórico do CRM exige `manage_customers` na própria loja da encomenda para perfis não gerenciais.
 
@@ -52,9 +53,31 @@ O hardening complementar:
 - remove do `service_role` a execução direta das implementações internas sem escopo;
 - valida no pós-gate a ausência de registros sem loja, o caráter diferido do trigger e o bloqueio dos RPCs internos.
 
+### Workspace sem varredura fora da loja
+
+`supabase/migrations/20260729212000_scope_service_request_workspace_by_store.sql`
+
+A migration final do workspace:
+
+- remove a assinatura pública antiga de três argumentos;
+- substitui o wrapper que consultava primeiro a implementação global e filtrava depois;
+- consulta somente linhas para as quais a sessão possui `manage_orders` na própria loja;
+- valida `target_store_id` antes de consultar dados pessoais;
+- associa nome e identificação da unidade ao payload operacional;
+- condiciona custos, lucro, margem e markup à capacidade `view_finance` da mesma loja;
+- possui pós-gate fail-closed para assinatura, grants e predicados obrigatórios.
+
+Essa mudança evita que encomendas não autorizadas participem de busca, ordenação ou limite antes do filtro por unidade. Também elimina resultados incompletos quando encomendas de outras lojas consumiam o limite intermediário.
+
 Quando houver mais de uma loja ativa e registros antigos sem `store_id`, o operador deve mapear explicitamente cada encomenda para a unidade correta antes de aplicar o hardening. Não existe escolha automática arbitrária.
 
-As duas migrations estão apenas versionadas. Não devem ser aplicadas em produção. A aplicação em homologação depende do gate de migrations, backup confirmado e projeto de homologação validado.
+As três migrations estão apenas versionadas. Não devem ser aplicadas em produção. A aplicação em homologação depende do gate de migrations, backup confirmado e projeto de homologação validado.
+
+## UX operacional
+
+A tela de encomendas carrega somente as lojas acessíveis pelo BFF, oferece seletor grande de unidade e envia `target_store_id` ao backend. Cada cartão exibe a loja responsável para reduzir erros durante atendimento, produção e retirada.
+
+Em celular e tablet, busca, unidade e atualização ficam empilhadas, com controles de toque amplo e sem exigir digitação adicional.
 
 ## Auditoria determinística
 
@@ -64,6 +87,8 @@ npm run audit:service-request-table-surface
 ```
 
 O manifesto `security/service-request-table-surface.json` impede drift entre migrations de definição, lockdown, hardening, SQL vivo e workflow. O teste `src/service-request-store-scope-hardening-migration.test.ts` protege o vínculo do hardening ao manifesto, o trigger diferido e os revokes das implementações internas.
+
+O teste `src/service-request-workspace-store-scope.test.ts` protege a migration final, o filtro explícito da interface, o uso exclusivo do BFF e o teto financeiro por loja.
 
 ## Ensaio vivo de homologação
 
@@ -79,6 +104,8 @@ AUDITAR ENCOMENDAS RPC SOMENTE HOMOLOGACAO <project-ref-homologacao>
 
 O workflow exige SHA exato, bloqueia a referência de produção, executa somente o SQL `supabase/tests/service_request_rpc_boundary_live.sql` e encerra com `ROLLBACK`.
 
+O ensaio vivo também lê a definição efetiva do workspace e reprova retorno da implementação global, perda do filtro por loja ou perda do teto `view_finance`.
+
 Antes de aplicar as migrations em homologação, executar uma consulta específica para contar encomendas sem `store_id`. Resultado diferente de zero exige confirmar se existe uma única loja ativa ou preparar o mapeamento explícito.
 
 ## Critérios de aprovação
@@ -91,7 +118,9 @@ Antes de aplicar as migrations em homologação, executar uma consulta específi
 - constraint trigger de escopo realmente `DEFERRABLE INITIALLY DEFERRED`;
 - três tabelas filhas ligadas por `request_id` a `service_requests`;
 - assinatura pública com `requested_store_id`;
-- workspace operacional com `requested_store_id` e capacidade por loja;
+- workspace operacional com assinatura de quatro argumentos e capacidade por loja;
+- nenhuma chamada do workspace à implementação global sem escopo;
+- custos e margens protegidos por `view_finance` na loja da encomenda;
 - histórico CRM com `manage_customers` validado na loja;
 - implementações internas sem escopo não executáveis pelo `service_role`;
 - nenhuma migration, deploy ou comando produtivo no workflow de auditoria.
