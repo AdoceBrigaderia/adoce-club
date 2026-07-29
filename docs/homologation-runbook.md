@@ -50,6 +50,8 @@ Todas as variáveis abaixo devem ser configuradas no contexto `branch-deploy`. V
 
 `SITE_URL`, `BFF_ALLOWED_ORIGINS` e `HOMOLOGATION_SITE_URL` devem representar a mesma origem. O readiness compara a origem real da requisição com `SITE_URL` e bloqueia o preview se houver divergência.
 
+As listas de origem aceitam somente origens HTTPS puras, sem caminho, parâmetros ou fragmento. Uma origem produtiva adicional também bloqueia o gate, mesmo quando a origem correta de homologação estiver presente na mesma lista.
+
 ### Supabase de homologação
 
 - `VITE_SUPABASE_URL`
@@ -82,7 +84,7 @@ Os dois peppers e o segredo do Supabase fazem parte do núcleo obrigatório. A a
 - `META_WA_GRAPH_API_VERSION`
 - `META_WA_ENVIRONMENT=homologation`
 
-Os valores sensíveis devem ser marcados como secretos. A ausência dessas credenciais não impede o teste do núcleo, mas mantém o WhatsApp real como pendente no readiness.
+Os valores sensíveis devem ser marcados como secretos. A ausência total dessas credenciais não impede o teste do núcleo: o adapter/mock e os fallbacks por senha/passkey permanecem ativos. Porém, uma configuração parcial bloqueia o gate para evitar envio por conta, número, template ou ambiente incorretos. `META_WA_ENVIRONMENT=production` e versões inválidas da Graph API também são rejeitados.
 
 ### Google Wallet
 
@@ -92,7 +94,7 @@ Os valores sensíveis devem ser marcados como secretos. A ausência dessas crede
 - `GOOGLE_WALLET_PRIVATE_KEY`, secreto.
 - `GOOGLE_WALLET_ORIGINS`
 
-A ausência dessas credenciais não impede o teste do núcleo, mas mantém a emissão real de passes como pendente.
+A ausência total dessas credenciais não impede o teste do núcleo; o QR pessoal e o cartão digital continuam disponíveis. Porém, uma configuração parcial bloqueia o gate. Quando a emissão real estiver ativa, `GOOGLE_WALLET_ORIGINS` deve conter a origem canônica exata de `SITE_URL` e não pode conter domínio produtivo.
 
 ## 4. Pré-flight redigido antes da publicação
 
@@ -113,9 +115,9 @@ O relatório separa três estados:
 
 1. **núcleo pronto**: ambiente, origem, Supabase, chave publicável, segredo server-only e peppers válidos;
 2. **preview pronto para publicação**: núcleo pronto mais credenciais de infraestrutura da Netlify presentes;
-3. **integrações completas**: preview pronto mais Meta WhatsApp e Google Wallet configurados.
+3. **integrações completas**: preview pronto mais Meta WhatsApp e Google Wallet configurados integralmente e alinhados à homologação.
 
-A falta de Meta ou Wallet não bloqueia o diagnóstico do núcleo. O relatório nunca inclui valores de tokens, chaves, peppers ou credenciais; registra somente estados booleanos e nomes de variáveis ausentes.
+A falta total de Meta ou Wallet não bloqueia o diagnóstico do núcleo. Configuração parcial, origem produtiva, ambiente incorreto ou credenciais misturadas bloqueiam o gate. O relatório nunca inclui valores de tokens, chaves, peppers ou credenciais; registra somente estados booleanos e nomes de variáveis ausentes.
 
 O workflow manual executa esse pré-flight dentro do contexto `branch-deploy` antes do gate e preserva os dois arquivos como evidência.
 
