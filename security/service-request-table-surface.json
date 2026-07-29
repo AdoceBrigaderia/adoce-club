@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "liveTest": "supabase/tests/service_request_rpc_boundary_live.sql",
   "lockMigration": "supabase/migrations/20260729202000_lock_service_request_tables_to_rpc.sql",
+  "hardeningMigration": "supabase/migrations/20260729203000_harden_service_request_store_scope.sql",
   "workflow": ".github/workflows/service-request-rpc-boundary-live-homologation.yml",
   "tables": [
     {
