@@ -25,7 +25,7 @@ env:
   PRODUCTION_REF: uefwywizqhfvvijaopcn
   HOMOLOGATION_SITE_ID: f0cc51be-a0ec-4451-9644-a394592cdc37
   PRODUCTION_SITE_ID: bb0c96cd-5af2-4270-a9a8-b63b9637b1f4
-  HOMOLOGATION_SITE_URL: https://adoce-homologacao.netlify.app
+  HOMOLOGATION_SITE_HOST: adoce-homologacao.netlify.app
   MIGRATION_BUNDLE_NAME: migrations-2f2e6bd6b6154fc184622467a54e62ca.sql
 
 jobs:
@@ -52,10 +52,7 @@ jobs:
           test "$PRODUCTION_REF" = "uefwywizqhfvvijaopcn"
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
           test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"
-          case "$HOMOLOGATION_SITE_URL" in
-            https://adoce-homologacao.netlify.app) ;;
-            *) echo "URL de homologação inválida" >&2; exit 1 ;;
-          esac
+          test "$HOMOLOGATION_SITE_HOST" = "adoce-homologacao.netlify.app"
 
       - name: Validar plano e empacotar exatamente as 22 migrations
         shell: bash
@@ -161,22 +158,6 @@ jobs:
           cp "$upload/bundle-sha256.txt" artifacts/netlify-migration-transport/bundle-sha256.txt
           printf '%s\n' "$size_bytes" > artifacts/netlify-migration-transport/upload-bytes.txt
 
-      - name: Preparar runtime portátil do Netlify MCP
-        shell: bash
-        run: |
-          set -euo pipefail
-          runtime="$GITHUB_WORKSPACE/artifacts/netlify-mcp-runtime"
-          mkdir -p "$runtime"
-          cd "$runtime"
-          npm init -y >/dev/null
-          npm install --omit=dev --no-audit --no-fund @netlify/mcp@1.15.1
-          node - <<'NODE'
-          const fs = require('fs');
-          const pkg = JSON.parse(fs.readFileSync('node_modules/@netlify/mcp/package.json', 'utf8'));
-          fs.writeFileSync('runtime.json', JSON.stringify({ name: pkg.name, version: pkg.version, bin: pkg.bin }, null, 2));
-          NODE
-          test -s runtime.json
-
       - name: Gerar chave temporária para o proxy
         if: ${{ hashFiles('ops/netlify-homologation-proxy.json') == '' }}
         shell: bash
@@ -236,29 +217,93 @@ jobs:
           proxy_path="$(cat "$RUNNER_TEMP/netlify-proxy.txt")"
           test "$(printf '%s' "$proxy_path" | sha256sum | awk '{print $1}')" = "$expected_proxy_sha"
           case "$proxy_path" in
-            https://netlify-mcp.netlify.app//proxy/*) ;;
+            https://netlify-mcp.netlify.app//proxy/*|https://netlify-mcp.netlify.app/proxy/*) ;;
             *) echo "Proxy Netlify inválido" >&2; exit 1 ;;
           esac
 
           upload="$(cat "$RUNNER_TEMP/netlify-upload-dir.txt")"
-          runtime="$GITHUB_WORKSPACE/artifacts/netlify-mcp-runtime/node_modules/@netlify/mcp/dist/netlify-mcp.js"
           test -d "$upload"
-          test -s "$runtime"
-          mkdir -p "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy"
+          deploy_zip="$RUNNER_TEMP/adoce-migration-transport.zip"
           (
             cd "$upload"
-            node "$runtime" \
-              --site-id "$HOMOLOGATION_SITE_ID" \
-              --proxy-path "$proxy_path"
-          ) 2>&1 | tee "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/deploy.log"
-          grep -q 'Deploy is ready!' "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/deploy.log"
-          ! grep -q "$PRODUCTION_SITE_ID" "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/deploy.log"
+            zip -q -r "$deploy_zip" .
+          )
+          test -s "$deploy_zip"
+          test "$(stat -c '%s' "$deploy_zip")" -lt 2000000
+
+          mkdir -p artifacts/netlify-proxy-deploy
+          original_proxy="${proxy_path%/}"
+          normalized_proxy="$(printf '%s' "$original_proxy" | sed 's#netlify-mcp.netlify.app//proxy/#netlify-mcp.netlify.app/proxy/#')"
+          selected_proxy=""
+          http_status=000
+          for candidate in "$original_proxy" "$normalized_proxy"; do
+            [ -n "$candidate" ] || continue
+            if [ -n "$selected_proxy" ]; then break; fi
+            http_status="$(curl -sS \
+              -D artifacts/netlify-proxy-deploy/upload-headers.txt \
+              -o artifacts/netlify-proxy-deploy/upload-response.json \
+              -w '%{http_code}' \
+              -X POST \
+              -H 'User-Agent: netlify-mcp' \
+              -F "zip=@$deploy_zip;type=application/zip" \
+              "$candidate/api/v1/sites/$HOMOLOGATION_SITE_ID/builds" || true)"
+            case "$http_status" in
+              200|201|202) selected_proxy="$candidate" ;;
+              404) : ;;
+              *) break ;;
+            esac
+          done
+          if [ -z "$selected_proxy" ]; then
+            echo "Upload Netlify rejeitado com HTTP $http_status" >&2
+            cat artifacts/netlify-proxy-deploy/upload-response.json >&2 || true
+            exit 1
+          fi
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const raw = JSON.parse(fs.readFileSync('artifacts/netlify-proxy-deploy/upload-response.json', 'utf8'));
+          const payload = Array.isArray(raw) ? raw[0] : raw;
+          const deployId = payload.deploy_id || payload.id;
+          const buildId = payload.id || payload.build_id || '';
+          if (!deployId) throw new Error('Resposta Netlify sem deploy_id.');
+          fs.writeFileSync('artifacts/netlify-proxy-deploy/deploy-id.txt', `${deployId}\n`);
+          fs.writeFileSync('artifacts/netlify-proxy-deploy/build-id.txt', `${buildId}\n`);
+          NODE
+
+          deploy_id="$(cat artifacts/netlify-proxy-deploy/deploy-id.txt)"
+          deploy_state=""
+          deploy_url=""
+          for attempt in $(seq 1 60); do
+            status="$(curl -sS \
+              -o artifacts/netlify-proxy-deploy/deploy-status.json \
+              -w '%{http_code}' \
+              "$selected_proxy/api/v1/deploys/$deploy_id" || true)"
+            if [ "$status" = "200" ]; then
+              deploy_state="$(node -p "require('./artifacts/netlify-proxy-deploy/deploy-status.json').state || ''")"
+              deploy_url="$(node -p "require('./artifacts/netlify-proxy-deploy/deploy-status.json').url || require('./artifacts/netlify-proxy-deploy/deploy-status.json').ssl_url || ''")"
+              [ "$deploy_state" = "ready" ] && break
+              [ "$deploy_state" = "error" ] && break
+            fi
+            sleep 5
+          done
+          test "$deploy_state" = "ready"
+          test -n "$deploy_url"
+          node - "$deploy_url" <<'NODE'
+          const value = process.argv[2];
+          const url = new URL(value);
+          const host = url.hostname.toLowerCase();
+          const expected = process.env.HOMOLOGATION_SITE_HOST;
+          if (url.protocol !== 'https:') throw new Error('Deploy sem HTTPS.');
+          if (!(host === expected || host.endsWith(`--${expected}`))) throw new Error(`Deploy fora da homologação: ${host}`);
+          if (host.includes('adocebrigaderia.com.br')) throw new Error('Domínio produtivo rejeitado.');
+          NODE
 
           expected_bundle_sha="$(cat "$upload/bundle-sha256.txt")"
+          bundle_url="${deploy_url%/}/homologation-internal/$MIGRATION_BUNDLE_NAME"
           fetched_bundle="$RUNNER_TEMP/fetched-migration-bundle.sql"
           status=000
           for attempt in $(seq 1 18); do
-            status="$(curl -sS -L -o "$fetched_bundle" -w '%{http_code}' "$HOMOLOGATION_SITE_URL/homologation-internal/$MIGRATION_BUNDLE_NAME" || true)"
+            status="$(curl -sS -L -o "$fetched_bundle" -w '%{http_code}' "$bundle_url" || true)"
             if [ "$status" = "200" ] && [ "$(sha256sum "$fetched_bundle" | awk '{print $1}')" = "$expected_bundle_sha" ]; then
               break
             fi
@@ -266,9 +311,10 @@ jobs:
           done
           test "$status" = "200"
           test "$(sha256sum "$fetched_bundle" | awk '{print $1}')" = "$expected_bundle_sha"
-          printf '%s\n' "$HOMOLOGATION_SITE_URL/homologation-internal/$MIGRATION_BUNDLE_NAME" > "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/bundle-url.txt"
-          printf '%s\n' "$expected_bundle_sha" > "$GITHUB_WORKSPACE/artifacts/netlify-proxy-deploy/bundle-sha256.txt"
-          rm -f "$RUNNER_TEMP/netlify-key.enc" "$RUNNER_TEMP/netlify-proxy.enc" "$RUNNER_TEMP/netlify-aes.key" "$RUNNER_TEMP/netlify-proxy.txt" "$fetched_bundle"
+          printf '%s\n' "$deploy_url" > artifacts/netlify-proxy-deploy/deploy-url.txt
+          printf '%s\n' "$bundle_url" > artifacts/netlify-proxy-deploy/bundle-url.txt
+          printf '%s\n' "$expected_bundle_sha" > artifacts/netlify-proxy-deploy/bundle-sha256.txt
+          rm -f "$RUNNER_TEMP/netlify-key.enc" "$RUNNER_TEMP/netlify-proxy.enc" "$RUNNER_TEMP/netlify-aes.key" "$RUNNER_TEMP/netlify-proxy.txt" "$fetched_bundle" "$deploy_zip"
 
       - name: Publicar pacote validado
         uses: actions/upload-artifact@v4
@@ -277,15 +323,6 @@ jobs:
           path: artifacts/homologation-pending-migrations
           if-no-files-found: error
           retention-days: 7
-          compression-level: 6
-
-      - name: Publicar runtime do Netlify MCP
-        uses: actions/upload-artifact@v4
-        with:
-          name: netlify-mcp-runtime-${{ github.run_number }}
-          path: artifacts/netlify-mcp-runtime
-          if-no-files-found: error
-          retention-days: 2
           compression-level: 6
 
       - name: Preservar chave pública temporária
