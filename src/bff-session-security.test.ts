@@ -6,6 +6,7 @@ import {
   REFRESH_COOKIE,
   SESSION_MODE_COOKIE,
   clearedSessionCookies,
+  secureJson,
   sessionCookies,
   validCsrf,
 } from "../netlify/functions/_shared/session-security";
@@ -107,6 +108,22 @@ describe("sessão BFF protegida", () => {
       expect(value).toContain("Secure");
       expect(value).toContain("Path=/");
     });
+  });
+
+  it("protege respostas JSON diretamente na Function", () => {
+    const response = secureJson({ ok: true });
+
+    expect(response.headers.get("cache-control")).toBe("no-store, max-age=0");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(response.headers.get("x-frame-options")).toBe("DENY");
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(response.headers.get("content-security-policy")).toContain(
+      "default-src 'none'",
+    );
+    expect(response.headers.get("content-security-policy")).toContain(
+      "frame-ancestors 'none'",
+    );
+    expect(response.headers.get("vary")).toContain("Sec-Fetch-Site");
   });
 
   it("o cliente lê apenas o token CSRF, nunca o token de sessão", () => {
