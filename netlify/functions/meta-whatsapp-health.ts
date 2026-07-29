@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
+import { guardBffRequest } from "./_shared/request-security";
 import {
   ACCESS_COOKIE,
-  allowedOrigin,
+  SURFACE_COOKIE,
   parseCookies,
   secureJson,
 } from "./_shared/session-security";
@@ -19,10 +20,11 @@ const suffix = (value: string | undefined) =>
   value && value.length >= 4 ? `••••${value.slice(-4)}` : null;
 
 export default async (request: Request) => {
-  if (request.method !== "GET")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["GET"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
@@ -31,7 +33,11 @@ export default async (request: Request) => {
   if (!supabaseUrl || !publishableKey || !secretKey)
     return secureJson({ error: "Integração indisponível neste ambiente." }, 503);
 
-  const accessToken = parseCookies(request).get(ACCESS_COOKIE) || "";
+  const cookies = parseCookies(request);
+  if (cookies.get(SURFACE_COOKIE) !== "operation")
+    return secureJson({ error: "Sessão operacional obrigatória." }, 403);
+
+  const accessToken = cookies.get(ACCESS_COOKIE) || "";
   if (!accessToken)
     return secureJson(
       { error: "Sessão obrigatória.", code: "session_refresh_required" },
