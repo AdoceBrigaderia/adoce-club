@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { sendAuthenticationTemplate } from "./_shared/meta-whatsapp";
-import { allowedOrigin, secureJson } from "./_shared/session-security";
+import { guardBffRequest } from "./_shared/request-security";
+import { secureJson } from "./_shared/session-security";
 import {
   generateWhatsAppOtp,
   hashRequestOrigin,
@@ -25,10 +26,11 @@ const acceptedPurposes = new Set([
 ]);
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const body = (await request.json().catch(() => ({}))) as {
     phone?: string;
