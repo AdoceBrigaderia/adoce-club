@@ -55,3 +55,33 @@ test("a resposta JSON preserva cookies depois de construir o baseline", () => {
   assert.match(secureJsonBody, /cookies,/);
   assert.match(secureJsonBody, /JSON\.stringify\(body\)/);
 });
+
+test("Vary sempre preserva as fronteiras de origem e contexto de navegação", () => {
+  assert.match(
+    responseSecuritySource,
+    /REQUIRED_VARY_TOKENS\s*=\s*\[\s*["']Origin["']\s*,\s*["']Sec-Fetch-Site["']\s*\]/,
+  );
+  assert.match(
+    responseSecuritySource,
+    /composeVaryHeader\(options\.vary, headers\.get\(["']Vary["']\)\)/,
+  );
+  assert.match(
+    responseSecuritySource,
+    /composeVaryHeader\([\s\S]*requestedVary,[\s\S]*\.\.\.REQUIRED_VARY_TOKENS/,
+  );
+  assert.match(responseSecuritySource, /headers\.set\(["']Vary["'], protectedVary\)/);
+  assert.doesNotMatch(
+    responseSecuritySource,
+    /headers\.set\(["']Vary["'],\s*options\.vary\s*\|\|/,
+  );
+});
+
+test("a composição de Vary deduplica tokens sem perder casing canônico", () => {
+  assert.match(responseSecuritySource, /const CANONICAL_VARY_TOKENS = new Map/);
+  assert.match(responseSecuritySource, /const key = token\.toLowerCase\(\)/);
+  assert.match(responseSecuritySource, /if \(!tokens\.has\(key\)\)/);
+  assert.match(
+    responseSecuritySource,
+    /CANONICAL_VARY_TOKENS\.get\(key\) \|\| token/,
+  );
+});
