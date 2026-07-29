@@ -9,14 +9,13 @@ const CORE_SECURITY_VARIABLES = [
   "PUBLIC_RATE_LIMIT_PEPPER",
 ] as const;
 
-const META_VARIABLES = [
+const META_CREDENTIAL_VARIABLES = [
   "META_WA_ACCESS_TOKEN",
   "META_WA_PHONE_NUMBER_ID",
   "META_WA_WABA_ID",
   "META_WA_APP_SECRET",
   "META_WA_VERIFY_TOKEN",
   "META_WA_AUTH_TEMPLATE_NAME",
-  "META_WA_GRAPH_API_VERSION",
 ] as const;
 
 const WALLET_VARIABLES = [
@@ -44,6 +43,13 @@ function missing(
   return variables.filter((name) => !value(environment, name));
 }
 
+function configuredCount(
+  environment: ReadinessEnvironment,
+  variables: readonly string[],
+) {
+  return variables.filter((name) => Boolean(value(environment, name))).length;
+}
+
 function projectRef(rawUrl: string) {
   try {
     const hostname = new URL(rawUrl).hostname.toLowerCase();
@@ -57,21 +63,61 @@ function siteState(rawUrl: string) {
   try {
     const url = new URL(rawUrl);
     const production = PRODUCTION_HOSTS.has(url.hostname.toLowerCase());
+    const originOnly =
+      (url.pathname === "/" || url.pathname === "") &&
+      !url.search &&
+      !url.hash;
     return {
-      valid: url.protocol === "https:" && !production,
+      valid: url.protocol === "https:" && !production && originOnly,
       origin: url.origin,
       production,
+      originOnly,
     };
   } catch {
-    return { valid: false, origin: null, production: false };
+    return {
+      valid: false,
+      origin: null,
+      production: false,
+      originOnly: false,
+    };
   }
 }
 
-function originList(raw: string) {
-  return raw
+function analyzeOrigins(raw: string) {
+  const origins: string[] = [];
+  const invalid: string[] = [];
+  const production: string[] = [];
+
+  for (const rawEntry of raw
     .split(",")
-    .map((item) => item.trim().replace(/\/+$/, ""))
-    .filter(Boolean);
+    .map((item) => item.trim())
+    .filter(Boolean)) {
+    try {
+      const url = new URL(rawEntry);
+      const originOnly =
+        (url.pathname === "/" || url.pathname === "") &&
+        !url.search &&
+        !url.hash;
+      if (url.protocol !== "https:" || !originOnly) {
+        invalid.push(rawEntry);
+        continue;
+      }
+      const origin = url.origin;
+      if (PRODUCTION_HOSTS.has(url.hostname.toLowerCase())) {
+        production.push(origin);
+      }
+      if (!origins.includes(origin)) origins.push(origin);
+    } catch {
+      invalid.push(rawEntry);
+    }
+  }
+
+  return {
+    origins,
+    invalid,
+    production,
+    safe: invalid.length === 0 && production.length === 0,
+  };
 }
 
 export function buildHomologationReadiness(
@@ -109,9 +155,12 @@ export function buildHomologationReadiness(
       requestSite.origin &&
       (site.origin === requestSite.origin || requestIsConfiguredDeployAlias),
   );
-  const allowedOrigins = originList(value(environment, "BFF_ALLOWED_ORIGINS"));
+
+  const allowedOrigins = analyzeOrigins(
+    value(environment, "BFF_ALLOWED_ORIGINS"),
+  );
   const siteAllowed = Boolean(
-    site.origin && allowedOrigins.includes(site.origin.replace(/\/+$/, "")),
+    site.origin && allowedOrigins.origins.includes(site.origin),
   );
   const supabaseIsolated = Boolean(
     expectedRef &&
@@ -130,21 +179,62 @@ export function buildHomologationReadiness(
       value(environment, "SUPABASE_SERVICE_ROLE_KEY"),
   );
   const coreSecurityMissing = missing(environment, CORE_SECURITY_VARIABLES);
-  const metaMissing = missing(environment, META_VARIABLES);
-  const walletMissing = missing(environment, WALLET_VARIABLES);
+
   const passkeyMissing = missing(environment, PASSKEY_VARIABLES);
-  const passkeyOrigins = originList(
+  const passkeyOrigins = analyzeOrigins(
     value(environment, "PASSKEY_ALLOWED_ORIGINS"),
   );
   const passkeySiteAllowed = Boolean(
-    site.origin && passkeyOrigins.includes(site.origin.replace(/\/+$/, "")),
+    site.origin && passkeyOrigins.origins.includes(site.origin),
   );
+  const passkeyRpIdMatches = Boolean(
+    configuredHostname &&
+      value(environment, "PASSKEY_RP_ID").toLowerCase() === configuredHostname,
+  );
+
+  const metaMissing = missing(environment, META_CREDENTIAL_VARIABLES);
+  const metaConfiguredCount = configuredCount(
+    environment,
+    META_CREDENTIAL_VARIABLES,
+  );
+  const metaPartiallyConfigured =
+    metaConfiguredCount > 0 && metaMissing.length > 0;
+  const metaEnvironment = value(environment, "META_WA_ENVIRONMENT").toLowerCase();
+  const metaEnvironmentMatches =
+    !metaEnvironment || metaEnvironment === "homologation";
+  const metaGraphVersion = value(environment, "META_WA_GRAPH_API_VERSION");
+  const metaGraphVersionValid = /^v\d{1,2}\.\d{1,2}$/.test(metaGraphVersion);
+  const metaConfigured = Boolean(
+    metaConfiguredCount === META_CREDENTIAL_VARIABLES.length &&
+      metaMissing.length === 0 &&
+      metaEnvironmentMatches &&
+      metaGraphVersionValid,
+  );
+
+  const walletMissing = missing(environment, WALLET_VARIABLES);
+  const walletConfiguredCount = configuredCount(environment, WALLET_VARIABLES);
+  const walletPartiallyConfigured =
+    walletConfiguredCount > 0 && walletMissing.length > 0;
+  const walletOrigins = analyzeOrigins(
+    value(environment, "GOOGLE_WALLET_ORIGINS"),
+  );
+  const walletSiteAllowed = Boolean(
+    site.origin && walletOrigins.origins.includes(site.origin),
+  );
+  const walletConfigured = Boolean(
+    walletConfiguredCount === WALLET_VARIABLES.length &&
+      walletMissing.length === 0 &&
+      walletOrigins.safe &&
+      walletSiteAllowed,
+  );
+
   const coreReady = Boolean(
     deployEnvironment === "homologation" &&
       site.valid &&
       requestSite.valid &&
       requestMatchesConfiguredSite &&
       siteAllowed &&
+      allowedOrigins.safe &&
       supabaseIsolated &&
       publishableKeyPresent &&
       serverSecretPresent &&
@@ -159,8 +249,14 @@ export function buildHomologationReadiness(
       validHomologationOrigin: site.valid,
       requestOriginValid: requestSite.valid,
       requestMatchesConfiguredSite,
-      productionDomainRejected: !site.production && !requestSite.production,
+      productionDomainRejected:
+        !site.production &&
+        !requestSite.production &&
+        allowedOrigins.production.length === 0,
       allowedByBff: siteAllowed,
+      allowedOriginsSafe: allowedOrigins.safe,
+      invalidAllowedOrigins: allowedOrigins.invalid.length,
+      productionAllowedOrigins: allowedOrigins.production.length,
       origin: site.origin,
       requestOrigin: requestSite.origin,
     },
@@ -179,16 +275,28 @@ export function buildHomologationReadiness(
     },
     integrations: {
       passkeys: {
-        configured: passkeyMissing.length === 0 && passkeySiteAllowed,
+        configured:
+          passkeyMissing.length === 0 &&
+          passkeySiteAllowed &&
+          passkeyOrigins.safe &&
+          passkeyRpIdMatches,
         originAllowed: passkeySiteAllowed,
+        originsSafe: passkeyOrigins.safe,
+        rpIdMatches: passkeyRpIdMatches,
         missing: passkeyMissing,
       },
       metaWhatsApp: {
-        configured: metaMissing.length === 0,
+        configured: metaConfigured,
+        partiallyConfigured: metaPartiallyConfigured,
+        environmentMatches: metaEnvironmentMatches,
+        graphVersionValid: metaGraphVersionValid,
         missing: metaMissing,
       },
       googleWallet: {
-        configured: walletMissing.length === 0,
+        configured: walletConfigured,
+        partiallyConfigured: walletPartiallyConfigured,
+        originAllowed: walletSiteAllowed,
+        originsSafe: walletOrigins.safe,
         missing: walletMissing,
       },
     },
