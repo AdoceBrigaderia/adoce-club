@@ -20,6 +20,8 @@ declare
   browser_privileges text[];
   browser_policies text[];
   missing_parent_fks text[];
+  workspace_routine regprocedure;
+  workspace_definition text;
 begin
   select array_agg(table_name order by table_name)
   into missing_tables
@@ -150,10 +152,30 @@ begin
     raise exception 'submit_service_request_bff lost the store-scoped signature';
   end if;
 
-  if to_regprocedure(
+  workspace_routine := to_regprocedure(
     'public.staff_get_service_request_workspace(text,text,integer,uuid)'
-  ) is null then
+  );
+  if workspace_routine is null then
     raise exception 'staff_get_service_request_workspace lost the store filter signature';
+  end if;
+
+  if to_regprocedure('public.staff_get_service_request_workspace(text,text,integer)') is not null then
+    raise exception 'staff_get_service_request_workspace restored the unscoped public signature';
+  end if;
+
+  select pg_get_functiondef(workspace_routine::oid) into workspace_definition;
+
+  if position('staff_get_service_request_workspace_unscoped_internal' in workspace_definition) > 0 then
+    raise exception 'staff_get_service_request_workspace still scans the unscoped implementation';
+  end if;
+
+  if position('private.staff_has_capability(request.store_id, ''manage_orders'')' in workspace_definition) = 0
+     or position('target_store_id is null or request.store_id = target_store_id' in workspace_definition) = 0 then
+    raise exception 'staff_get_service_request_workspace lost row-level store authorization';
+  end if;
+
+  if position('private.staff_has_capability(request.store_id, ''view_finance'')' in workspace_definition) = 0 then
+    raise exception 'staff_get_service_request_workspace lost the financial capability ceiling';
   end if;
 end;
 $$;
