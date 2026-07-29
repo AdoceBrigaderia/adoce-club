@@ -280,7 +280,7 @@ jobs:
               "$selected_proxy/api/v1/deploys/$deploy_id" || true)"
             if [ "$status" = "200" ]; then
               deploy_state="$(node -p "require('./artifacts/netlify-proxy-deploy/deploy-status.json').state || ''")"
-              deploy_url="$(node -p "require('./artifacts/netlify-proxy-deploy/deploy-status.json').url || require('./artifacts/netlify-proxy-deploy/deploy-status.json').ssl_url || ''")"
+              deploy_url="$(node -p "((d) => d.deploy_ssl_url || d.ssl_url || d.deploy_url || d.url || '')(require('./artifacts/netlify-proxy-deploy/deploy-status.json'))")"
               [ "$deploy_state" = "ready" ] && break
               [ "$deploy_state" = "error" ] && break
             fi
