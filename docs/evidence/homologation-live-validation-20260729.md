@@ -45,6 +45,29 @@ Confirmado:
 
 O arquivo versionado `supabase/tests/homologation_security_definer_live.sql` preserva esse gate de forma repetível.
 
+## Catálogo real do montador
+
+O seed `supabase/seeds/homologation/20260729_real_cake_builder_catalog.sql` passou por duas etapas antes da confirmação final:
+
+1. ensaio reversível com inserção sintética de opção obsoleta, execução da reconciliação e `ROLLBACK`;
+2. aplicação integral e transacional somente na homologação, seguida por auditoria viva em nova transação encerrada com `ROLLBACK`.
+
+Resultado final observado:
+
+| Produto | Massas ativas | Recheios ativos | Acabamentos ativos |
+|---|---:|---:|---:|
+| `torta-p` | 5 | 22 | 1 |
+| `torta-m` | 5 | 22 | 1 |
+| `torta-g` | 5 | 22 | 1 |
+
+A reconciliação:
+
+- não apaga registros históricos;
+- desativa e despublica opções removidas do catálogo comercial;
+- rejeita placements inesperados;
+- mantém somente `acabamento-padrao-adoce` publicado como acabamento neutro;
+- não inventa custos nem acréscimos.
+
 ## Transporte atômico pela Netlify de homologação
 
 O workflow `Empacotar migrations pendentes da homologação`, execução `30411201171`, concluiu com sucesso.
@@ -68,6 +91,19 @@ A autorização cifrada de uso único foi removida da branch depois do consumo.
 2. Repetição dos jobs com falha: mesma falha determinística, sem acesso ao banco e sem publicação.
 3. Execução `30411201171`: autorização alinhada ao head, transporte atômico e publicação somente na Netlify de homologação concluídos.
 
+## Workflows do marco
+
+No head que consolidou esta evidência, os 13 workflows automáticos concluíram com sucesso, incluindo:
+
+- gate do catálogo real do montador;
+- gate do montador de tortas;
+- produtos configuráveis;
+- pré-flight das migrations;
+- empacotamento das migrations;
+- responsividade móvel;
+- custos, configurações, imagens, capas, galerias e carrosséis;
+- contratos dos backups lógico e do Storage.
+
 ## Pendências dos advisors
 
 A leitura dos advisors do Supabase apontou itens que permanecem em tratamento:
@@ -82,11 +118,11 @@ Os avisos de índices não usados não autorizam remoção automática, pois a h
 
 ## Próximo marco seguro
 
-- reconciliar o catálogo do montador sem apagar histórico, despublicando opções que saíram do cadastro comercial;
-- executar o seed primeiro com rollback e depois somente na homologação;
-- manter a auditoria de RPCs privilegiadas como gate manual redigido;
+- executar a auditoria manual redigida das RPCs privilegiadas no workflow próprio, quando necessário;
 - preparar uma rodada específica de índices das novas relações, sem misturar alterações legadas e sem aplicar em produção;
-- publicar o portal funcional somente na Netlify de homologação após os gates.
+- publicar o portal funcional somente na Netlify de homologação;
+- executar readiness, smoke tests e Playwright em celular, tablet e desktop;
+- validar passkeys físicas e integrações externas separadamente, sem bloquear o restante.
 
 ## Produção
 
