@@ -5,7 +5,14 @@ revoke insert, update, delete, truncate on table
   public.cash_registers,
   public.staff_store_assignments,
   public.cash_sessions,
-  public.cash_movements
+  public.cash_movements,
+  public.customer_checkins,
+  public.cash_reconciliation_queue
+from public, anon, authenticated;
+
+revoke all on table
+  public.customer_checkins,
+  public.cash_reconciliation_queue
 from public, anon, authenticated;
 
 drop policy if exists stores_manager_insert on public.stores;
@@ -21,10 +28,18 @@ declare
     'cash_registers',
     'staff_store_assignments',
     'cash_sessions',
-    'cash_movements'
+    'cash_movements',
+    'customer_checkins',
+    'cash_reconciliation_queue'
+  ];
+  rpc_only_tables text[] := array[
+    'customer_checkins',
+    'cash_reconciliation_queue'
   ];
   exposed_write_privileges text[];
   browser_write_policies text[];
+  rpc_only_browser_privileges text[];
+  rpc_only_browser_policies text[];
 begin
   select array_agg(format('%s:%s', class.relname, role_name)
     order by class.relname, role_name)
@@ -59,6 +74,41 @@ begin
   if coalesce(cardinality(browser_write_policies), 0) > 0 then
     raise exception 'Store-scoped browser write policies remain after lockdown: %',
       browser_write_policies;
+  end if;
+
+  select array_agg(format('%s:%s', class.relname, role_name)
+    order by class.relname, role_name)
+  into rpc_only_browser_privileges
+  from pg_class class
+  join pg_namespace namespace on namespace.oid = class.relnamespace
+  cross join lateral unnest(array['anon', 'authenticated']) role_name
+  where namespace.nspname = 'public'
+    and class.relname = any(rpc_only_tables)
+    and (
+      has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'SELECT')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'INSERT')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'UPDATE')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'DELETE')
+      or has_table_privilege(role_name::name, format('%I.%I', namespace.nspname, class.relname), 'TRUNCATE')
+    );
+
+  if coalesce(cardinality(rpc_only_browser_privileges), 0) > 0 then
+    raise exception 'RPC-only store tables still expose browser privileges: %',
+      rpc_only_browser_privileges;
+  end if;
+
+  select array_agg(format('%s:%s:%s', policy.tablename, policy.policyname, role_name)
+    order by policy.tablename, policy.policyname, role_name)
+  into rpc_only_browser_policies
+  from pg_policies policy
+  cross join lateral unnest(policy.roles) expanded_role(role_name)
+  where policy.schemaname = 'public'
+    and policy.tablename = any(rpc_only_tables)
+    and role_name::text in ('public', 'anon', 'authenticated');
+
+  if coalesce(cardinality(rpc_only_browser_policies), 0) > 0 then
+    raise exception 'RPC-only store tables still expose browser policies: %',
+      rpc_only_browser_policies;
   end if;
 end;
 $$;
