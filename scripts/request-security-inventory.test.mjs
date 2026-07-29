@@ -41,7 +41,8 @@ import { timingSafeEqual } from "node:crypto";
 import { verifyMetaWebhookSignature } from "./_shared/meta-whatsapp";
 import { secureText } from "./_shared/response-security";
 export default async (request) => {
-  if (request.method === "GET") return secureText(String(timingSafeEqual));
+  const verifyTokenMatched = timingSafeEqual(Buffer.from("a"), Buffer.from("a"));
+  if (request.method === "GET") return secureText(String(verifyTokenMatched));
   if (request.method !== "POST") return secureText("Método não permitido.", 405);
   verifyMetaWebhookSignature(
     await request.text(),
