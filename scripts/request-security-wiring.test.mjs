@@ -61,6 +61,11 @@ const protectedEntrypoints = [
     methods: ["GET", "POST"],
     csrf: "post-only",
   },
+  {
+    path: "netlify/functions/admin-revoke-user-passkey.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
 ];
 
 const passkeyCeremonyEntrypoints = [
