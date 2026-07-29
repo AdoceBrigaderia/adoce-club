@@ -14,6 +14,13 @@ test("ignora testes, declarações, protótipos e arquivos sem código", () => {
   assert.equal(isAuditableSource("src/OperationBusinessHub.tsx"), true);
 });
 
+test("inclui entradas HTML e scripts públicos realmente entregues ao navegador", () => {
+  assert.equal(isAuditableSource("index.html"), true);
+  assert.equal(isAuditableSource("public/checkout.html"), true);
+  assert.equal(isAuditableSource("public/runtime.js"), true);
+  assert.equal(isAuditableSource("public/logo.svg"), false);
+});
+
 test("bloqueia sessão Supabase manipulada em superfície real", () => {
   const findings = auditBrowserSource(
     "src/PasskeyClientGateway.tsx",
@@ -69,6 +76,14 @@ test("bloqueia armazenamento persistente em contexto de autenticação", () => {
   );
 });
 
+test("bloqueia armazenamento de token mesmo quando a variável vem da linha anterior", () => {
+  const findings = auditBrowserSource(
+    "public/legacy-login.html",
+    `<script>\nconst token = payload.jwt;\nsessionStorage.setItem("login", token);\n</script>`,
+  );
+  assert.ok(findings.some((item) => item.id === "persistent-auth-storage"));
+});
+
 test("não confunde sessionStorage operacional com sessão de autenticação", () => {
   const findings = auditBrowserSource(
     "src/CustomerCheckInPage.tsx",
@@ -93,6 +108,14 @@ test("não bloqueia localStorage usado somente para preferência visual", () => 
   assert.equal(findings.length, 0);
 });
 
+test("não associa texto documental distante a armazenamento visual", () => {
+  const findings = auditBrowserSource(
+    "public/documentacao/index.html",
+    `<p>Autenticação segura por cookie HttpOnly.</p>\n<script>localStorage.setItem("theme", "dark");</script>`,
+  );
+  assert.equal(findings.length, 0);
+});
+
 test("bloqueia segredo exposto por variável VITE", () => {
   const findings = auditBrowserSource(
     "src/services/meta.ts",
@@ -110,6 +133,32 @@ test("bloqueia cabeçalho Bearer manual em superfície do navegador", () => {
     findings.some(
       (item) =>
         item.id === "bearer-token-in-browser" && item.severity === "critical",
+    ),
+  );
+});
+
+test("bloqueia credenciais em query string ou fragmento", () => {
+  const queryFindings = auditBrowserSource(
+    "index.html",
+    '<script>const params = new URLSearchParams(location.search); params.get("access_token");</script>',
+  );
+  const hashFindings = auditBrowserSource(
+    "public/callback.html",
+    '<script>const raw = window.location.hash; if (raw.includes("refresh_token")) consume(raw);</script>',
+  );
+  assert.ok(queryFindings.some((item) => item.id === "token-in-url-api"));
+  assert.ok(hashFindings.some((item) => item.id === "token-in-url-api"));
+});
+
+test("bloqueia criação de cookie de autenticação pelo JavaScript", () => {
+  const findings = auditBrowserSource(
+    "public/session.html",
+    '<script>document.cookie = `session_token=${token}; Secure; SameSite=Strict`;</script>',
+  );
+  assert.ok(
+    findings.some(
+      (item) =>
+        item.id === "browser-auth-cookie-write" && item.severity === "critical",
     ),
   );
 });
