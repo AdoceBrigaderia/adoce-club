@@ -110,6 +110,17 @@ test("reprova referência histórica que não cria a policy declarada", () => {
   assert.ok(result.violations.some(({ code }) => code === "historical_policy_contract_missing"));
 });
 
+test("exige store_id e a FK exata order_id no pós-gate SQL", () => {
+  const migration = readFileSync(resolve(repositoryRoot, manifest.lockMigration), "utf8");
+  const liveTest = readFileSync(resolve(repositoryRoot, manifest.liveTest), "utf8");
+  for (const source of [migration, liveTest]) {
+    assert.match(source, /column_info\.column_name = 'store_id'/);
+    assert.match(source, /join lateral unnest\(constraint_info\.conkey\)/);
+    assert.match(source, /child_column\.attname = 'order_id'/);
+    assert.match(source, /parent_table\.relname = 'instant_orders'/);
+  }
+});
+
 test("reprova workflow automático ou mutável", () => {
   const root = fixture();
   mutate(root, manifest.workflow, (source) => `${source}\n  push:\n    branches: [main]\n# supabase db push\n`);
