@@ -107,13 +107,19 @@ begin
     join pg_namespace child_namespace on child_namespace.oid = child_table.relnamespace
     join pg_class parent_table on parent_table.oid = constraint_info.confrelid
     join pg_namespace parent_namespace on parent_namespace.oid = parent_table.relnamespace
+    join lateral unnest(constraint_info.conkey) with ordinality child_key(attnum, position)
+      on true
+    join pg_attribute child_column
+      on child_column.attrelid = child_table.oid
+     and child_column.attnum = child_key.attnum
     where constraint_info.contype = 'f'
       and child_namespace.nspname = 'public'
       and child_table.relname = 'instant_order_items'
+      and child_column.attname = 'order_id'
       and parent_namespace.nspname = 'public'
       and parent_table.relname = 'instant_orders'
   ) then
-    raise exception 'instant_order_items lost its parent order foreign key';
+    raise exception 'instant_order_items.order_id lost its parent foreign key';
   end if;
 end;
 $$;
