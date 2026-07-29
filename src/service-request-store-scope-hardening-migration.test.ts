@@ -2,15 +2,21 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const migration = readFileSync(
-  resolve(
-    process.cwd(),
-    "supabase/migrations/20260729203000_harden_service_request_store_scope.sql",
+const migrationPath =
+  "supabase/migrations/20260729203000_harden_service_request_store_scope.sql";
+const migration = readFileSync(resolve(process.cwd(), migrationPath), "utf8");
+const manifest = JSON.parse(
+  readFileSync(
+    resolve(process.cwd(), "security/service-request-table-surface.json"),
+    "utf8",
   ),
-  "utf8",
-);
+) as { hardeningMigration?: string };
 
 describe("hardening do escopo de loja das encomendas", () => {
+  it("mantém o hardening vinculado ao manifesto versionado", () => {
+    expect(manifest.hardeningMigration).toBe(migrationPath);
+  });
+
   it("bloqueia dados históricos sem loja quando não há resolução inequívoca", () => {
     expect(migration).toContain("where request.store_id is null");
     expect(migration).toContain("active_store_count <> 1");
