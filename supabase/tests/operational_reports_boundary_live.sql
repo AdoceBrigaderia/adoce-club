@@ -88,9 +88,9 @@ begin
 
   if coalesce((report #>> '{capabilities,finance_authorized}')::boolean, true)
      or coalesce((report #>> '{capabilities,finance_scope_complete}')::boolean, true)
-     or report #> '{summary,gross}' <> 'null'::jsonb
-     or report #> '{summary,net}' <> 'null'::jsonb
-     or report #> '{summary,cash_absolute_difference}' <> 'null'::jsonb then
+     or report #> '{summary,gross}' is distinct from 'null'::jsonb
+     or report #> '{summary,net}' is distinct from 'null'::jsonb
+     or report #> '{summary,cash_absolute_difference}' is distinct from 'null'::jsonb then
     raise exception 'Viewer recebeu valores financeiros no relatório';
   end if;
 
