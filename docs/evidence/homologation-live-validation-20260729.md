@@ -68,6 +68,31 @@ A reconciliação:
 - mantém somente `acabamento-padrao-adoce` publicado como acabamento neutro;
 - não inventa custos nem acréscimos.
 
+## Índices das relações novas
+
+A consulta aos catálogos PostgreSQL identificou sete chaves estrangeiras sem índice de cobertura nas relações introduzidas neste marco.
+
+Foi executado:
+
+1. ensaio transacional com criação dos sete índices e `ROLLBACK`;
+2. aplicação idempotente exclusivamente na homologação;
+3. auditoria viva de validade, prontidão e primeira coluna coberta;
+4. nova leitura do advisor de performance.
+
+Índices confirmados:
+
+- `idx_cake_builder_options_costing_snapshot_id`;
+- `idx_costing_recipe_components_child_recipe_version_id`;
+- `idx_costing_recipe_components_item_id`;
+- `idx_service_request_cake_builds_template_id`;
+- `idx_service_request_pricing_snapshots_cost_snapshot_id`;
+- `idx_service_request_pricing_snapshots_recipe_version_id`;
+- `idx_service_request_product_configurations_product_id`.
+
+O advisor deixou de classificar essas sete FKs como não indexadas. Os novos índices aparecem como ainda não utilizados porque a homologação possui tráfego insuficiente; isso não autoriza sua remoção.
+
+Os arquivos versionados de manutenção, auditoria e workflow preservam a reprodução controlada dessa melhoria somente em homologação.
+
 ## Transporte atômico pela Netlify de homologação
 
 O workflow `Empacotar migrations pendentes da homologação`, execução `30411201171`, concluiu com sucesso.
@@ -93,7 +118,7 @@ A autorização cifrada de uso único foi removida da branch depois do consumo.
 
 ## Workflows do marco
 
-No head que consolidou esta evidência, os 13 workflows automáticos concluíram com sucesso, incluindo:
+No head que consolidou o catálogo, os 13 workflows automáticos concluíram com sucesso, incluindo:
 
 - gate do catálogo real do montador;
 - gate do montador de tortas;
@@ -111,7 +136,7 @@ A leitura dos advisors do Supabase apontou itens que permanecem em tratamento:
 - proteção contra senhas conhecidas como comprometidas ainda desativada no Auth;
 - avisos de `SECURITY DEFINER` que precisam permanecer classificados entre catálogos públicos, RPCs de clientes, equipe e gerência;
 - tabelas RPC/BFF-only com RLS habilitado e sem policy direta, situação intencional que deve continuar documentada e testada;
-- chaves estrangeiras sem índice de cobertura, incluindo relações novas do montador, snapshots financeiros e produtos configuráveis;
+- chaves estrangeiras legadas ainda sem índice de cobertura;
 - policies permissivas duplicadas em algumas tabelas legadas e públicas.
 
 Os avisos de índices não usados não autorizam remoção automática, pois a homologação ainda possui tráfego insuficiente para essa decisão.
@@ -119,7 +144,8 @@ Os avisos de índices não usados não autorizam remoção automática, pois a h
 ## Próximo marco seguro
 
 - executar a auditoria manual redigida das RPCs privilegiadas no workflow próprio, quando necessário;
-- preparar uma rodada específica de índices das novas relações, sem misturar alterações legadas e sem aplicar em produção;
+- classificar e consolidar policies permissivas duplicadas sem ampliar acesso;
+- tratar índices legados por grupos funcionais, evitando criação indiscriminada;
 - publicar o portal funcional somente na Netlify de homologação;
 - executar readiness, smoke tests e Playwright em celular, tablet e desktop;
 - validar passkeys físicas e integrações externas separadamente, sem bloquear o restante.
