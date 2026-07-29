@@ -1,0 +1,133 @@
+name: Auditar relatórios operacionais na homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite AUDITAR RELATORIOS SOMENTE HOMOLOGACAO seguido do project ref
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo autorizado da branch de reestruturação
+        required: true
+        type: string
+
+concurrency:
+  group: operational-reports-boundary-live-homologation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: ${{ vars.ADOCE_HOMOLOGATION_SUPABASE_REF }}
+  PRODUCTION_REF: ${{ vars.ADOCE_PRODUCTION_SUPABASE_REF }}
+  LIVE_TEST_FILE: supabase/tests/operational_reports_boundary_live.sql
+  BASE_HARDENING_FILE: supabase/migrations/20260729223000_harden_operational_reports_by_store_and_finance.sql
+  BREAKDOWN_FILE: supabase/migrations/20260729224500_add_operational_report_breakdowns.sql
+
+jobs:
+  reports-boundary:
+    name: Validar papéis, lojas e redação financeira sem persistir dados
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, commit e banco isolado
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test -n "$HOMOLOGATION_REF"
+          test -n "$PRODUCTION_REF"
+          test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
+          test "$CONFIRMATION" = "AUDITAR RELATORIOS SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          for file in "$LIVE_TEST_FILE" "$BASE_HARDENING_FILE" "$BREAKDOWN_FILE"; do
+            test -s "$file"
+          done
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL de homologação inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "A URL não pertence ao Supabase de homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência de produção detectada e bloqueada" >&2; exit 1 ;;
+          esac
+          grep -q '^begin;' "$LIVE_TEST_FILE"
+          grep -q '^rollback;' "$LIVE_TEST_FILE"
+          grep -q '^begin;' "$BASE_HARDENING_FILE"
+          grep -q '^commit;' "$BASE_HARDENING_FILE"
+          grep -q '^begin;' "$BREAKDOWN_FILE"
+          grep -q '^commit;' "$BREAKDOWN_FILE"
+          ! grep -q "$PRODUCTION_REF" "$LIVE_TEST_FILE"
+          ! grep -q "$PRODUCTION_REF" "$BASE_HARDENING_FILE"
+          ! grep -q "$PRODUCTION_REF" "$BREAKDOWN_FILE"
+
+      - name: Preparar Node para auditoria determinística
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Validar manifesto, migrations, SQL e workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/audit-operational-report-surface.mjs
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Executar auditoria viva com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "15"
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_dir="artifacts/operational-reports-boundary"
+          mkdir -p "$output_dir"
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 \
+            --file="$LIVE_TEST_FILE" \
+            2>&1 | tee "$output_dir/operational-reports-boundary.log"
+          grep -Eiq "ROLLBACK" "$output_dir/operational-reports-boundary.log"
+          printf '%s\n' "$(git rev-parse HEAD)" > "$output_dir/commit.txt"
+          printf '%s\n' "$HOMOLOGATION_REF" > "$output_dir/project-ref.txt"
+          sha256sum "$LIVE_TEST_FILE" > "$output_dir/test-sql.sha256"
+          sha256sum security/operational-report-surface.json > "$output_dir/manifest.sha256"
+          sha256sum "$BASE_HARDENING_FILE" > "$output_dir/base-hardening.sha256"
+          sha256sum "$BREAKDOWN_FILE" > "$output_dir/breakdown-migration.sha256"
+          ! grep -R "$PRODUCTION_REF" "$output_dir"
+          ! grep -R "postgresql://\|postgres://" "$output_dir"
+
+      - name: Preservar evidências redigidas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operational-reports-boundary-${{ github.sha }}
+          path: artifacts/operational-reports-boundary
+          retention-days: 30
+          if-no-files-found: warn
+          compression-level: 6
