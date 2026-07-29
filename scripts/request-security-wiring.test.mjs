@@ -92,6 +92,16 @@ const protectedEntrypoints = [
     csrf: "none",
   },
   {
+    path: "netlify/functions/public-analytics-event.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/public-feedback.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
     path: "netlify/functions/google-wallet-pass.ts",
     methods: ["POST"],
     csrf: "always",
