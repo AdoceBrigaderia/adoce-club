@@ -66,6 +66,11 @@ const protectedEntrypoints = [
     methods: ["POST"],
     csrf: "always",
   },
+  {
+    path: "netlify/functions/admin-reset-user-password.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
 ];
 
 const passkeyCeremonyEntrypoints = [
