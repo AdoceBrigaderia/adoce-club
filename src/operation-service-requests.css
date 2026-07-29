@@ -65,11 +65,23 @@
   background: white;
 }
 
-.operation-service-requests-controls input {
+.operation-service-requests-controls label.operation-service-requests-store-filter {
+  flex: 0 1 19rem;
+}
+
+.operation-service-requests-controls input,
+.operation-service-requests-controls select {
   width: 100%;
+  min-width: 0;
   border: 0;
   outline: 0;
+  background: transparent;
   font: inherit;
+}
+
+.operation-service-requests-controls select {
+  min-height: 2.75rem;
+  cursor: pointer;
 }
 
 .operation-service-requests-controls button,
@@ -222,6 +234,11 @@
   .operation-service-request-list article > footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .operation-service-requests-controls label.operation-service-requests-store-filter {
+    flex-basis: auto;
+    width: 100%;
   }
 
   .operation-service-requests-heading > span {
