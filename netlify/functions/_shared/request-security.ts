@@ -4,6 +4,8 @@ import {
   validCsrf,
 } from "./session-security";
 
+export type BffCsrfValidator = (request: Request) => boolean;
+
 export type BffRequestGuardOptions = {
   methods: readonly string[];
   configuredSiteUrl?: string;
@@ -24,8 +26,18 @@ function normalizeMethods(methods: readonly string[]) {
   return normalized;
 }
 
-export function guardBffCsrf(request: Request): Response | null {
-  if (validCsrf(request)) return null;
+export function guardBffCsrf(
+  request: Request,
+  validator: BffCsrfValidator = validCsrf,
+): Response | null {
+  let accepted = false;
+  try {
+    accepted = validator(request);
+  } catch {
+    accepted = false;
+  }
+
+  if (accepted) return null;
 
   return secureJson(
     {
