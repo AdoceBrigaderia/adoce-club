@@ -35,6 +35,36 @@ describe("origens autorizadas dos BFFs", () => {
     expect(allowedOrigin(request, "https://homologacao.example")).toBe(true);
   });
 
+  it("aceita leitura sem Origin quando o navegador confirma mesma origem", () => {
+    process.env.ADOCE_DEPLOY_ENV = "homologation";
+    const request = new Request("https://homologacao.example/api/auth-bff-session", {
+      method: "GET",
+      headers: { "Sec-Fetch-Site": "same-origin" },
+    });
+
+    expect(allowedOrigin(request, "https://homologacao.example")).toBe(true);
+  });
+
+  it("bloqueia navegação cross-site sem Origin mesmo em método de leitura", () => {
+    process.env.ADOCE_DEPLOY_ENV = "homologation";
+    const request = new Request("https://homologacao.example/api/auth-bff-session", {
+      method: "GET",
+      headers: { "Sec-Fetch-Site": "cross-site" },
+    });
+
+    expect(allowedOrigin(request, "https://homologacao.example")).toBe(false);
+  });
+
+  it("bloqueia subdomínio same-site sem Origin em endpoint com sessão", () => {
+    process.env.ADOCE_DEPLOY_ENV = "homologation";
+    const request = new Request("https://homologacao.example/api/auth-bff-session", {
+      method: "GET",
+      headers: { "Sec-Fetch-Site": "same-site" },
+    });
+
+    expect(allowedOrigin(request, "https://homologacao.example")).toBe(false);
+  });
+
   it("aceita somente a origem canônica configurada", () => {
     process.env.ADOCE_DEPLOY_ENV = "homologation";
     const allowed = new Request("https://homologacao.example/api/auth-bff-login", {
