@@ -102,6 +102,11 @@ const protectedEntrypoints = [
     csrf: "none",
   },
   {
+    path: "netlify/functions/public-service-request.ts",
+    methods: ["POST"],
+    csrf: "authenticated-client",
+  },
+  {
     path: "netlify/functions/google-wallet-pass.ts",
     methods: ["POST"],
     csrf: "always",
@@ -181,6 +186,22 @@ for (const entrypoint of protectedEntrypoints) {
       assert.match(
         entrypointSource,
         /requireCsrf: request\.method\.toUpperCase\(\) === "POST"/,
+      );
+    } else if (entrypoint.csrf === "authenticated-client") {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+      assert.match(entrypointSource, /const authenticatedClient =/);
+      assert.match(
+        entrypointSource,
+        /cookies\.get\(SURFACE_COOKIE\) === "client"/,
+      );
+      assert.match(
+        entrypointSource,
+        /Boolean\(cookies\.get\(ACCESS_COOKIE\)\)/,
+      );
+      assert.match(entrypointSource, /if \(authenticatedClient\) \{/);
+      assert.match(
+        entrypointSource,
+        /const csrfRejection = guardBffCsrf\(request\)/,
       );
     } else {
       assert.doesNotMatch(entrypointSource, /requireCsrf:/);
