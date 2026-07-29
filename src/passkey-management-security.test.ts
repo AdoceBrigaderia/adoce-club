@@ -17,7 +17,13 @@ const service = readFileSync(
 describe("gestão segura de passkeys", () => {
   it("exige cookie de sessão e CSRF para alterar ou excluir", () => {
     expect(own).toContain("ACCESS_COOKIE");
-    expect(own).toContain("validCsrf(request)");
+    expect(own).toContain("guardBffRequest(request");
+    expect(own).toContain('methods: ["GET", "POST"]');
+    expect(own).toContain(
+      'requireCsrf: request.method.toUpperCase() === "POST"',
+    );
+    expect(own).not.toContain("validCsrf(request)");
+    expect(own).not.toContain("allowedOrigin(request");
     expect(own).toContain('body.action === "rename"');
     expect(own).toContain('body.action === "delete"');
   });
