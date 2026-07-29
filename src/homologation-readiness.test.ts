@@ -76,14 +76,24 @@ describe("diagnóstico seguro da homologação", () => {
     expect(result.supabase.isolated).toBe(false);
   });
 
-  it("bloqueia preview servido por origem diferente da configuração", () => {
+  it("aceita somente alias de deploy pertencente ao site de homologação", () => {
     const result = buildHomologationReadiness({
       ...baseEnvironment,
       READINESS_REQUEST_ORIGIN:
-        "https://outro-deploy--adoce-homologacao.netlify.app",
+        "https://homologacao-adoce--adoce-homologacao.netlify.app",
+    });
+    expect(result.coreReady).toBe(true);
+    expect(result.site.requestOriginValid).toBe(true);
+    expect(result.site.requestMatchesConfiguredSite).toBe(true);
+  });
+
+  it("bloqueia preview pertencente a outro site Netlify", () => {
+    const result = buildHomologationReadiness({
+      ...baseEnvironment,
+      READINESS_REQUEST_ORIGIN:
+        "https://homologacao-adoce--outro-site.netlify.app",
     });
     expect(result.coreReady).toBe(false);
-    expect(result.site.requestOriginValid).toBe(true);
     expect(result.site.requestMatchesConfiguredSite).toBe(false);
   });
 

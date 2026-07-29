@@ -94,8 +94,20 @@ export function buildHomologationReadiness(
   );
   const site = siteState(value(environment, "SITE_URL"));
   const requestSite = siteState(value(environment, "READINESS_REQUEST_ORIGIN"));
+  const configuredHostname = site.origin
+    ? new URL(site.origin).hostname.toLowerCase()
+    : "";
+  const requestHostname = requestSite.origin
+    ? new URL(requestSite.origin).hostname.toLowerCase()
+    : "";
+  const requestIsConfiguredDeployAlias = Boolean(
+    configuredHostname.endsWith(".netlify.app") &&
+      requestHostname.endsWith(`--${configuredHostname}`),
+  );
   const requestMatchesConfiguredSite = Boolean(
-    site.origin && requestSite.origin && site.origin === requestSite.origin,
+    site.origin &&
+      requestSite.origin &&
+      (site.origin === requestSite.origin || requestIsConfiguredDeployAlias),
   );
   const allowedOrigins = originList(value(environment, "BFF_ALLOWED_ORIGINS"));
   const siteAllowed = Boolean(
