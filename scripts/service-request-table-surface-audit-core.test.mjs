@@ -18,6 +18,9 @@ const controlledFiles = [
   manifest.lockMigration,
   manifest.hardeningMigration,
   manifest.workspaceHardeningMigration,
+  manifest.lifecycleMigration,
+  manifest.productionLifecycleMigration,
+  manifest.lifecycleWorkspaceMigration,
   manifest.workflow,
   ...manifest.tables.map(({ definitionMigration }) => definitionMigration).filter(Boolean),
   ...manifest.tables.flatMap(({ definitionEvidence = [] }) =>
@@ -40,12 +43,13 @@ function mutate(root, relative, transform) {
   writeFileSync(path, transform(readFileSync(path, "utf8")), "utf8");
 }
 
-test("aprova a superfície RPC-only das encomendas e snapshots", () => {
+test("aprova a superfície RPC-only e o ciclo das encomendas", () => {
   const result = assertServiceRequestTableSurface(repositoryRoot);
-  assert.equal(result.schemaVersion, 2);
+  assert.equal(result.schemaVersion, 3);
   assert.equal(result.tableCount, 4);
   assert.equal(result.parentScopedTableCount, 3);
   assert.equal(result.evidenceCount, 4);
+  assert.equal(result.lifecycleMigrationCount, 3);
   assert.deepEqual(result.violations, []);
 });
 
@@ -175,17 +179,63 @@ test("reprova retorno da varredura global ou perda do teto financeiro", () => {
   );
 });
 
-test("reprova remoção da migration final do manifesto", () => {
+test("reprova valores financeiros vindos do navegador", () => {
   const root = fixture();
-  mutate(root, manifestFile, (source) =>
-    source.replace(/\s*"workspaceHardeningMigration":\s*"[^"]+",?\n/, "\n"),
+  mutate(root, manifest.lifecycleMigration, (source) =>
+    source.replace("requested_note text default ''", "requested_note text default '', requested_total numeric default 0"),
   );
   const result = auditServiceRequestTableSurface(root);
-  assert.ok(
-    result.violations.some(({ code }) =>
-      ["manifest_path_invalid", "workspace_hardening_migration_missing"].includes(code),
-    ),
+  assert.ok(result.violations.some(({ code }) => code === "lifecycle_browser_amount_forbidden"));
+});
+
+test("reprova perda de lock, idempotência ou capacidade financeira", () => {
+  const root = fixture();
+  mutate(root, manifest.lifecycleMigration, (source) =>
+    source
+      .replace("pg_advisory_xact_lock", "removed_advisory_lock")
+      .replace("for update", "")
+      .replaceAll("private.staff_has_capability(request_row.store_id, 'view_finance')", "true"),
   );
+  const result = auditServiceRequestTableSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "lifecycle_contract_missing"));
+});
+
+test("reprova perda da capacidade exclusiva de produção", () => {
+  const root = fixture();
+  mutate(root, manifest.productionLifecycleMigration, (source) =>
+    source
+      .replace("create trigger service_requests_production_capability_guard", "create trigger removed_guard")
+      .replaceAll("private.staff_has_capability(request_row.store_id, 'manage_production')", "true"),
+  );
+  const result = auditServiceRequestTableSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "production_lifecycle_contract_missing"));
+});
+
+test("reprova perda da redação de PII para produção", () => {
+  const root = fixture();
+  mutate(root, manifest.lifecycleWorkspaceMigration, (source) =>
+    source
+      .replace("else 'Cliente protegido'", "else request.customer_name")
+      .replaceAll("private.staff_has_capability(request.store_id, 'view_finance')", "true"),
+  );
+  const result = auditServiceRequestTableSurface(root);
+  assert.ok(result.violations.some(({ code }) => code === "lifecycle_workspace_contract_missing"));
+});
+
+test("reprova remoção de qualquer migration final do manifesto", () => {
+  for (const field of [
+    "workspaceHardeningMigration",
+    "lifecycleMigration",
+    "productionLifecycleMigration",
+    "lifecycleWorkspaceMigration",
+  ]) {
+    const root = fixture();
+    mutate(root, manifestFile, (source) =>
+      source.replace(new RegExp(`\\s*"${field}":\\s*"[^"]+",?\\n`), "\n"),
+    );
+    const result = auditServiceRequestTableSurface(root);
+    assert.ok(result.violations.length > 0);
+  }
 });
 
 test("reprova workflow automático ou mutável", () => {
