@@ -17,6 +17,13 @@ const requiredHeaders = {
   "cross-origin-resource-policy": "same-site",
 } as const;
 
+function varyTokens(headers: Headers) {
+  return (headers.get("vary") || "")
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
 function expectSecureHeaders(headers: Headers) {
   Object.entries(requiredHeaders).forEach(([name, value]) => {
     expect(headers.get(name)).toBe(value);
@@ -27,7 +34,9 @@ function expectSecureHeaders(headers: Headers) {
   expect(headers.get("content-security-policy")).toContain(
     "frame-ancestors 'none'",
   );
-  expect(headers.get("vary")).toContain("Sec-Fetch-Site");
+  expect(varyTokens(headers)).toEqual(
+    expect.arrayContaining(["Origin", "Sec-Fetch-Site"]),
+  );
 }
 
 describe("fronteira segura para respostas não JSON", () => {
@@ -35,6 +44,7 @@ describe("fronteira segura para respostas não JSON", () => {
     const response = secureText("EVENT_RECEIVED", 202, {
       "X-Frame-Options": "SAMEORIGIN",
       "Cache-Control": "public",
+      Vary: "Accept-Encoding",
     });
 
     expect(response.status).toBe(202);
@@ -42,6 +52,11 @@ describe("fronteira segura para respostas não JSON", () => {
     expect(response.headers.get("content-type")).toBe(
       "text/plain; charset=utf-8",
     );
+    expect(varyTokens(response.headers)).toEqual([
+      "Accept-Encoding",
+      "Origin",
+      "Sec-Fetch-Site",
+    ]);
     expectSecureHeaders(response.headers);
   });
 
@@ -62,6 +77,32 @@ describe("fronteira segura para respostas não JSON", () => {
 
     expect(headers.get("retry-after")).toBe("30");
     expect(headers.get("vary")).toBe("Cookie, Origin, Sec-Fetch-Site");
+    expectSecureHeaders(headers);
+  });
+
+  it("compõe Vary de forma determinística e remove duplicidades", () => {
+    const headers = secureResponseHeaders({
+      headers: { Vary: "accept-encoding, COOKIE, origin" },
+      vary: "Cookie, Origin",
+    });
+
+    expect(headers.get("vary")).toBe(
+      "Cookie, Origin, Accept-Encoding, Sec-Fetch-Site",
+    );
+    expect(new Set(varyTokens(headers)).size).toBe(varyTokens(headers).length);
+    expectSecureHeaders(headers);
+  });
+
+  it("não permite que um Vary customizado remova as fronteiras de origem", () => {
+    const headers = secureResponseHeaders({
+      headers: { Vary: "Accept-Language" },
+    });
+
+    expect(varyTokens(headers)).toEqual([
+      "Accept-Language",
+      "Origin",
+      "Sec-Fetch-Site",
+    ]);
     expectSecureHeaders(headers);
   });
 });
