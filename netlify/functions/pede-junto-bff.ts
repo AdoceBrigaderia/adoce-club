@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import {
-  allowedOrigin,
   parseCookies,
   secureJson,
 } from "./_shared/session-security";
+import { guardBffCsrf, guardBffRequest } from "./_shared/request-security";
 import {
   consumePublicRateLimits,
   ipRateLimitRule,
@@ -107,11 +107,6 @@ function validGroupCsrf(request: Request) {
     /^[a-f0-9]{64}$/i.test(cookieValue) &&
     fixedTimeEqual(cookieValue, headerValue)
   );
-}
-
-function strictAllowedOrigin(request: Request) {
-  const origin = request.headers.get("origin");
-  return Boolean(origin) && allowedOrigin(request, env("SITE_URL"));
 }
 
 function text(value: unknown, maxLength: number) {
@@ -231,10 +226,12 @@ function publicAccess(access: GroupAccess | null, code: string) {
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!strictAllowedOrigin(request))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
+
   const contentLength = Number(request.headers.get("content-length") || 0);
   if (contentLength > 16_384)
     return secureJson({ error: "Solicitação maior que o permitido." }, 413);
@@ -427,8 +424,8 @@ export default async (request: Request) => {
       });
     }
 
-    if (!validGroupCsrf(request))
-      return secureJson({ error: "Validação de segurança inválida." }, 403);
+    const csrfRejection = guardBffCsrf(request, validGroupCsrf);
+    if (csrfRejection) return csrfRejection;
 
     if (action === "select") {
       if (!currentAccess?.participantToken)
