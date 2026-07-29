@@ -53,8 +53,12 @@ describe("galerias e carrosséis protegidos pelo BFF", () => {
   });
 
   it("valida upload, sessão, CSRF, proporção e limpeza de falhas", () => {
-    expect(endpoint).toContain('allowedOrigin(request, env("SITE_URL"))');
-    expect(endpoint).toContain("validCsrf(request)");
+    expect(endpoint).toContain("guardBffRequest(request");
+    expect(endpoint).toContain('methods: ["POST"]');
+    expect(endpoint).toContain('configuredSiteUrl: env("SITE_URL")');
+    expect(endpoint).toContain("requireCsrf: true");
+    expect(endpoint).not.toContain("allowedOrigin(request");
+    expect(endpoint).not.toContain("validCsrf(request)");
     expect(endpoint).toContain('cookies.get(SURFACE_COOKIE) !== "operation"');
     expect(endpoint).toContain("cookies.get(ACCESS_COOKIE)");
     expect(endpoint).toContain("manager_assert_gallery_media_access");
