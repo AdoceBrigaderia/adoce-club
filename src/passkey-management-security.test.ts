@@ -29,8 +29,12 @@ describe("gestão segura de passkeys", () => {
   });
 
   it("limita revogação administrativa a owner e manager", () => {
+    expect(admin).toContain("guardBffRequest(request");
+    expect(admin).toContain('methods: ["POST"]');
+    expect(admin).toContain("requireCsrf: true");
+    expect(admin).not.toContain("validCsrf(request)");
+    expect(admin).not.toContain("allowedOrigin(request");
     expect(admin).toContain('["owner", "manager"].includes(actor.role)');
-    expect(admin).toContain("validCsrf(request)");
     expect(admin).toContain("security.passkey_revoked_by_manager");
     expect(admin).toContain("audit_events");
   });
