@@ -1,3 +1,5 @@
+import { secureResponseHeaders } from "./response-security";
+
 export const ACCESS_COOKIE = "__Host-adoce-access";
 export const REFRESH_COOKIE = "__Host-adoce-refresh";
 export const SURFACE_COOKIE = "__Host-adoce-surface";
@@ -264,20 +266,12 @@ export function secureJson(
   status = 200,
   cookies: string[] = [],
 ) {
-  const headers = appendCookies(new Headers({
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store, max-age=0",
-    Pragma: "no-cache",
-    Vary: "Cookie, Origin, Sec-Fetch-Site",
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    "X-Permitted-Cross-Domain-Policies": "none",
-    "Referrer-Policy": "no-referrer",
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()",
-    "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Resource-Policy": "same-site",
-    "Content-Security-Policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
-  }), cookies);
+  const headers = appendCookies(
+    secureResponseHeaders({
+      contentType: "application/json; charset=utf-8",
+      vary: "Cookie, Origin, Sec-Fetch-Site",
+    }),
+    cookies,
+  );
   return new Response(JSON.stringify(body), { status, headers });
 }
