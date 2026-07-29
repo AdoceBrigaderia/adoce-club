@@ -1,18 +1,38 @@
 # Ensaio vivo da matriz de permissões — homologação
 
-Este roteiro executa verificações reais de papel, capacidade e isolamento entre lojas somente no Supabase de homologação. O SQL sempre começa com `BEGIN` e termina com `ROLLBACK`, portanto as lojas, papéis e atribuições temporárias são revertidos ao final.
+Este roteiro executa verificações reais de papel, capacidade, isolamento entre lojas, auditoria e proteção concorrente do último proprietário somente no Supabase de homologação. O SQL sempre começa com `BEGIN` e termina com `ROLLBACK`, portanto lojas, papéis e atribuições temporárias são revertidos ao final.
 
 Produção não faz parte deste procedimento.
 
+## Matriz efetiva
+
+A atribuição por loja pode reduzir permissões, mas nunca ampliar o teto do papel:
+
+| Papel | Capacidades permitidas |
+|---|---|
+| `owner` | acesso integral às capacidades conhecidas |
+| `manager` | acesso integral às capacidades conhecidas |
+| `attendant` | vender, clientes, fidelidade e pedidos |
+| `cashier` | vender, abrir caixa e fechar caixa |
+| `production` | estoque e produção |
+| `viewer` | consultar relatórios |
+
+Combinações desconhecidas de papel ou capacidade são negadas. Flags antigas incompatíveis são ignoradas pela autorização e normalizadas quando a migration é aplicada ou quando o papel é alterado.
+
 ## O que o ensaio valida
 
-- `cashier` vende apenas na loja atribuída;
-- capacidade financeira não é herdada sem autorização;
-- uma pessoa não acessa nem vende em outra loja sem atribuição;
-- mudanças de capacidade geram auditoria;
-- `production` atua somente na loja e capacidade liberadas;
+- os seis papéis obedecem ao teto documentado;
+- `attendant`, `cashier`, `production` e `viewer` só atuam na loja atribuída;
+- flags residuais não ampliam o papel atual;
+- `cashier` vende, abre e fecha caixa, mas não recebe financeiro ou estoque;
+- `production` acessa estoque e produção, mas não vende nem abre caixa;
+- `viewer` permanece somente leitura;
+- uma atribuição administrativa inválida é rejeitada;
+- mudanças válidas de capacidade geram auditoria;
+- mudança para papel mais restrito limpa flags persistidas incompatíveis;
 - `manager` não altera proprietário;
 - proprietário não altera o próprio papel;
+- a proteção do último proprietário usa bloqueio ordenado `FOR UPDATE` para evitar corrida concorrente;
 - todas as alterações de preparação são revertidas.
 
 ## Pré-requisitos no GitHub
@@ -32,7 +52,7 @@ O workflow rejeita a execução quando as referências são vazias, iguais, quan
 
 ## Pré-requisitos no banco de homologação
 
-- migrations da branch aplicadas;
+- migrations da branch aplicadas, incluindo `20260729105000_staff_role_capability_ceiling.sql`;
 - pelo menos uma loja ativa;
 - dois proprietários ativos de teste.
 
@@ -41,7 +61,7 @@ O segundo proprietário é temporariamente alternado entre os papéis testados d
 ## Execução
 
 1. Abrir **Actions** no repositório;
-2. selecionar **Testar matriz de permissões na homologação**;
+2. selecionar **Testar segurança viva na homologação**;
 3. escolher a branch `reestruturacao/ux-crm-operacao-imagens-v1`;
 4. informar o SHA completo que está no topo do PR;
 5. digitar exatamente `TESTAR SOMENTE HOMOLOGACAO`;
@@ -57,13 +77,13 @@ A conexão usa `ON_ERROR_STOP=1`: a primeira violação interrompe o job e imped
 
 ## Evidência
 
-Ao final é criado o artefato:
+Ao final, o log é preservado dentro do artefato de segurança viva do commit:
 
 ```text
-permission-matrix-live-<commit>
+security-live-<commit>
 ```
 
-O log deve terminar com `ROLLBACK`. O artefato não inclui a URL nem a senha do banco.
+O arquivo `permission-matrix.log` deve terminar com `ROLLBACK`. O artefato não inclui URL nem senha do banco.
 
 ## Interpretação de falhas
 
@@ -71,8 +91,11 @@ O log deve terminar com `ROLLBACK`. O artefato não inclui a URL nem a senha do 
 - **Loja ativa exigida:** criar uma loja de teste na homologação;
 - **URL não pertence à homologação:** revisar secret e referências antes de repetir;
 - **Referência de produção detectada:** não contornar o bloqueio; corrigir o Environment;
+- **Teto do papel ultrapassado:** tratar como bloqueador de segurança e revisar `private.staff_role_allows_capability` e `private.staff_has_capability`;
 - **Capacidade indevida ou acesso entre lojas:** tratar como bloqueador de segurança e não publicar homologação;
-- **Auditoria ausente:** revisar RPCs e triggers antes de novo ensaio.
+- **Normalização ausente:** revisar `manager_update_staff_member` e o backfill da migration;
+- **Proteção concorrente ausente:** restaurar o bloqueio ordenado dos proprietários ativos antes de qualquer teste adicional;
+- **Auditoria ausente:** revisar RPCs e `audit_events` antes de novo ensaio.
 
 ## Regra de liberação
 
