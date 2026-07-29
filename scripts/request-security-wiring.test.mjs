@@ -112,6 +112,11 @@ const protectedEntrypoints = [
     csrf: "authenticated-submit",
   },
   {
+    path: "netlify/functions/pede-junto-bff.ts",
+    methods: ["POST"],
+    csrf: "group-mutations",
+  },
+  {
     path: "netlify/functions/google-wallet-pass.ts",
     methods: ["POST"],
     csrf: "always",
@@ -220,6 +225,22 @@ for (const entrypoint of protectedEntrypoints) {
       const submitPayloadIndex = entrypointSource.indexOf("const customerName");
       assert.ok(quoteIndex >= 0 && quoteIndex < csrfIndex);
       assert.ok(csrfIndex >= 0 && csrfIndex < submitPayloadIndex);
+    } else if (entrypoint.csrf === "group-mutations") {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+      assert.match(entrypointSource, /function validGroupCsrf\(request: Request\)/);
+      assert.match(
+        entrypointSource,
+        /const csrfRejection = guardBffCsrf\(request, validGroupCsrf\)/,
+      );
+      const roomIndex = entrypointSource.indexOf('if (action === "room")');
+      const csrfIndex = entrypointSource.indexOf(
+        "const csrfRejection = guardBffCsrf(request, validGroupCsrf)",
+      );
+      const selectIndex = entrypointSource.indexOf('if (action === "select")');
+      const submitIndex = entrypointSource.indexOf('if (action === "submit")');
+      assert.ok(roomIndex >= 0 && roomIndex < csrfIndex);
+      assert.ok(csrfIndex >= 0 && csrfIndex < selectIndex);
+      assert.ok(csrfIndex < submitIndex);
     } else {
       assert.doesNotMatch(entrypointSource, /requireCsrf:/);
     }
