@@ -27,6 +27,15 @@ const ACCESS_MAX_AGE_SECONDS = 15 * 60;
 const REMEMBERED_REFRESH_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const SESSION_REFRESH_MAX_AGE_SECONDS = 8 * 60 * 60;
 
+const LOCAL_DEPLOY_ENVIRONMENTS = new Set(["local", "development", "test"]);
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+const PRODUCTION_HOSTS = new Set([
+  "adocebrigaderia.com.br",
+  "www.adocebrigaderia.com.br",
+  "clube.adocebrigaderia.com.br",
+  "operacao.adocebrigaderia.com.br",
+]);
+
 const encode = (value: string) => encodeURIComponent(value);
 const decode = (value: string) => {
   try {
@@ -159,18 +168,54 @@ export function validCsrf(request: Request) {
   return /^[a-f0-9]{64}$/i.test(cookieToken) && fixedTimeEqual(cookieToken, headerToken);
 }
 
-function normalizedOrigin(value: string | undefined) {
+type OriginNormalizationOptions = {
+  allowLoopbackHttp: boolean;
+  rejectProductionHosts: boolean;
+};
+
+function normalizedOrigin(
+  value: string | undefined,
+  options: OriginNormalizationOptions,
+) {
   const candidate = value?.trim();
-  if (!candidate) return null;
+  if (!candidate || candidate === "null") return null;
+
   try {
-    return new URL(candidate).origin;
+    const url = new URL(candidate);
+    const hostname = url.hostname.toLowerCase();
+    const originOnly =
+      (url.pathname === "/" || url.pathname === "") &&
+      !url.search &&
+      !url.hash &&
+      !url.username &&
+      !url.password;
+
+    if (!originOnly) return null;
+    if (url.protocol === "http:") {
+      if (!options.allowLoopbackHttp || !LOOPBACK_HOSTS.has(hostname)) return null;
+    } else if (url.protocol !== "https:") {
+      return null;
+    }
+
+    if (options.rejectProductionHosts && PRODUCTION_HOSTS.has(hostname)) return null;
+    return url.origin;
   } catch {
     return null;
   }
 }
 
+function originPolicy() {
+  const deployEnvironment = (env("ADOCE_DEPLOY_ENV") || "unknown").trim().toLowerCase();
+  const local = LOCAL_DEPLOY_ENVIRONMENTS.has(deployEnvironment);
+  return {
+    allowLoopbackHttp: local,
+    rejectProductionHosts: deployEnvironment === "homologation",
+  } satisfies OriginNormalizationOptions;
+}
+
 function allowedOrigins(configuredSiteUrl?: string) {
   const origins = new Set<string>();
+  const policy = originPolicy();
   const configuredValues = [
     configuredSiteUrl,
     env("BFF_ALLOWED_ORIGINS"),
@@ -179,13 +224,12 @@ function allowedOrigins(configuredSiteUrl?: string) {
 
   configuredValues.forEach((value) => {
     value?.split(/[\n,]/).forEach((entry) => {
-      const origin = normalizedOrigin(entry);
+      const origin = normalizedOrigin(entry, policy);
       if (origin) origins.add(origin);
     });
   });
 
-  const deployEnvironment = (env("ADOCE_DEPLOY_ENV") || "local").toLowerCase();
-  if (["local", "development", "test"].includes(deployEnvironment)) {
+  if (policy.allowLoopbackHttp) {
     [
       "http://localhost:5173",
       "http://127.0.0.1:5173",
@@ -203,7 +247,7 @@ export function allowedOrigin(request: Request, configuredSiteUrl?: string) {
   if (!originHeader)
     return method === "GET" || method === "HEAD" || method === "OPTIONS";
 
-  const origin = normalizedOrigin(originHeader);
+  const origin = normalizedOrigin(originHeader, originPolicy());
   return Boolean(origin && allowedOrigins(configuredSiteUrl).has(origin));
 }
 
