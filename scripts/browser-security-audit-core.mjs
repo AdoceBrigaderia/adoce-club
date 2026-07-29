@@ -1,6 +1,15 @@
 import { extname, relative, sep } from "node:path";
 
-const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx"]);
+const SOURCE_EXTENSIONS = new Set([
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".tsx",
+  ".html",
+  ".htm",
+]);
 
 const DEFAULT_IGNORED_PATTERNS = [
   /(?:^|\/)node_modules(?:\/|$)/,
@@ -16,7 +25,7 @@ const DEFAULT_IGNORED_PATTERNS = [
 ];
 
 const AUTH_STORAGE_CONTEXT =
-  /(?:auth|access[_-]?token|refresh[_-]?token|bearer|supabase|remember[-_ ]?login|credential|jwt|password)/i;
+  /(?:auth|access[_-]?token|refresh[_-]?token|bearer|supabase|remember[-_ ]?login|credential|jwt|password|session[_-]?token)/i;
 
 const RULES = [
   {
@@ -64,6 +73,22 @@ const RULES = [
     pattern: /\b(?:access_token|refresh_token)\b/g,
   },
   {
+    id: "token-in-url-api",
+    severity: "critical",
+    description:
+      "Superfície real lê ou grava credencial em URL, query string ou fragmento.",
+    pattern:
+      /(?:URLSearchParams|searchParams|location\.(?:search|hash)|window\.location\.(?:search|hash))[^\n]{0,240}\b(?:access_token|refresh_token|auth_token|session_token)\b/gi,
+  },
+  {
+    id: "browser-auth-cookie-write",
+    severity: "critical",
+    description:
+      "Código do navegador tenta criar cookie de autenticação; a sessão deve permanecer HttpOnly no BFF.",
+    pattern:
+      /document\.cookie\s*=[^\n]{0,240}(?:auth|token|session|jwt|credential)/gi,
+  },
+  {
     id: "direct-supabase-sdk-import",
     severity: "warning",
     description: "Módulo do navegador importa o SDK Supabase diretamente.",
@@ -97,6 +122,38 @@ function sourceLineAt(source, index) {
   return source.slice(start, end).trim().slice(0, 240);
 }
 
+function statementContextAt(source, index) {
+  const lowerBound = Math.max(0, index - 240);
+  const upperBound = Math.min(source.length, index + 360);
+  const before = source.slice(lowerBound, index);
+  const after = source.slice(index, upperBound);
+  const previousBoundary = Math.max(
+    before.lastIndexOf(";"),
+    before.lastIndexOf("{"),
+    before.lastIndexOf("}"),
+    before.lastIndexOf("\n\n"),
+  );
+  const nextCandidates = [
+    after.indexOf(";"),
+    after.indexOf("\n\n"),
+    after.indexOf("}"),
+  ].filter((candidate) => candidate >= 0);
+  const nextBoundary =
+    nextCandidates.length > 0 ? Math.min(...nextCandidates) + 1 : after.length;
+  const currentStatement = `${before.slice(previousBoundary + 1)}${after.slice(0, nextBoundary)}`;
+  const earlier = before.slice(0, previousBoundary + 1);
+  const secondBoundary = Math.max(
+    earlier.lastIndexOf(";", Math.max(0, earlier.length - 2)),
+    earlier.lastIndexOf("{", Math.max(0, earlier.length - 2)),
+    earlier.lastIndexOf("}", Math.max(0, earlier.length - 2)),
+    earlier.lastIndexOf("\n\n", Math.max(0, earlier.length - 3)),
+  );
+  const previousStatement = earlier.slice(secondBoundary + 1);
+  return /\b(?:const|let|var)\b/.test(previousStatement)
+    ? `${previousStatement}${currentStatement}`
+    : currentStatement;
+}
+
 function isTypeOnlyImport(source, index) {
   const prefix = source.slice(0, index);
   const importIndex = prefix.lastIndexOf("import");
@@ -109,11 +166,7 @@ function storageViolations(path, source) {
   const findings = [];
   const storagePattern = /\b(?:localStorage|sessionStorage)\b/g;
   for (const match of source.matchAll(storagePattern)) {
-    const start = Math.max(0, match.index - 180);
-    const end = Math.min(source.length, match.index + 260);
-    const context =
-      source.slice(start, match.index) +
-      source.slice(match.index + match[0].length, end);
+    const context = statementContextAt(source, match.index);
     if (!AUTH_STORAGE_CONTEXT.test(context)) continue;
     findings.push({
       id: "persistent-auth-storage",
