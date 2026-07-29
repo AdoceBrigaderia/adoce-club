@@ -5,6 +5,7 @@ import {
   calculateExpectedCash,
   cashMovementDelta,
   numericMoney,
+  roleAllowsCapability,
   slugifyBusinessCode,
 } from "./cash-workspace";
 
@@ -31,22 +32,52 @@ describe("regras de lojas, permissoes e caixa", () => {
     expect(slugifyBusinessCode("Loja Passaré / Caixa 01")).toBe("loja-passare-caixa-01");
   });
 
-  it("gestores recebem permissões administrativas", () => {
+  it("mantém owner e manager com acesso administrativo integral", () => {
     expect(assignmentAllows("owner", null, "can_close_cash")).toBe(true);
-    expect(assignmentAllows("manager", null, "can_open_cash")).toBe(true);
+    expect(assignmentAllows("manager", null, "can_view_finance")).toBe(true);
   });
 
-  it("atendimento depende da atribuição ativa", () => {
-    const assignment = {
+  it("aplica teto de capacidades aos seis papéis operacionais", () => {
+    expect(roleAllowsCapability("attendant", "can_sell")).toBe(true);
+    expect(roleAllowsCapability("attendant", "can_open_cash")).toBe(false);
+    expect(roleAllowsCapability("cashier", "can_open_cash")).toBe(true);
+    expect(roleAllowsCapability("cashier", "can_view_finance")).toBe(false);
+    expect(roleAllowsCapability("production", "can_manage_stock")).toBe(true);
+    expect(roleAllowsCapability("production", "can_sell")).toBe(false);
+    expect(roleAllowsCapability("viewer", "can_sell")).toBe(false);
+    expect(roleAllowsCapability("papel-invalido", "can_sell")).toBe(false);
+  });
+
+  it("não permite que flags antigas ampliem o papel atual", () => {
+    const permissiveAssignment = {
       active: true,
       can_sell: true,
-      can_open_cash: false,
-      can_close_cash: false,
-      can_manage_stock: false,
-      can_view_finance: false,
+      can_open_cash: true,
+      can_close_cash: true,
+      can_manage_stock: true,
+      can_view_finance: true,
     };
-    expect(assignmentAllows("attendant", assignment, "can_sell")).toBe(true);
-    expect(assignmentAllows("attendant", assignment, "can_open_cash")).toBe(false);
+
+    expect(assignmentAllows("attendant", permissiveAssignment, "can_sell")).toBe(true);
+    expect(assignmentAllows("attendant", permissiveAssignment, "can_open_cash")).toBe(false);
+    expect(assignmentAllows("cashier", permissiveAssignment, "can_close_cash")).toBe(true);
+    expect(assignmentAllows("cashier", permissiveAssignment, "can_manage_stock")).toBe(false);
+    expect(assignmentAllows("production", permissiveAssignment, "can_manage_stock")).toBe(true);
+    expect(assignmentAllows("production", permissiveAssignment, "can_sell")).toBe(false);
+    expect(assignmentAllows("viewer", permissiveAssignment, "can_sell")).toBe(false);
+  });
+
+  it("exige atribuição ativa para papéis vinculados à loja", () => {
+    const assignment = {
+      active: false,
+      can_sell: true,
+      can_open_cash: true,
+      can_close_cash: true,
+      can_manage_stock: true,
+      can_view_finance: true,
+    };
+    expect(assignmentAllows("cashier", assignment, "can_sell")).toBe(false);
+    expect(assignmentAllows("production", assignment, "can_manage_stock")).toBe(false);
   });
 
   it("transforma saídas em valores negativos", () => {
