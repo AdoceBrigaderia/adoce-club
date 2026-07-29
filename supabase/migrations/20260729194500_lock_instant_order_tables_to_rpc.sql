@@ -119,7 +119,7 @@ begin
       and parent_namespace.nspname = 'public'
       and parent_table.relname = 'instant_orders'
   ) then
-    raise exception 'instant_order_items.order_id lost its parent foreign key';
+    raise exception 'instant_order_items lost its parent order foreign key: order_id';
   end if;
 end;
 $$;
