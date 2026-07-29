@@ -9,9 +9,19 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
+  Store,
 } from "lucide-react";
 import { bffRpc } from "./services/bff-rpc";
 import "./operation-service-requests.css";
+
+type StoreRow = {
+  id: string;
+  name: string;
+  public_label?: string;
+  active: boolean;
+};
+
+type BusinessWorkspace = { stores?: StoreRow[] };
 
 type ProductSummary = {
   id: string;
@@ -47,6 +57,12 @@ type ServiceRequestWorkspaceItem = {
   id: string;
   request_number: string;
   profile_id: string | null;
+  store_id: string;
+  store: {
+    id: string;
+    name: string;
+    public_label: string;
+  };
   status: string;
   source: string;
   customer_name: string;
@@ -159,12 +175,23 @@ function configurationLines(configuration: RequestConfiguration) {
 
 export default function OperationServiceRequests() {
   const [items, setItems] = useState<ServiceRequestWorkspaceItem[]>([]);
+  const [stores, setStores] = useState<StoreRow[]>([]);
+  const [storeId, setStoreId] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
 
-  const load = useCallback(async (nextSearch = search, nextStatus = status) => {
+  const loadStores = useCallback(async () => {
+    try {
+      const workspace = await bffRpc<BusinessWorkspace>("staff_get_business_workspace");
+      setStores((workspace.stores || []).filter((store) => store.active));
+    } catch {
+      setStores([]);
+    }
+  }, []);
+
+  const load = useCallback(async (nextSearch = search, nextStatus = status, nextStoreId = storeId) => {
     setLoading(true);
     setNotice("");
     try {
@@ -172,6 +199,7 @@ export default function OperationServiceRequests() {
         search_text: nextSearch.trim(),
         requested_status: nextStatus || null,
         result_limit: 80,
+        target_store_id: nextStoreId || null,
       });
       const normalized = (data || []).filter((item) => nextStatus || activeStatuses.has(item.status));
       setItems(normalized);
@@ -182,12 +210,19 @@ export default function OperationServiceRequests() {
     } finally {
       setLoading(false);
     }
-  }, [search, status]);
+  }, [search, status, storeId]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(search, status), search.trim() ? 250 : 0);
+    void loadStores();
+  }, [loadStores]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => void load(search, status, storeId),
+      search.trim() ? 250 : 0,
+    );
     return () => window.clearTimeout(timer);
-  }, [search, status, load]);
+  }, [search, status, storeId, load]);
 
   const attentionCount = useMemo(
     () => items.filter((item) => ["prebooked", "awaiting_deposit"].includes(item.status)).length,
@@ -218,6 +253,19 @@ export default function OperationServiceRequests() {
             placeholder="Cliente, WhatsApp, produto ou número"
             autoComplete="off"
           />
+        </label>
+        <label className="operation-service-requests-store-filter">
+          <Store />
+          <select
+            value={storeId}
+            onChange={(event) => setStoreId(event.target.value)}
+            aria-label="Filtrar encomendas por loja"
+          >
+            <option value="">Todas as lojas acessíveis</option>
+            {stores.map((store) => (
+              <option value={store.id} key={store.id}>{store.name}</option>
+            ))}
+          </select>
         </label>
         <button type="button" onClick={() => void load()} disabled={loading} aria-label="Atualizar encomendas">
           <RefreshCw /> {loading ? "Atualizando…" : "Atualizar"}
@@ -251,7 +299,7 @@ export default function OperationServiceRequests() {
             <article key={item.id} className={`status-${item.status}`}>
               <header>
                 <div>
-                  <small>{item.request_number}</small>
+                  <small>{item.request_number} · {item.store.name}</small>
                   <h3>{item.customer_name}</h3>
                   <p>{item.product.name} · {item.quantity} unidade(s)</p>
                 </div>
