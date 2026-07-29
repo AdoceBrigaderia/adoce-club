@@ -21,6 +21,12 @@ drop policy if exists cash_registers_manager_insert on public.cash_registers;
 drop policy if exists cash_registers_manager_update on public.cash_registers;
 drop policy if exists staff_store_assignments_manager_all on public.staff_store_assignments;
 
+-- Uma migration anterior documentava o deny-all com uma policy explícita.
+-- A fronteira canônica RPC-only usa ausência total de policies do navegador,
+-- mantendo RLS habilitado e todos os privilégios revogados.
+drop policy if exists backend_only_no_direct_access on public.customer_checkins;
+drop policy if exists backend_only_no_direct_access on public.cash_reconciliation_queue;
+
 do $$
 declare
   locked_tables text[] := array[
