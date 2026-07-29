@@ -59,6 +59,8 @@ describe("aplicação do catálogo real do montador na homologação", () => {
     expect(liveAudit).toContain("valid_templates <> 3");
     expect(liveAudit).toContain("missing_mass_options <> 0");
     expect(liveAudit).toContain("missing_filling_options <> 0");
+    expect(liveAudit).toContain("stale_active_options <> 0");
+    expect(liveAudit).toContain("option.placement not in ('cake_layer', 'filling_layer', 'topping')");
     expect(liveAudit).toContain("invalid_toppings <> 0");
     expect(liveAudit).toContain("provisional_values <> 0");
     expect(liveAudit).toContain("pg_advisory_xact_lock");
