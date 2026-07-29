@@ -20,6 +20,7 @@ export const OPERATION_RPC_ALLOWLIST = [
   "staff_get_commerce_settings",
   "staff_update_commerce_settings",
   "staff_get_service_request_workspace",
+  "staff_transition_service_request",
   "manager_get_configurable_product_workspace",
   "manager_save_configurable_product",
   "staff_get_cake_builder_configuration",
