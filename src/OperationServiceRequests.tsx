@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
+  Banknote,
   CalendarDays,
+  CheckCircle2,
+  ChefHat,
   CircleDollarSign,
   Clock3,
   MessageCircle,
   PackageCheck,
   RefreshCw,
+  RotateCcw,
   Search,
+  Send,
   ShieldCheck,
   Store,
+  XCircle,
 } from "lucide-react";
 import { bffRpc } from "./services/bff-rpc";
 import "./operation-service-requests.css";
@@ -75,14 +81,49 @@ type ServiceRequestWorkspaceItem = {
   customer_notes: string;
   internal_notes: string;
   quoted_total: number | null;
+  quoted_at: string | null;
   deposit_amount: number | null;
   deposit_paid_at: string | null;
+  deposit_payment_method: string | null;
+  payment_status: string;
+  paid_amount: number;
+  balance_paid_at: string | null;
+  balance_payment_method: string | null;
+  production_started_at: string | null;
+  ready_at: string | null;
+  completed_at: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  refunded_at: string | null;
+  refund_method: string | null;
+  last_action: string | null;
+  last_action_at: string | null;
   expires_at: string | null;
   created_at: string;
   updated_at: string;
   product: ProductSummary;
   configuration: RequestConfiguration;
   pricing: RequestPricing | null;
+};
+
+type LifecycleAction =
+  | "send_quote"
+  | "request_deposit"
+  | "confirm_deposit"
+  | "confirm_order"
+  | "confirm_payment"
+  | "start_production"
+  | "mark_ready"
+  | "complete"
+  | "cancel"
+  | "confirm_refund";
+
+type LifecycleResult = {
+  request_number: string;
+  status: string;
+  payment_status: string;
+  refund_required: boolean;
+  idempotent: boolean;
 };
 
 const statusOptions = [
@@ -93,6 +134,7 @@ const statusOptions = [
   ["in_production", "Em produção"],
   ["ready", "Prontas"],
   ["completed", "Concluídas"],
+  ["cancelled", "Canceladas"],
 ] as const;
 
 const activeStatuses = new Set([
@@ -115,6 +157,23 @@ const statusLabels: Record<string, string> = {
   cancelled: "Cancelada",
   expired: "Expirada",
 };
+
+const paymentStatusLabels: Record<string, string> = {
+  pending: "Pagamento pendente",
+  partial: "Sinal recebido",
+  paid: "Pagamento completo",
+  refund_pending: "Estorno pendente",
+  refunded: "Estornado",
+};
+
+const paymentMethods = [
+  ["pix", "Pix"],
+  ["card", "Cartão"],
+  ["cash", "Dinheiro"],
+  ["mercado_pago_point", "Mercado Pago Point"],
+  ["mercado_pago_link", "Link Mercado Pago"],
+  ["other", "Outro"],
+] as const;
 
 const groupLabels: Record<string, string> = {
   cake_layers: "Massas",
@@ -173,6 +232,51 @@ function configurationLines(configuration: RequestConfiguration) {
   });
 }
 
+function quickActions(item: ServiceRequestWorkspaceItem): LifecycleAction[] {
+  if (item.status === "prebooked") return ["send_quote", "request_deposit", "confirm_order", "cancel"];
+  if (item.status === "quoted") return ["request_deposit", "confirm_order", "cancel"];
+  if (item.status === "awaiting_deposit") return ["confirm_deposit", "confirm_order", "cancel"];
+  if (item.status === "confirmed") {
+    return item.payment_status === "paid"
+      ? ["start_production", "cancel"]
+      : ["confirm_payment", "start_production", "cancel"];
+  }
+  if (item.status === "in_production") {
+    return item.payment_status === "paid"
+      ? ["mark_ready", "cancel"]
+      : ["confirm_payment", "mark_ready", "cancel"];
+  }
+  if (item.status === "ready") {
+    return item.payment_status === "paid"
+      ? ["complete", "cancel"]
+      : ["confirm_payment", "cancel"];
+  }
+  if (item.status === "cancelled" && item.payment_status === "refund_pending") return ["confirm_refund"];
+  return [];
+}
+
+const actionLabels: Record<LifecycleAction, string> = {
+  send_quote: "Enviar orçamento",
+  request_deposit: "Pedir sinal 50%",
+  confirm_deposit: "Confirmar sinal",
+  confirm_order: "Confirmar sem sinal",
+  confirm_payment: "Confirmar pagamento",
+  start_production: "Iniciar produção",
+  mark_ready: "Marcar pronta",
+  complete: "Concluir retirada",
+  cancel: "Cancelar",
+  confirm_refund: "Confirmar estorno",
+};
+
+function ActionIcon({ action }: { action: LifecycleAction }) {
+  if (action === "send_quote" || action === "request_deposit") return <Send />;
+  if (["confirm_deposit", "confirm_payment"].includes(action)) return <Banknote />;
+  if (action === "start_production") return <ChefHat />;
+  if (action === "mark_ready" || action === "complete" || action === "confirm_order") return <CheckCircle2 />;
+  if (action === "confirm_refund") return <RotateCcw />;
+  return <XCircle />;
+}
+
 export default function OperationServiceRequests() {
   const [items, setItems] = useState<ServiceRequestWorkspaceItem[]>([]);
   const [stores, setStores] = useState<StoreRow[]>([]);
@@ -180,7 +284,9 @@ export default function OperationServiceRequests() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
+  const [selectedPaymentMethods, setSelectedPaymentMethods] = useState<Record<string, string>>({});
 
   const loadStores = useCallback(async () => {
     try {
@@ -212,6 +318,44 @@ export default function OperationServiceRequests() {
     }
   }, [search, status, storeId]);
 
+  const runAction = useCallback(async (item: ServiceRequestWorkspaceItem, action: LifecycleAction) => {
+    let note = "";
+    if (action === "confirm_order") {
+      const answer = window.prompt("Motivo da confirmação sem sinal (mínimo de 8 caracteres):", "Contingência aprovada pelo responsável");
+      if (answer === null) return;
+      note = answer.trim();
+    }
+    if (action === "cancel") {
+      const answer = window.prompt("Informe o motivo do cancelamento (mínimo de 8 caracteres):", "");
+      if (answer === null) return;
+      note = answer.trim();
+    }
+
+    const needsPaymentMethod = ["confirm_deposit", "confirm_payment", "confirm_refund"].includes(action);
+    const paymentMethod = selectedPaymentMethods[item.id] || "pix";
+    setBusyId(item.id);
+    setNotice("");
+    try {
+      const result = await bffRpc<LifecycleResult>("staff_transition_service_request", {
+        target_request_id: item.id,
+        operation_key: crypto.randomUUID(),
+        requested_action: action,
+        requested_deposit_fraction: 0.5,
+        requested_payment_method: needsPaymentMethod ? paymentMethod : null,
+        requested_note: note,
+      });
+      setNotice(
+        `${result.request_number}: ${statusLabels[result.status] || result.status}` +
+        (result.refund_required ? " · estorno pendente." : "."),
+      );
+      await load();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Não foi possível concluir a ação da encomenda.");
+    } finally {
+      setBusyId("");
+    }
+  }, [load, selectedPaymentMethods]);
+
   useEffect(() => {
     void loadStores();
   }, [loadStores]);
@@ -235,7 +379,7 @@ export default function OperationServiceRequests() {
         <div>
           <small>Encomendas do site e atendimento</small>
           <h2>Pedidos, sabores e adicionais</h2>
-          <p>Veja exatamente o que a cliente escolheu, sem depender de texto livre ou confirmação por memória.</p>
+          <p>Orçamento, sinal, produção, retirada e cancelamento em poucos toques, sempre vinculados à loja.</p>
         </div>
         <span className={attentionCount ? "attention" : "clear"}>
           {attentionCount ? <AlertTriangle /> : <PackageCheck />}
@@ -295,8 +439,17 @@ export default function OperationServiceRequests() {
           const whatsappText = encodeURIComponent(
             `Olá, ${item.customer_name.split(" ")[0]}! Estamos conferindo sua encomenda ${item.request_number} de ${item.product.name}.`,
           );
+          const total = Number(item.quoted_total ?? item.pricing?.total_price ?? item.configuration.estimated_price ?? 0);
+          const paid = Number(item.paid_amount || 0);
+          const remaining = Math.max(total - paid, 0);
+          const actions = quickActions(item);
+          const isBusy = busyId === item.id;
+          const usesPaymentMethod = actions.some((action) =>
+            ["confirm_deposit", "confirm_payment", "confirm_refund"].includes(action),
+          );
+
           return (
-            <article key={item.id} className={`status-${item.status}`}>
+            <article key={item.id} className={`status-${item.status}`} aria-busy={isBusy}>
               <header>
                 <div>
                   <small>{item.request_number} · {item.store.name}</small>
@@ -309,7 +462,18 @@ export default function OperationServiceRequests() {
               <div className="operation-service-request-meta">
                 <span><CalendarDays /><small>Data desejada</small><strong>{dateTime(item.desired_start)}</strong></span>
                 <span><Clock3 /><small>Recebida em</small><strong>{dateTime(item.created_at)}</strong></span>
-                <span><CircleDollarSign /><small>Valor estimado</small><strong>{money(item.pricing?.total_price ?? item.configuration.estimated_price ?? item.quoted_total)}</strong></span>
+                <span><CircleDollarSign /><small>Total calculado</small><strong>{money(total)}</strong></span>
+              </div>
+
+              <div className="operation-service-request-payment">
+                <span className={`payment-${item.payment_status || "pending"}`}>
+                  <Banknote />
+                  <small>{paymentStatusLabels[item.payment_status] || "Pagamento pendente"}</small>
+                  <strong>{money(paid)} recebido · {money(remaining)} restante</strong>
+                </span>
+                {item.deposit_amount ? (
+                  <span><small>Sinal calculado</small><strong>{money(item.deposit_amount)}</strong></span>
+                ) : null}
               </div>
 
               <section className="operation-service-request-choices">
@@ -324,6 +488,41 @@ export default function OperationServiceRequests() {
               </section>
 
               {item.customer_notes ? <p className="operation-service-request-notes"><strong>Observações:</strong> {item.customer_notes}</p> : null}
+              {item.cancellation_reason ? <p className="operation-service-request-cancellation"><strong>Cancelamento:</strong> {item.cancellation_reason}</p> : null}
+
+              {actions.length ? (
+                <section className="operation-service-request-actions" aria-label={`Ações da encomenda ${item.request_number}`}>
+                  {usesPaymentMethod ? (
+                    <label>
+                      <small>Forma de pagamento</small>
+                      <select
+                        value={selectedPaymentMethods[item.id] || "pix"}
+                        onChange={(event) => setSelectedPaymentMethods((current) => ({
+                          ...current,
+                          [item.id]: event.target.value,
+                        }))}
+                        disabled={isBusy}
+                      >
+                        {paymentMethods.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                    </label>
+                  ) : null}
+                  <div>
+                    {actions.map((action) => (
+                      <button
+                        type="button"
+                        key={action}
+                        className={action === "cancel" ? "danger" : action === "confirm_refund" ? "warning" : ""}
+                        onClick={() => void runAction(item, action)}
+                        disabled={isBusy}
+                      >
+                        <ActionIcon action={action} />
+                        {isBusy ? "Processando…" : actionLabels[action]}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               <footer>
                 <a href={`https://wa.me/${phone}?text=${whatsappText}`} target="_blank" rel="noreferrer">
