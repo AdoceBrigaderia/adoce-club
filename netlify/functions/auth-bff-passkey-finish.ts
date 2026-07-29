@@ -55,7 +55,12 @@ export default async (request: Request) => {
   const action = body.action;
   const challengeId = body.challengeId?.trim() || "";
   const surface: AuthSurface = body.surface === "operation" ? "operation" : "client";
-  if (!action || !challengeId || !body.credential)
+  if (
+    !action ||
+    !["authentication", "registration"].includes(action) ||
+    !challengeId ||
+    !body.credential
+  )
     return secureJson({ error: "Resposta da chave de acesso incompleta." }, 400);
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
