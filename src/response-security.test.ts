@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   secureEmpty,
+  secureRedirect,
   secureResponseHeaders,
   secureText,
 } from "../netlify/functions/_shared/response-security";
@@ -104,5 +105,32 @@ describe("fronteira segura para respostas não JSON", () => {
       "Sec-Fetch-Site",
     ]);
     expectSecureHeaders(headers);
+  });
+
+  it("ignora wildcard e tokens inválidos de Vary", () => {
+    const headers = secureResponseHeaders({
+      headers: { Vary: "*, bad token, accept-encoding, ORIGIN" },
+    });
+
+    expect(varyTokens(headers)).toEqual([
+      "Accept-Encoding",
+      "Origin",
+      "Sec-Fetch-Site",
+    ]);
+    expectSecureHeaders(headers);
+  });
+
+  it("protege redirects internos com o mesmo baseline", () => {
+    const response = secureRedirect("/entrar?next=%2Foperacao", 303);
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/entrar?next=%2Foperacao");
+    expectSecureHeaders(response.headers);
+  });
+
+  it("rejeita open redirect e status que não sejam de redirecionamento", () => {
+    expect(() => secureRedirect("https://evil.example")).toThrow(TypeError);
+    expect(() => secureRedirect("//evil.example")).toThrow(TypeError);
+    expect(() => secureRedirect("/entrar", 200)).toThrow(RangeError);
   });
 });
