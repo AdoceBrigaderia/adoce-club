@@ -14,6 +14,21 @@ As versões transacionais atuais são:
 
 As versões substituídas sem sufixo ou `v5` devem permanecer sem `EXECUTE` para `public`, `anon` e `authenticated`. A migration `20260729120500_lock_superseded_rpc_versions.sql` faz esse corte e falha se as versões atuais não estiverem disponíveis como `SECURITY DEFINER` para `authenticated`.
 
+## Manifesto versionado
+
+`security/rpc-surface.json` é o inventário controlado da superfície RPC. Ele separa:
+
+- RPCs genéricas da operação;
+- RPCs genéricas do cliente;
+- integrações autenticadas dedicadas;
+- funções públicas que também aceitam uma sessão autenticada;
+- superfície anônima mínima;
+- pares de versões transacionais substituídas e atuais.
+
+O comando `npm run audit:rpc-surface` compara o manifesto com `bff-rpc-policy.ts`, com o ensaio SQL vivo e com a migration de bloqueio das versões antigas. O comando falha quando há duplicidade, RPC inesperada, função ausente, exposição anônima adicional, versão antiga ativa ou perda do contrato fail-closed. Os testes de mutação são executados por `npm run test:rpc-surface`, e ambos fazem parte de `verify:fast` e `verify`.
+
+Alterações na superfície devem atualizar no mesmo marco o manifesto, o roteamento BFF, o ensaio SQL, a migration correspondente quando houver troca de versão e os testes. Não liberar uma RPC diretamente apenas para corrigir uma tela.
+
 ## Allowlist autenticada
 
 O arquivo `supabase/tests/authenticated_rpc_allowlist_live.sql` trata a lista controlada como exata:
@@ -49,6 +64,17 @@ A escrita operacional permanece concentrada em RPCs transacionais e auditadas. R
 
 ## Execução isolada
 
+### Auditoria local determinística
+
+Executar antes do ensaio vivo:
+
+```bash
+npm run test:rpc-surface
+npm run audit:rpc-surface
+```
+
+Esses comandos não acessam banco, não leem segredos e não alteram migrations. Eles validam somente os arquivos versionados.
+
 ### Allowlist e matriz integrada
 
 O workflow **Testar segurança viva na homologação** executa `authenticated_rpc_allowlist_live.sql` junto aos demais ensaios de segurança. Ele exige:
@@ -73,6 +99,7 @@ O job executa somente o SQL de auditoria, confirma o `ROLLBACK` e preserva artef
 
 Tratar como bloqueador de homologação:
 
+- drift entre manifesto, BFF e ensaio SQL;
 - RPC inesperada exposta a `anon` ou `authenticated`;
 - versão antiga ainda executável pelo navegador;
 - versão atual ausente ou fora de `SECURITY DEFINER`;
