@@ -168,12 +168,14 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
 
   const liveFile = controlledPath(manifest.liveTest, "liveTest", violations);
   const lockFile = controlledPath(manifest.lockMigration, "lockMigration", violations);
+  const hardeningFile = controlledPath(manifest.hardeningMigration, "hardeningMigration", violations);
   const workflowFile = controlledPath(manifest.workflow, "workflow", violations);
   const tables = validateTables(repositoryRoot, manifest, violations);
   const tableNames = tables.map(({ name }) => name);
   const childNames = tables.filter(({ parentScope }) => parentScope).map(({ name }) => name);
   const lock = read(repositoryRoot, lockFile, "lock_migration_missing", "migration de lockdown ausente", violations);
   const live = read(repositoryRoot, liveFile, "live_test_missing", "ensaio vivo ausente", violations);
+  const hardening = read(repositoryRoot, hardeningFile, "hardening_migration_missing", "migration de hardening ausente", violations);
   const workflow = read(repositoryRoot, workflowFile, "workflow_missing", "workflow de homologação ausente", violations);
 
   exactArray(tableNames, sqlArray(lock, "locked_service_request_tables"), "lock_inventory_drift", "locked_service_request_tables", lockFile, violations);
@@ -210,6 +212,28 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     violations,
   );
   requireTokens(
+    hardening,
+    [
+      "where request.store_id is null",
+      "active_store_count <> 1",
+      "create constraint trigger service_requests_store_scope_required",
+      "deferrable initially deferred",
+      "revoke all on function public.submit_service_request_bff_unscoped_internal",
+      "revoke all on function public.staff_get_service_request_workspace_unscoped_internal",
+      "revoke all on function public.staff_get_customer_service_request_history_unscoped_internal",
+      "from public, anon, authenticated, service_role;",
+      "has_function_privilege('service_role', signature, 'EXECUTE')",
+      "Service requests still contain rows without store scope",
+      "Deferred service-request store-scope trigger is missing",
+      "Internal service-request functions remain executable by service_role",
+      "begin;",
+      "commit;",
+    ],
+    "hardening_contract_missing",
+    hardeningFile,
+    violations,
+  );
+  requireTokens(
     live,
     [
       "Service-request RPC-only tables are missing",
@@ -238,6 +262,8 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
       "ADOCE_PRODUCTION_SUPABASE_REF",
       "node scripts/audit-service-request-table-surface.mjs",
       liveFile || "supabase/tests/service_request_rpc_boundary_live.sql",
+      hardeningFile || "supabase/migrations/20260729203000_harden_service_request_store_scope.sql",
+      "hardening-migration.sha256",
       "Referência de produção detectada e bloqueada",
       'psql "$SUPABASE_HOMOLOGATION_DB_URL"',
     ],
@@ -256,6 +282,7 @@ export function auditServiceRequestTableSurface(repositoryRoot) {
     MANIFEST_FILE,
     liveFile,
     lockFile,
+    hardeningFile,
     workflowFile,
     ...tables.map(({ definitionMigration }) => definitionMigration),
     ...tables.flatMap(({ definitionEvidence }) => definitionEvidence.map(({ migration }) => migration)),
