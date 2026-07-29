@@ -38,6 +38,17 @@ describe("catálogo real do montador de tortas", () => {
     expect(seed).not.toMatch(/unit_cost,\s*[1-9]/);
   });
 
+  it("despublica opções obsoletas sem apagar histórico", () => {
+    expect(seed).toContain("Reconcilia sem apagar histórico");
+    expect(seed.match(/update public\.cake_builder_options option/g)).toHaveLength(3);
+    expect(seed).toContain("set active = false");
+    expect(seed).toContain("published = false");
+    expect(seed).toContain("option.placement not in ('cake_layer', 'filling_layer', 'topping')");
+    expect(seed).toContain("option.slug <> 'acabamento-padrao-adoce'");
+    expect(seed).toContain("and not exists (");
+    expect(seed).not.toMatch(/\bdelete\s+from\b/i);
+  });
+
   it("é idempotente, transacional e valida os três templates", () => {
     expect(seed.trimStart()).toMatch(/^begin;/);
     expect(seed.trimEnd()).toMatch(/commit;$/);
@@ -45,6 +56,7 @@ describe("catálogo real do montador de tortas", () => {
     expect(seed).toContain("on conflict (template_id, placement, slug) do update");
     expect(seed).toContain("Esperadas 3 tortas reais publicadas");
     expect(seed).toContain("valid_templates <> 3");
-    expect(seed).not.toMatch(/truncate|drop table|delete from/i);
+    expect(seed).toContain("incompleto ou divergente");
+    expect(seed).not.toMatch(/truncate|drop table/i);
   });
 });
