@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "liveTest": "supabase/tests/store_rls_boundary_live.sql",
+  "writeLockMigration": "supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql",
+  "workflow": ".github/workflows/store-rls-boundary-live-homologation.yml",
+  "tables": [
+    {
+      "name": "stores",
+      "readPredicates": [
+        "private.can_access_store(id)"
+      ]
+    },
+    {
+      "name": "cash_registers",
+      "readPredicates": [
+        "private.can_access_store(store_id)"
+      ]
+    },
+    {
+      "name": "staff_store_assignments",
+      "readPredicates": [
+        "private.is_manager()",
+        "auth.uid()"
+      ]
+    },
+    {
+      "name": "cash_sessions",
+      "readPredicates": [
+        "private.can_access_store(store_id)"
+      ]
+    },
+    {
+      "name": "cash_movements",
+      "readPredicates": [
+        "private.can_access_store(store_id)"
+      ]
+    }
+  ]
+}
