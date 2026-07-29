@@ -12,4 +12,5 @@ process.stdout.write(`${JSON.stringify({
   readableTableCount: result.readableTableCount,
   rpcOnlyTableCount: result.rpcOnlyTableCount,
   predicateCount: result.predicateCount,
+  historicalPolicyCount: result.historicalPolicyCount,
 }, null, 2)}\n`);
