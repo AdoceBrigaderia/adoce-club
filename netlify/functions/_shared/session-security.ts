@@ -269,9 +269,14 @@ export function secureJson(
     "Cache-Control": "no-store, max-age=0",
     Pragma: "no-cache",
     Vary: "Cookie, Origin, Sec-Fetch-Site",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
+    "X-Permitted-Cross-Domain-Policies": "none",
     "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-site",
     "Content-Security-Policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
   }), cookies);
   return new Response(JSON.stringify(body), { status, headers });
