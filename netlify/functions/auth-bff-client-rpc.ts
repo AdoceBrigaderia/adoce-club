@@ -1,10 +1,9 @@
+import { guardBffRequest } from "./_shared/request-security";
 import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
-  validCsrf,
 } from "./_shared/session-security";
 import {
   isAllowedClientRpc,
@@ -47,12 +46,12 @@ async function forwardRpc(
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
-  if (!validCsrf(request))
-    return secureJson({ error: "Validação CSRF inválida." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+    requireCsrf: true,
+  });
+  if (requestRejection) return requestRejection;
 
   const cookies = parseCookies(request);
   if (cookies.get(SURFACE_COOKIE) !== "client")
