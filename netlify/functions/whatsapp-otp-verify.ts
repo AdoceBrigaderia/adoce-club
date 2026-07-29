@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { allowedOrigin, secureJson } from "./_shared/session-security";
+import { guardBffRequest } from "./_shared/request-security";
+import { secureJson } from "./_shared/session-security";
 import { hashWhatsAppOtp } from "./_shared/whatsapp-otp-security";
 
 declare const Netlify:
@@ -11,10 +12,11 @@ const env = (name: string) =>
   process.env[name];
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const body = (await request.json().catch(() => ({}))) as {
     challengeId?: string;
