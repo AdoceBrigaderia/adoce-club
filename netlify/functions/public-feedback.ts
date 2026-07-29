@@ -2,10 +2,10 @@ import {
   consumePublicRateLimits,
   ipRateLimitRule,
 } from "./_shared/public-rate-limit";
+import { guardBffRequest } from "./_shared/request-security";
 import {
   ACCESS_COOKIE,
   SURFACE_COOKIE,
-  allowedOrigin,
   parseCookies,
   secureJson,
 } from "./_shared/session-security";
@@ -64,11 +64,11 @@ async function optionalClientProfile(
 }
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  const origin = request.headers.get("origin");
-  if (!origin || !allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
   if (Number(request.headers.get("content-length") || 0) > 8_192)
     return secureJson({ error: "Mensagem maior que o permitido." }, 413);
 
