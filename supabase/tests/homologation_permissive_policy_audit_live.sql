@@ -13,11 +13,11 @@ with expanded_policies as (
     policy.tablename,
     policy.policyname,
     lower(policy.cmd) as command,
-    role_name::text as role_name,
+    expanded_role.role_name::text as role_name,
     coalesce(policy.qual, '') as using_expression,
     coalesce(policy.with_check, '') as check_expression
   from pg_policies policy
-  cross join lateral unnest(policy.roles) as role_name
+  cross join lateral unnest(policy.roles) as expanded_role(role_name)
   where policy.schemaname = 'public'
     and policy.permissive = 'PERMISSIVE'
 ), duplicate_groups as (
@@ -54,11 +54,11 @@ with expanded_policies as (
     policy.tablename,
     policy.policyname,
     lower(policy.cmd) as command,
-    role_name::text as role_name,
+    expanded_role.role_name::text as role_name,
     coalesce(policy.qual, '') as using_expression,
     coalesce(policy.with_check, '') as check_expression
   from pg_policies policy
-  cross join lateral unnest(policy.roles) as role_name
+  cross join lateral unnest(policy.roles) as expanded_role(role_name)
   where policy.schemaname = 'public'
     and policy.permissive = 'PERMISSIVE'
 ), duplicate_groups as (
@@ -112,11 +112,11 @@ with expanded_policies as (
     policy.tablename,
     policy.policyname,
     lower(policy.cmd) as command,
-    role_name::text as role_name,
+    expanded_role.role_name::text as role_name,
     coalesce(policy.qual, '') as using_expression,
     coalesce(policy.with_check, '') as check_expression
   from pg_policies policy
-  cross join lateral unnest(policy.roles) as role_name
+  cross join lateral unnest(policy.roles) as expanded_role(role_name)
   where policy.schemaname = 'public'
     and policy.permissive = 'PERMISSIVE'
 ), duplicate_keys as (
