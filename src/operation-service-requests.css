@@ -86,7 +86,8 @@
 
 .operation-service-requests-controls button,
 .operation-service-requests-filters button,
-.operation-service-request-list a {
+.operation-service-request-list a,
+.operation-service-request-actions button {
   display: inline-flex;
   min-height: 3rem;
   align-items: center;
@@ -101,10 +102,17 @@
 }
 
 .operation-service-requests-controls button,
-.operation-service-request-list a {
+.operation-service-request-list a,
+.operation-service-request-actions button {
   background: #5c372e;
   color: white;
   text-decoration: none;
+}
+
+.operation-service-request-actions button:disabled,
+.operation-service-requests-controls button:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .operation-service-requests-filters {
@@ -148,18 +156,27 @@
   box-shadow: 0 0.55rem 1.5rem rgba(70, 40, 31, 0.06);
 }
 
+.operation-service-request-list article[aria-busy="true"] {
+  outline: 0.2rem solid rgba(92, 55, 46, 0.12);
+}
+
 .operation-service-request-list article.status-awaiting_deposit,
 .operation-service-request-list article.status-prebooked {
   border-left-color: #d97c45;
 }
 
 .operation-service-request-list article.status-confirmed,
-.operation-service-request-list article.status-ready {
+.operation-service-request-list article.status-ready,
+.operation-service-request-list article.status-completed {
   border-left-color: #4f8a5b;
 }
 
 .operation-service-request-list article.status-in_production {
   border-left-color: #9564a8;
+}
+
+.operation-service-request-list article.status-cancelled {
+  border-left-color: #9a331f;
 }
 
 .operation-service-request-list article > header > span {
@@ -172,14 +189,20 @@
 }
 
 .operation-service-request-meta,
-.operation-service-request-choices > div {
+.operation-service-request-choices > div,
+.operation-service-request-payment {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.7rem;
 }
 
+.operation-service-request-payment {
+  grid-template-columns: minmax(0, 2fr) minmax(9rem, 1fr);
+}
+
 .operation-service-request-meta > span,
-.operation-service-request-choices > div > span {
+.operation-service-request-choices > div > span,
+.operation-service-request-payment > span {
   display: grid;
   gap: 0.25rem;
   padding: 0.75rem;
@@ -187,7 +210,34 @@
   background: #faf6f3;
 }
 
-.operation-service-request-meta svg {
+.operation-service-request-payment > span:first-child {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 0.6rem;
+}
+
+.operation-service-request-payment > span:first-child strong {
+  grid-column: 2;
+}
+
+.operation-service-request-payment .payment-paid,
+.operation-service-request-payment .payment-refunded {
+  background: #eff9f1;
+  color: #27683b;
+}
+
+.operation-service-request-payment .payment-partial {
+  background: #fff9e8;
+  color: #74520b;
+}
+
+.operation-service-request-payment .payment-refund_pending {
+  background: #fff1e8;
+  color: #8a3d16;
+}
+
+.operation-service-request-meta svg,
+.operation-service-request-payment svg {
   width: 1.1rem;
   height: 1.1rem;
 }
@@ -205,14 +255,63 @@
 }
 
 .operation-service-request-choices small,
-.operation-service-request-meta small {
+.operation-service-request-meta small,
+.operation-service-request-payment small {
   color: #79635b;
 }
 
-.operation-service-request-notes {
+.operation-service-request-notes,
+.operation-service-request-cancellation {
   padding: 0.75rem;
   border-radius: 0.85rem;
   background: #fff9e8;
+}
+
+.operation-service-request-cancellation {
+  background: #fff0ef;
+  color: #812c24;
+}
+
+.operation-service-request-actions {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(92, 55, 46, 0.12);
+  border-radius: 1rem;
+  background: #fbf7f5;
+}
+
+.operation-service-request-actions > label {
+  display: grid;
+  gap: 0.35rem;
+  max-width: 21rem;
+}
+
+.operation-service-request-actions select {
+  min-height: 3rem;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(92, 55, 46, 0.2);
+  border-radius: 0.85rem;
+  background: white;
+  font: inherit;
+}
+
+.operation-service-request-actions > div {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.6rem;
+}
+
+.operation-service-request-actions button {
+  min-height: 3.5rem;
+}
+
+.operation-service-request-actions button.danger {
+  background: #8d3028;
+}
+
+.operation-service-request-actions button.warning {
+  background: #9a5b14;
 }
 
 .operation-service-request-list article > footer {
@@ -248,11 +347,22 @@
   }
 
   .operation-service-request-meta,
-  .operation-service-request-choices > div {
+  .operation-service-request-choices > div,
+  .operation-service-request-payment {
     grid-template-columns: 1fr;
   }
 
+  .operation-service-request-actions > label {
+    max-width: none;
+  }
+
+  .operation-service-request-actions > div {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-service-request-actions button,
   .operation-service-request-list a {
     width: 100%;
+    min-height: 3.6rem;
   }
 }
