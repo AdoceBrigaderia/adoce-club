@@ -14,7 +14,7 @@ As versões transacionais atuais são:
 
 As versões substituídas sem sufixo ou `v5` devem permanecer sem `EXECUTE` para `public`, `anon` e `authenticated`. A migration `20260729120500_lock_superseded_rpc_versions.sql` faz esse corte e falha se as versões atuais não estiverem disponíveis como `SECURITY DEFINER` para `authenticated`.
 
-## Manifesto versionado
+## Manifesto versionado de RPCs
 
 `security/rpc-surface.json` é o inventário controlado da superfície RPC. Ele separa:
 
@@ -41,9 +41,19 @@ O arquivo `supabase/tests/authenticated_rpc_allowlist_live.sql` trata a lista co
 
 A allowlist cobre as RPCs genéricas do BFF e as RPCs autenticadas chamadas por endpoints dedicados, incluindo cadastro, Google Wallet e gestão de imagens.
 
+## Manifesto versionado da fronteira RLS
+
+`security/store-rls-surface.json` é a fonte controlada das tabelas por loja e dos predicados obrigatórios de leitura. O manifesto está ligado a:
+
+- `supabase/tests/store_rls_boundary_live.sql`;
+- `supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql`;
+- `.github/workflows/store-rls-boundary-live-homologation.yml`.
+
+`npm run audit:store-rls-surface` reprova drift entre os três arquivos, perda de tabela, remoção de predicado, enfraquecimento do lockdown, execução automática do ensaio vivo ou inclusão de comandos que alterem banco ou publiquem a aplicação. `npm run test:store-rls-surface` executa mutações controladas para confirmar que o auditor falha fechado. Ambos integram `verify:fast` e `verify`.
+
 ## Fronteira RLS por loja
 
-O arquivo `supabase/tests/store_rls_boundary_live.sql` valida as tabelas:
+O ensaio vivo valida as tabelas:
 
 - `stores`;
 - `cash_registers`;
@@ -57,10 +67,14 @@ O ensaio bloqueia quando:
 - `anon` possui privilégio direto de leitura ou escrita;
 - `authenticated` possui `INSERT`, `UPDATE`, `DELETE` ou `TRUNCATE` direto;
 - existe policy para `anon` ou `public`;
+- permanece policy de escrita ou `ALL` para `authenticated`;
 - falta policy de leitura para `authenticated`;
-- a policy deixa de usar `private.can_access_store`, ou a atribuição de equipe deixa de restringir por gestor/usuário atual.
+- a policy deixa de usar `private.can_access_store`, ou a atribuição de equipe deixa de restringir por gestor/usuário atual;
+- uma policy de leitura fica vazia ou assume forma tautológica conhecida, como `true` ou `OR true`.
 
-A escrita operacional permanece concentrada em RPCs transacionais e auditadas. RLS e funções privadas continuam sendo a fonte de verdade; flags do navegador não autorizam ações.
+A migration `20260729155500_lock_store_scoped_table_writes.sql` revoga escrita direta dos papéis do navegador, remove as policies legadas de administração dessas tabelas e valida o estado final antes do `COMMIT`. As alterações administrativas continuam nas RPCs `SECURITY DEFINER`, que aplicam autorização, capacidade, idempotência e auditoria no backend.
+
+A migration foi apenas versionada neste marco. Ela ainda precisa passar pelo gate de migrations e ser aplicada exclusivamente na homologação antes do ensaio vivo.
 
 ## Execução isolada
 
@@ -71,9 +85,11 @@ Executar antes do ensaio vivo:
 ```bash
 npm run test:rpc-surface
 npm run audit:rpc-surface
+npm run test:store-rls-surface
+npm run audit:store-rls-surface
 ```
 
-Esses comandos não acessam banco, não leem segredos e não alteram migrations. Eles validam somente os arquivos versionados.
+Esses comandos não acessam banco, não leem segredos e não aplicam migrations. Eles validam somente os arquivos versionados.
 
 ### Allowlist e matriz integrada
 
@@ -100,12 +116,14 @@ O job executa somente o SQL de auditoria, confirma o `ROLLBACK` e preserva artef
 Tratar como bloqueador de homologação:
 
 - drift entre manifesto, BFF e ensaio SQL;
+- drift entre manifesto RLS, migration, ensaio vivo e workflow;
 - RPC inesperada exposta a `anon` ou `authenticated`;
 - versão antiga ainda executável pelo navegador;
 - versão atual ausente ou fora de `SECURITY DEFINER`;
 - escrita direta em tabela operacional por `authenticated`;
-- policy anônima nas tabelas por loja;
+- policy anônima ou policy autenticada de escrita nas tabelas por loja;
 - ausência de isolamento por loja ou por identidade;
+- policy de leitura vazia ou tautológica;
 - ensaio sem `ROLLBACK` confirmado.
 
 ## Produção
