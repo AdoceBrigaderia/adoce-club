@@ -15,6 +15,14 @@ export type SupabaseTokenPayload = {
   user?: { id?: string; email?: string | null };
 };
 
+declare const Netlify:
+  | { env: { get(name: string): string | undefined } }
+  | undefined;
+
+const env = (name: string) =>
+  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
+  process.env[name];
+
 const ACCESS_MAX_AGE_SECONDS = 15 * 60;
 const REMEMBERED_REFRESH_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const SESSION_REFRESH_MAX_AGE_SECONDS = 8 * 60 * 60;
@@ -151,19 +159,52 @@ export function validCsrf(request: Request) {
   return /^[a-f0-9]{64}$/i.test(cookieToken) && fixedTimeEqual(cookieToken, headerToken);
 }
 
+function normalizedOrigin(value: string | undefined) {
+  const candidate = value?.trim();
+  if (!candidate) return null;
+  try {
+    return new URL(candidate).origin;
+  } catch {
+    return null;
+  }
+}
+
+function allowedOrigins(configuredSiteUrl?: string) {
+  const origins = new Set<string>();
+  const configuredValues = [
+    configuredSiteUrl,
+    env("BFF_ALLOWED_ORIGINS"),
+    env("SITE_URL"),
+  ];
+
+  configuredValues.forEach((value) => {
+    value?.split(/[\n,]/).forEach((entry) => {
+      const origin = normalizedOrigin(entry);
+      if (origin) origins.add(origin);
+    });
+  });
+
+  const deployEnvironment = (env("ADOCE_DEPLOY_ENV") || "local").toLowerCase();
+  if (["local", "development", "test"].includes(deployEnvironment)) {
+    [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:4182",
+      "http://127.0.0.1:4182",
+    ].forEach((origin) => origins.add(origin));
+  }
+
+  return origins;
+}
+
 export function allowedOrigin(request: Request, configuredSiteUrl?: string) {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  return new Set([
-    configuredSiteUrl?.replace(/\/$/, ""),
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "https://operacao.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:4182",
-    "http://127.0.0.1:4182",
-  ].filter(Boolean)).has(origin);
+  const method = request.method.toUpperCase();
+  const originHeader = request.headers.get("origin");
+  if (!originHeader)
+    return method === "GET" || method === "HEAD" || method === "OPTIONS";
+
+  const origin = normalizedOrigin(originHeader);
+  return Boolean(origin && allowedOrigins(configuredSiteUrl).has(origin));
 }
 
 export function secureJson(
