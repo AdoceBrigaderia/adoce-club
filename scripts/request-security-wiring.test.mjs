@@ -147,6 +147,20 @@ test("o guard central falha fechado para método, preflight, origem e CSRF", () 
   assert.doesNotMatch(guardSource, /Access-Control-Allow-Credentials/i);
 });
 
+test("o guard CSRF aceita validadores isolados e falha fechado em exceções", () => {
+  assert.match(
+    guardSource,
+    /export type BffCsrfValidator = \(request: Request\) => boolean/,
+  );
+  assert.match(
+    guardSource,
+    /validator: BffCsrfValidator = validCsrf/,
+  );
+  assert.match(guardSource, /accepted = validator\(request\)/);
+  assert.match(guardSource, /catch \{\s*accepted = false;/);
+  assert.match(guardSource, /if \(accepted\) return null/);
+});
+
 for (const entrypoint of protectedEntrypoints) {
   test(`${entrypoint.path} usa exclusivamente o guard compartilhado`, () => {
     const entrypointSource = source(entrypoint.path);
