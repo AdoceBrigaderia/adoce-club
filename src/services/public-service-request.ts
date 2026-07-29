@@ -1,5 +1,6 @@
 export type PublicServiceRequestInput = {
   requested_product_id: string;
+  requested_store_id?: string | null;
   requested_customer_name: string;
   requested_customer_phone: string;
   requested_customer_email: string | null;
@@ -15,6 +16,7 @@ export type PublicServiceRequestResult = {
   accepted: boolean;
   request_id?: string;
   request_number?: string;
+  store_id?: string | null;
   expires_at?: string;
   conflict?: string | null;
   competing_prebooks?: number;
