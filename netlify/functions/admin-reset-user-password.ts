@@ -1,5 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { generateTemporaryPassword } from "./_shared/password-security";
+import { guardBffRequest } from "./_shared/request-security";
+import {
+  ACCESS_COOKIE,
+  SURFACE_COOKIE,
+  parseCookies,
+  secureJson,
+} from "./_shared/session-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -9,39 +16,21 @@ const env = (name: string) =>
   (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
   process.env[name];
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set([
-    configured,
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "https://operacao.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ].filter(Boolean)).has(origin);
-};
-
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return json({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request))
-    return json({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+    requireCsrf: true,
+  });
+  if (requestRejection) return requestRejection;
 
-  const accessToken = (request.headers.get("authorization") || "")
-    .replace(/^Bearer\s+/i, "")
-    .trim();
-  if (!accessToken) return json({ error: "Sessão obrigatória." }, 401);
+  const cookies = parseCookies(request);
+  if (cookies.get(SURFACE_COOKIE) !== "operation")
+    return secureJson({ error: "Sessão operacional obrigatória." }, 403);
+
+  const accessToken = cookies.get(ACCESS_COOKIE) || "";
+  if (!accessToken)
+    return secureJson({ error: "Sessão obrigatória." }, 401);
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
@@ -50,7 +39,7 @@ export default async (request: Request) => {
   const secretKey =
     env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !publishableKey || !secretKey)
-    return json(
+    return secureJson(
       { error: "Redefinição de senha indisponível no servidor." },
       503,
     );
@@ -62,7 +51,7 @@ export default async (request: Request) => {
   const { data: userData, error: userError } =
     await sessionClient.auth.getUser(accessToken);
   if (userError || !userData.user)
-    return json({ error: "Sessão inválida ou expirada." }, 401);
+    return secureJson({ error: "Sessão inválida ou expirada." }, 401);
 
   const { data: actor } = await sessionClient
     .from("staff_members")
@@ -70,7 +59,7 @@ export default async (request: Request) => {
     .eq("user_id", userData.user.id)
     .maybeSingle();
   if (!actor?.active || !["owner", "manager"].includes(actor.role))
-    return json(
+    return secureJson(
       { error: "Seu perfil não pode redefinir senhas." },
       403,
     );
@@ -82,9 +71,9 @@ export default async (request: Request) => {
   const targetUserId = body.targetUserId?.trim() || "";
   const targetKind = body.targetKind;
   if (!/^[0-9a-f-]{36}$/i.test(targetUserId))
-    return json({ error: "Usuário inválido." }, 400);
+    return secureJson({ error: "Usuário inválido." }, 400);
   if (!targetKind || !["staff", "customer"].includes(targetKind))
-    return json({ error: "Tipo de usuário inválido." }, 400);
+    return secureJson({ error: "Tipo de usuário inválido." }, 400);
 
   const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -99,7 +88,7 @@ export default async (request: Request) => {
     !targetProfile.active ||
     targetProfile.account_status !== "active"
   )
-    return json({ error: "Usuário ativo não encontrado." }, 404);
+    return secureJson({ error: "Usuário ativo não encontrado." }, 404);
 
   const { data: targetStaff } = await admin
     .from("staff_members")
@@ -107,9 +96,9 @@ export default async (request: Request) => {
     .eq("user_id", targetUserId)
     .maybeSingle();
   if (targetKind === "staff" && !targetStaff?.active)
-    return json({ error: "Colaborador ativo não encontrado." }, 404);
+    return secureJson({ error: "Colaborador ativo não encontrado." }, 404);
   if (targetKind === "customer" && targetStaff?.user_id)
-    return json(
+    return secureJson(
       { error: "Este cadastro pertence à equipe. Use a opção de colaborador." },
       409,
     );
@@ -144,7 +133,7 @@ export default async (request: Request) => {
     flagError = error;
   }
   if (flagError)
-    return json(
+    return secureJson(
       { error: "Não foi possível exigir a troca da senha temporária." },
       500,
     );
@@ -175,7 +164,7 @@ export default async (request: Request) => {
         })
         .eq("id", targetUserId);
     }
-    return json({ error: "Não foi possível redefinir a senha." }, 502);
+    return secureJson({ error: "Não foi possível redefinir a senha." }, 502);
   }
 
   await admin.from("audit_events").insert({
@@ -194,7 +183,7 @@ export default async (request: Request) => {
     },
   });
 
-  return json({
+  return secureJson({
     reset: true,
     fullName: targetProfile.full_name,
     temporaryPassword,
