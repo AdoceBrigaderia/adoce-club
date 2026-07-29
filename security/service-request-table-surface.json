@@ -1,9 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "liveTest": "supabase/tests/service_request_rpc_boundary_live.sql",
   "lockMigration": "supabase/migrations/20260729202000_lock_service_request_tables_to_rpc.sql",
   "hardeningMigration": "supabase/migrations/20260729203000_harden_service_request_store_scope.sql",
   "workspaceHardeningMigration": "supabase/migrations/20260729212000_scope_service_request_workspace_by_store.sql",
+  "lifecycleMigration": "supabase/migrations/20260729221000_manage_service_request_lifecycle.sql",
+  "productionLifecycleMigration": "supabase/migrations/20260729221200_protect_service_request_production_actions.sql",
+  "lifecycleWorkspaceMigration": "supabase/migrations/20260729221600_redact_service_request_production_workspace.sql",
   "workflow": ".github/workflows/service-request-rpc-boundary-live-homologation.yml",
   "tables": [
     {
