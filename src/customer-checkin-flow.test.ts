@@ -42,8 +42,12 @@ describe("fluxo NFC invertido e QR", () => {
 
   it("usa sessão cliente em cookie e BFF com CSRF", () => {
     expect(CLIENT_RPC_ALLOWLIST).toContain("customer_create_store_checkin");
+    expect(customerBff).toContain("guardBffRequest(request");
+    expect(customerBff).toContain('methods: ["POST"]');
+    expect(customerBff).toContain("requireCsrf: true");
+    expect(customerBff).not.toContain("validCsrf(request)");
+    expect(customerBff).not.toContain("allowedOrigin(request");
     expect(customerBff).toContain('cookies.get(SURFACE_COOKIE) !== "client"');
-    expect(customerBff).toContain("validCsrf(request)");
     expect(customerPage).toContain("clientBffRpc<CheckInResult>");
     expect(customerPage).not.toContain("requireSupabase");
     expect(customerPage).not.toContain("Authorization");
