@@ -27,6 +27,10 @@ describe("gate de cabeçalhos de segurança", () => {
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
     expect(csp).toContain("script-src-attr 'none'");
+    expect(csp).toContain(
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    );
+    expect(csp).toContain("font-src 'self' data: https://fonts.gstatic.com");
     expect(csp).toContain("connect-src 'self' https://*.supabase.co wss://*.supabase.co");
     expect(csp).toContain("frame-src https://www.instagram.com");
     expect(csp).not.toContain("'unsafe-eval'");
