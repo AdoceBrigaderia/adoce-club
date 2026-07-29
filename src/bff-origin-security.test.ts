@@ -5,17 +5,15 @@ const originalDeployEnvironment = process.env.ADOCE_DEPLOY_ENV;
 const originalAllowedOrigins = process.env.BFF_ALLOWED_ORIGINS;
 const originalSiteUrl = process.env.SITE_URL;
 
+function restore(name: string, value: string | undefined) {
+  if (value === undefined) delete process.env[name];
+  else process.env[name] = value;
+}
+
 afterEach(() => {
-  if (originalDeployEnvironment === undefined)
-    delete process.env.ADOCE_DEPLOY_ENV;
-  else process.env.ADOCE_DEPLOY_ENV = originalDeployEnvironment;
-
-  if (originalAllowedOrigins === undefined)
-    delete process.env.BFF_ALLOWED_ORIGINS;
-  else process.env.BFF_ALLOWED_ORIGINS = originalAllowedOrigins;
-
-  if (originalSiteUrl === undefined) delete process.env.SITE_URL;
-  else process.env.SITE_URL = originalSiteUrl;
+  restore("ADOCE_DEPLOY_ENV", originalDeployEnvironment);
+  restore("BFF_ALLOWED_ORIGINS", originalAllowedOrigins);
+  restore("SITE_URL", originalSiteUrl);
 });
 
 describe("origens autorizadas dos BFFs", () => {
@@ -90,5 +88,83 @@ describe("origens autorizadas dos BFFs", () => {
 
     process.env.ADOCE_DEPLOY_ENV = "homologation";
     expect(allowedOrigin(request)).toBe(false);
+  });
+
+  it("falha fechado quando o ambiente não foi declarado", () => {
+    delete process.env.ADOCE_DEPLOY_ENV;
+    process.env.BFF_ALLOWED_ORIGINS = "http://localhost:5173";
+    const request = new Request("http://localhost:8888/api/auth-bff-login", {
+      method: "POST",
+      headers: { Origin: "http://localhost:5173" },
+    });
+
+    expect(allowedOrigin(request)).toBe(false);
+  });
+
+  it("rejeita HTTP remoto mesmo no modo local", () => {
+    process.env.ADOCE_DEPLOY_ENV = "local";
+    process.env.BFF_ALLOWED_ORIGINS = "http://dev.example";
+    const request = new Request("http://dev.example/api/auth-bff-login", {
+      method: "POST",
+      headers: { Origin: "http://dev.example" },
+    });
+
+    expect(allowedOrigin(request)).toBe(false);
+  });
+
+  it("rejeita origens configuradas com caminho, credenciais, parâmetros ou fragmento", () => {
+    process.env.ADOCE_DEPLOY_ENV = "homologation";
+    delete process.env.SITE_URL;
+    const request = new Request("https://homologacao.example/api/auth-bff-login", {
+      method: "POST",
+      headers: { Origin: "https://homologacao.example" },
+    });
+
+    for (const invalid of [
+      "https://homologacao.example/admin",
+      "https://usuario:senha@homologacao.example",
+      "https://homologacao.example?origem=liberada",
+      "https://homologacao.example#origem",
+    ]) {
+      process.env.BFF_ALLOWED_ORIGINS = invalid;
+      expect(allowedOrigin(request)).toBe(false);
+    }
+  });
+
+  it("rejeita Origin sintaticamente diferente de uma origem pura", () => {
+    process.env.ADOCE_DEPLOY_ENV = "homologation";
+    process.env.BFF_ALLOWED_ORIGINS = "https://homologacao.example";
+
+    for (const invalidOrigin of [
+      "null",
+      "https://homologacao.example/caminho",
+      "https://homologacao.example?x=1",
+      "https://homologacao.example#x",
+    ]) {
+      const request = new Request("https://homologacao.example/api/auth-bff-login", {
+        method: "POST",
+        headers: { Origin: invalidOrigin },
+      });
+      expect(allowedOrigin(request)).toBe(false);
+    }
+  });
+
+  it("bloqueia domínios produtivos mesmo quando foram incluídos por engano na homologação", () => {
+    process.env.ADOCE_DEPLOY_ENV = "homologation";
+    delete process.env.SITE_URL;
+
+    for (const productionOrigin of [
+      "https://adocebrigaderia.com.br",
+      "https://www.adocebrigaderia.com.br",
+      "https://clube.adocebrigaderia.com.br",
+      "https://operacao.adocebrigaderia.com.br",
+    ]) {
+      process.env.BFF_ALLOWED_ORIGINS = productionOrigin;
+      const request = new Request(`${productionOrigin}/api/auth-bff-login`, {
+        method: "POST",
+        headers: { Origin: productionOrigin },
+      });
+      expect(allowedOrigin(request)).toBe(false);
+    }
   });
 });
