@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { allowedOrigin, secureJson } from "./_shared/session-security";
+import { guardBffRequest } from "./_shared/request-security";
+import { secureJson } from "./_shared/session-security";
 
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
@@ -14,10 +15,11 @@ const normalizedName = (value: string) =>
   value.trim().replace(/\s+/g, " ").slice(0, 160);
 
 export default async (request: Request) => {
-  if (request.method !== "POST")
-    return secureJson({ error: "Método não permitido." }, 405);
-  if (!allowedOrigin(request, env("SITE_URL")))
-    return secureJson({ error: "Origem não autorizada." }, 403);
+  const requestRejection = guardBffRequest(request, {
+    methods: ["POST"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
 
   const body = (await request.json().catch(() => ({}))) as {
     email?: string;
