@@ -46,6 +46,27 @@ A migration complementar preserva a função anterior como implementação inter
 
 As quantidades continuam visíveis para sessões com `view_reports`. Valores permanecem condicionados a `view_finance`, sem soma parcial apresentada como total completo.
 
+## Interface mobile e tablet
+
+Os quatro detalhamentos são consumidos da mesma resposta BFF do relatório. O componente visual não executa nova chamada, não consulta Supabase diretamente e não cria uma segunda fonte de autorização.
+
+O contrato de interação é de **zero toque adicional** para leitura:
+
+- os quatro cartões são exibidos no próprio painel, sem modal, acordeão ou navegação intermediária;
+- desktop e tablet largo usam duas colunas;
+- até 820 px os cartões passam para uma coluna;
+- linhas operacionais mantêm altura mínima de 64 px e chegam a 72 px em telas pequenas;
+- valores `null` permanecem descritos como protegidos, nunca convertidos para `R$ 0,00`;
+- ausência de registros apresenta estado vazio específico para cada detalhamento.
+
+Arquivos envolvidos:
+
+- `src/operational-report-breakdowns.ts` — normalização fail-closed dos quatro conjuntos;
+- `src/OperationReportBreakdowns.tsx` — apresentação sem chamadas externas;
+- `src/OperationReports.tsx` — conexão com a resposta consolidada;
+- `src/operation-reports.css` — layout responsivo e alvos visuais;
+- `src/operation-report-breakdowns.test.ts` — contratos de redação, responsividade e orçamento de toques.
+
 ## Métricas globais
 
 Clientes novos e movimentações de fidelidade não possuem `store_id` histórico confiável. Para evitar atribuição incorreta a uma unidade, essas métricas só aparecem para owner/manager na visão global, sem filtro de loja.
