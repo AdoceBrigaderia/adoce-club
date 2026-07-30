@@ -43,24 +43,12 @@ export default async (request: Request) => {
   const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
   const stamp = now.toISOString().replace(/\D/g, "").slice(0, 14);
   const email = `operacao.temporaria.${stamp}@adocebrigaderia.com.br`;
-  const phone = "+5585900000000";
+  const phone = "+5585900000729";
   const password = ["Ad0ce", "Homologacao", "2026", "2h"].join("!");
   const fullName = "Homologação Operação Temporária";
   const memberCode = `HML2H-${stamp.slice(-8)}`;
 
   try {
-    const existing = await admin
-      .from("profiles")
-      .select("id")
-      .eq("phone_e164", phone)
-      .maybeSingle();
-    if (existing.error) return svg(1203, `lookup_existing:${existing.error.message}`);
-
-    if (existing.data?.id) {
-      await admin.from("staff_members").update({ active: false }).eq("user_id", existing.data.id);
-      await admin.from("profiles").update({ active: false, account_status: "inactive" }).eq("id", existing.data.id);
-    }
-
     const created = await admin.auth.admin.createUser({
       email,
       password,
