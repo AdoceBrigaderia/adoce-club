@@ -24,6 +24,15 @@ function svg(status: "OK" | "ERRO", detail: string, httpStatus: number) {
 }
 
 export default async (request: Request) => {
+  if (request.method === "HEAD") {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "no-store, max-age=0",
+      },
+    });
+  }
   if (request.method !== "GET") return svg("ERRO", "method_not_allowed", 405);
   if ((env("ADOCE_DEPLOY_ENV") || "").toLowerCase() !== "homologation")
     return svg("ERRO", "not_homologation", 404);
