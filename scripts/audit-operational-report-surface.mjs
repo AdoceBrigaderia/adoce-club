@@ -9,6 +9,6 @@ if (result.violations.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Fronteira dos relatórios aprovada: ${result.breakdownCount} detalhamentos, ${result.protectedFinancialFieldCount} campos financeiros protegidos e ${result.controlledFileCount} arquivos controlados.`,
+    `Fronteira dos relatórios aprovada: ${result.breakdownCount} detalhamentos, ${result.filterCount} filtros backend, orçamento de ${result.touchBudget} toque, ${result.protectedFinancialFieldCount} campos financeiros protegidos e ${result.controlledFileCount} arquivos controlados.`,
   );
 }
