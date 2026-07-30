@@ -97,8 +97,27 @@ begin
   if jsonb_typeof(report->'orders_by_channel') <> 'array'
      or jsonb_typeof(report->'sales_by_cash_register') <> 'array'
      or jsonb_typeof(report->'sales_by_operator') <> 'array'
-     or jsonb_typeof(report->'cash_sessions_by_register') <> 'array' then
-    raise exception 'Detalhamentos operacionais obrigatórios não foram retornados';
+     or jsonb_typeof(report->'cash_sessions_by_register') <> 'array'
+     or jsonb_typeof(report #> '{filter_options,channels}') <> 'array'
+     or jsonb_typeof(report #> '{filter_options,operators}') <> 'array'
+     or jsonb_typeof(report #> '{filter_options,registers}') <> 'array' then
+    raise exception 'Detalhamentos ou opções de filtro obrigatórios não foram retornados';
+  end if;
+
+  report := public.staff_get_operational_reports(
+    current_date - 6,
+    current_date,
+    primary_store,
+    'online',
+    null,
+    null
+  );
+
+  if report->>'filter_scope' is distinct from 'breakdowns_only'
+     or report #>> '{active_filters,channel}' is distinct from 'online'
+     or report #> '{active_filters,operator_user_id}' is distinct from 'null'::jsonb
+     or report #> '{active_filters,register_id}' is distinct from 'null'::jsonb then
+    raise exception 'Filtros rápidos não foram aplicados de forma fail-closed';
   end if;
 
   begin
@@ -131,25 +150,40 @@ begin
   end if;
 
   select pg_get_functiondef(
-    'public.staff_get_operational_reports(date,date,uuid)'::regprocedure
+    'public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)'::regprocedure
   ) into function_definition;
 
-  if position('staff_get_operational_reports_base_internal' in function_definition) = 0
+  if position('staff_get_operational_reports_breakdowns_internal' in function_definition) = 0
+     or position('target_channel' in function_definition) = 0
+     or position('target_operator_user_id' in function_definition) = 0
+     or position('target_register_id' in function_definition) = 0
+     or position('filter_scope' in function_definition) = 0
      or position('orders_by_channel' in function_definition) = 0
      or position('sales_by_cash_register' in function_definition) = 0
      or position('sales_by_operator' in function_definition) = 0
      or position('cash_sessions_by_register' in function_definition) = 0 then
-    raise exception 'A função efetiva perdeu o wrapper ou os detalhamentos obrigatórios';
+    raise exception 'A função efetiva perdeu filtros, wrapper ou detalhamentos obrigatórios';
   end if;
 
-  if has_function_privilege(
+  if to_regprocedure('public.staff_get_operational_reports(date,date,uuid)') is not null
+     or has_function_privilege(
        'anon',
-       'public.staff_get_operational_reports(date,date,uuid)',
+       'public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)',
        'EXECUTE'
      )
      or not has_function_privilege(
        'authenticated',
-       'public.staff_get_operational_reports(date,date,uuid)',
+       'public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)',
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'authenticated',
+       'public.staff_get_operational_reports_breakdowns_internal(date,date,uuid)',
+       'EXECUTE'
+     )
+     or has_function_privilege(
+       'service_role',
+       'public.staff_get_operational_reports_breakdowns_internal(date,date,uuid)',
        'EXECUTE'
      )
      or has_function_privilege(
