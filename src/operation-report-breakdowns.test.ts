@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  changeOperationalReportFilter,
   channelLabel,
   normalizeOperationalReportBreakdowns,
   normalizeOperationalReportFilterOptions,
   normalizeOperationalReportFilters,
   normalizeOperationalReportPeriod,
+  type OperationalReportFilterOptions,
 } from "./operational-report-breakdowns";
 
 const component = readFileSync(
@@ -16,6 +18,10 @@ const reports = readFileSync(
   new URL("./OperationReports.tsx", import.meta.url),
   "utf8",
 );
+const bffClient = readFileSync(
+  new URL("./services/bff-rpc.ts", import.meta.url),
+  "utf8",
+);
 const styles = readFileSync(
   new URL("./operation-report-breakdown-filters.css", import.meta.url),
   "utf8",
@@ -24,6 +30,21 @@ const migration = readFileSync(
   new URL("../supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql", import.meta.url),
   "utf8",
 );
+
+const filterOptions: OperationalReportFilterOptions = {
+  channels: [
+    { value: "online", label: "On-line", storeId: null, storeName: null },
+    { value: "presencial", label: "Presencial", storeId: null, storeName: null },
+  ],
+  operators: [
+    { value: "operator-1", label: "Beth", storeId: "store-1", storeName: "Passaré" },
+    { value: "operator-2", label: "Rubens", storeId: "store-2", storeName: "Aldeota" },
+  ],
+  registers: [
+    { value: "register-1", label: "Caixa Passaré", storeId: "store-1", storeName: "Passaré" },
+    { value: "register-2", label: "Caixa Aldeota", storeId: "store-2", storeName: "Aldeota" },
+  ],
+};
 
 describe("detalhamentos operacionais dos relatórios", () => {
   it("normaliza detalhamentos e filtros sem transformar valor protegido em zero", () => {
@@ -95,6 +116,48 @@ describe("detalhamentos operacionais dos relatórios", () => {
     });
   });
 
+  it("consolida operador compartilhado sem atribuir uma loja incorreta", () => {
+    const options = normalizeOperationalReportFilterOptions({
+      filter_options: {
+        operators: [
+          { value: "operator-1", label: "Beth", store_id: "store-1", store_name: "Passaré" },
+          { value: "operator-1", label: "Beth", store_id: "store-2", store_name: "Aldeota" },
+        ],
+      },
+    });
+
+    expect(options.operators).toHaveLength(1);
+    expect(options.operators[0]).toMatchObject({
+      value: "operator-1",
+      label: "Beth",
+      storeId: null,
+      storeName: "Várias lojas",
+    });
+  });
+
+  it("reconcilia canal, operador e caixa incompatíveis no mesmo toque", () => {
+    expect(changeOperationalReportFilter(
+      { channel: null, operatorUserId: "operator-1", registerId: null },
+      "registerId",
+      "register-2",
+      filterOptions,
+    )).toEqual({ channel: "presencial", operatorUserId: null, registerId: "register-2" });
+
+    expect(changeOperationalReportFilter(
+      { channel: null, operatorUserId: null, registerId: "register-2" },
+      "operatorUserId",
+      "operator-1",
+      filterOptions,
+    )).toEqual({ channel: "presencial", operatorUserId: "operator-1", registerId: null });
+
+    expect(changeOperationalReportFilter(
+      { channel: "presencial", operatorUserId: "operator-1", registerId: "register-1" },
+      "channel",
+      "online",
+      filterOptions,
+    )).toEqual({ channel: "online", operatorUserId: null, registerId: null });
+  });
+
   it("mantém rótulos operacionais claros para canais conhecidos e desconhecidos", () => {
     expect(channelLabel("online")).toBe("On-line");
     expect(channelLabel("presencial")).toBe("Presencial");
@@ -118,10 +181,22 @@ describe("detalhamentos operacionais dos relatórios", () => {
     expect(migration).toContain("private.staff_has_capability(store.id, 'view_reports')");
   });
 
+  it("cancela consulta antiga e aceita somente a resposta do último toque", () => {
+    expect(component).toContain('data-filter-request-mode="latest-wins"');
+    expect(component).toContain("const requestSequence = useRef(0)");
+    expect(component).toContain("activeRequest.current?.abort()");
+    expect(component).toContain("new AbortController()");
+    expect(component).toContain("requestId !== requestSequence.current");
+    expect(component).toContain("{ signal: controller.signal }");
+    expect(bffClient).toContain("signal?: AbortSignal");
+    expect(bffClient).toContain("signal: options.signal");
+  });
+
   it("troca qualquer recorte com um toque em alvos grandes", () => {
     expect(component).toContain('data-touch-budget="1"');
     expect(component).toContain('aria-pressed={activeValue === option.value}');
     expect(component).toContain('onClick={() => onChange(option.value)}');
+    expect(component).not.toContain("disabled={loading}");
     expect(component).not.toContain("<details");
     expect(component).not.toContain("<dialog");
     expect(styles).toContain("min-height:48px");
