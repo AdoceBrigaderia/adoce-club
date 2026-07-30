@@ -44,7 +44,7 @@ function credentialImage(data: {
     <text x="100" y="540" font-family="Arial, sans-serif" font-size="22" fill="#8c5a50">Somente homologação. Endpoint descartável.</text>
   </svg>`;
   return new Response(svg, {
-    status: data.status === "OK" ? 200 : 500,
+    status: 200,
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
       "Cache-Control": "no-store, max-age=0",
@@ -54,10 +54,10 @@ function credentialImage(data: {
 
 export default async (request: Request) => {
   if (request.method !== "GET")
-    return new Response("Not found", { status: 404 });
+    return credentialImage({ status: "ERRO", error: "method_not_allowed" });
 
   if ((env("ADOCE_DEPLOY_ENV") || "").toLowerCase() !== "homologation")
-    return new Response("Not found", { status: 404 });
+    return credentialImage({ status: "ERRO", error: "not_homologation" });
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const secretKey = env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
@@ -77,70 +77,77 @@ export default async (request: Request) => {
   const fullName = "Homologação Operação Temporária";
   const memberCode = `HML2H-${stamp.slice(-8)}`;
 
-  const existing = await admin
-    .from("profiles")
-    .select("id")
-    .eq("phone_e164", phone)
-    .maybeSingle();
+  try {
+    const existing = await admin
+      .from("profiles")
+      .select("id")
+      .eq("phone_e164", phone)
+      .maybeSingle();
 
-  if (existing.data?.id) {
-    await admin.from("staff_members").update({ active: false }).eq("user_id", existing.data.id);
-    await admin.from("profiles").update({ active: false, account_status: "inactive" }).eq("id", existing.data.id);
-  }
+    if (existing.data?.id) {
+      await admin.from("staff_members").update({ active: false }).eq("user_id", existing.data.id);
+      await admin.from("profiles").update({ active: false, account_status: "inactive" }).eq("id", existing.data.id);
+    }
 
-  const created = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: {
-      full_name: fullName,
-      temporary_homologation_access: true,
-    },
-  });
-
-  if (created.error || !created.data.user)
-    return credentialImage({
-      status: "ERRO",
-      error: created.error?.message || "user_not_created",
+    const created = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        full_name: fullName,
+        temporary_homologation_access: true,
+      },
     });
 
-  const userId = created.data.user.id;
-  const profile = await admin.from("profiles").upsert({
-    id: userId,
-    full_name: fullName,
-    phone_e164: phone,
-    email,
-    active: true,
-    account_status: "active",
-    member_code: memberCode,
-    auth_upgraded_at: now.toISOString(),
-    must_change_password: false,
-    temporary_password_issued_at: now.toISOString(),
-    temporary_password_expires_at: expiresAt.toISOString(),
-    updated_at: now.toISOString(),
-  }, { onConflict: "id" });
+    if (created.error || !created.data.user)
+      return credentialImage({
+        status: "ERRO",
+        error: created.error?.message || "user_not_created",
+      });
 
-  if (profile.error)
-    return credentialImage({ status: "ERRO", error: profile.error.message });
+    const userId = created.data.user.id;
+    const profile = await admin.from("profiles").upsert({
+      id: userId,
+      full_name: fullName,
+      phone_e164: phone,
+      email,
+      active: true,
+      account_status: "active",
+      member_code: memberCode,
+      auth_upgraded_at: now.toISOString(),
+      must_change_password: false,
+      temporary_password_issued_at: now.toISOString(),
+      temporary_password_expires_at: expiresAt.toISOString(),
+      updated_at: now.toISOString(),
+    }, { onConflict: "id" });
 
-  const staff = await admin.from("staff_members").upsert({
-    user_id: userId,
-    role: "owner",
-    active: true,
-    must_change_password: false,
-    temporary_password_issued_at: now.toISOString(),
-    temporary_password_expires_at: expiresAt.toISOString(),
-  }, { onConflict: "user_id" });
+    if (profile.error)
+      return credentialImage({ status: "ERRO", error: profile.error.message });
 
-  if (staff.error)
-    return credentialImage({ status: "ERRO", error: staff.error.message });
+    const staff = await admin.from("staff_members").upsert({
+      user_id: userId,
+      role: "owner",
+      active: true,
+      must_change_password: false,
+      temporary_password_issued_at: now.toISOString(),
+      temporary_password_expires_at: expiresAt.toISOString(),
+    }, { onConflict: "user_id" });
 
-  return credentialImage({
-    status: "OK",
-    phone,
-    password,
-    expiresAt: expiresAt.toISOString(),
-  });
+    if (staff.error)
+      return credentialImage({ status: "ERRO", error: staff.error.message });
+
+    return credentialImage({
+      status: "OK",
+      phone,
+      password,
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch (error) {
+    return credentialImage({
+      status: "ERRO",
+      error: error instanceof Error ? error.message : "unknown_error",
+    });
+  }
 };
 
 export const config = {
