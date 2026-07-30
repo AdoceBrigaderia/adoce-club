@@ -93,8 +93,9 @@ describe("detalhamentos operacionais dos relatórios", () => {
   });
 
   it("expõe proteção financeira por linha em todas as superfícies sensíveis", () => {
-    expect(component.match(/Protegido por permissão/g)?.length).toBeGreaterThanOrEqual(4);
-    expect(component).toContain("Financeiro protegido");
+    expect(component).toContain('value === null ? "Protegido por permissão"');
+    expect(component.match(/Financeiro protegido/g)?.length).toBeGreaterThanOrEqual(3);
     expect(component).toContain("Divergências protegidas");
+    expect(component).not.toContain('money(row.gross || 0)');
   });
 });
