@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BadgeDollarSign,
   MonitorSmartphone,
@@ -6,6 +6,7 @@ import {
   UserRound,
 } from "lucide-react";
 import {
+  changeOperationalReportFilter,
   channelLabel,
   normalizeOperationalReportBreakdowns,
   normalizeOperationalReportFilterOptions,
@@ -13,6 +14,7 @@ import {
   normalizeOperationalReportPeriod,
   type NullableNumber,
   type OperationalReportBreakdownPayload,
+  type OperationalReportFilterKey,
   type OperationalReportFilterOption,
   type OperationalReportFilters,
 } from "./operational-report-breakdowns";
@@ -23,13 +25,10 @@ type Props = {
   report: OperationalReportBreakdownPayload;
 };
 
-type FilterKey = "channel" | "operatorUserId" | "registerId";
-
 type FilterGroupProps = {
   label: string;
   activeValue: string | null;
   options: OperationalReportFilterOption[];
-  disabled: boolean;
   onChange: (value: string | null) => void;
 };
 
@@ -47,7 +46,6 @@ function FilterGroup({
   label,
   activeValue,
   options,
-  disabled,
   onChange,
 }: FilterGroupProps) {
   return (
@@ -57,7 +55,6 @@ function FilterGroup({
         <button
           type="button"
           aria-pressed={activeValue === null}
-          disabled={disabled}
           onClick={() => onChange(null)}
         >
           Todos
@@ -67,7 +64,6 @@ function FilterGroup({
             type="button"
             key={option.value}
             aria-pressed={activeValue === option.value}
-            disabled={disabled}
             title={option.storeName ? `${option.label} · ${option.storeName}` : option.label}
             onClick={() => onChange(option.value)}
           >
@@ -86,12 +82,23 @@ export default function OperationReportBreakdowns({ report }: Props) {
   );
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+  const requestSequence = useRef(0);
+  const activeRequest = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    requestSequence.current += 1;
+    activeRequest.current?.abort();
+    activeRequest.current = null;
     setScopedReport(report);
     setFilters(normalizeOperationalReportFilters(report));
     setNotice("");
+    setLoading(false);
   }, [report]);
+
+  useEffect(() => () => {
+    requestSequence.current += 1;
+    activeRequest.current?.abort();
+  }, []);
 
   const breakdowns = useMemo(
     () => normalizeOperationalReportBreakdowns(scopedReport),
@@ -106,8 +113,16 @@ export default function OperationReportBreakdowns({ report }: Props) {
     [scopedReport],
   );
 
-  const applyFilter = async (key: FilterKey, value: string | null) => {
-    const nextFilters = { ...filters, [key]: value };
+  const applyFilter = async (
+    key: OperationalReportFilterKey,
+    value: string | null,
+  ) => {
+    const nextFilters = changeOperationalReportFilter(filters, key, value, options);
+    const requestId = requestSequence.current + 1;
+    requestSequence.current = requestId;
+    activeRequest.current?.abort();
+    const controller = new AbortController();
+    activeRequest.current = controller;
     setFilters(nextFilters);
     setLoading(true);
     setNotice("");
@@ -123,14 +138,20 @@ export default function OperationReportBreakdowns({ report }: Props) {
           target_operator_user_id: nextFilters.operatorUserId,
           target_register_id: nextFilters.registerId,
         },
+        { signal: controller.signal },
       );
+      if (requestId !== requestSequence.current) return;
       setScopedReport(nextReport);
       setFilters(normalizeOperationalReportFilters(nextReport));
     } catch (error) {
+      if (controller.signal.aborted || requestId !== requestSequence.current) return;
       setFilters(normalizeOperationalReportFilters(scopedReport));
       setNotice(error instanceof Error ? error.message : "Não foi possível aplicar o filtro.");
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   };
 
@@ -146,6 +167,7 @@ export default function OperationReportBreakdowns({ report }: Props) {
       className="operation-report-breakdowns"
       aria-label="Detalhamentos operacionais"
       data-touch-budget="1"
+      data-filter-request-mode="latest-wins"
       aria-busy={loading}
     >
       <header className="operation-report-breakdowns-heading">
@@ -161,27 +183,24 @@ export default function OperationReportBreakdowns({ report }: Props) {
           label="Canal"
           activeValue={filters.channel}
           options={channelOptions}
-          disabled={loading}
           onChange={(value) => void applyFilter("channel", value)}
         />
         <FilterGroup
           label="Operador"
           activeValue={filters.operatorUserId}
           options={options.operators}
-          disabled={loading}
           onChange={(value) => void applyFilter("operatorUserId", value)}
         />
         <FilterGroup
           label="Caixa"
           activeValue={filters.registerId}
           options={options.registers}
-          disabled={loading}
           onChange={(value) => void applyFilter("registerId", value)}
         />
       </div>
 
-      {notice ? <p className="operation-report-filter-notice" role="status">{notice}</p> : null}
-      {loading ? <p className="operation-report-filter-status" role="status">Atualizando recorte…</p> : null}
+      {notice ? <p className="operation-report-filter-notice" role="status" aria-live="polite">{notice}</p> : null}
+      {loading ? <p className="operation-report-filter-status" role="status" aria-live="polite">Atualizando recorte…</p> : null}
 
       <div className="operation-report-breakdowns-grid">
         <article className="operation-reports-card operation-report-breakdown-card">
