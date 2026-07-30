@@ -26,10 +26,11 @@ env:
   LIVE_TEST_FILE: supabase/tests/operational_reports_boundary_live.sql
   BASE_HARDENING_FILE: supabase/migrations/20260729223000_harden_operational_reports_by_store_and_finance.sql
   BREAKDOWN_FILE: supabase/migrations/20260729224500_add_operational_report_breakdowns.sql
+  FILTER_FILE: supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql
 
 jobs:
   reports-boundary:
-    name: Validar papéis, lojas e redação financeira sem persistir dados
+    name: Validar papéis, lojas, filtros e redação financeira sem persistir dados
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: homologation
@@ -55,7 +56,7 @@ jobs:
           test -n "$PRODUCTION_REF"
           test "$HOMOLOGATION_REF" != "$PRODUCTION_REF"
           test "$CONFIRMATION" = "AUDITAR RELATORIOS SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
-          for file in "$LIVE_TEST_FILE" "$BASE_HARDENING_FILE" "$BREAKDOWN_FILE"; do
+          for file in "$LIVE_TEST_FILE" "$BASE_HARDENING_FILE" "$BREAKDOWN_FILE" "$FILTER_FILE"; do
             test -s "$file"
           done
           test -n "$SUPABASE_HOMOLOGATION_DB_URL"
@@ -72,13 +73,12 @@ jobs:
           esac
           grep -q '^begin;' "$LIVE_TEST_FILE"
           grep -q '^rollback;' "$LIVE_TEST_FILE"
-          grep -q '^begin;' "$BASE_HARDENING_FILE"
-          grep -q '^commit;' "$BASE_HARDENING_FILE"
-          grep -q '^begin;' "$BREAKDOWN_FILE"
-          grep -q '^commit;' "$BREAKDOWN_FILE"
+          for file in "$BASE_HARDENING_FILE" "$BREAKDOWN_FILE" "$FILTER_FILE"; do
+            grep -q '^begin;' "$file"
+            grep -q '^commit;' "$file"
+            ! grep -q "$PRODUCTION_REF" "$file"
+          done
           ! grep -q "$PRODUCTION_REF" "$LIVE_TEST_FILE"
-          ! grep -q "$PRODUCTION_REF" "$BASE_HARDENING_FILE"
-          ! grep -q "$PRODUCTION_REF" "$BREAKDOWN_FILE"
 
       - name: Preparar Node para auditoria determinística
         uses: actions/setup-node@v4
@@ -119,6 +119,7 @@ jobs:
           sha256sum security/operational-report-surface.json > "$output_dir/manifest.sha256"
           sha256sum "$BASE_HARDENING_FILE" > "$output_dir/base-hardening.sha256"
           sha256sum "$BREAKDOWN_FILE" > "$output_dir/breakdown-migration.sha256"
+          sha256sum "$FILTER_FILE" > "$output_dir/filter-migration.sha256"
           ! grep -R "$PRODUCTION_REF" "$output_dir"
           ! grep -R "postgresql://\|postgres://" "$output_dir"
 
