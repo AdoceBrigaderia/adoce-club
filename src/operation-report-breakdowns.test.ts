@@ -87,7 +87,7 @@ describe("detalhamentos operacionais dos relatórios", () => {
     expect(component).not.toContain("onClick=");
     expect(styles).toContain(".operation-report-breakdowns-grid");
     expect(styles).toContain("grid-template-columns:repeat(2,minmax(0,1fr))");
-    expect(styles).toContain(".operation-report-breakdown-card .operation-reports-table article{min-height:64px}");
+    expect(styles).toContain(".operation-report-breakdown-card .operation-reports-table article{min-height:64px;");
     expect(styles).toContain("@media(max-width:820px)");
     expect(styles).toContain(".operation-report-breakdowns-grid{grid-template-columns:1fr}");
   });
