@@ -46,30 +46,37 @@ export function auditOperationalReportSurface(repositoryRoot) {
     return {
       schemaVersion: null,
       breakdownCount: 0,
+      filterCount: 0,
+      touchBudget: null,
       protectedFinancialFieldCount: 0,
       controlledFileCount: 0,
       violations: [{ code: "manifest_missing", detail: "manifesto ausente ou inválido", file: MANIFEST_FILE }],
     };
   }
 
-  if (manifest.schemaVersion !== 1) {
-    add(violations, "manifest_schema_unsupported", `schemaVersion esperado=1, recebido=${String(manifest.schemaVersion)}`);
+  if (manifest.schemaVersion !== 2) {
+    add(violations, "manifest_schema_unsupported", `schemaVersion esperado=2, recebido=${String(manifest.schemaVersion)}`);
   }
 
   const baseFile = safePath(manifest.baseHardeningMigration, "baseHardeningMigration", violations);
   const breakdownFile = safePath(manifest.breakdownMigration, "breakdownMigration", violations);
+  const filterFile = safePath(manifest.filterMigration, "filterMigration", violations);
   const liveFile = safePath(manifest.liveTest, "liveTest", violations);
   const workflowFile = safePath(manifest.workflow, "workflow", violations);
   const base = read(repositoryRoot, baseFile, "base_migration_missing", violations);
   const breakdown = read(repositoryRoot, breakdownFile, "breakdown_migration_missing", violations);
+  const filter = read(repositoryRoot, filterFile, "filter_migration_missing", violations);
   const live = read(repositoryRoot, liveFile, "live_test_missing", violations);
   const workflow = read(repositoryRoot, workflowFile, "workflow_missing", violations);
 
-  if (manifest.publicFunction !== "public.staff_get_operational_reports(date,date,uuid)") {
-    add(violations, "public_function_drift", "assinatura pública do relatório divergiu");
+  if (manifest.publicFunction !== "public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)") {
+    add(violations, "public_function_drift", "assinatura pública filtrada do relatório divergiu");
   }
   if (manifest.baseInternalFunction !== "public.staff_get_operational_reports_base_internal(date,date,uuid)") {
-    add(violations, "internal_function_drift", "assinatura interna do relatório divergiu");
+    add(violations, "internal_function_drift", "assinatura interna base do relatório divergiu");
+  }
+  if (manifest.breakdownInternalFunction !== "public.staff_get_operational_reports_breakdowns_internal(date,date,uuid)") {
+    add(violations, "breakdown_internal_function_drift", "assinatura interna dos detalhamentos divergiu");
   }
 
   exactArray(manifest.capabilities, ["view_reports", "view_finance"], "capabilities", violations);
@@ -79,7 +86,19 @@ export function auditOperationalReportSurface(repositoryRoot) {
     "breakdowns",
     violations,
   );
+  exactArray(
+    manifest.filters,
+    ["target_channel", "target_operator_user_id", "target_register_id"],
+    "filters",
+    violations,
+  );
 
+  if (manifest.filterScope !== "breakdowns_only") {
+    add(violations, "filter_scope_drift", "filtros devem permanecer explícitos como breakdowns_only");
+  }
+  if (manifest.touchBudget !== 1) {
+    add(violations, "touch_budget_drift", "troca de recorte deve manter orçamento de um toque");
+  }
   if (manifest.roles?.owner !== "financial" || manifest.roles?.manager !== "financial" || manifest.roles?.viewer !== "operational_only") {
     add(violations, "role_contract_drift", "contrato owner/manager/viewer divergiu");
   }
@@ -130,8 +149,36 @@ export function auditOperationalReportSurface(repositoryRoot) {
     violations,
   );
 
+  requireTokens(
+    filter,
+    [
+      "rename to staff_get_operational_reports_breakdowns_internal",
+      "staff_get_operational_reports(date,date,uuid,text,uuid,uuid)",
+      "target_channel text default null",
+      "target_operator_user_id uuid default null",
+      "target_register_id uuid default null",
+      "join report_stores store on store.id = customer_order.store_id",
+      "join report_stores store on store.id = movement.store_id",
+      "private.staff_has_capability(store.id, 'view_reports')",
+      "private.staff_has_capability(store.id, 'view_finance')",
+      "'filter_scope', 'breakdowns_only'",
+      "'active_filters'",
+      "'filter_options'",
+      "target_operator_user_id is null",
+      "target_register_id is null",
+      "else null",
+      "from public, anon, authenticated, service_role;",
+      "to_regprocedure('public.staff_get_operational_reports(date,date,uuid)') is not null",
+      "begin;",
+      "commit;",
+    ],
+    "filter_contract_missing",
+    filterFile,
+    violations,
+  );
+
   for (const field of manifest.protectedFinancialFields || []) {
-    if (!base.includes(`'${field}'`) && !breakdown.includes(`'${field}'`)) {
+    if (!base.includes(`'${field}'`) && !breakdown.includes(`'${field}'`) && !filter.includes(`'${field}'`)) {
       add(violations, "financial_field_untracked", `campo financeiro sem evidência SQL: ${field}`);
     }
   }
@@ -146,6 +193,10 @@ export function auditOperationalReportSurface(repositoryRoot) {
       "Manager não recebeu visão financeira",
       "Owner não recebeu visão financeira",
       "jsonb_typeof(report->'orders_by_channel')",
+      "filter_scope",
+      "active_filters",
+      "target_channel",
+      "public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)",
       "has_function_privilege(",
       "begin;",
       "rollback;",
@@ -161,10 +212,12 @@ export function auditOperationalReportSurface(repositoryRoot) {
       "workflow_dispatch:",
       "EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1",
       "environment: homologation",
+      "FILTER_FILE: supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql",
       "node scripts/audit-operational-report-surface.mjs",
       "psql \"$SUPABASE_HOMOLOGATION_DB_URL\"",
       "--set=ON_ERROR_STOP=1",
       "sha256sum security/operational-report-surface.json",
+      "sha256sum \"$FILTER_FILE\"",
       "retention-days: 30",
     ],
     "workflow_contract_missing",
@@ -182,10 +235,12 @@ export function auditOperationalReportSurface(repositoryRoot) {
   return {
     schemaVersion: manifest.schemaVersion ?? null,
     breakdownCount: Array.isArray(manifest.breakdowns) ? manifest.breakdowns.length : 0,
+    filterCount: Array.isArray(manifest.filters) ? manifest.filters.length : 0,
+    touchBudget: Number.isInteger(manifest.touchBudget) ? manifest.touchBudget : null,
     protectedFinancialFieldCount: Array.isArray(manifest.protectedFinancialFields)
       ? manifest.protectedFinancialFields.length
       : 0,
-    controlledFileCount: [MANIFEST_FILE, baseFile, breakdownFile, liveFile, workflowFile].filter(Boolean).length,
+    controlledFileCount: [MANIFEST_FILE, baseFile, breakdownFile, filterFile, liveFile, workflowFile].filter(Boolean).length,
     violations,
   };
 }
