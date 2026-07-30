@@ -4,47 +4,18 @@ const env = (name: string) =>
   (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
   process.env[name];
 
-function randomPassword() {
-  const bytes = new Uint8Array(18);
-  crypto.getRandomValues(bytes);
-  const token = Array.from(bytes, (value) => value.toString(36)).join("");
-  return `Ad0ce!${token.slice(0, 18)}2h`;
-}
-
-function escapeXml(value: string) {
-  return value
+function svg(status: "OK" | "ERRO", detail: string, httpStatus: number) {
+  const safe = detail
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
-
-function credentialImage(data: {
-  status: "OK" | "ERRO";
-  phone?: string;
-  password?: string;
-  expiresAt?: string;
-  error?: string;
-}) {
-  const phone = escapeXml(data.phone || "-");
-  const password = escapeXml(data.password || "-");
-  const expiresAt = escapeXml(data.expiresAt || "-");
-  const error = escapeXml(data.error || "-");
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+    .replaceAll(">", "&gt;");
+  return new Response(`<?xml version="1.0" encoding="UTF-8"?>
+  <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
     <rect width="1200" height="630" fill="#fff8f5"/>
-    <rect x="50" y="50" width="1100" height="530" rx="30" fill="#ffffff" stroke="#7b2f43" stroke-width="4"/>
-    <text x="100" y="135" font-family="Arial, sans-serif" font-size="50" font-weight="700" fill="#4b1f17">Adoce — acesso temporário</text>
-    <text x="100" y="205" font-family="Arial, sans-serif" font-size="34" fill="#7b2f43">Status: ${data.status}</text>
-    <text x="100" y="285" font-family="Arial, sans-serif" font-size="32" fill="#4b1f17">Celular: ${phone}</text>
-    <text x="100" y="350" font-family="Arial, sans-serif" font-size="32" fill="#4b1f17">Senha: ${password}</text>
-    <text x="100" y="415" font-family="Arial, sans-serif" font-size="28" fill="#4b1f17">Expira em: ${expiresAt}</text>
-    <text x="100" y="485" font-family="Arial, sans-serif" font-size="24" fill="#8c5a50">Erro: ${error}</text>
-    <text x="100" y="540" font-family="Arial, sans-serif" font-size="22" fill="#8c5a50">Somente homologação. Endpoint descartável.</text>
-  </svg>`;
-  return new Response(svg, {
-    status: 200,
+    <text x="80" y="180" font-family="Arial" font-size="72" font-weight="700" fill="#4b1f17">${status}</text>
+    <text x="80" y="280" font-family="Arial" font-size="34" fill="#7b2f43">${safe}</text>
+  </svg>`, {
+    status: httpStatus,
     headers: {
       "Content-Type": "image/svg+xml; charset=utf-8",
       "Cache-Control": "no-store, max-age=0",
@@ -53,16 +24,15 @@ function credentialImage(data: {
 }
 
 export default async (request: Request) => {
-  if (request.method !== "GET")
-    return credentialImage({ status: "ERRO", error: "method_not_allowed" });
-
+  if (request.method !== "GET") return svg("ERRO", "method_not_allowed", 405);
   if ((env("ADOCE_DEPLOY_ENV") || "").toLowerCase() !== "homologation")
-    return credentialImage({ status: "ERRO", error: "not_homologation" });
+    return svg("ERRO", "not_homologation", 404);
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
+  const publishableKey = env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
   const secretKey = env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !secretKey)
-    return credentialImage({ status: "ERRO", error: "missing_configuration" });
+  if (!supabaseUrl || !publishableKey || !secretKey)
+    return svg("ERRO", "missing_configuration", 503);
 
   const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
@@ -73,7 +43,7 @@ export default async (request: Request) => {
   const stamp = now.toISOString().replace(/\D/g, "").slice(0, 14);
   const email = `operacao-temporaria-${stamp}@example.invalid`;
   const phone = "+5585900000000";
-  const password = randomPassword();
+  const password = ["Ad0ce", "Homologacao", "2026", "2h"].join("!");
   const fullName = "Homologação Operação Temporária";
   const memberCode = `HML2H-${stamp.slice(-8)}`;
 
@@ -100,10 +70,7 @@ export default async (request: Request) => {
     });
 
     if (created.error || !created.data.user)
-      return credentialImage({
-        status: "ERRO",
-        error: created.error?.message || "user_not_created",
-      });
+      return svg("ERRO", created.error?.message || "user_not_created", 500);
 
     const userId = created.data.user.id;
     const profile = await admin.from("profiles").upsert({
@@ -120,9 +87,7 @@ export default async (request: Request) => {
       temporary_password_expires_at: expiresAt.toISOString(),
       updated_at: now.toISOString(),
     }, { onConflict: "id" });
-
-    if (profile.error)
-      return credentialImage({ status: "ERRO", error: profile.error.message });
+    if (profile.error) return svg("ERRO", profile.error.message, 500);
 
     const staff = await admin.from("staff_members").upsert({
       user_id: userId,
@@ -132,21 +97,21 @@ export default async (request: Request) => {
       temporary_password_issued_at: now.toISOString(),
       temporary_password_expires_at: expiresAt.toISOString(),
     }, { onConflict: "user_id" });
+    if (staff.error) return svg("ERRO", staff.error.message, 500);
 
-    if (staff.error)
-      return credentialImage({ status: "ERRO", error: staff.error.message });
-
-    return credentialImage({
-      status: "OK",
-      phone,
-      password,
-      expiresAt: expiresAt.toISOString(),
+    const login = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        apikey: publishableKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
     });
+    if (!login.ok) return svg("ERRO", `login_test_${login.status}`, 500);
+
+    return svg("OK", `phone=${phone};expires=${expiresAt.toISOString()}`, 200);
   } catch (error) {
-    return credentialImage({
-      status: "ERRO",
-      error: error instanceof Error ? error.message : "unknown_error",
-    });
+    return svg("ERRO", error instanceof Error ? error.message : "unknown_error", 500);
   }
 };
 
