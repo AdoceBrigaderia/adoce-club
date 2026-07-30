@@ -17,9 +17,11 @@ import {
   X,
 } from "lucide-react";
 import {
+  EDITED_IMAGE_MAX_BYTES,
   validateProductImage,
   type EditedProductImage,
 } from "./admin-media";
+import { formatImageBytes, imageAspectRatioLabel, imageDimensionsLabel } from "./image-editor-metadata";
 import "./image-editor.css";
 
 export type ImageEditorPreset = {
@@ -255,9 +257,24 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
     }
   };
 
+  const outputWidth = preset.outputWidth || 1200;
+  const outputHeight = Math.round(outputWidth * preset.aspectHeight / preset.aspectWidth);
   const hasLowResolution = Boolean(
-    image && (rotatedSize.width < (preset.outputWidth || 1200) || rotatedSize.height < Math.round((preset.outputWidth || 1200) * preset.aspectHeight / preset.aspectWidth)),
+    image && (rotatedSize.width < outputWidth || rotatedSize.height < outputHeight),
   );
+  const validationStatus = error
+    ? { kind: "error", title: "Publicação bloqueada", detail: error }
+    : hasLowResolution
+      ? {
+        kind: "warning",
+        title: "A imagem será ampliada",
+        detail: "A foto original é menor que a saída recomendada e pode perder nitidez.",
+      }
+      : {
+        kind: "good",
+        title: "Imagem pronta para publicação",
+        detail: "Formato de origem aceito e resolução suficiente para o corte escolhido.",
+      };
 
   return createPortal(
     <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label={`Editar ${title}`}>
@@ -293,10 +310,27 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
               <span className="image-editor-grid" aria-hidden="true" />
               <small>Arraste para enquadrar · use dois dedos para ajustar</small>
             </div>
-            <div className={`image-editor-quality ${hasLowResolution ? "warning" : "good"}`}>
-              <strong>{hasLowResolution ? "Resolução abaixo do recomendado" : "Boa resolução para publicação"}</strong>
-              <span>{preset.description} · saída em {preset.outputWidth || 1200} × {Math.round((preset.outputWidth || 1200) * preset.aspectHeight / preset.aspectWidth)} px</span>
+            <div className={`image-editor-quality ${validationStatus.kind}`}>
+              <strong>{validationStatus.title}</strong>
+              <span>{validationStatus.detail}</span>
             </div>
+            <dl className="image-editor-metadata" aria-label="Detalhes técnicos da imagem">
+              <div>
+                <dt>Imagem original</dt>
+                <dd>{imageDimensionsLabel(image?.naturalWidth || 0, image?.naturalHeight || 0)}</dd>
+                <small>Proporção {imageAspectRatioLabel(image?.naturalWidth || 0, image?.naturalHeight || 0)} · {formatImageBytes(file.size)}</small>
+              </div>
+              <div>
+                <dt>Arquivo para o site</dt>
+                <dd>{imageDimensionsLabel(outputWidth, outputHeight)}</dd>
+                <small>Proporção {imageAspectRatioLabel(outputWidth, outputHeight)} · WebP de até {formatImageBytes(EDITED_IMAGE_MAX_BYTES)}</small>
+              </div>
+              <div className={`image-editor-metadata-status ${validationStatus.kind}`}>
+                <dt>Verificação</dt>
+                <dd>{validationStatus.title}</dd>
+                <small>{validationStatus.detail}</small>
+              </div>
+            </dl>
           </div>
           <aside className="image-editor-controls">
             <fieldset>

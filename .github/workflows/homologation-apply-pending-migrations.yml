@@ -1,0 +1,221 @@
+name: Aplicar migrations pendentes somente na homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite APLICAR 22 MIGRATIONS SOMENTE HOMOLOGACAO seguido do project ref
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo autorizado da branch de reestruturação
+        required: true
+        type: string
+      backup_evidence:
+        description: Evidência do backup recuperável no formato BACKUP CONFIRMADO ...
+        required: true
+        type: string
+
+concurrency:
+  group: apply-pending-migrations-homologation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
+  PRODUCTION_REF: uefwywizqhfvvijaopcn
+  PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
+  SUPABASE_TELEMETRY_DISABLED: "true"
+
+jobs:
+  apply:
+    name: Dry-run, aplicação integral e auditoria viva
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente o commit autorizado
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, commit, backup e isolamento
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_EVIDENCE: ${{ inputs.backup_evidence }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$CONFIRMATION" = "APLICAR 22 MIGRATIONS SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          case "$BACKUP_EVIDENCE" in
+            "BACKUP CONFIRMADO "*) ;;
+            *) echo "Evidência de backup inválida" >&2; exit 1 ;;
+          esac
+          test "${#BACKUP_EVIDENCE}" -ge 35
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência produtiva rejeitada" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências e validar plano completo
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefer-offline --no-audit
+          npm run test:homologation-pending-migrations
+          npm run report:homologation-pending-migrations
+          node - <<'NODE'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('artifacts/homologation-pending-migrations.json', 'utf8'));
+          if (report.structural_passed !== true) throw new Error('Plano estrutural reprovado.');
+          if (report.pending_count !== 22) throw new Error(`Esperadas 22 migrations; encontradas ${report.pending_count}.`);
+          if (report.apply_blockers.length !== 1 || report.apply_blockers[0] !== 'dry_run_pendente') {
+            throw new Error(`Bloqueios inesperados: ${report.apply_blockers.join(', ')}`);
+          }
+          NODE
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Executar dry-run integral das 22 migrations
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-migration-apply
+          npx --yes supabase@2.109.1 db push \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --include-all \
+            --dry-run \
+            > artifacts/homologation-migration-apply/dry-run.log 2>&1
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+            --command="select version from supabase_migrations.schema_migrations where version >= '20260728000000' order by version" \
+            > artifacts/homologation-migration-apply/already-applied-versions.txt
+          node - <<'NODE'
+          const fs = require('fs');
+          const plan = JSON.parse(fs.readFileSync(process.env.PENDING_PLAN, 'utf8'));
+          const output = fs.readFileSync('artifacts/homologation-migration-apply/dry-run.log', 'utf8');
+          const expected = plan.pending_migrations.map((migration) => migration.version).sort();
+          const applied = fs.readFileSync(
+            'artifacts/homologation-migration-apply/already-applied-versions.txt',
+            'utf8',
+          ).trim().split(/\s+/).filter(Boolean).sort();
+          const pending = [...output.matchAll(/(\d{14})_[^\s]+\.sql/g)]
+            .map((match) => match[1])
+            .sort();
+          const expectedPending = expected.filter((version) => !applied.includes(version));
+          const missing = expected.filter(
+            (version) => !output.includes(version) && !applied.includes(version),
+          );
+          if (applied.some((version) => !expected.includes(version))) {
+            throw new Error('HistÃ³rico remoto contÃ©m migration extra fora do plano aprovado.');
+          }
+          if (JSON.stringify(pending) !== JSON.stringify(expectedPending)) {
+            throw new Error(
+              `Retomada divergente: ${applied.length} aplicadas e ${pending.length} pendentes.`,
+            );
+          }
+          if (new Set([...applied, ...pending]).size !== 22) {
+            throw new Error('O conjunto aplicado mais pendente nÃ£o totaliza exatamente 22 migrations.');
+          }
+          if (plan.pending_migrations.length !== 22) throw new Error('Plano não contém 22 migrations.');
+          if (missing.length) throw new Error(`Dry-run não listou: ${missing.join(', ')}`);
+          NODE
+
+      - name: Aplicar exatamente o conjunto aprovado na homologação
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes supabase@2.109.1 db push \
+            --db-url "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --include-all \
+            --yes \
+            > artifacts/homologation-migration-apply/apply.log 2>&1
+
+      - name: Confirmar histórico remoto exato
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const plan = JSON.parse(fs.readFileSync(process.env.PENDING_PLAN, 'utf8'));
+          fs.writeFileSync(
+            'artifacts/homologation-migration-apply/expected-versions.txt',
+            `${plan.pending_migrations.map((migration) => migration.version).sort().join('\n')}\n`,
+          );
+          NODE
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+            --command="select version from supabase_migrations.schema_migrations where version >= '20260728000000' order by version" \
+            > artifacts/homologation-migration-apply/applied-versions.txt
+          diff -u \
+            artifacts/homologation-migration-apply/expected-versions.txt \
+            artifacts/homologation-migration-apply/applied-versions.txt
+
+      - name: Executar auditoria viva pós-migrations
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 \
+            --file=supabase/tests/homologation_post_migration_live.sql \
+            > artifacts/homologation-migration-apply/live-audit.log
+
+      - name: Gerar evidência redigida
+        env:
+          BACKUP_EVIDENCE: ${{ inputs.backup_evidence }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$BACKUP_EVIDENCE" > artifacts/homologation-migration-apply/backup-evidence.txt
+          printf '%s\n' "$EXPECTED_COMMIT" > artifacts/homologation-migration-apply/commit.txt
+          printf '%s\n' "$HOMOLOGATION_REF" > artifacts/homologation-migration-apply/project-ref.txt
+          ! grep -R "$PRODUCTION_REF" artifacts/homologation-migration-apply
+          ! grep -R "postgresql://\|postgres://" artifacts/homologation-migration-apply
+
+      - name: Preservar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrations-homologacao-aplicadas-${{ github.run_number }}
+          path: artifacts/homologation-migration-apply
+          if-no-files-found: warn
+          retention-days: 30

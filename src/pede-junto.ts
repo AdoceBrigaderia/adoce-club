@@ -52,14 +52,6 @@ export type PedeJuntoFlavor = {
   quantity_reserved: number;
 };
 
-export type StoredPedeJuntoAccess = {
-  invitationToken: string;
-  participantToken: string;
-  organizerToken?: string;
-};
-
-const storagePrefix = "adoce-pede-junto:";
-
 export function progressCopy(total: number, minimum = 5) {
   if (total < minimum) {
     const missing = minimum - total;
@@ -111,7 +103,7 @@ export function roomProgressCopy(room: PedeJuntoRoom) {
   return {
     title: `${room.total_slices} fatias no pedido`,
     message: "O grupo foi encerrado e este pedido está sendo cuidado pela Adoce.",
-    tone: room.free_delivery ? "unlocked" as const : "building" as const,
+    tone: room.free_delivery ? ("unlocked" as const) : ("building" as const),
   };
 }
 
@@ -137,20 +129,10 @@ export function pedeJuntoInviteUrl(code: string, invitationToken: string) {
   return url.toString();
 }
 
-export function readPedeJuntoAccess(code: string): StoredPedeJuntoAccess | null {
-  try {
-    const raw = localStorage.getItem(`${storagePrefix}${code}`);
-    return raw ? (JSON.parse(raw) as StoredPedeJuntoAccess) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function savePedeJuntoAccess(code: string, access: StoredPedeJuntoAccess) {
-  localStorage.setItem(`${storagePrefix}${code}`, JSON.stringify(access));
-}
-
-export function buildPedeJuntoWhatsAppMessage(room: PedeJuntoRoom, inviteUrl: string) {
+export function buildPedeJuntoWhatsAppMessage(
+  room: PedeJuntoRoom,
+  inviteUrl: string,
+) {
   const progress = room.free_delivery
     ? `Já temos ${room.total_slices} fatias e a entrega grátis está liberada — mas o grupo continua aberto!`
     : `Estamos com ${room.total_slices} de ${room.minimum_slices} fatias para liberar a entrega grátis.`;

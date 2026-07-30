@@ -1,0 +1,111 @@
+name: Classificar policies permissivas somente na homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite AUDITAR POLICIES SOMENTE HOMOLOGACAO seguido do project ref
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo autorizado da branch de reestruturação
+        required: true
+        type: string
+
+concurrency:
+  group: audit-permissive-policies-homologation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
+  PRODUCTION_REF: uefwywizqhfvvijaopcn
+  LIVE_AUDIT_FILE: supabase/tests/homologation_permissive_policy_audit_live.sql
+
+jobs:
+  audit:
+    name: Inventariar duplicidades sem alterar o banco
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, commit e isolamento
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$CONFIRMATION" = "AUDITAR POLICIES SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          test -s "$LIVE_AUDIT_FILE"
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência produtiva rejeitada" >&2; exit 1 ;;
+          esac
+          ! grep -q "$PRODUCTION_REF" "$LIVE_AUDIT_FILE"
+          grep -q '^begin;' "$LIVE_AUDIT_FILE"
+          grep -q '^rollback;' "$LIVE_AUDIT_FILE"
+          ! grep -Eiq '^[[:space:]]*(insert|update|delete|merge|alter|drop|truncate|grant|revoke|create[[:space:]]+policy|drop[[:space:]]+policy)\b' "$LIVE_AUDIT_FILE"
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Executar auditoria viva somente leitura
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_dir="artifacts/homologation-permissive-policy-audit"
+          mkdir -p "$output_dir"
+          set +e
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 --csv \
+            --file="$LIVE_AUDIT_FILE" \
+            > >(tee "$output_dir/live-audit.csv") \
+            2> >(tee "$output_dir/live-audit.stderr.log" >&2)
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$output_dir/exit-code.txt"
+          printf '%s\n' "$(git rev-parse HEAD)" > "$output_dir/commit.txt"
+          printf '%s\n' "$HOMOLOGATION_REF" > "$output_dir/project-ref.txt"
+          sha256sum "$LIVE_AUDIT_FILE" > "$output_dir/audit-sql.sha256"
+          ! grep -R "$PRODUCTION_REF" "$output_dir"
+          ! grep -R "postgresql://\|postgres://" "$output_dir"
+          test "$status" -eq 0
+
+      - name: Preservar evidências redigidas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-policies-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-permissive-policy-audit
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6

@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 3,
+  "liveTest": "supabase/tests/store_rls_boundary_live.sql",
+  "writeLockMigration": "supabase/migrations/20260729155500_lock_store_scoped_table_writes.sql",
+  "workflow": ".github/workflows/store-rls-boundary-live-homologation.yml",
+  "tables": [
+    {
+      "name": "stores",
+      "accessMode": "authenticated_read",
+      "readPredicates": [
+        "private.can_access_store(id)"
+      ]
+    },
+    {
+      "name": "cash_registers",
+      "accessMode": "authenticated_read",
+      "readPredicates": [
+        "private.can_access_store(store_id)"
+      ]
+    },
+    {
+      "name": "staff_store_assignments",
+      "accessMode": "authenticated_read",
+      "readPredicates": [
+        "private.is_manager()",
+        "auth.uid()"
+      ]
+    },
+    {
+      "name": "cash_sessions",
+      "accessMode": "authenticated_read",
+      "readPredicates": [
+        "private.can_access_store(store_id)"
+      ]
+    },
+    {
+      "name": "cash_movements",
+      "accessMode": "authenticated_read",
+      "readPredicates": [
+        "private.can_access_store(store_id)"
+      ]
+    },
+    {
+      "name": "customer_checkins",
+      "accessMode": "rpc_only",
+      "readPredicates": [],
+      "definitionMigration": "supabase/migrations/20260726191325_customer_nfc_qr_checkins.sql",
+      "historicalPolicies": [
+        {
+          "name": "backend_only_no_direct_access",
+          "migration": "supabase/migrations/20260727035116_backend_only_tables_explicit_deny.sql"
+        }
+      ]
+    },
+    {
+      "name": "cash_reconciliation_queue",
+      "accessMode": "rpc_only",
+      "readPredicates": [],
+      "definitionMigration": "supabase/migrations/20260727005141_cash_reconciliation_queue.sql",
+      "historicalPolicies": [
+        {
+          "name": "backend_only_no_direct_access",
+          "migration": "supabase/migrations/20260727035116_backend_only_tables_explicit_deny.sql"
+        }
+      ]
+    }
+  ]
+}

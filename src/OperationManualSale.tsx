@@ -1,47 +1,530 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Minus, Plus, ShoppingBag, X } from "lucide-react";
-import { requireSupabase } from "./lib/supabase";
+import {
+  Check,
+  Flame,
+  LockKeyhole,
+  Minus,
+  Plus,
+  Search,
+  ShoppingBag,
+  Star,
+  X,
+} from "lucide-react";
+import { resolvePublicImageSource } from "./public-image-fallbacks";
+import { bffRpc } from "./services/bff-rpc";
+import {
+  completeOperation,
+  pendingOperationKey,
+} from "./services/operation-idempotency";
 import "./operation-commerce-tools.css";
+import "./operation-quick-sale-ranking.css";
 
-type Flavor = { id: string; name: string; base_price: number; remaining: number };
+type Flavor = {
+  id: string;
+  name: string;
+  base_price: number;
+  image_path: string | null;
+  remaining: number;
+  is_favorite: boolean;
+  sales_count_30d: number;
+};
 type Method = { code: string; label: string; active: boolean };
-const dateKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
-const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+type OpenCashSession = {
+  id: string;
+  store_id: string;
+  register_id: string;
+  status: string;
+  opened_at: string;
+};
+type CashRegister = { id: string; store_id: string; name: string; active: boolean };
+type StoreRow = { id: string; name: string; active: boolean };
+type CashWorkspace = {
+  sessions?: OpenCashSession[];
+  registers?: CashRegister[];
+  stores?: StoreRow[];
+};
+type QuickSaleCatalog = {
+  service_date?: string;
+  flavors?: Flavor[];
+  payment_methods?: Method[];
+};
+type CatalogView = "all" | "favorites" | "popular";
+
+const dateKey = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(
+    new Date(),
+  );
+const money = (value: number) =>
+  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function OperationManualSale({ onCreated }: { onCreated: () => void }) {
-  const [open, setOpen] = useState(false); const [flavors, setFlavors] = useState<Flavor[]>([]); const [methods, setMethods] = useState<Method[]>([]);
-  const [quantities, setQuantities] = useState<Record<string, number>>({}); const [name, setName] = useState(""); const [phone, setPhone] = useState("");
-  const [method, setMethod] = useState("pix"); const [notes, setNotes] = useState(""); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState("");
+  const [open, setOpen] = useState(false);
+  const [flavors, setFlavors] = useState<Flavor[]>([]);
+  const [methods, setMethods] = useState<Method[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [method, setMethod] = useState("pix");
+  const [notes, setNotes] = useState("");
+  const [query, setQuery] = useState("");
+  const [catalogView, setCatalogView] = useState<CatalogView>("all");
+  const [favoriteBusy, setFavoriteBusy] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [cashSessions, setCashSessions] = useState<OpenCashSession[]>([]);
+  const [registers, setRegisters] = useState<CashRegister[]>([]);
+  const [stores, setStores] = useState<StoreRow[]>([]);
+  const [cashSessionId, setCashSessionId] = useState("");
+
   const load = useCallback(async () => {
-    const [{ data: flavorData }, { data: availabilityData }, { data: settingsData }] = await Promise.all([
-      requireSupabase().from("flavors").select("id,name,base_price").eq("active", true).order("name"),
-      requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", dateKey()),
-      requireSupabase().rpc("staff_get_commerce_settings"),
-    ]);
-    setFlavors((flavorData || []).map((flavor) => { const availability = availabilityData?.find((row) => row.flavor_id === flavor.id); return { id: flavor.id, name: flavor.name, base_price: Number(flavor.base_price), remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0)) }; }).filter((flavor) => flavor.remaining > 0));
-    const activeMethods = ((settingsData?.payment_methods || []) as Method[]).filter((item) => item.active); setMethods(activeMethods); if (!activeMethods.some((item) => item.code === method)) setMethod(activeMethods[0]?.code || "");
-  }, [method]);
-  useEffect(() => { if (open) void load(); }, [open, load]);
-  const items = useMemo(() => flavors.filter((flavor) => (quantities[flavor.id] || 0) > 0).map((flavor) => ({ flavor_id: flavor.id, quantity: quantities[flavor.id] })), [flavors, quantities]);
-  const total = useMemo(() => flavors.reduce((sum, flavor) => sum + flavor.base_price * (quantities[flavor.id] || 0), 0), [flavors, quantities]);
-  const setQuantity = (flavor: Flavor, value: number) => setQuantities((current) => ({ ...current, [flavor.id]: Math.max(0, Math.min(flavor.remaining, value)) }));
-  const submit = async () => {
-    if (!items.length) return setNotice("Inclua pelo menos uma fatia na venda."); if (!method) return setNotice("Escolha a forma de pagamento.");
-    setBusy(true); const { data, error } = await requireSupabase().rpc("staff_create_manual_sale", { requested_customer_name: name, requested_customer_phone: phone, requested_items: items, requested_payment_method: method, requested_notes: notes }); setBusy(false);
-    if (error) return setNotice(error.message);
-    setNotice(`Venda ${data?.order_number || ""} registrada, estoque atualizado e pagamento contabilizado.`); setQuantities({}); setName(""); setPhone(""); setNotes(""); onCreated();
+    setLoading(true);
+    setNotice("");
+    try {
+      const [catalog, workspace] = await Promise.all([
+        bffRpc<QuickSaleCatalog>("staff_get_quick_sale_catalog", {
+          service_date: dateKey(),
+        }),
+        bffRpc<CashWorkspace>("staff_get_business_workspace"),
+      ]);
+      const nextFlavors = (catalog.flavors || []).map((flavor) => ({
+        ...flavor,
+        base_price: Number(flavor.base_price),
+        remaining: Number(flavor.remaining),
+        is_favorite: Boolean(flavor.is_favorite),
+        sales_count_30d: Number(flavor.sales_count_30d || 0),
+      }));
+      const activeMethods = (catalog.payment_methods || []).filter(
+        (item) => item.active,
+      );
+      const opened = (workspace.sessions || []).filter(
+        (item) => item.status === "open",
+      );
+
+      setFlavors(nextFlavors);
+      setMethods(activeMethods);
+      setRegisters(workspace.registers || []);
+      setStores(workspace.stores || []);
+      setCashSessions(opened);
+      setMethod((current) =>
+        activeMethods.some((item) => item.code === current)
+          ? current
+          : activeMethods[0]?.code || "",
+      );
+      setCashSessionId((current) =>
+        opened.some((item) => item.id === current)
+          ? current
+          : opened[0]?.id || "",
+      );
+      if (!opened.length) {
+        setNotice("Abra um caixa para registrar a venda presencial.");
+      }
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível abrir a venda rápida.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) void load();
+  }, [open, load]);
+
+  const filteredFlavors = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("pt-BR");
+    return flavors.filter((flavor) => {
+      if (
+        normalized &&
+        !flavor.name.toLocaleLowerCase("pt-BR").includes(normalized)
+      ) {
+        return false;
+      }
+      if (catalogView === "favorites") return flavor.is_favorite;
+      if (catalogView === "popular") return flavor.sales_count_30d > 0;
+      return true;
+    });
+  }, [catalogView, flavors, query]);
+
+  const items = useMemo(
+    () =>
+      flavors
+        .filter((flavor) => (quantities[flavor.id] || 0) > 0)
+        .map((flavor) => ({
+          flavor_id: flavor.id,
+          quantity: quantities[flavor.id],
+        })),
+    [flavors, quantities],
+  );
+  const selectedCount = useMemo(
+    () => Object.values(quantities).reduce((sum, quantity) => sum + quantity, 0),
+    [quantities],
+  );
+  const total = useMemo(
+    () =>
+      flavors.reduce(
+        (sum, flavor) =>
+          sum + flavor.base_price * (quantities[flavor.id] || 0),
+        0,
+      ),
+    [flavors, quantities],
+  );
+  const favoritesCount = useMemo(
+    () => flavors.filter((flavor) => flavor.is_favorite).length,
+    [flavors],
+  );
+  const popularCount = useMemo(
+    () => flavors.filter((flavor) => flavor.sales_count_30d > 0).length,
+    [flavors],
+  );
+
+  const setQuantity = (flavor: Flavor, value: number) =>
+    setQuantities((current) => ({
+      ...current,
+      [flavor.id]: Math.max(0, Math.min(flavor.remaining, value)),
+    }));
+
+  const toggleFavorite = async (flavor: Flavor) => {
+    if (favoriteBusy) return;
+    const nextFavorite = !flavor.is_favorite;
+    setFavoriteBusy(flavor.id);
+    setFlavors((current) =>
+      current.map((item) =>
+        item.id === flavor.id ? { ...item, is_favorite: nextFavorite } : item,
+      ),
+    );
+    try {
+      await bffRpc("staff_set_quick_sale_favorite", {
+        target_flavor_id: flavor.id,
+        favorite: nextFavorite,
+      });
+    } catch (error) {
+      setFlavors((current) =>
+        current.map((item) =>
+          item.id === flavor.id
+            ? { ...item, is_favorite: flavor.is_favorite }
+            : item,
+        ),
+      );
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível atualizar o favorito.",
+      );
+    } finally {
+      setFavoriteBusy("");
+    }
   };
-  return <>
-    <button className="commerce-primary-action" type="button" onClick={() => setOpen(true)}><ShoppingBag /> Lançar venda do atendimento</button>
-    {open ? <div className="instant-order-operation-layer"><button className="instant-order-operation-backdrop" aria-label="Fechar" onClick={() => setOpen(false)} /><aside role="dialog" aria-modal="true" aria-label="Lançar venda"><button className="drawer-close" onClick={() => setOpen(false)} aria-label="Fechar"><X /></button><small>Venda direta</small><h2>Lançar venda</h2><p>Use para balcão, WhatsApp ou atendimento presencial. Não é necessário cadastrar o cliente.</p>
-      {notice ? <p className="operation-commercial-notice">{notice}</p> : null}
-      <div className="instant-order-operation-items">{flavors.map((flavor) => <span key={flavor.id}><span><strong>{flavor.name}</strong><small>{flavor.remaining} disponível(is) · {money(flavor.base_price)}</small></span><span><button type="button" onClick={() => setQuantity(flavor, (quantities[flavor.id] || 0) - 1)}><Minus /></button><b>{quantities[flavor.id] || 0}</b><button type="button" onClick={() => setQuantity(flavor, (quantities[flavor.id] || 0) + 1)}><Plus /></button></span></span>)}</div>
-      <div className="instant-order-operation-total"><span>Total</span><strong>{money(total)}</strong></div>
-      <label>Nome do cliente <small>(opcional)</small><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Cliente do atendimento" /></label>
-      <label>Celular <small>(opcional; reconhece o Clube Adoce)</small><input inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="DDD + número" /></label>
-      <label>Forma de pagamento<select value={method} onChange={(event) => setMethod(event.target.value)}>{methods.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}</select></label>
-      <label>Observações<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informações úteis sobre a venda" /></label>
-      <button className="commerce-primary-action" type="button" onClick={() => void submit()} disabled={busy}>{busy ? "Registrando…" : "Confirmar venda e baixar estoque"}</button>
-    </aside></div> : null}
-  </>;
+
+  const cashSessionLabel = (cash: OpenCashSession) => {
+    const register = registers.find((item) => item.id === cash.register_id);
+    const store = stores.find((item) => item.id === cash.store_id);
+    return `${store?.name || "Loja"} · ${register?.name || "Caixa"}`;
+  };
+
+  const submit = async () => {
+    if (!cashSessionId)
+      return setNotice("Abra e selecione um caixa antes de registrar a venda.");
+    if (!items.length) return setNotice("Toque nos produtos para montar a venda.");
+    if (!method) return setNotice("Escolha a forma de pagamento.");
+
+    setBusy(true);
+    setNotice("");
+    const operationPayload = {
+      target_session_id: cashSessionId,
+      requested_customer_name: name,
+      requested_customer_phone: phone,
+      requested_items: items,
+      requested_payment_method: method,
+      requested_notes: notes,
+    };
+    const operation = pendingOperationKey("manual-sale", operationPayload);
+    try {
+      const data = await bffRpc<{ order_number?: string }>(
+        "staff_create_manual_sale_in_cash_v2",
+        {
+          requested_operation_key: operation.value,
+          ...operationPayload,
+        },
+      );
+      completeOperation(operation.fingerprint);
+      setNotice(
+        `Venda ${data?.order_number || ""} registrada, estoque baixado e caixa atualizado.`,
+      );
+      setQuantities({});
+      setName("");
+      setPhone("");
+      setNotes("");
+      setQuery("");
+      onCreated();
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : "Não foi possível registrar a venda.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        className="commerce-primary-action manual-sale-open"
+        type="button"
+        onClick={() => setOpen(true)}
+      >
+        <ShoppingBag /> Venda rápida
+      </button>
+      {open ? (
+        <div className="instant-order-operation-layer">
+          <button
+            className="instant-order-operation-backdrop"
+            aria-label="Fechar"
+            onClick={() => setOpen(false)}
+          />
+          <aside
+            className="manual-sale-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Venda rápida"
+          >
+            <button
+              className="drawer-close"
+              onClick={() => setOpen(false)}
+              aria-label="Fechar"
+            >
+              <X />
+            </button>
+            <small>Atendimento em poucos toques</small>
+            <h2>Venda rápida</h2>
+            <p>
+              Favoritos e mais vendidos aparecem primeiro. Toque no produto para
+              adicionar uma unidade e conclua tudo no botão final.
+            </p>
+
+            {notice ? (
+              <p className="operation-commercial-notice" role="status">
+                {notice}
+              </p>
+            ) : null}
+
+            <div className="manual-sale-context">
+              <label>
+                Caixa da venda
+                <select
+                  value={cashSessionId}
+                  onChange={(event) => {
+                    setCashSessionId(event.target.value);
+                    setNotice("");
+                  }}
+                >
+                  <option value="">Selecione um caixa aberto</option>
+                  {cashSessions.map((cash) => (
+                    <option value={cash.id} key={cash.id}>
+                      {cashSessionLabel(cash)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="manual-sale-search">
+                Buscar produto
+                <span>
+                  <Search />
+                  <input
+                    autoFocus
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="Digite parte do sabor"
+                  />
+                </span>
+              </label>
+            </div>
+
+            <div className="quick-sale-ranking-filters" aria-label="Organizar produtos">
+              <button
+                type="button"
+                className={catalogView === "all" ? "active" : ""}
+                aria-pressed={catalogView === "all"}
+                onClick={() => setCatalogView("all")}
+              >
+                <ShoppingBag /> Todos
+              </button>
+              <button
+                type="button"
+                className={catalogView === "favorites" ? "active" : ""}
+                aria-pressed={catalogView === "favorites"}
+                onClick={() => setCatalogView("favorites")}
+              >
+                <Star /> Favoritos ({favoritesCount})
+              </button>
+              <button
+                type="button"
+                className={catalogView === "popular" ? "active" : ""}
+                aria-pressed={catalogView === "popular"}
+                onClick={() => setCatalogView("popular")}
+              >
+                <Flame /> Mais vendidos ({popularCount})
+              </button>
+            </div>
+
+            {!cashSessions.length ? (
+              <div className="manual-sale-cash-warning">
+                <LockKeyhole />
+                <span>
+                  <strong>Nenhum caixa aberto</strong>
+                  <small>Abra o caixa na Central da Operação.</small>
+                </span>
+              </div>
+            ) : null}
+
+            <div className="manual-sale-product-grid" aria-busy={loading}>
+              {loading ? <p>Carregando produtos…</p> : null}
+              {!loading && !filteredFlavors.length ? (
+                <p className="quick-sale-filter-empty">
+                  Nenhum produto disponível neste filtro. Marque a estrela de um
+                  produto para deixá-lo sempre à mão.
+                </p>
+              ) : null}
+              {filteredFlavors.map((flavor) => {
+                const quantity = quantities[flavor.id] || 0;
+                return (
+                  <article
+                    className={`manual-sale-product-card${quantity ? " selected" : ""}${flavor.is_favorite ? " favorite" : ""}`}
+                    key={flavor.id}
+                  >
+                    <button
+                      type="button"
+                      className={`quick-sale-favorite-toggle${flavor.is_favorite ? " active" : ""}`}
+                      onClick={() => void toggleFavorite(flavor)}
+                      disabled={favoriteBusy === flavor.id}
+                      aria-pressed={flavor.is_favorite}
+                      aria-label={
+                        flavor.is_favorite
+                          ? `Remover ${flavor.name} dos favoritos`
+                          : `Adicionar ${flavor.name} aos favoritos`
+                      }
+                    >
+                      <Star fill={flavor.is_favorite ? "currentColor" : "none"} />
+                    </button>
+                    <button
+                      type="button"
+                      className="manual-sale-product-main"
+                      onClick={() => setQuantity(flavor, quantity + 1)}
+                      disabled={quantity >= flavor.remaining}
+                    >
+                      <img
+                        src={resolvePublicImageSource(flavor.image_path, flavor.name)}
+                        alt={flavor.name}
+                        onError={(event) => {
+                          event.currentTarget.src = resolvePublicImageSource(null, flavor.name);
+                        }}
+                      />
+                      <span>
+                        <strong>{flavor.name}</strong>
+                        <small>
+                          {money(flavor.base_price)} · {flavor.remaining} disponível(is)
+                        </small>
+                        {flavor.sales_count_30d > 0 ? (
+                          <small className="manual-sale-popularity">
+                            <Flame /> {flavor.sales_count_30d} vendida(s) em 30 dias
+                          </small>
+                        ) : null}
+                      </span>
+                      {quantity ? <b>{quantity}</b> : <Plus />}
+                    </button>
+                    <div className="manual-sale-product-controls">
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(flavor, quantity - 1)}
+                        disabled={!quantity}
+                        aria-label={`Remover uma unidade de ${flavor.name}`}
+                      >
+                        <Minus />
+                      </button>
+                      <strong>{quantity}</strong>
+                      <button
+                        type="button"
+                        onClick={() => setQuantity(flavor, quantity + 1)}
+                        disabled={quantity >= flavor.remaining}
+                        aria-label={`Adicionar uma unidade de ${flavor.name}`}
+                      >
+                        <Plus />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <section className="manual-sale-payment">
+              <small>Forma de pagamento</small>
+              <div>
+                {methods.map((item) => (
+                  <button
+                    type="button"
+                    key={item.code}
+                    className={method === item.code ? "active" : ""}
+                    aria-pressed={method === item.code}
+                    onClick={() => setMethod(item.code)}
+                  >
+                    {method === item.code ? <Check /> : null}
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <details className="manual-sale-optional">
+              <summary>Cliente e observações opcionais</summary>
+              <div>
+                <label>
+                  Nome do cliente
+                  <input
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Ex.: Cliente do atendimento"
+                  />
+                </label>
+                <label>
+                  Celular
+                  <input
+                    inputMode="tel"
+                    value={phone}
+                    onChange={(event) => setPhone(event.target.value)}
+                    placeholder="DDD + número"
+                  />
+                </label>
+                <label>
+                  Observações
+                  <textarea
+                    value={notes}
+                    onChange={(event) => setNotes(event.target.value)}
+                    placeholder="Somente quando necessário"
+                  />
+                </label>
+              </div>
+            </details>
+
+            <div className="manual-sale-sticky-total">
+              <span>
+                <small>{selectedCount} item(ns)</small>
+                <strong>{money(total)}</strong>
+              </span>
+              <button
+                className="commerce-primary-action"
+                type="button"
+                onClick={() => void submit()}
+                disabled={busy || !cashSessionId || !selectedCount || !method}
+              >
+                {busy ? "Registrando…" : `Registrar venda · ${money(total)}`}
+              </button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
+    </>
+  );
 }

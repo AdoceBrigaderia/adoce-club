@@ -1,0 +1,296 @@
+.operation-cost-catalog {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 1.5rem;
+  background: #fff8fb;
+  box-shadow: 0 1rem 3rem rgba(83, 31, 54, 0.08);
+}
+
+.operation-cost-catalog-heading,
+.operation-cost-catalog-price header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.operation-cost-catalog-heading h2,
+.operation-cost-catalog-price h3 {
+  margin: 0.15rem 0 0;
+}
+
+.operation-cost-catalog-heading p {
+  max-width: 58rem;
+  margin: 0.35rem 0 0;
+}
+
+.operation-cost-catalog-heading > svg {
+  width: 3rem;
+  height: 3rem;
+  flex: none;
+}
+
+.operation-cost-catalog-notice {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(111, 35, 67, 0.16);
+}
+
+.operation-cost-catalog-summary,
+.operation-cost-catalog-result {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.operation-cost-catalog-summary article,
+.operation-cost-catalog-result article {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 5.5rem;
+  align-content: center;
+  padding: 0.85rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(111, 35, 67, 0.12);
+}
+
+.operation-cost-catalog-summary strong,
+.operation-cost-catalog-result strong {
+  font-size: clamp(1.15rem, 4vw, 1.65rem);
+}
+
+.operation-cost-catalog-summary .alert,
+.operation-cost-catalog-result .alert {
+  background: #fff1e8;
+  border-color: #ef9b64;
+}
+
+.operation-cost-catalog-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.operation-cost-catalog-layout > aside,
+.operation-cost-catalog-editor {
+  min-width: 0;
+}
+
+.operation-cost-catalog-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.55rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(111, 35, 67, 0.14);
+}
+
+.operation-cost-catalog-search input,
+.operation-cost-catalog-form input,
+.operation-cost-catalog-form select,
+.operation-cost-catalog-form textarea,
+.operation-cost-catalog-price input,
+.operation-cost-catalog-price select {
+  width: 100%;
+  min-height: 2.8rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(111, 35, 67, 0.2);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.operation-cost-catalog-form textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.operation-cost-catalog-search button,
+.operation-cost-catalog-new,
+.operation-cost-catalog-list button,
+.operation-cost-catalog-save,
+.operation-cost-catalog-price button,
+.operation-cost-catalog-refresh {
+  min-height: 2.9rem;
+  border: 0;
+  border-radius: 0.9rem;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.operation-cost-catalog-search button,
+.operation-cost-catalog-save,
+.operation-cost-catalog-price button {
+  padding: 0.7rem 1rem;
+  background: #6f2343;
+  color: #fff;
+}
+
+.operation-cost-catalog-new,
+.operation-cost-catalog-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 0.7rem 1rem;
+  background: #f4d9e4;
+  color: #52182f;
+}
+
+.operation-cost-catalog-list {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 31rem;
+  margin-top: 0.65rem;
+  overflow: auto;
+}
+
+.operation-cost-catalog-list button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem;
+  text-align: left;
+  background: #fff;
+  border: 1px solid rgba(111, 35, 67, 0.12);
+}
+
+.operation-cost-catalog-list button.active {
+  border-color: #6f2343;
+  box-shadow: inset 0 0 0 1px #6f2343;
+}
+
+.operation-cost-catalog-list span {
+  display: grid;
+  min-width: 0;
+}
+
+.operation-cost-catalog-list strong,
+.operation-cost-catalog-list small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operation-cost-catalog-editor,
+.operation-cost-catalog-form,
+.operation-cost-catalog-price {
+  display: grid;
+  gap: 1rem;
+}
+
+.operation-cost-catalog-grid,
+.operation-cost-catalog-price > div,
+.operation-cost-catalog-asset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.operation-cost-catalog-form label,
+.operation-cost-catalog-price label,
+.operation-cost-catalog-asset label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.operation-cost-catalog-asset {
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px solid rgba(111, 35, 67, 0.16);
+  border-radius: 1rem;
+}
+
+.operation-cost-catalog-asset legend {
+  padding: 0 0.35rem;
+  font-weight: 900;
+}
+
+.operation-cost-catalog-check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.55rem !important;
+}
+
+.operation-cost-catalog-check input {
+  width: 1.35rem;
+  min-height: 1.35rem;
+}
+
+.operation-cost-catalog-save,
+.operation-cost-catalog-price > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.operation-cost-catalog-price {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #fff;
+  border: 1px solid rgba(111, 35, 67, 0.14);
+}
+
+.operation-cost-catalog button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+@media (min-width: 760px) {
+  .operation-cost-catalog-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .operation-cost-catalog-result {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .operation-cost-catalog {
+    padding: 1.25rem;
+  }
+
+  .operation-cost-catalog-layout {
+    grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 2.2fr);
+    align-items: start;
+  }
+
+  .operation-cost-catalog-layout > aside {
+    position: sticky;
+    top: 1rem;
+  }
+
+  .operation-cost-catalog-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .operation-cost-catalog-summary,
+  .operation-cost-catalog-result,
+  .operation-cost-catalog-grid,
+  .operation-cost-catalog-price > div,
+  .operation-cost-catalog-asset {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-cost-catalog-heading > svg {
+    width: 2.4rem;
+    height: 2.4rem;
+  }
+}

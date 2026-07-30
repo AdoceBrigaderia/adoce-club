@@ -1,0 +1,88 @@
+name: Gate do catálogo real do montador
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/cake-builder-catalog-seed-pr-gate.yml
+      - .github/workflows/homologation-apply-cake-builder-catalog.yml
+      - src/cake-builder-real-catalog-seed.test.ts
+      - src/cake-builder-homologation-seed-workflow.test.ts
+      - supabase/seeds/homologation/20260729_real_cake_builder_catalog.sql
+      - supabase/tests/homologation_cake_builder_catalog_live.sql
+
+concurrency:
+  group: cake-builder-catalog-seed-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Contratos, seed e isolamento da homologação
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch e commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Executar contratos direcionados
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npx vitest run \
+            src/cake-builder-real-catalog-seed.test.ts \
+            src/cake-builder-homologation-seed-workflow.test.ts \
+            2>&1 | tee artifacts/tests.txt
+
+      - name: Validar isolamento e ausência de ações produtivas
+        shell: bash
+        run: |
+          set -euo pipefail
+          seed="supabase/seeds/homologation/20260729_real_cake_builder_catalog.sql"
+          workflow=".github/workflows/homologation-apply-cake-builder-catalog.yml"
+          audit="supabase/tests/homologation_cake_builder_catalog_live.sql"
+          test -s "$seed"
+          test -s "$workflow"
+          test -s "$audit"
+          grep -q '^begin;' "$seed"
+          grep -q '^commit;' "$seed"
+          grep -q '^rollback;' "$audit"
+          ! grep -Eiq '\b(drop|truncate)\b' "$seed"
+          ! grep -Eiq 'insert[[:space:]]+into[[:space:]]+public\.commercial_products' "$seed"
+          ! grep -Eiq 'netlify|deploy --prod|db push' "$workflow"
+          grep -q 'environment: homologation' "$workflow"
+          grep -q 'SUPABASE_HOMOLOGATION_DB_URL' "$workflow"
+
+      - name: Preservar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cake-builder-catalog-seed-${{ github.event.pull_request.head.sha }}
+          path: artifacts/tests.txt
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 6

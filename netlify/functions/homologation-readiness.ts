@@ -1,0 +1,77 @@
+import { buildHomologationReadiness } from "./_shared/homologation-readiness";
+import { guardBffRequest } from "./_shared/request-security";
+import { secureEmpty } from "./_shared/response-security";
+import { secureJson } from "./_shared/session-security";
+
+declare const Netlify:
+  | { env: { get(name: string): string | undefined } }
+  | undefined;
+
+const env = (name: string) =>
+  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
+  process.env[name];
+
+const variableNames = [
+  "ADOCE_DEPLOY_ENV",
+  "ADOCE_HOMOLOGATION_SUPABASE_REF",
+  "ADOCE_PRODUCTION_SUPABASE_REF",
+  "SITE_URL",
+  "BFF_ALLOWED_ORIGINS",
+  "VITE_SUPABASE_URL",
+  "SUPABASE_URL",
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
+  "SUPABASE_SECRET_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "WHATSAPP_OTP_PEPPER",
+  "PUBLIC_RATE_LIMIT_PEPPER",
+  "PASSKEY_RP_ID",
+  "PASSKEY_ALLOWED_ORIGINS",
+  "META_WA_ACCESS_TOKEN",
+  "META_WA_PHONE_NUMBER_ID",
+  "META_WA_WABA_ID",
+  "META_WA_APP_SECRET",
+  "META_WA_VERIFY_TOKEN",
+  "META_WA_AUTH_TEMPLATE_NAME",
+  "META_WA_GRAPH_API_VERSION",
+  "GOOGLE_WALLET_ISSUER_ID",
+  "GOOGLE_WALLET_CLASS_ID",
+  "GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL",
+  "GOOGLE_WALLET_PRIVATE_KEY",
+  "COMMIT_REF",
+  "CONTEXT",
+  "NETLIFY_CONTEXT",
+] as const;
+
+function readEnvironment() {
+  return Object.fromEntries(variableNames.map((name) => [name, env(name)]));
+}
+
+export default async (request: Request) => {
+  const requestRejection = guardBffRequest(request, {
+    methods: ["GET", "HEAD"],
+    configuredSiteUrl: env("SITE_URL"),
+  });
+  if (requestRejection) return requestRejection;
+
+  const requestOrigin = (() => {
+    try {
+      return new URL(request.url).origin;
+    } catch {
+      return "";
+    }
+  })();
+  const readiness = buildHomologationReadiness({
+    ...readEnvironment(),
+    READINESS_REQUEST_ORIGIN: requestOrigin,
+  });
+  if (!readiness.exposed)
+    return secureJson({ error: "Recurso não encontrado." }, 404);
+
+  if (request.method === "HEAD") {
+    return secureEmpty(readiness.coreReady ? 204 : 503);
+  }
+
+  return secureJson(readiness, readiness.coreReady ? 200 : 503);
+};
+
+export const config = { path: "/api/homologation-readiness" };

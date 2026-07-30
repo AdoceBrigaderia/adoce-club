@@ -1,0 +1,238 @@
+name: Entregar preview testável agora
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/delivery-preview-now.yml
+      - package.json
+      - package-lock.json
+      - index.html
+      - public/**
+      - scripts/serve-homologation-preview.mjs
+      - src/**
+      - netlify/functions/_shared/cake-builder-input.ts
+      - netlify/functions/public-service-request.ts
+      - supabase/migrations/20260728073000_cake_builder_configuration.sql
+
+concurrency:
+  group: delivery-preview-now
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  DELIVERY_ISSUE_NUMBER: "13"
+  VITE_ADOCE_VALIDATION_MODE: visual
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL || 'https://vazozolhbehnriytzcdc.supabase.co' }}
+  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM' }}
+
+jobs:
+  package-preview:
+    name: Gerar pacote offline iniciável
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar exatamente o commit acionador
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, SHA e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências reproduzíveis
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefer-offline --no-audit
+
+      - name: Validar fluxos críticos desta entrega
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx vitest run \
+            src/cake-builder-public-input-security.test.ts \
+            src/cake-builder-configuration-migration.test.ts \
+            src/public-service-request-bff-security.test.ts \
+            src/homologation-visual-preview.test.ts
+
+      - name: Gerar pacote visual offline
+        id: package
+        shell: bash
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export VITE_ADOCE_PREVIEW_BUILT_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          npx vite build
+
+          package_dir="artifacts/portal-adoce-preview"
+          mkdir -p "$package_dir"
+          cp -R dist "$package_dir/dist"
+          cp scripts/serve-homologation-preview.mjs "$package_dir/servidor-preview.mjs"
+
+          cat > "$package_dir/INICIAR-PREVIEW-WINDOWS.cmd" <<'EOF_WINDOWS'
+          @echo off
+          cd /d "%~dp0"
+          where node >nul 2>nul
+          if errorlevel 1 (
+            echo Node.js 22 ou superior nao foi encontrado.
+            echo Instale o Node.js e execute este arquivo novamente.
+            pause
+            exit /b 1
+          )
+          node servidor-preview.mjs --open
+          if errorlevel 1 pause
+          EOF_WINDOWS
+
+          cat > "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command" <<'EOF_UNIX'
+          #!/usr/bin/env sh
+          set -eu
+          cd "$(dirname "$0")"
+          if ! command -v node >/dev/null 2>&1; then
+            echo "Node.js 22 ou superior não foi encontrado."
+            exit 1
+          fi
+          exec node servidor-preview.mjs --open
+          EOF_UNIX
+          chmod +x "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command"
+
+          cat > "$package_dir/LEIA-ME.txt" <<EOF_README
+          PORTAL ADOCE — ENTREGA IMEDIATA PARA VALIDAÇÃO
+
+          Windows:
+          1. Extraia o ZIP.
+          2. Dê dois cliques em INICIAR-PREVIEW-WINDOWS.cmd.
+          3. O navegador abrirá http://127.0.0.1:4173.
+
+          macOS/Linux:
+          1. Extraia o ZIP.
+          2. Execute INICIAR-PREVIEW-LINUX-MAC.command.
+
+          Alternativa universal: node servidor-preview.mjs --open
+
+          Commit: ${GITHUB_SHA}
+          Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}
+          Escopo: validação visual e de navegação; integrações externas podem permanecer indisponíveis.
+          Validações executadas: montador de tortas, BFF de encomendas, preview visual, build Vite e smoke tests do servidor local.
+          Observação: TypeScript e a suíte integral continuam sendo tratados no quality gate separado.
+          Servidor: somente localhost/127.0.0.1.
+          Produção: não alterada.
+          EOF_README
+
+          printf '%s\n' \
+            "Commit: ${GITHUB_SHA}" \
+            "Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}" \
+            "Supabase: vazozolhbehnriytzcdc (homologação)" \
+            "Modo: visual, não transacional" \
+            "Testes direcionados: montador, BFF e preview visual" \
+            "Produção: não alterada" \
+            > "$package_dir/EVIDENCIA.txt"
+
+          node "$package_dir/servidor-preview.mjs" --port 4187 > "$package_dir/SMOKE.log" 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl -sS -o /tmp/adoce-index.html -w '%{http_code}' http://127.0.0.1:4187/ || true)"
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          test "$status" = "200"
+          grep -q 'id="root"' /tmp/adoce-index.html
+
+          route_status="$(curl -sS -o /tmp/adoce-operacao.html -w '%{http_code}' http://127.0.0.1:4187/operacao/venda-rapida)"
+          test "$route_status" = "200"
+          grep -q 'id="root"' /tmp/adoce-operacao.html
+
+          cleanup
+          wait "$server_pid" 2>/dev/null || true
+          trap - EXIT
+
+          echo "short_sha=${GITHUB_SHA:0:8}" >> "$GITHUB_OUTPUT"
+
+      - name: Publicar pacote para download
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-adoce-preview-${{ steps.package.outputs.short_sha }}
+          path: artifacts/portal-adoce-preview
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Registrar entrega no issue dedicado
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Pacote testável atualizado disponível",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- [Baixar preview offline](${process.env.ARTIFACT_URL})`,
+              `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
+              "- Windows: extraia o ZIP e abra `INICIAR-PREVIEW-WINDOWS.cmd`.",
+              "- Inclui: Clube e Operação acessíveis no modo visual e montador completo de tortas.",
+              "- Testes direcionados: sanitização pública, cálculo/permissões da migration, BFF e contrato do preview.",
+              "- Smoke tests: página inicial e `/operacao/venda-rapida` retornaram HTTP 200.",
+              "- Limite: integrações externas e ações transacionais podem permanecer indisponíveis.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });
+
+      - name: Registrar falha objetiva
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Entrega atualizada bloqueada por falha real",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Ação: revisar a primeira etapa vermelha e repetir somente os jobs necessários.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });

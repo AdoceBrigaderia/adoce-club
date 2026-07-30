@@ -1,9 +1,9 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $ProjectRoot = (Get-Location).Path
-$TargetRepository = "https://github.com/RMBPS/adoce-club.git"
+$TargetRepository = "https://github.com/AdoceBrigaderia/adoce-club.git"
 $TargetRemote = "fonte-oficial"
 $ExpectedBranchPrefix = "fonte-oficial/portal-adoce-2026-07-25"
 $Stamp = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -89,7 +89,7 @@ Write-Log "Verificando arquivos muito grandes."
 
 $largeFiles = Get-ChildItem -LiteralPath $ProjectRoot -Recurse -Force -File -ErrorAction SilentlyContinue |
     Where-Object {
-        $_.FullName -notmatch "\\.git\\" -and
+        $_.FullName -notmatch "\.git\\" -and
         $_.FullName -notmatch "\\node_modules\\" -and
         $_.FullName -notmatch "\\dist\\" -and
         $_.FullName -notmatch "\\launch-dist\\" -and
@@ -214,7 +214,7 @@ Write-Log "Push concluido."
 
 Write-Host ""
 Write-Host "CONSOLIDACAO CONCLUIDA" -ForegroundColor Cyan
-Write-Host "Repositorio: RMBPS/adoce-club"
+Write-Host "Repositorio: AdoceBrigaderia/adoce-club"
 Write-Host ("Branch: " + $currentBranch)
 Write-Host ("Diagnostico: " + $LogFile)
 Write-Host ""

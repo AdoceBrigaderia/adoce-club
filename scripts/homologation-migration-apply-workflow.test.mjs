@@ -1,0 +1,93 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import test from 'node:test';
+
+const workflowPath = '.github/workflows/homologation-apply-pending-migrations.yml';
+const packageWorkflowPath = '.github/workflows/homologation-package-pending-migrations-one-shot.yml';
+const liveAuditPath = 'supabase/tests/homologation_post_migration_live.sql';
+const planPath = 'docs/evidence/homologation-pending-migrations-20260728.json';
+
+const workflow = fs.readFileSync(workflowPath, 'utf8');
+const packageWorkflow = fs.readFileSync(packageWorkflowPath, 'utf8');
+const liveAudit = fs.readFileSync(liveAuditPath, 'utf8');
+const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+
+test('aplicação de migrations é manual, isolada e exige commit exato', () => {
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /\n\s+push:/);
+  assert.doesNotMatch(workflow, /\n\s+pull_request:/);
+  assert.match(workflow, /environment: homologation/);
+  assert.match(workflow, /EXPECTED_BRANCH: reestruturacao\/ux-crm-operacao-imagens-v1/);
+  assert.match(workflow, /HOMOLOGATION_REF: vazozolhbehnriytzcdc/);
+  assert.match(workflow, /PRODUCTION_REF: uefwywizqhfvvijaopcn/);
+  assert.match(workflow, /git rev-parse HEAD/);
+  assert.match(workflow, /APLICAR 22 MIGRATIONS SOMENTE HOMOLOGACAO/);
+  assert.match(workflow, /BACKUP CONFIRMADO/);
+});
+
+test('não permite aplicadores automáticos, parciais ou vinculados por mensagem de commit', () => {
+  assert.equal(fs.existsSync('.github/workflows/homologation-apply-products-one-shot.yml'), false);
+  assert.equal(fs.existsSync('.github/workflows/apply-homologation-linked.yml'), false);
+});
+
+test('empacotamento automático é repetível, sem segredos e incapaz de aplicar migrations', () => {
+  assert.match(packageWorkflow, /pull_request:/);
+  assert.match(packageWorkflow, /docs\/evidence\/homologation-pending-migrations-20260728\.json/);
+  assert.match(packageWorkflow, /supabase\/migrations\/\*\*/);
+  assert.match(packageWorkflow, /pending_migrations\.length !== 22/);
+  assert.doesNotMatch(packageWorkflow, /AUTHORIZED_PARENT/);
+  assert.doesNotMatch(packageWorkflow, /secrets\./);
+  assert.doesNotMatch(packageWorkflow, /db push/);
+  assert.doesNotMatch(packageWorkflow, /SUPABASE_HOMOLOGATION_DB_URL/);
+});
+
+test('transporte Netlify usa URL HTTPS do deploy antes de qualquer URL HTTP', () => {
+  assert.match(packageWorkflow, /d\.deploy_ssl_url \|\| d\.ssl_url \|\| d\.deploy_url \|\| d\.url/);
+  assert.doesNotMatch(
+    packageWorkflow,
+    /\.url \|\| require\('\.\/artifacts\/netlify-proxy-deploy\/deploy-status\.json'\)\.ssl_url/,
+  );
+  assert.match(packageWorkflow, /if \(url\.protocol !== 'https:'\)/);
+  assert.match(packageWorkflow, /host\.endsWith\(`--\$\{expected\}`\)/);
+});
+
+test('workflow executa dry-run antes da aplicação e não permite conjunto parcial', () => {
+  const dryRunPosition = workflow.indexOf('--dry-run');
+  const applyPosition = workflow.indexOf('Aplicar exatamente o conjunto aprovado');
+  assert.ok(dryRunPosition > 0, 'dry-run precisa existir');
+  assert.ok(applyPosition > dryRunPosition, 'aplicação precisa ocorrer depois do dry-run');
+  assert.match(workflow, /pending_count !== 22/);
+  assert.match(workflow, /already-applied-versions\.txt/);
+  assert.match(workflow, /expectedPending/);
+  assert.match(workflow, /new Set\(\[\.\.\.applied, \.\.\.pending\]\)\.size !== 22/);
+  assert.match(workflow, /--include-all/);
+  assert.match(workflow, /expected-versions\.txt/);
+  assert.match(workflow, /diff -u/);
+  assert.equal(plan.pending_migrations.length, 22);
+  assert.equal(plan.pending_migrations.at(-1).name, 'real_configurable_product_catalog');
+});
+
+test('segredo do banco fica restrito ao environment e produção é rejeitada', () => {
+  assert.match(workflow, /secrets\.SUPABASE_HOMOLOGATION_DB_URL/);
+  assert.doesNotMatch(workflow, /SUPABASE_HOMOLOGATION_DB_URL:\s*(postgres|postgresql):\/\//);
+  assert.match(workflow, /Referência produtiva rejeitada/);
+  assert.match(workflow, /! grep -R "\$PRODUCTION_REF"/);
+  assert.match(workflow, /! grep -R "postgresql:\/\/\\\|postgres:\/\/"/);
+  assert.doesNotMatch(workflow, /--prod\b/);
+});
+
+test('auditoria viva cobre histórico, RLS, produtos configuráveis e ausência de acesso direto', () => {
+  assert.match(workflow, /homologation_post_migration_live\.sql/);
+  assert.match(liveAudit, /supabase_migrations\.schema_migrations/);
+  assert.match(liveAudit, /applied_count <> cardinality\(expected_versions\)/);
+  assert.match(liveAudit, /relation\.relrowsecurity/);
+  assert.match(liveAudit, /has_table_privilege\(role_name/);
+  assert.match(liveAudit, /private\.canonicalize_cake_builder_selection\(uuid,jsonb\)/);
+  assert.match(liveAudit, /private\.canonicalize_configurable_product_selection\(uuid,integer,jsonb\)/);
+  assert.match(liveAudit, /service_request_product_configurations/);
+  assert.match(liveAudit, /staff_get_service_request_workspace/);
+  assert.match(liveAudit, /private\.redact_internal_product_configuration\(jsonb\)/);
+  assert.match(liveAudit, /docinhos-tradicionais/);
+  assert.match(liveAudit, /escola-recreio-completo/);
+  assert.match(liveAudit, /rollback;/);
+});

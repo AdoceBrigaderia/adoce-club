@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Foto do sabor em breve</title>
+  <desc id="desc">Ainda não registramos a foto oficial deste sabor.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8f2"/>
+      <stop offset="1" stop-color="#f2dfd4"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#3b170f" flood-opacity=".12"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <circle cx="984" cy="216" r="228" fill="#ef635e" opacity=".10"/>
+  <circle cx="156" cy="1008" r="180" fill="#c58a42" opacity=".10"/>
+  <g filter="url(#shadow)">
+    <rect x="120" y="144" width="960" height="912" rx="66" fill="#fffdfb" stroke="#ead2c5" stroke-width="4"/>
+  </g>
+  <g transform="translate(600 420)">
+    <circle r="126" fill="#ef635e"/>
+    <path d="M-54 24 C-30 -66 30 -66 54 24 Z" fill="#fff" opacity=".96"/>
+    <circle cy="-55" r="22" fill="#fff"/>
+  </g>
+  <text x="50%" y="57%" text-anchor="middle" fill="#3b170f" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700">Foto do sabor em breve</text>
+  <text x="50%" y="66%" text-anchor="middle" fill="#8a6257" font-family="Arial, sans-serif" font-size="36" font-weight="700">Ainda não registramos a foto oficial deste sabor.</text>
+  <text x="50%" y="73%" text-anchor="middle" fill="#a17a6d" font-family="Arial, sans-serif" font-size="28">A equipe Adoce atualizará esta imagem em breve.</text>
+  <text x="50%" y="82%" text-anchor="middle" fill="#ef635e" font-family="Arial, sans-serif" font-size="26" font-weight="800" letter-spacing="3">ADOCE BRIGADERIA</text>
+</svg>

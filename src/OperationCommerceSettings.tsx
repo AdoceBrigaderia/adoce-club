@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { CreditCard, Save, Settings2, Timer } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
+import OperationBusinessStructure from "./OperationBusinessStructure";
 import OperationVisualSettings from "./OperationVisualSettings";
 import "./operation-commerce-tools.css";
 
@@ -54,8 +55,9 @@ export default function OperationCommerceSettings({
 
   if (!settings) return <section className="commerce-tool-card"><p>{busy ? "Carregando configurações…" : notice}</p></section>;
   return <section className="commerce-settings-page">
-    <header className="commerce-tool-heading"><div><small>Regras da operação</small><h2>Configurações globais</h2><p>Um único lugar para controlar prazos, pagamento e taxas.</p></div><Settings2 /></header>
+    <header className="commerce-tool-heading"><div><small>Regras da operação</small><h2>Configurações e estrutura</h2><p>Controle lojas, caixas, equipe, prazos, pagamentos e taxas em uma única área.</p></div><Settings2 /></header>
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
+    <OperationBusinessStructure session={session} />
     <div className="commerce-settings-grid">
       <section className="commerce-tool-card">
         <header><Timer /><div><small>Pedidos on-line</small><h3>Reserva e confirmação</h3></div></header>

@@ -1,0 +1,222 @@
+name: Gate dos produtos configuráveis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/configurable-products-pr-gate.yml
+      - .github/workflows/homologation-apply-pending-migrations.yml
+      - .github/workflows/homologation-pending-migrations-preflight.yml
+      - docs/evidence/homologation-pending-migrations-20260728.json
+      - netlify/functions/_shared/bff-rpc-policy.ts
+      - netlify/functions/_shared/product-configuration-input.ts
+      - netlify/functions/_shared/product-configuration-input.test.ts
+      - netlify/functions/public-service-request.ts
+      - scripts/expose-homologation-migration-bundle.mjs
+      - scripts/homologation-migration-apply-workflow.test.mjs
+      - scripts/homologation-pending-migrations.test.mjs
+      - package.json
+      - src/App.tsx
+      - src/ConfigurableProductBuilder.tsx
+      - src/ConfigurableProductCatalogPage.tsx
+      - src/CustomerServiceRequestHistory.tsx
+      - src/OperationAdminCenter.tsx
+      - src/OperationBusinessHub.tsx
+      - src/OperationConfiguredOrders.tsx
+      - src/OperationCustomer360.tsx
+      - src/OperationProductCatalog.tsx
+      - src/OperationServiceRequestPricingSnapshot.tsx
+      - src/product-configuration.ts
+      - src/product-configuration.test.ts
+      - src/unified-configurable-products-migration.test.ts
+      - src/configurable-product-constraints-migration.test.ts
+      - src/configurable-product-consistency-migration.test.ts
+      - src/configured-orders-workspace.test.ts
+      - src/service-request-pricing-snapshot-ui.test.ts
+      - src/configurable-product-builder.css
+      - src/configurable-product-catalog.css
+      - src/operation-configured-orders.css
+      - src/operation-product-catalog.css
+      - supabase/migrations/20260728220000_unified_configurable_products.sql
+      - supabase/migrations/20260728221500_configurable_product_constraints.sql
+      - supabase/migrations/20260728223000_service_request_configuration_workspace.sql
+      - supabase/migrations/20260728224500_configurable_product_consistency_and_crm.sql
+      - supabase/migrations/20260728225000_real_configurable_product_catalog.sql
+      - supabase/tests/authenticated_rpc_allowlist_live.sql
+      - supabase/tests/homologation_post_migration_live.sql
+
+concurrency:
+  group: configurable-products-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Tipos, montadores, custos, BFF e build
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VITE_ADOCE_VALIDATION_MODE: visual
+      VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+      PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
+      PRODUCTION_REF: uefwywizqhfvvijaopcn
+      MIGRATION_BUNDLE: dist/homologation-internal/migrations-2f2e6bd6b6154fc184622467a54e62ca.sql
+    steps:
+      - name: Baixar head exato
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, commit e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes direcionados
+        run: |
+          npx vitest run \
+            netlify/functions/_shared/product-configuration-input.test.ts \
+            src/product-configuration.test.ts \
+            src/unified-configurable-products-migration.test.ts \
+            src/configurable-product-constraints-migration.test.ts \
+            src/configurable-product-consistency-migration.test.ts \
+            src/configured-orders-workspace.test.ts \
+            src/service-request-pricing-snapshot-ui.test.ts \
+            src/bff-rpc-security.test.ts
+          npm run test:homologation-pending-migrations
+          npm run test:homologation-migration-apply
+
+      - name: Gerar build completo e isolado
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
+        run: npm run build
+
+      - name: Confirmar isolamento, bundle e ausência de segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          test -s "$MIGRATION_BUNDLE"
+          test -s "$MIGRATION_BUNDLE.json"
+          test "$(grep -c '^-- BEGIN ' "$MIGRATION_BUNDLE")" -eq 22
+          test "$(grep -c 'insert into supabase_migrations.schema_migrations' "$MIGRATION_BUNDLE")" -eq 22
+          ! grep -R "uefwywizqhfvvijaopcn" dist
+          ! grep -R "SUPABASE_SECRET_KEY" dist
+          ! grep -R "service_role" dist
+          grep -R "vazozolhbehnriytzcdc" dist >/dev/null
+
+      - name: Empacotar exatamente as migrations pendentes validadas
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-pending-migrations/migrations
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const plan = JSON.parse(fs.readFileSync(process.env.PENDING_PLAN, 'utf8'));
+          if (plan.project_id !== 'vazozolhbehnriytzcdc') throw new Error('Projeto de homologação inválido.');
+          if (plan.production_forbidden !== true) throw new Error('Bloqueio produtivo ausente.');
+          if (plan.pending_migrations.length !== 22) throw new Error(`Esperadas 22 migrations; recebidas ${plan.pending_migrations.length}.`);
+          const migrations = [];
+          for (const migration of plan.pending_migrations) {
+            const file = `${migration.version}_${migration.name}.sql`;
+            const source = path.join('supabase', 'migrations', file);
+            if (!fs.existsSync(source)) throw new Error(`Migration ausente: ${file}`);
+            const content = fs.readFileSync(source);
+            if (content.includes(Buffer.from(process.env.PRODUCTION_REF))) throw new Error(`Referência produtiva encontrada em ${file}`);
+            fs.copyFileSync(source, path.join('artifacts', 'homologation-pending-migrations', 'migrations', file));
+            migrations.push({
+              version: migration.version,
+              name: migration.name,
+              file,
+              bytes: content.length,
+              sha256: crypto.createHash('sha256').update(content).digest('hex'),
+            });
+          }
+          fs.writeFileSync(
+            'artifacts/homologation-pending-migrations/manifest.json',
+            JSON.stringify({
+              schema_version: 1,
+              repository: 'AdoceBrigaderia/adoce-club',
+              branch: process.env.GITHUB_HEAD_REF,
+              commit: process.env.GITHUB_SHA,
+              project_id: 'vazozolhbehnriytzcdc',
+              production_forbidden: true,
+              migrations,
+            }, null, 2),
+          );
+          NODE
+          cp "$PENDING_PLAN" artifacts/homologation-pending-migrations/plan.json
+          test "$(find artifacts/homologation-pending-migrations/migrations -maxdepth 1 -type f -name '*.sql' | wc -l)" -eq 22
+
+      - name: Preparar source estático mínimo para a Netlify
+        shell: bash
+        run: |
+          set -euo pipefail
+          deploy_dir=artifacts/homologation-static-deploy
+          mkdir -p "$deploy_dir/site"
+          cp -a dist/. "$deploy_dir/site/"
+          cat > "$deploy_dir/package.json" <<'JSON'
+          {
+            "name": "adoce-homologacao-static-deploy",
+            "version": "1.0.0",
+            "private": true,
+            "type": "module",
+            "scripts": { "build": "node build.mjs" }
+          }
+          JSON
+          cat > "$deploy_dir/build.mjs" <<'JS'
+          import fs from 'node:fs';
+          fs.rmSync('dist', { recursive: true, force: true });
+          fs.cpSync('site', 'dist', { recursive: true });
+          JS
+          cat > "$deploy_dir/netlify.toml" <<'TOML'
+          [build]
+            command = "npm run build"
+            publish = "dist"
+          TOML
+          printf '%s\n' "${{ github.event.pull_request.head.sha }}" > "$deploy_dir/commit.txt"
+          test -s "$deploy_dir/site/homologation-internal/migrations-2f2e6bd6b6154fc184622467a54e62ca.sql"
+
+      - name: Publicar pacote das migrations pendentes
+        uses: actions/upload-artifact@v4
+        with:
+          name: migrations-pendentes-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-pending-migrations
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+
+      - name: Publicar build estático da homologação
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-estatico-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-static-deploy
+          if-no-files-found: error
+          retention-days: 2
+          compression-level: 6

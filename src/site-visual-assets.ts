@@ -7,10 +7,18 @@ export type SiteVisualAssetDefinition = {
   aspectWidth: number;
   aspectHeight: number;
   outputWidth: number;
+  acceptedFormats?: string;
+  usage?: string;
+  placeholder?: boolean;
 };
 
 export const SITE_VISUAL_ASSETS: SiteVisualAssetDefinition[] = [
+  { key: "/site/placeholder-produto-sem-foto.svg", label: "Produto sem foto oficial", section: "Imagens padrão", description: "Usada automaticamente quando um produto ainda não possui fotografia oficial.", alt: "Produto da Adoce ainda sem foto oficial", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, acceptedFormats: "JPG, PNG ou WebP", usage: "Produtos e serviços sem imagem cadastrada", placeholder: true },
+  { key: "/site/placeholder-sabor-sem-foto.svg", label: "Sabor sem foto oficial", section: "Imagens padrão", description: "Usada automaticamente quando um sabor ainda não possui fotografia oficial.", alt: "Sabor da Adoce ainda sem foto oficial", aspectWidth: 1, aspectHeight: 1, outputWidth: 1200, acceptedFormats: "JPG, PNG ou WebP", usage: "Fatias e sabores sem imagem cadastrada", placeholder: true },
+  { key: "/site/placeholder-torta-sem-foto.svg", label: "Torta sem foto oficial", section: "Imagens padrão", description: "Usada automaticamente quando uma torta inteira ainda não possui fotografia oficial.", alt: "Torta da Adoce ainda sem foto oficial", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, acceptedFormats: "JPG, PNG ou WebP", usage: "Tortas e produtos do segmento de tortas sem imagem", placeholder: true },
+  { key: "/site/placeholder-campanha-sem-arte.svg", label: "Campanha sem arte", section: "Imagens padrão", description: "Usada quando uma campanha foi criada antes da arte oficial.", alt: "Campanha da Adoce com arte em preparação", aspectWidth: 4, aspectHeight: 5, outputWidth: 1200, acceptedFormats: "JPG, PNG ou WebP", usage: "Campanhas e comunicações ainda sem arte", placeholder: true },
   { key: "/site/logo.webp", label: "Logo oficial", section: "Marca", description: "Cabeçalhos, rodapés, operação e compartilhamentos.", alt: "Adoce Brigaderia", aspectWidth: 1, aspectHeight: 1, outputWidth: 900 },
+  { key: "/site/chocolate-texture.webp", label: "Textura de chocolate", section: "Marca", description: "Fundo visual usado nas áreas escuras do site, Clube, Pede Junto, catálogo e materiais de campanha.", alt: "Textura de chocolate da identidade visual Adoce", aspectWidth: 1, aspectHeight: 1, outputWidth: 1400, acceptedFormats: "JPG, PNG ou WebP", usage: "Fundos escuros institucionais, páginas públicas, operação e campanhas" },
   { key: "/site/hero-slice-real.webp", label: "Fatia principal da Home", section: "Página inicial", description: "Produto em destaque no primeiro bloco da página pública.", alt: "Fatia artesanal produzida pela Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1600 },
   { key: "/site/beth-fundadora.png", label: "Foto da Beth", section: "Página inicial", description: "História e origem da Adoce.", alt: "Beth, fundadora e confeiteira da Adoce", aspectWidth: 4, aspectHeight: 5, outputWidth: 1200 },
   { key: "/site/clube-cartao-destaque-v2.webp", label: "Cartão do Clube Adoce", section: "Página inicial", description: "Imagem principal do benefício do Clube.", alt: "Cartão do Clube Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400 },
@@ -34,9 +42,24 @@ export const SITE_VISUAL_ASSETS: SiteVisualAssetDefinition[] = [
 
 export const siteVisualAssetKeys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));
 
-export function visualAssetPath(value: string) {
+export function siteVisualAssetOutputHeight(asset: SiteVisualAssetDefinition) {
+  return Math.round(asset.outputWidth * asset.aspectHeight / asset.aspectWidth);
+}
+
+export function siteVisualAssetSizeLabel(asset: SiteVisualAssetDefinition) {
+  return `${asset.outputWidth} × ${siteVisualAssetOutputHeight(asset)} px`;
+}
+
+export function siteVisualAssetFormatLabel(asset: SiteVisualAssetDefinition) {
+  return asset.acceptedFormats || "JPG, PNG ou WebP";
+}
+
+export function visualAssetPath(
+  value: string,
+  origin = typeof window === "undefined" ? "https://adocebrigaderia.com.br" : window.location.origin,
+) {
   try {
-    const parsed = new URL(value, window.location.origin);
+    const parsed = new URL(value, origin);
     if (parsed.pathname === "/.netlify/images") {
       return parsed.searchParams.get("url") || parsed.pathname;
     }

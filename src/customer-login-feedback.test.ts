@@ -1,34 +1,55 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("acesso do cliente por celular e senha", () => {
-  it("usa o endpoint seguro e restaura a sessão no navegador", () => {
-    const auth = source("./services/auth.ts");
-    expect(auth).toContain('fetch("/api/customer-phone-login"');
-    expect(auth).toContain("auth.setSession");
-    expect(auth).not.toContain("signInWithPassword({\n    phone:");
+  it("remove o restaurador de sessão legado e usa somente o gateway BFF", () => {
+    expect(existsSync(new URL("./services/auth.ts", import.meta.url))).toBe(false);
+    const gateway = source("./PasskeyClientGateway.tsx");
+    const bffAuth = source("./services/bff-auth.ts");
+    expect(gateway).toContain("bffPasswordLogin");
+    expect(gateway).toContain('surface: "client"');
+    expect(bffAuth).toContain('fetch("/api/auth-bff-login"');
+    expect(bffAuth).toContain('credentials: "same-origin"');
+    expect(bffAuth).not.toContain("auth.setSession");
+    expect(bffAuth).not.toContain("access_token");
+    expect(bffAuth).not.toContain("refresh_token");
   });
 
-  it("mantém a identificação interna fora da resposta de erro", () => {
-    const endpoint = source("../netlify/functions/customer-phone-login.ts");
-    expect(endpoint).toContain('select("id,active,account_status,auth_upgraded_at")');
-    expect(endpoint).toContain("auth.admin.getUserById");
-    expect(endpoint).toContain("/auth/v1/token?grant_type=password");
-    expect(endpoint).toContain('json({ error: "Celular ou senha incorretos." }, 401)');
+  it("desativa o endpoint legado que devolvia tokens no corpo", () => {
+    const customerEndpoint = source(
+      "../netlify/functions/customer-phone-login.ts",
+    );
+    const staffEndpoint = source("../netlify/functions/staff-phone-login.ts");
+    [customerEndpoint, staffEndpoint].forEach((endpoint) => {
+      expect(endpoint).toContain("legacy_phone_login_disabled");
+      expect(endpoint).toContain("410");
+      expect(endpoint).not.toContain("access_token");
+      expect(endpoint).not.toContain("refresh_token");
+      expect(endpoint).not.toContain("grant_type=password");
+    });
   });
 });
 
 describe("canal de reclamações e sugestões", () => {
-  it("é público para envio, mas a tabela só pode ser lida pela equipe", () => {
-    const migration = source("../supabase/migrations/20260720132544_customer_feedback.sql");
+  it("é público para envio pelo BFF, mas a tabela só pode ser lida pela equipe", () => {
+    const baseMigration = source(
+      "../supabase/migrations/20260720132544_customer_feedback.sql",
+    );
+    const bffMigration = source(
+      "../supabase/migrations/20260727041258_site_feedback_bff_hardening.sql",
+    );
     const app = source("./App.tsx");
-    const endpoint = source("../netlify/functions/site-feedback.ts");
-    expect(migration).toContain("enable row level security");
-    expect(migration).toContain("revoke all on table public.site_feedback from public, anon, authenticated");
-    expect(migration).toContain("using (private.is_staff())");
+    const endpoint = source("../netlify/functions/public-feedback.ts");
+    expect(baseMigration).toContain("enable row level security");
+    expect(baseMigration).toContain(
+      "revoke all on table public.site_feedback from public, anon, authenticated",
+    );
+    expect(baseMigration).toContain("using (private.is_staff())");
     expect(app).toContain('hash.startsWith("#fale-com-a-adoce")');
-    expect(endpoint).toContain('.from("site_feedback").insert');
+    expect(endpoint).toContain("submit_site_feedback_bff");
+    expect(endpoint).toContain("allowedOrigin");
+    expect(bffMigration).toContain("to service_role");
   });
 });

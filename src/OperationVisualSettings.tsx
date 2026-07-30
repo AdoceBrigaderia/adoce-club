@@ -4,8 +4,11 @@ import type { Session } from "@supabase/supabase-js";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
+import OperationDynamicImageLibrary from "./OperationDynamicImageLibrary";
+import OperationGalleryImageLibrary from "./OperationGalleryImageLibrary";
+import OperationVisualAssetHistory from "./OperationVisualAssetHistory";
 import { requireSupabase } from "./lib/supabase";
-import { SITE_VISUAL_ASSETS, type SiteVisualAssetDefinition } from "./site-visual-assets";
+import { SITE_VISUAL_ASSETS, siteVisualAssetFormatLabel, siteVisualAssetSizeLabel, type SiteVisualAssetDefinition } from "./site-visual-assets";
 import "./operation-visual-settings.css";
 
 type StoredVisualAsset = {
@@ -126,19 +129,22 @@ export default function OperationVisualSettings({
       <div>
         <small>Central de imagens</small>
         <h2>Todas as fotos do site, no lugar certo</h2>
-        <p>Imagens institucionais são substituídas aqui. Sabores, produtos, categorias e carrosséis continuam com seus dados e editores próprios, acessíveis pelos atalhos abaixo.</p>
+        <p>Este painel reúne imagens institucionais, capas, galerias e carrosséis de sabores, tortas, produtos e categorias. Cada item informa onde aparece, proporção e tamanho recomendados.</p>
       </div>
       <Images />
     </header>
 
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
 
+    <OperationDynamicImageLibrary session={session} onChanged={() => void load()} />
+    <OperationGalleryImageLibrary session={session} onChanged={() => void load()} />
+
     <div className="operation-visual-shortcuts">
       <button type="button" onClick={onOpenFlavorImages}>
-        <Images /><span><strong>Fotos das fatias e tortas inteiras</strong><small>Abrir disponibilidade, sabores e galerias</small></span><ArrowRight />
+        <Images /><span><strong>Configurações avançadas de sabores</strong><small>Legenda, ordem, disponibilidade e outras propriedades</small></span><ArrowRight />
       </button>
       <button type="button" onClick={onOpenProductImages}>
-        <Images /><span><strong>Produtos, serviços e carrosséis</strong><small>Abrir catálogo comercial e capas</small></span><ArrowRight />
+        <Images /><span><strong>Configurações avançadas comerciais</strong><small>Reels, ordem dos carrosséis e informações de produtos</small></span><ArrowRight />
       </button>
     </div>
 
@@ -157,7 +163,9 @@ export default function OperationVisualSettings({
             <div className="operation-visual-copy">
               <strong>{definition.label}</strong>
               <p>{definition.description}</p>
-              <small>Corte recomendado: {definition.aspectWidth}:{definition.aspectHeight}</small>
+              <small>Uso: {definition.usage || definition.description}</small>
+              <small>Recomendado: {siteVisualAssetSizeLabel(definition)} · proporção {definition.aspectWidth}:{definition.aspectHeight}</small>
+              <small>Formatos: {siteVisualAssetFormatLabel(definition)}</small>
             </div>
             <div className="operation-visual-actions">
               <label className="operation-visual-file">
@@ -166,7 +174,7 @@ export default function OperationVisualSettings({
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   disabled={working}
-                  onChange={(event) => {
+                  onChange={(event: { target: HTMLInputElement; currentTarget: HTMLInputElement }) => {
                     const file = event.target.files?.[0];
                     event.currentTarget.value = "";
                     if (file) choose(definition, file);
@@ -176,12 +184,23 @@ export default function OperationVisualSettings({
               <ClipboardImageInput
                 disabled={working}
                 onError={setNotice}
-                onImage={(file) => choose(definition, file)}
+                onImage={(file: File) => choose(definition, file)}
               />
               {saved ? <button type="button" className="operation-visual-reset" disabled={working} onClick={() => void reset(definition)}>
                 <RotateCcw /> Restaurar original
               </button> : null}
             </div>
+            <OperationVisualAssetHistory
+              assetKey={definition.key}
+              label={definition.label}
+              currentUrl={currentUrl}
+              session={session}
+              onRestored={async (message) => {
+                setNotice(message);
+                await load();
+                window.dispatchEvent(new Event("adoce-site-visual-assets-changed"));
+              }}
+            />
           </article>;
         })}
       </div>

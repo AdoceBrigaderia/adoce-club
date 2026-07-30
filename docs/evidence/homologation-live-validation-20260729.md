@@ -1,0 +1,155 @@
+# Evidência viva da homologação — 29/07/2026
+
+## Escopo
+
+Validação exclusivamente no projeto Supabase de homologação `vazozolhbehnriytzcdc` e no site Netlify de homologação `f0cc51be-a0ec-4451-9644-a394592cdc37`.
+
+A referência produtiva `uefwywizqhfvvijaopcn` e o site produtivo `bb0c96cd-5af2-4270-a9a8-b63b9637b1f4` permaneceram proibidos e não foram utilizados.
+
+## Estado das migrations
+
+Consulta direta e somente leitura ao histórico remoto confirmou as 22 versões planejadas, de `20260728073000` até `20260728225000`.
+
+Resultado observado:
+
+- migrations esperadas: 22;
+- migrations registradas na homologação: 22;
+- versões ausentes: 0;
+- versões extras no intervalo auditado: 0.
+
+Esta evidência descreve o estado observado do banco. Ela não atribui a aplicação das migrations ao transporte estático da Netlify nem executa novamente o lote.
+
+## Auditoria pós-migration
+
+A auditoria `supabase/tests/homologation_post_migration_live.sql` foi executada em transação encerrada com `ROLLBACK` e terminou sem exceções.
+
+Foram confirmados:
+
+- tabelas fundamentais do montador, produtos configuráveis e motor de custos;
+- RLS habilitado nas relações protegidas;
+- ausência de acesso direto de leitura e escrita para `anon` e `authenticated` nas tabelas BFF/RPC-only auditadas;
+- funções privadas de canonicalização, redação e snapshots financeiros;
+- RPCs administrativas e públicas esperadas;
+- seis produtos configuráveis reais completos;
+- histórico remoto integral das 22 migrations.
+
+## Auditoria das RPCs privilegiadas
+
+A auditoria viva de `SECURITY DEFINER` foi executada em transação encerrada com `ROLLBACK` e terminou sem exceções para as funções críticas novas.
+
+Confirmado:
+
+- `get_configurable_product_catalog(text)` e `public_get_cake_builder_catalog(uuid)` possuem `search_path` vazio, filtram somente registros ativos/publicados e não devolvem custos internos reais;
+- RPCs gerenciais não são executáveis por `anon`, usam `private.is_manager()` e possuem `search_path` vazio;
+- o workspace de encomendas exige usuário autenticado e valida atribuição/permissão operacional por loja.
+
+O arquivo versionado `supabase/tests/homologation_security_definer_live.sql` preserva esse gate de forma repetível.
+
+## Catálogo real do montador
+
+O seed `supabase/seeds/homologation/20260729_real_cake_builder_catalog.sql` passou por duas etapas antes da confirmação final:
+
+1. ensaio reversível com inserção sintética de opção obsoleta, execução da reconciliação e `ROLLBACK`;
+2. aplicação integral e transacional somente na homologação, seguida por auditoria viva em nova transação encerrada com `ROLLBACK`.
+
+Resultado final observado:
+
+| Produto | Massas ativas | Recheios ativos | Acabamentos ativos |
+|---|---:|---:|---:|
+| `torta-p` | 5 | 22 | 1 |
+| `torta-m` | 5 | 22 | 1 |
+| `torta-g` | 5 | 22 | 1 |
+
+A reconciliação:
+
+- não apaga registros históricos;
+- desativa e despublica opções removidas do catálogo comercial;
+- rejeita placements inesperados;
+- mantém somente `acabamento-padrao-adoce` publicado como acabamento neutro;
+- não inventa custos nem acréscimos.
+
+## Índices das relações novas
+
+A consulta aos catálogos PostgreSQL identificou sete chaves estrangeiras sem índice de cobertura nas relações introduzidas neste marco.
+
+Foi executado:
+
+1. ensaio transacional com criação dos sete índices e `ROLLBACK`;
+2. aplicação idempotente exclusivamente na homologação;
+3. auditoria viva de validade, prontidão e primeira coluna coberta;
+4. nova leitura do advisor de performance.
+
+Índices confirmados:
+
+- `idx_cake_builder_options_costing_snapshot_id`;
+- `idx_costing_recipe_components_child_recipe_version_id`;
+- `idx_costing_recipe_components_item_id`;
+- `idx_service_request_cake_builds_template_id`;
+- `idx_service_request_pricing_snapshots_cost_snapshot_id`;
+- `idx_service_request_pricing_snapshots_recipe_version_id`;
+- `idx_service_request_product_configurations_product_id`.
+
+O advisor deixou de classificar essas sete FKs como não indexadas. Os novos índices aparecem como ainda não utilizados porque a homologação possui tráfego insuficiente; isso não autoriza sua remoção.
+
+Os arquivos versionados de manutenção, auditoria e workflow preservam a reprodução controlada dessa melhoria somente em homologação.
+
+## Transporte atômico pela Netlify de homologação
+
+O workflow `Empacotar migrations pendentes da homologação`, execução `30411201171`, concluiu com sucesso.
+
+Evidências do bundle:
+
+- migrations: 22;
+- `BEGIN` externo: 1;
+- `COMMIT` externo: 1;
+- registros de histórico: 22;
+- atomicidade: aprovada;
+- SHA-256 do bundle: `6361e156fc6d0b787b067796220050b1ff3db754cd5c25f218bc947ac4e1d0c2`;
+- deploy de homologação: `6a694904cfc6847aaf65a091`;
+- secret scan da Netlify: sem ocorrências.
+
+A autorização cifrada de uso único foi removida da branch depois do consumo.
+
+## Tentativas registradas
+
+1. Execução `30411015551`: falhou antes do deploy porque o parent autorizado ficou desatualizado após avanço concorrente da branch.
+2. Repetição dos jobs com falha: mesma falha determinística, sem acesso ao banco e sem publicação.
+3. Execução `30411201171`: autorização alinhada ao head, transporte atômico e publicação somente na Netlify de homologação concluídos.
+
+## Workflows do marco
+
+No head que consolidou o catálogo, os 13 workflows automáticos concluíram com sucesso, incluindo:
+
+- gate do catálogo real do montador;
+- gate do montador de tortas;
+- produtos configuráveis;
+- pré-flight das migrations;
+- empacotamento das migrations;
+- responsividade móvel;
+- custos, configurações, imagens, capas, galerias e carrosséis;
+- contratos dos backups lógico e do Storage.
+
+## Pendências dos advisors
+
+A leitura dos advisors do Supabase apontou itens que permanecem em tratamento:
+
+- proteção contra senhas conhecidas como comprometidas ainda desativada no Auth;
+- avisos de `SECURITY DEFINER` que precisam permanecer classificados entre catálogos públicos, RPCs de clientes, equipe e gerência;
+- tabelas RPC/BFF-only com RLS habilitado e sem policy direta, situação intencional que deve continuar documentada e testada;
+- chaves estrangeiras legadas ainda sem índice de cobertura;
+- policies permissivas duplicadas em algumas tabelas legadas e públicas.
+
+Os avisos de índices não usados não autorizam remoção automática, pois a homologação ainda possui tráfego insuficiente para essa decisão.
+
+## Próximo marco seguro
+
+- executar a auditoria manual redigida das RPCs privilegiadas no workflow próprio, quando necessário;
+- classificar e consolidar policies permissivas duplicadas sem ampliar acesso;
+- tratar índices legados por grupos funcionais, evitando criação indiscriminada;
+- publicar o portal funcional somente na Netlify de homologação;
+- executar readiness, smoke tests e Playwright em celular, tablet e desktop;
+- validar passkeys físicas e integrações externas separadamente, sem bloquear o restante.
+
+## Produção
+
+Nenhum merge, migration, seed, deploy, alteração de variável ou acesso operacional foi realizado em produção durante esta validação.

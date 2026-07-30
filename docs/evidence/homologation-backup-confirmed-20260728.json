@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "project_id": "vazozolhbehnriytzcdc",
+  "production_project_id": "uefwywizqhfvvijaopcn",
+  "production_forbidden": true,
+  "source": "user_provided_local_backup_evidence",
+  "database_dump_completed_at_brt": "2026-07-28T15:47:57-03:00",
+  "package_completed_at_brt": "2026-07-28T15:53:42-03:00",
+  "migration_gate_triggered_at_brt": "2026-07-28T16:10:00-03:00",
+  "postgres_version": "17.6",
+  "database_size_approx_bytes": 23068672,
+  "schema_table_count": 73,
+  "copy_section_count": 100,
+  "copy_sections_complete": 100,
+  "storage": {
+    "bucket": "adoce-media",
+    "object_count": 430,
+    "verified_object_count": 430,
+    "total_bytes": 487723273,
+    "sha256_verified": true
+  },
+  "package": {
+    "file_count": 437,
+    "zip_bytes": 488014680,
+    "sha256": "e45f322ecece827609f2932762e390353f7b4a72ed709269e6d500f2f60ad354",
+    "opened_and_read_integrally": true,
+    "invalid_checksum_count": 0
+  },
+  "sql_files": [
+    "roles.sql",
+    "schema.sql",
+    "data.sql"
+  ],
+  "credentials_exposed": false,
+  "restore_test_performed": false,
+  "restore_test_limitation": "Não foi realizado ensaio completo de restauração por ausência de banco Supabase isolado compatível.",
+  "accepted_for_homologation_migration_gate": true
+}

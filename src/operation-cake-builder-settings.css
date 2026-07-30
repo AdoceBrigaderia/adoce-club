@@ -1,0 +1,319 @@
+.operation-cake-builder-settings {
+  margin: 1rem 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid #e4d3cc;
+  border-radius: 24px;
+  background: #fff;
+  color: #351a14;
+  box-shadow: 0 18px 48px rgb(65 31 25 / 8%);
+}
+
+.operation-cake-builder-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.operation-cake-builder-heading small,
+.operation-cake-builder-heading h2,
+.operation-cake-builder-heading p {
+  display: block;
+  margin: 0;
+}
+
+.operation-cake-builder-heading small,
+.operation-cake-builder-group header small {
+  color: #a6496d;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.operation-cake-builder-heading h2 {
+  margin-top: 0.2rem;
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.operation-cake-builder-heading p {
+  max-width: 740px;
+  margin-top: 0.45rem;
+  color: #75584f;
+  line-height: 1.45;
+}
+
+.operation-cake-builder-heading > svg {
+  width: 40px;
+  height: 40px;
+  color: #a6496d;
+}
+
+.operation-cake-builder-notice {
+  margin: 1rem 0 0;
+  padding: 0.85rem;
+  border: 1px solid #dfb2c3;
+  border-radius: 14px;
+  background: #fff0f5;
+  color: #6e3149;
+}
+
+.operation-cake-builder-controls {
+  display: grid;
+  grid-template-columns: 1.35fr 1.35fr 0.65fr 0.65fr;
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+}
+
+.operation-cake-builder-controls label,
+.operation-cake-builder-option-main label,
+.operation-cake-builder-option-values label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 800;
+}
+
+.operation-cake-builder-controls input,
+.operation-cake-builder-controls select,
+.operation-cake-builder-option-main input,
+.operation-cake-builder-option-values input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #dcc5bd;
+  border-radius: 13px;
+  background: #fffaf7;
+  color: #351a14;
+  font: inherit;
+}
+
+.operation-cake-builder-controls small {
+  color: #80645b;
+  font-weight: 500;
+}
+
+.operation-cake-builder-flags {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.operation-cake-builder-flags label {
+  min-height: 84px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.8rem;
+  border: 1px solid #e4d3cc;
+  border-radius: 15px;
+  background: #fffaf7;
+}
+
+.operation-cake-builder-flags input,
+.operation-cake-builder-inline-check input {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  accent-color: #a6496d;
+}
+
+.operation-cake-builder-flags strong,
+.operation-cake-builder-flags small {
+  display: block;
+}
+
+.operation-cake-builder-flags small {
+  margin-top: 0.15rem;
+  color: #80645b;
+  line-height: 1.3;
+}
+
+.operation-cake-builder-group {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #ead8d1;
+  border-radius: 18px;
+  background: #fffaf7;
+}
+
+.operation-cake-builder-group > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.operation-cake-builder-group header h3,
+.operation-cake-builder-group header small {
+  display: block;
+  margin: 0;
+}
+
+.operation-cake-builder-group header button,
+.operation-cake-builder-footer > button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 13px;
+  background: #a6496d;
+  color: #fff;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.operation-cake-builder-option-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.operation-cake-builder-option-list article {
+  padding: 0.85rem;
+  border: 1px solid #e1cdc5;
+  border-radius: 15px;
+  background: #fff;
+}
+
+.operation-cake-builder-option-main {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr 1.4fr;
+  gap: 0.65rem;
+}
+
+.operation-cake-builder-option-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto 48px;
+  align-items: end;
+  gap: 0.65rem;
+  margin-top: 0.7rem;
+}
+
+.operation-cake-builder-option-values label > svg {
+  width: 18px;
+  color: #a6496d;
+}
+
+.operation-cake-builder-inline-check {
+  min-height: 50px;
+  display: flex !important;
+  align-items: center;
+  gap: 0.4rem !important;
+  padding: 0.55rem;
+  border: 1px solid #e1cdc5;
+  border-radius: 12px;
+  background: #fffaf7;
+}
+
+.operation-cake-builder-option-values button.danger {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #e1aaa4;
+  border-radius: 12px;
+  background: #fff1ef;
+  color: #962f25;
+  cursor: pointer;
+}
+
+.operation-cake-builder-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.1rem;
+  padding: 1rem;
+  border-radius: 17px;
+  background: #351a14;
+  color: #fff;
+}
+
+.operation-cake-builder-footer > div {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.operation-cake-builder-footer small,
+.operation-cake-builder-footer strong {
+  display: block;
+}
+
+.operation-cake-builder-footer small {
+  color: #e7d3cc;
+}
+
+.operation-cake-builder-footer strong {
+  font-size: 1.35rem;
+}
+
+.operation-cake-builder-footer > button {
+  background: #f4bfd3;
+  color: #351a14;
+}
+
+@media (max-width: 980px) {
+  .operation-cake-builder-controls,
+  .operation-cake-builder-flags {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operation-cake-builder-option-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operation-cake-builder-option-main label:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .operation-cake-builder-option-values {
+    grid-template-columns: 1fr 1fr auto auto 48px;
+  }
+}
+
+@media (max-width: 660px) {
+  .operation-cake-builder-settings {
+    padding: 0.85rem;
+    border-radius: 19px;
+  }
+
+  .operation-cake-builder-heading > svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .operation-cake-builder-controls,
+  .operation-cake-builder-flags,
+  .operation-cake-builder-option-main,
+  .operation-cake-builder-option-values {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-cake-builder-option-main label:last-child {
+    grid-column: auto;
+  }
+
+  .operation-cake-builder-inline-check {
+    min-height: 48px;
+  }
+
+  .operation-cake-builder-option-values button.danger {
+    width: 100%;
+  }
+
+  .operation-cake-builder-group > header,
+  .operation-cake-builder-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .operation-cake-builder-group header button,
+  .operation-cake-builder-footer > button {
+    width: 100%;
+  }
+}

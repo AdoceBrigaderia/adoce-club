@@ -1,0 +1,60 @@
+.operation-cake-builder-costing-link {
+  grid-column: 1 / -1;
+}
+
+.operation-cake-builder-costing-link select {
+  min-height: 48px;
+}
+
+.operation-cake-builder-option-values input:disabled,
+.operation-cake-builder-option-values select:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+  background: color-mix(in srgb, var(--surface, #fff) 84%, #e7e7e7);
+}
+
+.operation-cake-builder-margin {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface, #fff) 92%, #f4ecf1);
+}
+
+.operation-cake-builder-margin > svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.operation-cake-builder-margin span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.operation-cake-builder-margin small {
+  opacity: 0.72;
+}
+
+.operation-cake-builder-margin strong {
+  line-height: 1.35;
+}
+
+.operation-cake-builder-margin.is-alert {
+  border-color: #a45b00;
+  background: #fff4df;
+  color: #713d00;
+}
+
+@media (max-width: 720px) {
+  .operation-cake-builder-margin {
+    align-items: flex-start;
+  }
+
+  .operation-cake-builder-margin strong {
+    font-size: 0.9rem;
+  }
+}

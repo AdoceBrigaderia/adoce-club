@@ -194,14 +194,14 @@
 .brand-hero-copy h1 { max-width: 790px; font-size: clamp(3.9rem, 5.8vw, 6.6rem); line-height: .87; }
 .brand-hero-cake {
   min-width: 0;
-  min-height: 520px;
+  min-height: 560px;
   margin-bottom: -60px;
   align-self: center;
 }
 .brand-hero-cake img {
-  width: min(100%, 650px);
-  max-width: 100%;
-  right: 0;
+  width: min(118%, 760px);
+  max-width: none;
+  right: -4vw;
   bottom: 18px;
   object-fit: contain;
 }

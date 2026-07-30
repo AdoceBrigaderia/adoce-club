@@ -38,16 +38,20 @@ marketing-assets/**/*.zip
 *.bak
 *.cache
 
+# Relatorios locais gerados pelas auditorias
+artifacts/image-library-audit.json
+artifacts/image-library-audit.md
+artifacts/browser-security-audit.json
+artifacts/browser-security-audit.md
+artifacts/homologation-preflight.json
+artifacts/homologation-preflight.md
+artifacts/migration-integrity.json
+artifacts/migration-integrity.md
+artifacts/migration-reconciliation.json
+artifacts/migration-reconciliation.md
+
 # Pacotes locais de auditoria e backup
 ADOCE_AUDITORIA_*/
 ADOCE_AUDITORIA_*.zip
 BACKUP_FONTE_OFICIAL_*.zip
 FONTE_OFICIAL_DIAGNOSTICO_*.txt
-
-
-
-
-
-
-
-

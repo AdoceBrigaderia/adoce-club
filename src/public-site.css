@@ -157,6 +157,39 @@
   .festival-photo { min-height: 560px; }
 }
 
+@media (min-width: 821px) and (max-width: 960px) {
+  .public-header { height: 78px; padding: 0 20px; }
+  .public-menu { display: grid; }
+  .public-header nav {
+    display: none;
+    position: absolute;
+    top: 78px;
+    left: 0;
+    right: 0;
+    padding: 16px 20px 20px;
+    align-items: stretch;
+    background: rgba(28,12,8,.98);
+    color: white;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .public-header nav.open { display: grid; }
+  .public-header nav a {
+    min-height: 44px;
+    padding: 13px 8px;
+    font-size: .78rem;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .public-login {
+    justify-content: center;
+    margin-top: 4px;
+    border: 1px solid rgba(255,255,255,.35)!important;
+  }
+  .brand-hero-inner {
+    grid-template-columns: minmax(0, .95fr) minmax(300px, 1.05fr);
+    padding-inline: 34px;
+  }
+}
+
 @media (max-width: 820px) {
   .public-header { height: 72px; padding: 0 16px; }
   .public-brand img { width: 44px; height: 44px; }

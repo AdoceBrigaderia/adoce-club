@@ -1,0 +1,196 @@
+name: Gerar atlas visual de homologação
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - scripts/generate-homologation-visual-atlas.mjs
+      - scripts/export-homologation-visual-atlas-images.mjs
+      - src/homologation-visual-atlas.test.ts
+      - src/homologation-visual-atlas-images.test.ts
+      - docs/HOMOLOGACAO-ATLAS-VISUAL-98.md
+      - .github/workflows/homologation-visual-atlas.yml
+
+concurrency:
+  group: homologation-visual-atlas-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  AUTHORIZED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+
+jobs:
+  atlas:
+    name: Validar e empacotar 98 pontos e imagens
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar o commit exato
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Confirmar referência e commit autorizados
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "${AUTHORIZED_BRANCH}"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validar e gerar atlas interativo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/atlas-visual
+          node scripts/generate-homologation-visual-atlas.mjs --check
+          node scripts/generate-homologation-visual-atlas.mjs \
+            --out artifacts/atlas-visual/validacao-visual-98.html
+          test "$(grep -o 'data-checkpoint=' artifacts/atlas-visual/validacao-visual-98.html | wc -l)" = "98"
+
+      - name: Gerar 98 imagens separadas
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/export-homologation-visual-atlas-images.mjs --check
+          node scripts/export-homologation-visual-atlas-images.mjs \
+            --logo public/site/logo.webp \
+            --out-dir artifacts/atlas-visual/imagens-separadas
+          test "$(find artifacts/atlas-visual/imagens-separadas/imagens -maxdepth 1 -type f -name '*.svg' | wc -l)" = "98"
+          node -e "const m=require('./artifacts/atlas-visual/imagens-separadas/manifest.json'); if(m.totalAreas!==8||m.totalImages!==98||m.productionChanged!==false) process.exit(1)"
+          test -f artifacts/atlas-visual/imagens-separadas/index.html
+          test -f artifacts/atlas-visual/imagens-separadas/LEIA-ME.txt
+
+      - name: Registrar documentação e evidência
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp docs/HOMOLOGACAO-ATLAS-VISUAL-98.md artifacts/atlas-visual/LEIA-ME.md
+          printf '%s\n' \
+            "Commit: ${GITHUB_SHA}" \
+            "Área: homologação visual isolada" \
+            "Atlas interativo: 98 checkpoints" \
+            "Imagens separadas: 98 SVGs" \
+            "Produção: não alterada" \
+            > artifacts/atlas-visual/EVIDENCIA.txt
+
+      - name: Confirmar isolamento dos artefatos
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R "adocebrigaderia.com.br\|uefwywizqhfvvijaopcn\|bb0c96cd-5af2-4270-a9a8-b63b9637b1f4" \
+            artifacts/atlas-visual
+
+      - name: Gerar pacote ZIP verificável
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:8}"
+          package_dir="artifacts/entrega"
+          package_file="${package_dir}/adoce-atlas-visual-98-${short_sha}.zip"
+          mkdir -p "${package_dir}"
+
+          (
+            cd artifacts/atlas-visual
+            find . -type f ! -name 'SHA256SUMS.txt' -print0 \
+              | sort -z \
+              | xargs -0 sha256sum \
+              > SHA256SUMS.txt
+          )
+
+          zip -qr "${package_file}" artifacts/atlas-visual
+          sha256sum "${package_file}" > "${package_file}.sha256"
+          test "$(unzip -Z1 "${package_file}" | grep -Ec '^artifacts/atlas-visual/imagens-separadas/imagens/[^/]+\.svg$')" = "98"
+          unzip -tq "${package_file}"
+
+          printf '%s\n' \
+            "Arquivo: $(basename "${package_file}")" \
+            "Commit: ${GITHUB_SHA}" \
+            "Conteúdo: atlas interativo, 98 SVGs, galeria, manifesto, documentação e checksums" \
+            "Produção: não alterada" \
+            > "${package_dir}/LEIA-ME.txt"
+
+          {
+            echo "### Atlas visual pronto para download"
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Imagens separadas: **98 SVGs**"
+            echo "- Pacote: \`$(basename "${package_file}")\`"
+            echo "- Integridade: SHA-256 incluído"
+            echo "- Produção: **não alterada**"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Empacotar atlas e 98 imagens separadas
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-visual-adoce-98-${{ github.sha }}
+          path: |
+            artifacts/atlas-visual
+            artifacts/entrega
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Registrar download no issue de acompanhamento
+        if: ${{ success() }}
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          ARTIFACT_NAME: atlas-visual-adoce-98-${{ github.sha }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Atlas visual disponível para download",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- Artefato: \`${process.env.ARTIFACT_NAME}\``,
+              `- [Baixar o ZIP com as 98 imagens](${process.env.ARTIFACT_URL})`,
+              `- Digest do artefato: \`${process.env.ARTIFACT_DIGEST}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Retenção: 30 dias",
+              "- Produção: **não alterada**",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
+
+      - name: Registrar falha do empacotamento
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Atlas visual — empacotamento não concluído",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Produção: **não alterada**",
+              "",
+              "A execução falhou antes de disponibilizar o artefato. Os logs do run contêm a etapa exata que deve ser corrigida.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });

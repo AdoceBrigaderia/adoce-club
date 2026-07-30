@@ -1,0 +1,141 @@
+name: Diagnosticar testes da reestruturação
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/test-diagnostics.yml
+      - src/**/*.ts
+      - src/**/*.tsx
+      - scripts/**/*.mjs
+      - scripts/**/*.mts
+      - scripts/**/*.d.mts
+
+concurrency:
+  group: test-diagnostics
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  DELIVERY_ISSUE_NUMBER: "13"
+
+jobs:
+  diagnose:
+    name: Capturar falhas de testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar o commit exato
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch e SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Executar testes e preservar saída
+        id: tests
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          set +e
+          npm run test -- --reporter=verbose > >(tee artifacts/tests-output.txt) 2>&1
+          status=$?
+          set -e
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Gerar resumo objetivo
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const input = fs.readFileSync('artifacts/tests-output.txt', 'utf8');
+          const lines = input.split(/\r?\n/).filter(Boolean);
+          const relevant = lines.filter((line) =>
+            /(?:FAIL|Failed Tests|AssertionError|Error:|×|❯)/.test(line),
+          );
+          const unique = [...new Set(relevant)].slice(0, 80);
+          const summary = unique.join('\n');
+          const passedMatch = input.match(/Tests\s+(\d+) passed/);
+          const failedMatch = input.match(/Tests\s+(\d+) failed/);
+          const filesPassedMatch = input.match(/Test Files\s+(\d+) passed/);
+          const filesFailedMatch = input.match(/Test Files\s+(\d+) failed/);
+          const stats = {
+            testsPassed: Number(passedMatch?.[1] || 0),
+            testsFailed: Number(failedMatch?.[1] || 0),
+            filesPassed: Number(filesPassedMatch?.[1] || 0),
+            filesFailed: Number(filesFailedMatch?.[1] || 0),
+          };
+          fs.writeFileSync('artifacts/tests-summary.txt', summary || 'Nenhuma falha de teste encontrada.\n');
+          fs.writeFileSync('artifacts/tests-stats.json', `${JSON.stringify(stats, null, 2)}\n`);
+          NODE
+
+      - name: Publicar diagnóstico no issue de entrega
+        uses: actions/github-script@v7
+        env:
+          EXIT_CODE: ${{ steps.tests.outputs.exit_code }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('artifacts/tests-summary.txt', 'utf8').trim();
+            const stats = JSON.parse(fs.readFileSync('artifacts/tests-stats.json', 'utf8'));
+            const ok = process.env.EXIT_CODE === '0';
+            const body = [
+              ok ? '## Testes unitários e contratuais aprovados' : '## Diagnóstico de testes disponível',
+              '',
+              `- Commit: \`${context.sha}\``,
+              `- Exit code: \`${process.env.EXIT_CODE}\``,
+              `- Arquivos aprovados: **${stats.filesPassed}**`,
+              `- Arquivos com falha: **${stats.filesFailed}**`,
+              `- Testes aprovados: **${stats.testsPassed}**`,
+              `- Testes com falha: **${stats.testsFailed}**`,
+              '',
+              '```text',
+              summary.slice(0, 7000),
+              '```',
+              '',
+              '- Produção: **não alterada**.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });
+
+      - name: Preservar diagnóstico
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics-${{ github.sha }}
+          path: artifacts
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Falhar quando existirem testes inválidos
+        if: ${{ steps.tests.outputs.exit_code != '0' }}
+        run: exit 1

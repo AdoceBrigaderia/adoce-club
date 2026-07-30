@@ -1,3 +1,5 @@
+import { businessMailto } from "./business-contacts";
+
 const whatsappMessage = encodeURIComponent(
   "Olá! Vim pelo site da Adoce e gostaria de atendimento.",
 );
@@ -7,6 +9,14 @@ export const publicContactLinks = {
   instagram: "https://www.instagram.com/_adocebrigaderia_/",
   whatsappPrimary: `https://wa.me/5585982156026?text=${whatsappMessage}`,
   whatsappSecondary: `https://wa.me/5585981994370?text=${whatsappMessage}`,
+  emailAtendimento: businessMailto(
+    "atendimento",
+    "Atendimento pelo Portal Adoce",
+  ),
+  emailPrivacidade: businessMailto(
+    "privacidade",
+    "Privacidade e dados pessoais",
+  ),
 } as const;
 
 export function shouldShowPublicContactDock(hostname: string, hash: string) {
@@ -20,7 +30,6 @@ export function shouldShowPublicContactDock(hostname: string, hash: string) {
     "#operacao-demo",
     "#membro-demo",
     "#restauracao-demo",
-    "#prototipo",
     "#campanha-",
     "#lancamento-",
     "#entrar",

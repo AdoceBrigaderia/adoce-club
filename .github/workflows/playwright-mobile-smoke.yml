@@ -1,0 +1,72 @@
+name: Playwright mobile e tablet
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "SHA exato do marco visual que será testado"
+        required: true
+        type: string
+
+concurrency:
+  group: playwright-mobile-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  PLAYWRIGHT_WEBKIT: "1"
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  EXPECTED_COMMIT: ${{ inputs.commit }}
+
+jobs:
+  smoke:
+    name: Experiências reais em celular, tablet e computador
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+
+      - name: Confirmar branch e commit autorizados
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências do portal
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Gerar build inspecionável
+        run: npm run build
+
+      - name: Instalar Playwright isoladamente
+        run: npm install --no-save --no-package-lock @playwright/test@1.61.1
+
+      - name: Instalar Chromium e WebKit
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Executar smoke responsivo em Chromium e WebKit
+        run: npx playwright test
+
+      - name: Preservar relatório e evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-mobile-${{ github.run_number }}
+          path: |
+            artifacts/playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7

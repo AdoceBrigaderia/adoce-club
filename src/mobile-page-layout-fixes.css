@@ -1,0 +1,328 @@
+/* Complemento carregado após o hardening principal para páginas públicas e preview. */
+
+@media (max-width: 640px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  #root > *,
+  main,
+  section,
+  article,
+  header,
+  footer,
+  nav,
+  form,
+  fieldset,
+  div {
+    min-width: 0;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg,
+  input,
+  select,
+  textarea,
+  button {
+    max-width: 100%;
+  }
+
+  .homologation-validation-banner {
+    min-height: 34px;
+    padding: 0.42rem 0.72rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .homologation-validation-banner strong {
+    margin: 0;
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+
+  .homologation-validation-banner span {
+    display: none;
+  }
+
+  body:has(.homologation-validation-banner) .brand-hero .public-header {
+    top: 34px;
+  }
+
+  .public-header,
+  .join-page nav,
+  .simple-header,
+  .cake-order-header {
+    width: 100%;
+    max-width: 100vw;
+    padding-inline: 16px;
+  }
+
+  .brand-hero-inner {
+    padding: 108px 16px 0;
+  }
+
+  .brand-hero,
+  .brand-hero-cake {
+    overflow: visible;
+  }
+
+  .brand-hero-copy h1 {
+    font-size: clamp(2.7rem, 11.8vw, 3.6rem);
+    line-height: 0.96;
+    letter-spacing: -0.035em;
+  }
+
+  .brand-hero-cake {
+    min-height: 280px;
+  }
+
+  .brand-hero-cake img {
+    right: -24%;
+    width: min(132%, 530px);
+  }
+
+  .intent-split,
+  .path-finder,
+  .signature-experiences,
+  .brand-story,
+  .final-chooser,
+  .order-policy-callout,
+  .approved-club-visual,
+  .club-share-call,
+  .group-order-rules,
+  .group-order-final {
+    padding-inline: 16px;
+  }
+
+  .intent-split {
+    padding-top: clamp(120px, 38vw, 170px);
+    padding-bottom: 56px;
+  }
+
+  .intent-split-head h2,
+  .path-finder-head h2,
+  .signature-experiences-head h2,
+  .brand-story h2,
+  .final-chooser h2,
+  .approved-club-heading h2,
+  .club-share-call h2,
+  .group-order-final h2 {
+    font-size: clamp(2.5rem, 10.8vw, 3.4rem);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+  }
+
+  .intent-split-grid,
+  .signature-grid,
+  .path-list,
+  .brand-story,
+  .final-chooser > div,
+  .group-order-rules,
+  .club-share-call,
+  .join-form-wrap,
+  .identity-panel,
+  .wallet-actions,
+  .cake-order-form-grid,
+  .operation-dashboard-primary,
+  .operation-dashboard-metrics {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .intent-card {
+    min-height: 440px;
+    padding: 24px;
+    border-radius: 22px;
+  }
+
+  .intent-card h3,
+  .signature-copy h3 {
+    font-size: clamp(2.2rem, 9.8vw, 2.95rem);
+    line-height: 0.98;
+  }
+
+  .path-item,
+  .path-item:nth-child(n + 5),
+  .signature-card {
+    min-height: 0;
+    border-radius: 22px;
+  }
+
+  .path-image,
+  .path-item.group .path-image,
+  .path-item.club .path-image {
+    width: 100%;
+    min-height: 220px;
+    height: 220px;
+  }
+
+  .brand-story > div:last-child {
+    padding: 26px 0 0;
+    border-left: 0;
+    border-top: 1px solid #dfbc9e;
+  }
+
+  .brand-story-photo {
+    width: min(100%, 390px);
+    margin-inline: auto;
+  }
+
+  .join-hero,
+  .club-intro,
+  .group-order-hero,
+  .cake-order-hero {
+    width: 100%;
+    max-width: 100vw;
+    grid-template-columns: minmax(0, 1fr) !important;
+    overflow: hidden;
+  }
+
+  .hero-copy,
+  .join-form-wrap,
+  .cake-order-hero > div,
+  .cake-order-products,
+  .cake-order-builder-shell,
+  .cake-order-trust {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: 16px;
+  }
+
+  .join-form-wrap {
+    padding-block: 48px;
+    gap: 24px;
+  }
+
+  .wallet-card {
+    width: calc(100% - 32px);
+    min-height: 520px;
+    aspect-ratio: auto;
+    padding: 22px 18px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    gap: 16px;
+    border-radius: 24px;
+  }
+
+  .wallet-card > * {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  .card-photo {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 190px;
+    border: 0;
+    border-radius: 18px;
+  }
+
+  .card-title div {
+    font-size: clamp(2rem, 9.8vw, 2.7rem);
+  }
+
+  .balance {
+    padding: 14px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--gold);
+  }
+
+  .stamps {
+    flex-wrap: wrap;
+    justify-content: center;
+    padding-block: 12px;
+  }
+
+  .identity-panel,
+  .wallet-actions,
+  .how {
+    width: calc(100% - 32px);
+  }
+
+  .identity-panel .qr {
+    width: min(180px, 58vw);
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: center;
+  }
+
+  .group-order-hero,
+  .cake-order-hero {
+    min-height: auto;
+    padding: 82px 16px 40px;
+  }
+
+  .group-order-hero h1,
+  .cake-order-hero h1,
+  .club-intro h1 {
+    max-width: 100%;
+    font-size: clamp(2.7rem, 11.6vw, 3.75rem);
+    line-height: 0.96;
+  }
+
+  .group-order-hero > img,
+  .cake-order-hero > img,
+  .club-intro > img,
+  .club-intro > .club-intro-product {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 26px auto 0;
+    transform: none;
+  }
+
+  .homologation-visual-navigator-content,
+  .homologation-visual-navigator-content nav,
+  .homologation-visual-route,
+  .homologation-visual-route > a,
+  .homologation-visual-route > div,
+  .homologation-visual-route-note,
+  .homologation-visual-review-notes {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .homologation-visual-navigator-content {
+    overflow-x: hidden;
+  }
+
+  .homologation-visual-route-note textarea,
+  .homologation-visual-review-notes textarea {
+    box-sizing: border-box;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 390px) {
+  .brand-hero-cake img {
+    top: auto;
+    bottom: -32px;
+  }
+}
+
+@media (max-width: 360px) {
+  .brand-hero-copy h1 {
+    font-size: 2.58rem;
+  }
+
+  .public-brand strong {
+    max-width: 168px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

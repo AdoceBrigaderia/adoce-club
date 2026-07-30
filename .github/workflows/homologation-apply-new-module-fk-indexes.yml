@@ -1,0 +1,171 @@
+name: Aplicar índices das relações novas somente na homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite APLICAR INDICES NOVOS SOMENTE HOMOLOGACAO seguido do project ref
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo autorizado da branch de reestruturação
+        required: true
+        type: string
+      backup_evidence:
+        description: Evidência do backup recuperável no formato BACKUP CONFIRMADO ...
+        required: true
+        type: string
+
+concurrency:
+  group: apply-new-module-fk-indexes-homologation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
+  PRODUCTION_REF: uefwywizqhfvvijaopcn
+  MAINTENANCE_FILE: supabase/maintenance/homologation/20260729_new_module_fk_indexes.sql
+  LIVE_AUDIT_FILE: supabase/tests/homologation_new_module_fk_indexes_live.sql
+
+jobs:
+  apply:
+    name: Ensaio reversível, aplicação e auditoria viva
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, commit, backup e isolamento
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_EVIDENCE: ${{ inputs.backup_evidence }}
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$CONFIRMATION" = "APLICAR INDICES NOVOS SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          case "$BACKUP_EVIDENCE" in
+            "BACKUP CONFIRMADO "*) ;;
+            *) echo "Evidência de backup inválida" >&2; exit 1 ;;
+          esac
+          test "${#BACKUP_EVIDENCE}" -ge 35
+          test -s "$MAINTENANCE_FILE"
+          test -s "$LIVE_AUDIT_FILE"
+          test -n "$SUPABASE_HOMOLOGATION_DB_URL"
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            postgres://*|postgresql://*) ;;
+            *) echo "URL PostgreSQL inválida" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 1 ;;
+          esac
+          case "$SUPABASE_HOMOLOGATION_DB_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência produtiva rejeitada" >&2; exit 1 ;;
+          esac
+          ! grep -R "$PRODUCTION_REF" "$MAINTENANCE_FILE" "$LIVE_AUDIT_FILE"
+          ! grep -Ei '\b(drop|truncate|delete)\b' "$MAINTENANCE_FILE"
+
+      - name: Preparar ensaio reversível
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/homologation-new-module-fk-indexes
+          node - <<'NODE'
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const source = fs.readFileSync(process.env.MAINTENANCE_FILE, 'utf8');
+          if (!/^\s*begin;/i.test(source)) throw new Error('Manutenção sem BEGIN.');
+          if (!/commit;\s*$/i.test(source)) throw new Error('Manutenção sem COMMIT.');
+          const dryRun = source.replace(/commit;\s*$/i, 'rollback;\n');
+          fs.writeFileSync('artifacts/homologation-new-module-fk-indexes/dry-run.sql', dryRun);
+          fs.writeFileSync('artifacts/homologation-new-module-fk-indexes/manifest.json', JSON.stringify({
+            schema_version: 1,
+            repository: 'AdoceBrigaderia/adoce-club',
+            branch: process.env.EXPECTED_BRANCH,
+            commit: process.env.GITHUB_SHA,
+            project_ref: process.env.HOMOLOGATION_REF,
+            production_forbidden: true,
+            index_count: (source.match(/create index if not exists/g) || []).length,
+            source_sha256: crypto.createHash('sha256').update(source).digest('hex'),
+          }, null, 2));
+          NODE
+          test "$(node -p "require('./artifacts/homologation-new-module-fk-indexes/manifest.json').index_count")" -eq 7
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Executar ensaio completo com rollback
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 \
+            --file=artifacts/homologation-new-module-fk-indexes/dry-run.sql \
+            > artifacts/homologation-new-module-fk-indexes/dry-run.log
+
+      - name: Aplicar índices somente na homologação
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 \
+            --file="$MAINTENANCE_FILE" \
+            > artifacts/homologation-new-module-fk-indexes/apply.log
+
+      - name: Executar auditoria viva pós-aplicação
+        env:
+          SUPABASE_HOMOLOGATION_DB_URL: ${{ secrets.SUPABASE_HOMOLOGATION_DB_URL }}
+          PGCONNECT_TIMEOUT: "20"
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_HOMOLOGATION_DB_URL" \
+            --no-psqlrc --set=ON_ERROR_STOP=1 \
+            --file="$LIVE_AUDIT_FILE" \
+            > artifacts/homologation-new-module-fk-indexes/live-audit.log
+
+      - name: Gerar evidência redigida
+        env:
+          BACKUP_EVIDENCE: ${{ inputs.backup_evidence }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$BACKUP_EVIDENCE" > artifacts/homologation-new-module-fk-indexes/backup-evidence.txt
+          printf '%s\n' "$EXPECTED_COMMIT" > artifacts/homologation-new-module-fk-indexes/commit.txt
+          printf '%s\n' "$HOMOLOGATION_REF" > artifacts/homologation-new-module-fk-indexes/project-ref.txt
+          ! grep -R "$PRODUCTION_REF" artifacts/homologation-new-module-fk-indexes
+          ! grep -R "postgresql://\|postgres://" artifacts/homologation-new-module-fk-indexes
+
+      - name: Preservar evidências
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: indices-relacoes-novas-homologacao-${{ github.run_number }}
+          path: artifacts/homologation-new-module-fk-indexes
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 6

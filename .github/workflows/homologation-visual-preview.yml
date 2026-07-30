@@ -1,0 +1,367 @@
+name: Publicar validação visual da homologação
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite PUBLICAR VALIDACAO VISUAL
+        required: true
+        type: string
+      expected_commit:
+        description: Commit exato da branch aprovado para validação visual
+        required: true
+        type: string
+  push:
+    branches:
+      - reestruturacao/ux-crm-operacao-imagens-v1
+    paths:
+      - .github/workflows/homologation-visual-preview.yml
+      - package.json
+      - scripts/serve-homologation-preview.mjs
+      - scripts/serve-homologation-preview.test.mjs
+      - src/HomologationValidationBanner.tsx
+      - src/HomologationVisualNavigator.tsx
+      - src/homologation-visual-review.ts
+      - src/homologation-validation.css
+      - src/homologation-visual-route-notes.css
+      - src/homologation-visual-preview.test.ts
+      - src/main.tsx
+
+concurrency:
+  group: homologation-visual-preview
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  NETLIFY_CONTEXT: branch-deploy
+  EXPECTED_SITE_URL: ${{ vars.HOMOLOGATION_SITE_URL || 'https://adoce-homologacao.netlify.app' }}
+  PRODUCTION_SITE_ID: ${{ vars.NETLIFY_PRODUCTION_SITE_ID || 'bb0c96cd-5af2-4270-a9a8-b63b9637b1f4' }}
+
+jobs:
+  visual-preview:
+    name: Build e preview visual isolado
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment: homologation
+    steps:
+      - name: Baixar o commit exato autorizado
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização, branch, commit e site isolado
+        env:
+          CONFIRMATION: ${{ github.event_name == 'workflow_dispatch' && inputs.confirmation || 'PUBLICAR VALIDACAO VISUAL' }}
+          EXPECTED_COMMIT: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_commit || github.sha }}
+          HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = "PUBLICAR VALIDACAO VISUAL"
+          test "$GITHUB_REF_NAME" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test -n "$HOMOLOGATION_SITE_ID"
+          test -n "$PRODUCTION_SITE_ID"
+          test "$HOMOLOGATION_SITE_ID" != "$PRODUCTION_SITE_ID"
+          case "$EXPECTED_SITE_URL" in
+            https://*.netlify.app) ;;
+            *) echo "URL de homologação inválida" >&2; exit 1 ;;
+          esac
+          case "$EXPECTED_SITE_URL" in
+            *adocebrigaderia.com.br*) echo "Domínio de produção proibido" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar e executar gate rápido
+        run: |
+          npm ci --prefer-offline --no-audit
+          npm run verify:fast
+
+      - name: Gerar preview visual offline independente da Netlify
+        env:
+          VITE_ADOCE_VALIDATION_MODE: visual
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          export VITE_ADOCE_PREVIEW_BUILT_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          npm run build
+          package_dir="artifacts/homologacao-visual-offline"
+          mkdir -p "$package_dir"
+          cp -R dist "$package_dir/dist"
+          cp scripts/serve-homologation-preview.mjs "$package_dir/servidor-preview.mjs"
+
+          cat > "$package_dir/INICIAR-PREVIEW-WINDOWS.cmd" <<'EOF_WINDOWS'
+          @echo off
+          cd /d "%~dp0"
+          where node >nul 2>nul
+          if errorlevel 1 (
+            echo Node.js 22 ou superior nao foi encontrado.
+            echo Instale o Node.js e execute este arquivo novamente.
+            pause
+            exit /b 1
+          )
+          node servidor-preview.mjs --open
+          if errorlevel 1 pause
+          EOF_WINDOWS
+
+          cat > "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command" <<'EOF_UNIX'
+          #!/usr/bin/env sh
+          set -eu
+          cd "$(dirname "$0")"
+          if ! command -v node >/dev/null 2>&1; then
+            echo "Node.js 22 ou superior não foi encontrado."
+            exit 1
+          fi
+          exec node servidor-preview.mjs --open
+          EOF_UNIX
+          chmod +x "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command"
+
+          cat > "$package_dir/LEIA-ME.txt" <<'EOF_README'
+          PORTAL ADOCE — PREVIEW VISUAL OFFLINE
+
+          INÍCIO RÁPIDO
+          - Windows: dê dois cliques em INICIAR-PREVIEW-WINDOWS.cmd
+          - macOS/Linux: execute INICIAR-PREVIEW-LINUX-MAC.command
+          - Alternativa: node servidor-preview.mjs --open
+
+          O navegador abrirá http://127.0.0.1:4173. Para encerrar, feche o terminal ou pressione Ctrl+C.
+          Requisito: Node.js 22 ou superior. Não é necessário instalar pacotes nem acessar a internet.
+
+          Este pacote é somente para validação visual. Integrações externas e ações transacionais podem estar indisponíveis.
+          O servidor aceita conexões apenas do próprio computador.
+          Produção não foi alterada.
+          EOF_README
+
+          printf '%s\n' \
+            "Commit: ${GITHUB_SHA}" \
+            "Build: ${VITE_ADOCE_PREVIEW_BUILT_AT}" \
+            "Modo: validação visual offline" \
+            "Servidor: localhost/127.0.0.1" \
+            "Produção: não alterada" \
+            > "$package_dir/EVIDENCIA.txt"
+
+          node "$package_dir/servidor-preview.mjs" --port 4187 > "$package_dir/SERVIDOR-TESTE.log" 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+          status="000"
+          for attempt in $(seq 1 20); do
+            status="$(curl -sS -o "$package_dir/SMOKE-INDEX.html" -w '%{http_code}' http://127.0.0.1:4187/ || true)"
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          test "$status" = "200"
+          grep -q 'id="root"' "$package_dir/SMOKE-INDEX.html"
+          route_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:4187/operacao/venda-rapida)"
+          test "$route_status" = "200"
+          cleanup
+          wait "$server_pid" 2>/dev/null || true
+          trap - EXIT
+
+      - name: Preservar preview offline para teste imediato
+        id: offline-upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: homologacao-visual-offline-${{ github.sha }}
+          path: artifacts/homologacao-visual-offline
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Verificar disponibilidade da credencial Netlify
+        id: netlify-auth
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "NETLIFY_AUTH_TOKEN não está configurado; o preview offline foi preservado e a publicação web será ignorada."
+          fi
+
+      - name: Vincular ao projeto exclusivo de homologação
+        if: ${{ steps.netlify-auth.outputs.configured == 'true' }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
+        run: |
+          npx --yes netlify-cli@26.2.0 link --id "$NETLIFY_HOMOLOGATION_SITE_ID"
+
+      - name: Gerar build com contexto da Netlify de homologação
+        if: ${{ steps.netlify-auth.outputs.configured == 'true' }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
+          VITE_ADOCE_VALIDATION_MODE: visual
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export VITE_ADOCE_PREVIEW_BUILT_AT="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          npx --yes netlify-cli@26.2.0 dev:exec --context "$NETLIFY_CONTEXT" npm run build
+
+      - name: Criar deploy estático de rascunho
+        if: ${{ steps.netlify-auth.outputs.configured == 'true' }}
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_HOMOLOGATION_SITE_ID: ${{ secrets.NETLIFY_HOMOLOGATION_SITE_ID || vars.NETLIFY_HOMOLOGATION_SITE_ID || 'f0cc51be-a0ec-4451-9644-a394592cdc37' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          npx --yes netlify-cli@26.2.0 deploy \
+            --site "$NETLIFY_HOMOLOGATION_SITE_ID" \
+            --context "$NETLIFY_CONTEXT" \
+            --alias validacao-visual-adoce \
+            --dir dist \
+            --no-build \
+            --json > artifacts/netlify-visual-preview.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const deploy = JSON.parse(fs.readFileSync('artifacts/netlify-visual-preview.json', 'utf8'));
+          if (!deploy.deploy_id && !deploy.id) throw new Error('Deploy sem identificador.');
+          if (deploy.is_prod === true) throw new Error('Deploy produtivo foi rejeitado.');
+          const deployUrl = deploy.deploy_url || deploy.ssl_url || deploy.url;
+          if (!deployUrl) throw new Error('Deploy sem URL HTTPS.');
+          const deployed = new URL(deployUrl);
+          const expected = new URL(process.env.EXPECTED_SITE_URL);
+          const expectedHost = expected.hostname.toLowerCase();
+          const deployedHost = deployed.hostname.toLowerCase();
+          const belongsToHomologationSite =
+            deployedHost === expectedHost || deployedHost.endsWith(`--${expectedHost}`);
+          if (deployed.protocol !== 'https:' || !deployedHost.endsWith('.netlify.app')) {
+            throw new Error('URL do deploy não pertence à Netlify HTTPS.');
+          }
+          if (!belongsToHomologationSite) {
+            throw new Error('URL do deploy não pertence ao site reservado de homologação.');
+          }
+          if (deployedHost.includes('adocebrigaderia.com.br')) {
+            throw new Error('Domínio produtivo rejeitado no deploy.');
+          }
+          fs.writeFileSync('artifacts/homologation-visual-url.txt', `${deployed.origin}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `HOMOLOGATION_VISUAL_URL=${deployed.origin}\n`);
+          NODE
+
+      - name: Validar navegação pública básica
+        if: ${{ steps.netlify-auth.outputs.configured == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$HOMOLOGATION_VISUAL_URL"
+          status="000"
+          for attempt in $(seq 1 12); do
+            status="$(curl -sS -L -o artifacts/homologation-visual-index.html -w '%{http_code}' "$HOMOLOGATION_VISUAL_URL" || true)"
+            [ "$status" = "200" ] && break
+            sleep 5
+          done
+          test "$status" = "200"
+          grep -q 'id="root"' artifacts/homologation-visual-index.html
+
+      - name: Registrar URL publicada no issue de acompanhamento
+        if: ${{ steps.netlify-auth.outputs.configured == 'true' && success() }}
+        uses: actions/github-script@v7
+        env:
+          OFFLINE_ARTIFACT_URL: ${{ steps.offline-upload.outputs.artifact-url }}
+          OFFLINE_ARTIFACT_DIGEST: ${{ steps.offline-upload.outputs.artifact-digest }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Preview visual publicado",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- URL: ${process.env.HOMOLOGATION_VISUAL_URL}`,
+              `- [Baixar preview offline](${process.env.OFFLINE_ARTIFACT_URL})`,
+              `- Digest offline: \`${process.env.OFFLINE_ARTIFACT_DIGEST}\``,
+              "- Execução offline: use o iniciador do seu sistema; não é necessário instalar pacotes.",
+              "- Escopo: validação visual em celular, tablet e computador.",
+              "- Roteiro: checklist guiado, status por tela, observações e relatório copiável.",
+              "- Limite: ações transacionais e integrações externas podem estar indisponíveis neste preview estático.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
+
+      - name: Registrar preview offline quando a Netlify não estiver configurada
+        if: ${{ steps.netlify-auth.outputs.configured != 'true' && success() }}
+        uses: actions/github-script@v7
+        env:
+          OFFLINE_ARTIFACT_URL: ${{ steps.offline-upload.outputs.artifact-url }}
+          OFFLINE_ARTIFACT_DIGEST: ${{ steps.offline-upload.outputs.artifact-digest }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Preview visual offline disponível",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- [Baixar pacote para teste local](${process.env.OFFLINE_ARTIFACT_URL})`,
+              `- Digest: \`${process.env.OFFLINE_ARTIFACT_DIGEST}\``,
+              "- Windows: dois cliques em `INICIAR-PREVIEW-WINDOWS.cmd`.",
+              "- macOS/Linux: execute `INICIAR-PREVIEW-LINUX-MAC.command`.",
+              "- Alternativa: `node servidor-preview.mjs --open`.",
+              "- Não é necessário instalar pacotes nem acessar a internet após o download.",
+              "- A publicação web foi ignorada porque `NETLIFY_AUTH_TOKEN` não está configurado.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
+
+      - name: Registrar falha real do preview visual
+        if: ${{ failure() }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              "## Preview visual bloqueado por falha real",
+              "",
+              `- Commit: \`${context.sha}\``,
+              `- Execução: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              "- Ação: revisar a primeira etapa com falha e repetir somente os jobs necessários.",
+              "- Produção: **não alterada**.",
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });
+
+      - name: Preservar evidências da publicação web
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: homologacao-visual-evidencias-${{ github.sha }}
+          path: |
+            artifacts/netlify-visual-preview.json
+            artifacts/homologation-visual-url.txt
+            artifacts/homologation-visual-index.html
+          if-no-files-found: warn
+          retention-days: 7

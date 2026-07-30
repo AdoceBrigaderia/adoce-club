@@ -1,0 +1,42 @@
+.homologation-visual-route-note {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.65rem;
+  border-top: 1px solid rgba(100, 47, 37, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  color: #5b2f2a;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.homologation-visual-route-note textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+  padding: 0.6rem;
+  border: 1px solid rgba(100, 47, 37, 0.2);
+  border-radius: 11px;
+  background: #fff;
+  color: #4f2c27;
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.homologation-visual-route-note textarea:focus-visible {
+  outline: 3px solid rgba(210, 102, 128, 0.28);
+  outline-offset: 1px;
+}
+
+.homologation-visual-route-note small {
+  justify-self: end;
+  color: #77544d;
+  font-size: 0.64rem;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .homologation-visual-route-note textarea {
+    min-height: 88px;
+  }
+}

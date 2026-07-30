@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 2,
+  "publicFunction": "public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)",
+  "baseInternalFunction": "public.staff_get_operational_reports_base_internal(date,date,uuid)",
+  "breakdownInternalFunction": "public.staff_get_operational_reports_breakdowns_internal(date,date,uuid)",
+  "baseHardeningMigration": "supabase/migrations/20260729223000_harden_operational_reports_by_store_and_finance.sql",
+  "breakdownMigration": "supabase/migrations/20260729224500_add_operational_report_breakdowns.sql",
+  "filterMigration": "supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql",
+  "liveTest": "supabase/tests/operational_reports_boundary_live.sql",
+  "workflow": ".github/workflows/operational-reports-boundary-live-homologation.yml",
+  "capabilities": [
+    "view_reports",
+    "view_finance"
+  ],
+  "roles": {
+    "owner": "financial",
+    "manager": "financial",
+    "viewer": "operational_only"
+  },
+  "breakdowns": [
+    "orders_by_channel",
+    "sales_by_cash_register",
+    "sales_by_operator",
+    "cash_sessions_by_register"
+  ],
+  "filters": [
+    "target_channel",
+    "target_operator_user_id",
+    "target_register_id"
+  ],
+  "filterScope": "breakdowns_only",
+  "touchBudget": 1,
+  "protectedFinancialFields": [
+    "gross",
+    "fees",
+    "net",
+    "average_ticket",
+    "cash_absolute_difference",
+    "cash_net_difference",
+    "cash_expenses",
+    "cash_refunds",
+    "cash_supplies",
+    "cash_withdrawals",
+    "service_requests_paid_amount",
+    "service_requests_refund_pending_amount"
+  ]
+}

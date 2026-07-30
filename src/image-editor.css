@@ -116,6 +116,7 @@
 .image-editor-quality span { color: #795b51; font-size: .65rem; }
 .image-editor-quality.good strong { color: #3f7657; }
 .image-editor-quality.warning strong { color: #a14f31; }
+.image-editor-quality.error strong { color: #a33f36; }
 
 .image-editor-controls { display: grid; gap: 16px; }
 .image-editor-controls fieldset {
@@ -168,6 +169,37 @@
 .image-editor-shell > footer button.primary { display: flex; align-items: center; gap: 7px; border-color: #ef6a61; color: white; background: #ef6a61; }
 .image-editor-shell button:disabled { opacity: .5; }
 
+.image-editor-metadata {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .6rem;
+  margin: 0;
+}
+.image-editor-metadata > div {
+  display: grid;
+  gap: .22rem;
+  padding: .75rem;
+  border: 1px solid #ead3c6;
+  border-radius: 14px;
+  background: #fffdfb;
+  min-width: 0;
+}
+.image-editor-metadata dt {
+  color: #9a7469;
+  font-size: .62rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.image-editor-metadata dd { margin: 0; color: #4a241b; font-size: .8rem; font-weight: 850; }
+.image-editor-metadata small { color: #8c6a60; font-size: .64rem; line-height: 1.35; }
+.image-editor-metadata-status.good { border-color: #b8d8c1; background: #f4fbf6; }
+.image-editor-metadata-status.warning { border-color: #e9c875; background: #fffaf0; }
+.image-editor-metadata-status.error { border-color: #e4aaa4; background: #fff5f4; }
+.image-editor-metadata-status.good dd { color: #2e6a3e; }
+.image-editor-metadata-status.warning dd { color: #8a6515; }
+.image-editor-metadata-status.error dd { color: #a33f36; }
+
 @media (max-width: 760px) {
   .image-editor-backdrop { padding: 0; align-items: end; }
   .image-editor-shell { width: 100%; max-height: 100dvh; border-radius: 22px 22px 0 0; }
@@ -193,4 +225,11 @@
   .image-editor-compare { min-height: 48px; font-size: .78rem; }
   .image-editor-shell > footer { padding: 13px 14px; }
   .image-editor-shell > footer button { min-height: 48px; font-size: .8rem; }
+  .image-editor-metadata { grid-template-columns: 1fr 1fr; }
+  .image-editor-metadata-status { grid-column: 1 / -1; }
+}
+
+@media (max-width: 480px) {
+  .image-editor-metadata { grid-template-columns: 1fr; }
+  .image-editor-metadata-status { grid-column: auto; }
 }

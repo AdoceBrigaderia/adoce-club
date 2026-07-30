@@ -1,0 +1,626 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "project_id": "vazozolhbehnriytzcdc",
+  "production_forbidden": true,
+  "generated_at": "2026-07-28T23:41:21.850Z",
+  "mode": "apply",
+  "snapshot_path": "docs\\evidence\\homologation-migrations-20260727.json",
+  "repair_plan_path": "docs\\evidence\\homologation-migration-repair-plan-20260727.json",
+  "migration_files_scanned": 140,
+  "rename_count": 57,
+  "duplicate_file_removal_count": 0,
+  "unchanged_count": 3,
+  "ignored_count": 80,
+  "errors": [],
+  "actions": [
+    {
+      "type": "rename",
+      "source": "20260725204000_central_image_placeholders.sql",
+      "target": "20260725213624_central_image_placeholders.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726005500_site_visual_asset_versions.sql",
+      "target": "20260726005258_site_visual_asset_versions.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726065000_dynamic_image_asset_versions.sql",
+      "target": "20260726065557_dynamic_image_asset_versions.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726081500_gallery_media_versions.sql",
+      "target": "20260726085953_gallery_media_versions.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726124000_business_structure_and_cash.sql",
+      "target": "20260726124842_business_structure_and_cash.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726133000_manual_sales_require_open_cash.sql",
+      "target": "20260726125952_manual_sales_require_open_cash.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726155500_temporary_password_expiry.sql",
+      "target": "20260726160015_temporary_password_expiry.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726162500_lock_sensitive_function_execute.sql",
+      "target": "20260726160651_lock_sensitive_function_execute.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726172000_staff_permission_matrix.sql",
+      "target": "20260726162124_staff_permission_matrix.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726174500_tighten_legacy_staff_reads.sql",
+      "target": "20260726162430_tighten_legacy_staff_reads.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726183000_quick_sale_catalog.sql",
+      "target": "20260726174225_quick_sale_catalog.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726190000_manual_loyalty_adjustment.sql",
+      "target": "20260726175003_manual_loyalty_adjustment.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726203000_normalize_customer_names.sql",
+      "target": "20260726184819_normalize_customer_names.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726204500_whatsapp_cloud_otp.sql",
+      "target": "20260726185348_whatsapp_cloud_otp.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726210000_fix_compound_customer_names.sql",
+      "target": "20260726185007_fix_compound_customer_names.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726220000_customer_nfc_qr_checkins.sql",
+      "target": "20260726191325_customer_nfc_qr_checkins.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726224500_claim_whatsapp_registration.sql",
+      "target": "20260726194558_claim_whatsapp_registration.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260726233500_customer_account_workspace.sql",
+      "target": "20260726214545_customer_account_workspace.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727003000_customer_crm_360.sql",
+      "target": "20260726224326_customer_crm_360.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727013000_operational_reports_hub.sql",
+      "target": "20260726224902_operational_reports_hub.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727024000_customer_registration_bff.sql",
+      "target": "20260726235134_customer_registration_bff.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727033000_cash_reconciliation_queue.sql",
+      "target": "20260727005141_cash_reconciliation_queue.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727041000_whatsapp_operational_health.sql",
+      "target": "20260727010242_whatsapp_operational_health.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727052000_public_commerce_financial_integrity.sql",
+      "target": "20260727015050_public_commerce_financial_integrity.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727063000_google_wallet_customer_pass.sql",
+      "target": "20260727024458_google_wallet_customer_pass.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727071000_anon_grants_hardening.sql",
+      "target": "20260727030509_anon_grants_hardening.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727074000_public_order_bff_only.sql",
+      "target": "20260727030917_public_order_bff_only.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727082000_pede_junto_bff_only.sql",
+      "target": "20260727033336_pede_junto_bff_only.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727082000_quick_sale_favorites_and_ranking.sql",
+      "target": "20260727034403_quick_sale_favorites_and_ranking.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727090000_quick_sale_favorites_hardening.sql",
+      "target": "20260727034832_quick_sale_favorites_hardening.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727103000_public_service_request_bff_only.sql",
+      "target": "20260727040605_public_service_request_bff_only.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727110000_site_feedback_bff_hardening.sql",
+      "target": "20260727041258_site_feedback_bff_hardening.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727113000_staff_permission_audit_and_owner_guard.sql",
+      "target": "20260727041839_staff_permission_audit_and_owner_guard.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727120000_public_endpoint_rate_limits.sql",
+      "target": "20260727050212_public_endpoint_rate_limits.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727120100_public_endpoint_rate_limits_clock_fix.sql",
+      "target": "20260727050354_public_endpoint_rate_limits_clock_fix.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727124000_lock_retired_direct_rpcs.sql",
+      "target": "20260727051849_lock_retired_direct_rpcs.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727125000_lock_unrouted_authenticated_rpcs.sql",
+      "target": "20260727052305_lock_unrouted_authenticated_rpcs.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727133000_site_feedback_notification_routing.sql",
+      "target": "20260727082125_site_feedback_notification_routing.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727134000_site_feedback_profile_index.sql",
+      "target": "20260727082420_site_feedback_profile_index.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727143000_site_feedback_privacy_requests.sql",
+      "target": "20260727090435_site_feedback_privacy_requests.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727143500_site_feedback_privacy_category_constraint.sql",
+      "target": "20260727090548_site_feedback_privacy_category_constraint.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727150000_privacy_request_operation.sql",
+      "target": "20260727091531_privacy_request_operation.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727153000_privacy_request_types_and_sla.sql",
+      "target": "20260727092930_privacy_request_types_and_sla.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727160000_privacy_identity_verification.sql",
+      "target": "20260727095752_privacy_identity_verification.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727161000_privacy_identity_defaults.sql",
+      "target": "20260727095852_privacy_identity_defaults.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727170000_privacy_access_response_package.sql",
+      "target": "20260727105843_privacy_access_response_package.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727171000_privacy_response_status_list.sql",
+      "target": "20260727105905_privacy_response_status_list.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727172000_privacy_access_response_membership_order_fix.sql",
+      "target": "20260727110153_privacy_access_response_membership_order_fix.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727173000_privacy_correction_consent_actions.sql",
+      "target": "20260727110914_privacy_correction_consent_actions.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727174000_privacy_action_status_list.sql",
+      "target": "20260727110956_privacy_action_status_list.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727175000_privacy_resolution_outcome_guard.sql",
+      "target": "20260727111533_privacy_resolution_outcome_guard.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727180000_privacy_deletion_readiness.sql",
+      "target": "20260727112539_privacy_deletion_readiness.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727180000_privacy_profile_anonymization.sql",
+      "target": "20260727112924_privacy_profile_anonymization.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727181000_privacy_anonymization_null_email_guard.sql",
+      "target": "20260727112947_privacy_anonymization_null_email_guard.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727182000_privacy_anonymization_generated_identity_email_fix.sql",
+      "target": "20260727113213_privacy_anonymization_generated_identity_email_fix.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727182000_privacy_anonymization_plan_alignment.sql",
+      "target": "20260727113133_privacy_anonymization_plan_alignment.sql"
+    },
+    {
+      "type": "rename",
+      "source": "20260727183000_privacy_anonymization_preserve_member_code.sql",
+      "target": "20260727113349_privacy_anonymization_preserve_member_code.sql"
+    }
+  ],
+  "ignored": [
+    {
+      "file": "20260716123104_initial_production_schema.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260716181939_festival_pilot.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717084311_bootstrap_initial_owners.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717084851_expand_customer_catalog_and_operations.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717112555_corrigir_busca_e_perfil_cliente.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717181106_automate_referral_invites_and_today_catalog.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717195018_publish_festival_catalog_and_whole_cakes.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717195422_fix_festival_catalog_availability.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717202557_fix_staff_reward_redemption.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260717222446_secure_customer_qr_and_staff_scanner.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718011638_owner_stamp_adjustment.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718034134_friendly_movement_customers.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718111815_content_admin_and_notification_preferences.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718112136_harden_content_admin.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718114144_notification_preferences_opt_in_defaults.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718114713_repair_flavor_text_encoding.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718184839_add_member_codes_and_rollback_audit.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260718235500_fix_member_code_registration.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260719040443_club_groups_whatsapp_and_whole_cakes.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260719185917_commercial_catalog_agenda_crm.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260719201000_commercial_product_options.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720104203_harden_customer_identity_and_account_actions.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720104214_refine_commercial_catalog_media.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720104258_fix_commercial_product_image_sources.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720104348_optimize_commercial_segment_media_policies.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720132544_customer_feedback.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720133233_remote_history_marker.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720143000_private_director_plan_reviews.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720151732_remote_history_marker.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720171949_add_event_subcategories.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260720214955_image_editor_originals.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260721001738_pede_junto_adoce.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260721055223_commercial_media_galleries.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260721074102_finalize_customer_account_deletion.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260721194324_weekly_service_menu.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260721195049_tighten_weekly_menu_grants.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722023733_improve_service_request_audit.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722024148_add_privacy_safe_site_analytics.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722143716_operation_notifications.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722172238_instant_orders_and_pickup.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722174831_fix_existing_function_lint.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722202625_require_customer_first_and_last_name.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722212224_add_order_sauces_and_friendly_pickup.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722214817_harden_pede_junto_status_inventory_and_cancel.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722224922_link_instant_orders_to_club_rewards.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260722232147_archive_pede_junto_groups.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723003122_allow_manager_service_request_audit.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723003920_member_instant_order_loyalty_preview.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723005306_customer_select_instant_order_reward.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723012027_link_instant_order_by_phone_and_offer_club.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723015239_commerce_settings_manual_sales_and_recovery.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723031104_site_visual_assets.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723040344_persist_flavor_inventory_across_days.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723040736_restrict_inventory_carry_forward_to_controlled_stock.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723045128_direct_finalize_instant_order.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723094500_release_planned_production_into_inventory.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723101500_forced_password_change.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260723124000_fix_instant_order_financial_fields.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728073000_cake_builder_configuration.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728090000_costing_core_foundation.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728093000_costing_commercial_catalog.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728103000_cake_builder_costing_catalog_links.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728115000_product_profitability_workspace.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728115100_product_profitability_autoprofile.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728130000_service_request_pricing_snapshots.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728154500_site_visual_assets_bff.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728164000_dynamic_image_assets_bff.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728165116_harden_pede_junto_participant_rejoin.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728165303_harden_public_instant_order_submission.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728170236_harden_customer_registration_consent.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728170246_festival_slice_yield_overrides.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728170307_harden_pede_junto_public_writes.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728170501_serialize_and_deduplicate_cash_operations.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728170941_lock_private_cake_builder_helper.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728174500_gallery_media_assets_bff.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728220000_unified_configurable_products.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728221500_configurable_product_constraints.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728223000_service_request_configuration_workspace.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728224500_configurable_product_consistency_and_crm.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    },
+    {
+      "file": "20260728225000_real_configurable_product_catalog.sql",
+      "reason": "migration_nova_ou_fora_do_snapshot"
+    }
+  ],
+  "passed": true
+}

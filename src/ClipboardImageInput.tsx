@@ -1,6 +1,15 @@
-import { useRef, useState, type ClipboardEvent } from "react";
+import {
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent as ReactDragEvent,
+} from "react";
 import { ClipboardPaste, LoaderCircle } from "lucide-react";
-import { PRODUCT_IMAGE_TYPES } from "./admin-media";
+import {
+  PRODUCT_IMAGE_TYPES,
+  validateProductImage,
+} from "./admin-media";
+import { firstSupportedImageFile } from "./image-input-files";
 import "./clipboard-image-input.css";
 
 type ClipboardImageInputProps = {
@@ -60,16 +69,22 @@ export default function ClipboardImageInput({
   const pasteAreaRef = useRef<HTMLDivElement>(null);
   const [awaitingPaste, setAwaitingPaste] = useState(false);
   const [reading, setReading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const armManualPaste = () => {
     setAwaitingPaste(true);
     requestAnimationFrame(() => pasteAreaRef.current?.focus());
   };
 
-  const acceptFile = (file: File | null) => {
+  const acceptFile = (file: File | null, armWhenMissing = true) => {
     if (!file) {
-      onError?.("A área de transferência não contém uma foto JPG, PNG ou WebP.");
-      armManualPaste();
+      onError?.("Use uma foto JPG, PNG ou WebP.");
+      if (armWhenMissing) armManualPaste();
+      return;
+    }
+    const validation = validateProductImage(file);
+    if (validation) {
+      onError?.(validation);
       return;
     }
     setAwaitingPaste(false);
@@ -95,8 +110,34 @@ export default function ClipboardImageInput({
     acceptFile(imageFileFromClipboardItems(event.clipboardData.items));
   };
 
+  const handleDragOver = (event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (!disabled) setDragging(true);
+  };
+
+  const handleDragLeave = (event: ReactDragEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget as Node | null;
+    if (!nextTarget || !event.currentTarget.contains(nextTarget)) setDragging(false);
+  };
+
+  const handleDrop = (event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    if (disabled) return;
+    acceptFile(
+      firstSupportedImageFile(event.dataTransfer.files, PRODUCT_IMAGE_TYPES),
+      false,
+    );
+  };
+
   return (
-    <div className={`clipboard-image-input ${className}`.trim()}>
+    <div
+      className={`clipboard-image-input ${dragging ? "is-dragging" : ""} ${className}`.trim()}
+      onDragEnter={handleDragOver}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <button
         type="button"
         className="clipboard-image-button"
@@ -106,6 +147,9 @@ export default function ClipboardImageInput({
         {reading ? <LoaderCircle className="clipboard-image-spinner" /> : <ClipboardPaste />}
         {reading ? "Lendo foto..." : label}
       </button>
+      <span className="clipboard-image-drop-hint" aria-hidden="true">
+        ou arraste uma foto para cá
+      </span>
       {awaitingPaste ? (
         <div
           ref={pasteAreaRef}

@@ -4,32 +4,37 @@ import { describe, expect, it } from "vitest";
 const source = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("acesso da operação com senha", () => {
-  it("usa celular e senha como acesso principal da equipe", () => {
-    const app = source("./AccessApp.tsx");
-    expect(app).toContain(
-      "await signInWithStaffPhonePassword(phone, password, rememberLogin)",
+  it("usa celular e senha como fallback principal da equipe", () => {
+    const gateway = source("./PasskeyOperationGateway.tsx");
+    expect(gateway).toContain(
+      'bffPasswordLogin({ phone, password, surface: "operation", remember })',
     );
-    expect(app).toContain('surface === "operation" ? "Entrar com senha"');
-    expect(app).toContain("Use seu celular com DDD e a senha da operação.");
-    expect(app).toContain('placeholder="(85) 99999-9999"');
+    expect(gateway).toContain("Use a biometria do celular");
+    expect(gateway).toContain("ou use a senha");
+    expect(gateway).toContain('placeholder="(85) 99999-9999"');
+    expect(gateway).toContain("Entrar na operação");
   });
 
-  it("autentica pelo endpoint protegido sem expor o e-mail interno", () => {
-    const auth = source("./services/auth.ts");
-    const endpoint = source("../netlify/functions/staff-phone-login.ts");
-    expect(auth).toContain('fetch("/api/staff-phone-login"');
-    expect(endpoint).toContain('.eq("phone_e164", phone)');
-    expect(endpoint).toContain('.from("staff_members")');
-    expect(endpoint).toContain('"Celular ou senha incorretos."');
+  it("autentica pelo BFF sem devolver tokens ao JavaScript", () => {
+    const auth = source("./services/bff-auth.ts");
+    const endpoint = source("../netlify/functions/auth-bff-login.ts");
+    expect(auth).toContain('fetch("/api/auth-bff-login"');
+    expect(auth).toContain('credentials: "same-origin"');
+    expect(auth).not.toContain("access_token");
+    expect(auth).not.toContain("refresh_token");
+    expect(endpoint).toContain("sessionCookies(");
+    expect(endpoint).toContain("cookieSession.values");
+    expect(endpoint).toContain("secureJson");
   });
 
-  it("obriga a troca da senha temporária no primeiro acesso", () => {
-    const app = source("./AccessApp.tsx");
+  it("bloqueia o acesso enquanto a senha temporária precisar ser trocada", () => {
+    const gateway = source("./PasskeyOperationGateway.tsx");
     const migration = source(
       "../supabase/migrations/20260723101500_forced_password_change.sql",
     );
-    expect(app).toContain("if (mustChangePassword)");
-    expect(app).toContain('"complete_forced_password_change"');
+    expect(gateway).toContain("if (next.mustChangePassword)");
+    expect(gateway).toContain("await bffLogout()");
+    expect(gateway).toContain("senha temporária precisa ser trocada");
     expect(migration).toContain("must_change_password boolean");
   });
 });

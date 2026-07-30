@@ -1,0 +1,188 @@
+name: Gate da central de imagens
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/site-visual-bff-pr-gate.yml
+      - netlify/functions/_shared/bff-rpc-policy.ts
+      - netlify/functions/auth-bff-site-visual-upload.ts
+      - src/OperationAdminCenter.tsx
+      - src/OperationSiteVisualAssetHistoryBff.tsx
+      - src/OperationSiteVisualSettingsBff.tsx
+      - src/services/bff-site-visual.ts
+      - src/operation-admin-center.test.ts
+      - src/site-visual-assets-bff.test.ts
+      - supabase/migrations/20260728154500_site_visual_assets_bff.sql
+
+concurrency:
+  group: site-visual-bff-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  validate:
+    name: TypeScript, segurança, testes e preview
+    if: ${{ github.head_ref == 'reestruturacao/ux-crm-operacao-imagens-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_ADOCE_VALIDATION_MODE: visual
+      VITE_SUPABASE_URL: https://vazozolhbehnriytzcdc.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9LTOAzzu8JU5vCogTk5N7w_ZZvzhGbM
+      DELIVERY_ISSUE_NUMBER: "13"
+
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar branch, commit e isolamento
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "reestruturacao/ux-crm-operacao-imagens-v1"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+          test "$VITE_SUPABASE_URL" = "https://vazozolhbehnriytzcdc.supabase.co"
+          case "$VITE_SUPABASE_URL" in
+            *uefwywizqhfvvijaopcn*) echo "Supabase produtivo rejeitado" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Validar TypeScript
+        run: npm run lint
+
+      - name: Executar testes direcionados
+        run: |
+          npx vitest run \
+            src/site-visual-assets-bff.test.ts \
+            src/operation-admin-center.test.ts \
+            src/site-visual-assets.test.ts \
+            src/site-visual-asset-history.test.ts \
+            src/admin-media-output.test.ts
+
+      - name: Gerar build visual isolado
+        env:
+          VITE_ADOCE_PREVIEW_COMMIT: ${{ github.event.pull_request.head.sha }}
+          VITE_ADOCE_PREVIEW_BUILT_AT: ${{ github.event.pull_request.updated_at }}
+        run: npx vite build
+
+      - name: Confirmar isolamento e ausência de segredos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          ! grep -R "uefwywizqhfvvijaopcn" dist
+          ! grep -R "SUPABASE_SECRET_KEY" dist
+          ! grep -R "service_role" dist
+          ! grep -R "META_WA_ACCESS_TOKEN" dist
+          ! grep -R "GOOGLE_WALLET_PRIVATE_KEY" dist
+          ! grep -R "requireSupabase" src/OperationSiteVisualSettingsBff.tsx
+          ! grep -R "requireSupabase" src/OperationSiteVisualAssetHistoryBff.tsx
+          ! grep -R "Authorization:" src/services/bff-site-visual.ts
+
+      - name: Preparar pacote testável
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package_dir="artifacts/portal-adoce-imagens-bff"
+          mkdir -p "$package_dir"
+          cp -R dist "$package_dir/dist"
+          cp scripts/serve-homologation-preview.mjs "$package_dir/servidor-preview.mjs"
+
+          cat > "$package_dir/INICIAR-PREVIEW-WINDOWS.cmd" <<'EOF_WINDOWS'
+          @echo off
+          cd /d "%~dp0"
+          where node >nul 2>nul
+          if errorlevel 1 (
+            echo Node.js 22 ou superior nao foi encontrado.
+            pause
+            exit /b 1
+          )
+          node servidor-preview.mjs --open
+          if errorlevel 1 pause
+          EOF_WINDOWS
+
+          cat > "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command" <<'EOF_UNIX'
+          #!/usr/bin/env sh
+          set -eu
+          cd "$(dirname "$0")"
+          exec node servidor-preview.mjs --open
+          EOF_UNIX
+          chmod +x "$package_dir/INICIAR-PREVIEW-LINUX-MAC.command"
+
+          printf '%s\n' \
+            "Commit: ${{ github.event.pull_request.head.sha }}" \
+            "Central de imagens: integrada à administração" \
+            "Upload: BFF com cookies HttpOnly e CSRF" \
+            "Histórico e restauração: BFF" \
+            "Banco: migration apenas versionada, não aplicada" \
+            "Produção: não alterada" \
+            > "$package_dir/EVIDENCIA.txt"
+
+          node "$package_dir/servidor-preview.mjs" --port 4187 > "$package_dir/SMOKE.log" 2>&1 &
+          server_pid=$!
+          cleanup() { kill "$server_pid" 2>/dev/null || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 20); do
+            status="$(curl -sS -o /tmp/adoce-index.html -w '%{http_code}' http://127.0.0.1:4187/ || true)"
+            [ "$status" = "200" ] && break
+            sleep 1
+          done
+          test "${status:-000}" = "200"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:4187/operacao/venda-rapida)" = "200"
+          cleanup
+          wait "$server_pid" 2>/dev/null || true
+          trap - EXIT
+          echo "short_sha=${GITHUB_SHA:0:8}" >> "$GITHUB_OUTPUT"
+
+      - name: Publicar pacote validado
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-adoce-imagens-bff-${{ github.event.pull_request.head.sha }}
+          path: artifacts/portal-adoce-imagens-bff
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 6
+
+      - name: Registrar entrega testável
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '## Central de imagens pelo BFF — pacote validado',
+              '',
+              `- Commit: \`${context.payload.pull_request.head.sha}\``,
+              `- [Baixar pacote testável](${process.env.ARTIFACT_URL})`,
+              `- Digest: \`${process.env.ARTIFACT_DIGEST}\``,
+              '- Inclui a nova aba Fotos e identidade na Central Administrativa.',
+              '- Upload, histórico, restauração e reset foram deslocados para o BFF.',
+              '- A migration está apenas versionada; nenhuma aplicação de banco ocorreu.',
+              '- Produção: **não alterada**.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: Number(process.env.DELIVERY_ISSUE_NUMBER),
+              body,
+            });

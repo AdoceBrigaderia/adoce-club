@@ -1,0 +1,202 @@
+name: Backup separado do Storage da homologação
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/homologation-storage-backup.yml
+      - scripts/homologation-storage-backup.mjs
+      - scripts/homologation-storage-backup.test.mjs
+      - scripts/homologation-storage-backup-contract.test.mjs
+      - docs/homologation-logical-backup-runbook.md
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Digite GERAR BACKUP STORAGE SOMENTE HOMOLOGACAO seguido do project ref
+        required: true
+        type: string
+      expected_commit:
+        description: SHA completo autorizado da branch
+        required: true
+        type: string
+      backup_label:
+        description: Identificador sem espaços
+        required: true
+        type: string
+
+concurrency:
+  group: homologation-storage-backup-${{ github.event.pull_request.number || 'manual' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
+  HOMOLOGATION_REF: vazozolhbehnriytzcdc
+  HOMOLOGATION_URL: https://vazozolhbehnriytzcdc.supabase.co
+  PRODUCTION_REF: uefwywizqhfvvijaopcn
+
+jobs:
+  contract:
+    name: Validar contrato do backup do Storage
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Baixar head exato do PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Confirmar branch e commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ github.event.pull_request.head.ref }}" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha }}"
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Executar testes contratuais
+        run: |
+          node --test \
+            scripts/homologation-storage-backup.test.mjs \
+            scripts/homologation-storage-backup-contract.test.mjs
+
+  backup-storage:
+    name: Baixar buckets, objetos e manifesto
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: homologation
+    steps:
+      - name: Baixar exclusivamente a branch autorizada
+        uses: actions/checkout@v4
+        with:
+          ref: reestruturacao/ux-crm-operacao-imagens-v1
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validar autorização e ambiente isolado
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_LABEL: ${{ inputs.backup_label }}
+          STORAGE_SECRET: ${{ secrets.SUPABASE_HOMOLOGATION_SERVICE_ROLE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = "$EXPECTED_BRANCH"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          test "$CONFIRMATION" = "GERAR BACKUP STORAGE SOMENTE HOMOLOGACAO $HOMOLOGATION_REF"
+          test -n "$STORAGE_SECRET"
+          test -n "$BACKUP_LABEL"
+          case "$BACKUP_LABEL" in
+            *[!a-zA-Z0-9._-]*) echo "Identificador inválido" >&2; exit 1 ;;
+          esac
+          case "$HOMOLOGATION_URL" in
+            *"$HOMOLOGATION_REF"*) ;;
+            *) echo "URL não pertence à homologação" >&2; exit 1 ;;
+          esac
+          case "$HOMOLOGATION_URL" in
+            *"$PRODUCTION_REF"*) echo "Referência produtiva proibida" >&2; exit 1 ;;
+          esac
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar e testar
+        run: |
+          npm ci --prefer-offline --no-audit
+          node --test scripts/homologation-storage-backup.test.mjs
+
+      - name: Exportar objetos do Storage
+        env:
+          SUPABASE_HOMOLOGATION_URL: ${{ env.HOMOLOGATION_URL }}
+          SUPABASE_HOMOLOGATION_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_HOMOLOGATION_SERVICE_ROLE_KEY }}
+          BACKUP_OUTPUT_DIRECTORY: artifacts/homologation-storage-backup
+          BACKUP_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_LABEL: ${{ inputs.backup_label }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          node scripts/homologation-storage-backup.mjs
+          test -s artifacts/homologation-storage-backup/storage-manifest.json
+
+      - name: Validar hashes dos objetos
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="artifacts/homologation-storage-backup"
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+          const root = 'artifacts/homologation-storage-backup';
+          const manifest = JSON.parse(fs.readFileSync(path.join(root, 'storage-manifest.json'), 'utf8'));
+          let checked = 0;
+          for (const bucket of manifest.buckets) {
+            for (const object of bucket.objects) {
+              const file = path.join(root, 'objects', bucket.name, object.path);
+              const bytes = fs.readFileSync(file);
+              const digest = crypto.createHash('sha256').update(bytes).digest('hex');
+              if (digest !== object.sha256) throw new Error(`SHA inválido em ${bucket.name}/${object.path}`);
+              if (bytes.length !== object.bytes) throw new Error(`Tamanho inválido em ${bucket.name}/${object.path}`);
+              checked += 1;
+            }
+          }
+          if (checked !== manifest.totals.objects) throw new Error('Total de objetos divergente.');
+          console.log(JSON.stringify({ ok: true, checked }));
+          NODE
+
+      - name: Preservar backup do Storage
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-storage-homologacao-${{ inputs.backup_label }}-${{ inputs.expected_commit }}
+          path: artifacts/homologation-storage-backup
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 6
+
+      - name: Registrar evidência no issue técnico
+        uses: actions/github-script@v7
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          BACKUP_LABEL: ${{ inputs.backup_label }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = [
+              '## Backup separado do Storage da homologação gerado',
+              '',
+              `- Commit: \`${process.env.EXPECTED_COMMIT}\``,
+              `- Identificador: \`${process.env.BACKUP_LABEL}\``,
+              `- [Baixar artefato](${process.env.ARTIFACT_URL})`,
+              `- Digest do artefato: \`${process.env.ARTIFACT_DIGEST}\``,
+              '- Inclui buckets, objetos e manifesto individual com tamanho e SHA-256.',
+              '- Produção: **não acessada e não alterada**.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 3,
+              body,
+            });

@@ -1,0 +1,265 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import test from "node:test";
+
+const repositoryRoot = resolve(
+  process.env.ADOCE_REQUEST_SECURITY_ROOT || process.cwd(),
+);
+
+function source(path) {
+  return readFileSync(resolve(repositoryRoot, path), "utf8");
+}
+
+const guardSource = source(
+  "netlify/functions/_shared/request-security.ts",
+);
+
+const protectedEntrypoints = [
+  {
+    path: "netlify/functions/auth-bff-login.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/auth-bff-session.ts",
+    methods: ["GET"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/auth-bff-logout.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/auth-bff-registration-request.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/auth-bff-registration-complete.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/auth-bff-rpc.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/auth-bff-client-rpc.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/auth-bff-dynamic-image-upload.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/auth-bff-gallery-media-upload.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/auth-bff-site-visual-upload.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/auth-bff-passkeys.ts",
+    methods: ["GET", "POST"],
+    csrf: "post-only",
+  },
+  {
+    path: "netlify/functions/admin-revoke-user-passkey.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/admin-reset-user-password.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/whatsapp-otp-request.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/whatsapp-otp-verify.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/public-analytics-event.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/public-feedback.ts",
+    methods: ["POST"],
+    csrf: "none",
+  },
+  {
+    path: "netlify/functions/public-service-request.ts",
+    methods: ["POST"],
+    csrf: "authenticated-client",
+  },
+  {
+    path: "netlify/functions/public-instant-order.ts",
+    methods: ["POST"],
+    csrf: "authenticated-submit",
+  },
+  {
+    path: "netlify/functions/pede-junto-bff.ts",
+    methods: ["POST"],
+    csrf: "group-mutations",
+  },
+  {
+    path: "netlify/functions/google-wallet-pass.ts",
+    methods: ["POST"],
+    csrf: "always",
+  },
+  {
+    path: "netlify/functions/meta-whatsapp-health.ts",
+    methods: ["GET"],
+    csrf: "none",
+  },
+];
+
+const passkeyCeremonyEntrypoints = [
+  "netlify/functions/auth-bff-passkey-start.ts",
+  "netlify/functions/auth-bff-passkey-finish.ts",
+];
+
+function methodsPattern(methods) {
+  return new RegExp(
+    `methods: \\[${methods.map((method) => `"${method}"`).join(", ")}\\]`,
+  );
+}
+
+function assertNoLocalRequestSecurity(entrypointSource) {
+  assert.doesNotMatch(entrypointSource, /allowedOrigin\(/);
+  assert.doesNotMatch(entrypointSource, /validCsrf\(/);
+  assert.doesNotMatch(
+    entrypointSource,
+    /from "\.\/_shared\/session-security";[\s\S]*\ballowedOrigin\b/,
+  );
+}
+
+test("o guard central falha fechado para método, preflight, origem e CSRF", () => {
+  assert.match(guardSource, /method === "OPTIONS"/);
+  assert.match(guardSource, /code: "cors_preflight_denied"/);
+  assert.match(guardSource, /code: "method_not_allowed"/);
+  assert.match(guardSource, /code: "origin_not_allowed"/);
+  assert.match(guardSource, /code: "csrf_validation_failed"/);
+  assert.match(guardSource, /allowedOrigin\(request, options\.configuredSiteUrl\)/);
+  assert.match(guardSource, /export function guardBffCsrf\(/);
+  assert.match(guardSource, /if \(options\.requireCsrf\) \{/);
+  assert.match(guardSource, /return guardBffCsrf\(request\)/);
+  assert.doesNotMatch(guardSource, /Access-Control-Allow-Origin/i);
+  assert.doesNotMatch(guardSource, /Access-Control-Allow-Credentials/i);
+});
+
+test("o guard CSRF aceita validadores isolados e falha fechado em exceções", () => {
+  assert.match(
+    guardSource,
+    /export type BffCsrfValidator = \(request: Request\) => boolean/,
+  );
+  assert.match(
+    guardSource,
+    /validator: BffCsrfValidator = validCsrf/,
+  );
+  assert.match(guardSource, /accepted = validator\(request\)/);
+  assert.match(guardSource, /catch \{\s*accepted = false;/);
+  assert.match(guardSource, /if \(accepted\) return null/);
+});
+
+for (const entrypoint of protectedEntrypoints) {
+  test(`${entrypoint.path} usa exclusivamente o guard compartilhado`, () => {
+    const entrypointSource = source(entrypoint.path);
+    const guardCalls = entrypointSource.match(/guardBffRequest\(/g) || [];
+
+    assert.equal(guardCalls.length, 1);
+    assert.match(
+      entrypointSource,
+      /from "\.\/_shared\/request-security";/,
+    );
+    assert.match(entrypointSource, methodsPattern(entrypoint.methods));
+    assert.match(entrypointSource, /configuredSiteUrl: env\("SITE_URL"\)/);
+    assertNoLocalRequestSecurity(entrypointSource);
+
+    if (entrypoint.csrf === "always") {
+      assert.match(entrypointSource, /requireCsrf: true/);
+    } else if (entrypoint.csrf === "post-only") {
+      assert.match(
+        entrypointSource,
+        /requireCsrf: request\.method\.toUpperCase\(\) === "POST"/,
+      );
+    } else if (entrypoint.csrf === "authenticated-client") {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+      assert.match(entrypointSource, /const authenticatedClient =/);
+      assert.match(
+        entrypointSource,
+        /cookies\.get\(SURFACE_COOKIE\) === "client"/,
+      );
+      assert.match(
+        entrypointSource,
+        /Boolean\(cookies\.get\(ACCESS_COOKIE\)\)/,
+      );
+      assert.match(entrypointSource, /if \(authenticatedClient\) \{/);
+      assert.match(
+        entrypointSource,
+        /const csrfRejection = guardBffCsrf\(request\)/,
+      );
+    } else if (entrypoint.csrf === "authenticated-submit") {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+      assert.match(entrypointSource, /if \(accessToken\) \{/);
+      assert.match(
+        entrypointSource,
+        /const csrfRejection = guardBffCsrf\(request\)/,
+      );
+      const quoteIndex = entrypointSource.indexOf('if (action === "quote")');
+      const csrfIndex = entrypointSource.indexOf("if (accessToken)");
+      const submitPayloadIndex = entrypointSource.indexOf("const customerName");
+      assert.ok(quoteIndex >= 0 && quoteIndex < csrfIndex);
+      assert.ok(csrfIndex >= 0 && csrfIndex < submitPayloadIndex);
+    } else if (entrypoint.csrf === "group-mutations") {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+      assert.match(entrypointSource, /function validGroupCsrf\(request: Request\)/);
+      assert.match(
+        entrypointSource,
+        /const csrfRejection = guardBffCsrf\(request, validGroupCsrf\)/,
+      );
+      const roomIndex = entrypointSource.indexOf('if (action === "room")');
+      const csrfIndex = entrypointSource.indexOf(
+        "const csrfRejection = guardBffCsrf(request, validGroupCsrf)",
+      );
+      const selectIndex = entrypointSource.indexOf('if (action === "select")');
+      const submitIndex = entrypointSource.indexOf('if (action === "submit")');
+      assert.ok(roomIndex >= 0 && roomIndex < csrfIndex);
+      assert.ok(csrfIndex >= 0 && csrfIndex < selectIndex);
+      assert.ok(csrfIndex < submitIndex);
+    } else {
+      assert.doesNotMatch(entrypointSource, /requireCsrf:/);
+    }
+  });
+}
+
+for (const path of passkeyCeremonyEntrypoints) {
+  test(`${path} protege a cerimônia e exige CSRF somente no cadastro`, () => {
+    const entrypointSource = source(path);
+    const requestGuardCalls = entrypointSource.match(/guardBffRequest\(/g) || [];
+    const csrfGuardCalls = entrypointSource.match(/guardBffCsrf\(/g) || [];
+
+    assert.equal(requestGuardCalls.length, 1);
+    assert.equal(csrfGuardCalls.length, 1);
+    assert.match(entrypointSource, /guardBffCsrf, guardBffRequest/);
+    assert.match(entrypointSource, /methods: \["POST"\]/);
+    assert.match(entrypointSource, /configuredSiteUrl: env\("SITE_URL"\)/);
+    assert.match(entrypointSource, /if \(action === "registration"\) \{/);
+    assert.match(entrypointSource, /const csrfRejection = guardBffCsrf\(request\)/);
+    assertNoLocalRequestSecurity(entrypointSource);
+  });
+}

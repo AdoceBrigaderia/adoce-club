@@ -1,0 +1,349 @@
+.operation-product-profitability {
+  margin: 1rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border: 1px solid rgba(89, 47, 62, 0.14);
+  border-radius: 1.5rem;
+  background: #fffafc;
+  box-shadow: 0 1rem 2.5rem rgba(80, 32, 49, 0.08);
+  color: #472534;
+}
+
+.operation-product-profitability-heading,
+.operation-product-profitability-form > header,
+.operation-product-profitability-form > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.operation-product-profitability-heading h2,
+.operation-product-profitability-form h3 {
+  margin: 0.2rem 0;
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+}
+
+.operation-product-profitability-heading p,
+.operation-product-profitability-form p {
+  margin: 0;
+  color: #795665;
+}
+
+.operation-product-profitability-heading > svg {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: #d44f83;
+}
+
+.operation-product-profitability-summary,
+.operation-product-profitability-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.operation-product-profitability-summary span,
+.operation-product-profitability-metrics span {
+  display: grid;
+  gap: 0.15rem;
+  min-height: 4.75rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(89, 47, 62, 0.12);
+  border-radius: 1rem;
+  background: white;
+}
+
+.operation-product-profitability-summary svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  color: #b84370;
+}
+
+.operation-product-profitability-summary small,
+.operation-product-profitability-metrics small {
+  color: #836371;
+  font-size: 0.78rem;
+}
+
+.operation-product-profitability-summary strong,
+.operation-product-profitability-metrics strong {
+  font-size: 1.15rem;
+}
+
+.operation-product-profitability-summary .warning,
+.operation-product-profitability-metrics .warning {
+  border-color: #e9aa48;
+  background: #fff8e9;
+}
+
+.operation-product-profitability-summary .danger,
+.operation-product-profitability-metrics .danger {
+  border-color: #df6a7e;
+  background: #fff0f3;
+}
+
+.operation-product-profitability-metrics .ok {
+  border-color: #6eb88a;
+  background: #f0fff5;
+}
+
+.operation-product-profitability-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.operation-product-profitability-search label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 3.5rem;
+  padding: 0 0.9rem;
+  border: 1px solid rgba(89, 47, 62, 0.18);
+  border-radius: 1rem;
+  background: white;
+}
+
+.operation-product-profitability-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font: inherit;
+}
+
+.operation-product-profitability button {
+  min-height: 3.25rem;
+  border: 0;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  background: #d44f83;
+  color: white;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.operation-product-profitability button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.operation-product-profitability-notice,
+.operation-product-profitability-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  background: #fff0f4;
+  color: #8c294e;
+}
+
+.operation-product-profitability-layout {
+  display: grid;
+  grid-template-columns: minmax(15rem, 0.8fr) minmax(0, 2fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.operation-product-profitability-layout > nav {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 48rem;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.operation-product-profitability-layout > nav button {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 4.8rem;
+  padding: 0.55rem;
+  text-align: left;
+  color: #543142;
+  background: white;
+  border: 1px solid rgba(89, 47, 62, 0.13);
+}
+
+.operation-product-profitability-layout > nav button.active {
+  border: 2px solid #d44f83;
+  background: #fff1f6;
+}
+
+.operation-product-profitability-layout > nav img,
+.operation-product-profitability-form > header img {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 0.85rem;
+  object-fit: cover;
+  background: #f6e8ed;
+}
+
+.operation-product-profitability-layout > nav span {
+  display: grid;
+  min-width: 0;
+}
+
+.operation-product-profitability-layout > nav strong,
+.operation-product-profitability-layout > nav small,
+.operation-product-profitability-layout > nav b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.operation-product-profitability-layout > nav small {
+  color: #836371;
+}
+
+.operation-product-profitability-layout > nav em {
+  border-radius: 999px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.72rem;
+  font-style: normal;
+  white-space: nowrap;
+  background: #f1e8ec;
+}
+
+.operation-product-profitability-layout > nav em.ok {
+  color: #26683f;
+  background: #dcf6e6;
+}
+
+.operation-product-profitability-layout > nav em.warning {
+  color: #84550c;
+  background: #fff0ca;
+}
+
+.operation-product-profitability-layout > nav em.danger {
+  color: #8d2343;
+  background: #ffdce6;
+}
+
+.operation-product-profitability-form {
+  padding: 1rem;
+  border: 1px solid rgba(89, 47, 62, 0.13);
+  border-radius: 1.25rem;
+  background: white;
+}
+
+.operation-product-profitability-form > header {
+  justify-content: flex-start;
+}
+
+.operation-product-profitability-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.operation-product-profitability-grid label {
+  display: grid;
+  gap: 0.35rem;
+  color: #654354;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.operation-product-profitability-grid label.wide {
+  grid-column: 1 / -1;
+}
+
+.operation-product-profitability-grid input,
+.operation-product-profitability-grid select,
+.operation-product-profitability-grid textarea {
+  width: 100%;
+  min-height: 3.15rem;
+  box-sizing: border-box;
+  border: 1px solid rgba(89, 47, 62, 0.2);
+  border-radius: 0.9rem;
+  padding: 0.7rem 0.8rem;
+  background: #fffdfd;
+  color: #472534;
+  font: inherit;
+}
+
+.operation-product-profitability-grid textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.operation-product-profitability-form > footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(89, 47, 62, 0.12);
+}
+
+.operation-product-profitability-form > footer p {
+  max-width: 34rem;
+  font-size: 0.82rem;
+}
+
+.operation-product-profitability-form > footer button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 13rem;
+}
+
+@media (max-width: 980px) {
+  .operation-product-profitability-summary,
+  .operation-product-profitability-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operation-product-profitability-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-product-profitability-layout > nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .operation-product-profitability {
+    margin: 0.65rem;
+    padding: 0.85rem;
+    border-radius: 1.15rem;
+  }
+
+  .operation-product-profitability-heading,
+  .operation-product-profitability-form > footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .operation-product-profitability-search {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .operation-product-profitability-search label {
+    grid-column: 1 / -1;
+  }
+
+  .operation-product-profitability-layout > nav,
+  .operation-product-profitability-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operation-product-profitability-grid label.wide {
+    grid-column: auto;
+  }
+
+  .operation-product-profitability-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operation-product-profitability-form > footer button {
+    width: 100%;
+  }
+}
