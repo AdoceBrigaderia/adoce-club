@@ -38,6 +38,21 @@ export default async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const fail = async (stage: string, detail: string, status = 500) => {
+    await admin.from("operation_notifications").insert({
+      event_type: "homologation.temp_access_error",
+      priority: "important",
+      title: "Diagnóstico temporário de acesso",
+      message: stage,
+      entity_type: "homologation_diagnostic",
+      entity_id: "temporary-operation-access",
+      action_url: "#operacao",
+      metadata: { detail },
+      push_status: "failed",
+    }).catch(() => undefined);
+    return svg("ERRO", stage, status);
+  };
+
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 2 * 60 * 60 * 1000);
   const stamp = now.toISOString().replace(/\D/g, "").slice(0, 14);
@@ -53,6 +68,9 @@ export default async (request: Request) => {
       .select("id")
       .eq("phone_e164", phone)
       .maybeSingle();
+
+    if (existing.error)
+      return await fail("lookup_existing", existing.error.message);
 
     if (existing.data?.id) {
       await admin.from("staff_members").update({ active: false }).eq("user_id", existing.data.id);
@@ -70,7 +88,7 @@ export default async (request: Request) => {
     });
 
     if (created.error || !created.data.user)
-      return svg("ERRO", created.error?.message || "user_not_created", 500);
+      return await fail("create_user", created.error?.message || "user_not_created");
 
     const userId = created.data.user.id;
     const profile = await admin.from("profiles").upsert({
@@ -87,7 +105,7 @@ export default async (request: Request) => {
       temporary_password_expires_at: expiresAt.toISOString(),
       updated_at: now.toISOString(),
     }, { onConflict: "id" });
-    if (profile.error) return svg("ERRO", profile.error.message, 500);
+    if (profile.error) return await fail("upsert_profile", profile.error.message);
 
     const staff = await admin.from("staff_members").upsert({
       user_id: userId,
@@ -97,7 +115,7 @@ export default async (request: Request) => {
       temporary_password_issued_at: now.toISOString(),
       temporary_password_expires_at: expiresAt.toISOString(),
     }, { onConflict: "user_id" });
-    if (staff.error) return svg("ERRO", staff.error.message, 500);
+    if (staff.error) return await fail("upsert_staff", staff.error.message);
 
     const login = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
       method: "POST",
@@ -107,11 +125,14 @@ export default async (request: Request) => {
       },
       body: JSON.stringify({ email, password }),
     });
-    if (!login.ok) return svg("ERRO", `login_test_${login.status}`, 500);
+    if (!login.ok) {
+      const raw = await login.text().catch(() => "");
+      return await fail("login_test", `${login.status}:${raw.slice(0, 300)}`);
+    }
 
     return svg("OK", `phone=${phone};expires=${expiresAt.toISOString()}`, 200);
   } catch (error) {
-    return svg("ERRO", error instanceof Error ? error.message : "unknown_error", 500);
+    return await fail("unexpected", error instanceof Error ? error.message : "unknown_error");
   }
 };
 
