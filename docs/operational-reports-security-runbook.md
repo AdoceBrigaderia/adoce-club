@@ -1,4 +1,4 @@
-# Relatórios operacionais por loja e permissão financeira
+# Relatórios operacionais por loja, filtros rápidos e permissão financeira
 
 ## Objetivo
 
@@ -6,9 +6,36 @@ Evitar que o painel de relatórios exponha valores, formas de pagamento ou difer
 
 ## Contrato de escopo
 
-O RPC `staff_get_operational_reports(date,date,uuid)` monta primeiro a lista de lojas nas quais a sessão possui `view_reports`. Pedidos, sessões e movimentos de caixa, check-ins e encomendas são vinculados a essa lista antes de qualquer busca, soma, ordenação ou limite.
+O RPC público é `staff_get_operational_reports(date,date,uuid,text,uuid,uuid)`. Os três últimos argumentos são opcionais e representam, nesta ordem:
+
+- `target_channel`;
+- `target_operator_user_id`;
+- `target_register_id`.
+
+A função monta primeiro a lista de lojas nas quais a sessão possui `view_reports`. Pedidos, sessões e movimentos de caixa, check-ins e encomendas são vinculados a essa lista antes de qualquer busca, soma, ordenação, limite ou opção de filtro.
 
 Quando uma loja específica é solicitada, a autorização é validada no backend. Registros sem `store_id` não entram nos agregados por loja. A quantidade de pedidos históricos sem loja aparece apenas na visão global de owner/manager, sem valor financeiro.
+
+## Filtros rápidos
+
+Os filtros são aplicados no backend e afetam somente os quatro detalhamentos operacionais. O resumo geral, gráficos, produtos e demais consolidados permanecem no escopo completo do período e da loja selecionada.
+
+O retorno declara explicitamente:
+
+- `filter_scope = breakdowns_only`;
+- `active_filters` com canal, operador e caixa efetivamente usados;
+- `filter_options` calculadas somente sobre lojas autorizadas;
+- os quatro conjuntos já filtrados.
+
+Regras de segurança:
+
+- canal aceita apenas `online` ou `presencial`;
+- caixa e operador nunca ampliam o escopo de loja;
+- opções de operador vêm somente de movimentos de venda autorizados no período;
+- opções de caixa vêm somente de caixas ativos das lojas autorizadas;
+- filtro presencial não cria acesso a vendas on-line;
+- filtro on-line não retorna movimentos ou sessões de caixa;
+- a implementação anterior permanece interna, sem grant para navegador ou `service_role`.
 
 ## Redação financeira
 
@@ -37,35 +64,41 @@ Na lista por loja, cada unidade mantém seu próprio indicador `finance_authoriz
 
 ## Detalhamentos operacionais
 
-A migration complementar preserva a função anterior como implementação interna sem grant para navegador ou `service_role` e publica um wrapper com a mesma assinatura. O wrapper acrescenta quatro conjuntos:
+A cadeia de funções é:
 
-- `orders_by_channel`: separa pedidos on-line e presenciais;
-- `sales_by_cash_register`: consolida pedidos por loja e caixa físico;
-- `sales_by_operator`: atribui vendas presenciais ao usuário que registrou o movimento de caixa;
-- `cash_sessions_by_register`: apresenta aberturas, fechamentos e divergências por caixa.
+1. `staff_get_operational_reports_base_internal(date,date,uuid)` — consolidados base;
+2. `staff_get_operational_reports_breakdowns_internal(date,date,uuid)` — quatro detalhamentos sem filtro;
+3. `staff_get_operational_reports(date,date,uuid,text,uuid,uuid)` — fronteira pública filtrada.
 
-As quantidades continuam visíveis para sessões com `view_reports`. Valores permanecem condicionados a `view_finance`, sem soma parcial apresentada como total completo.
+O wrapper público acrescenta ou substitui:
+
+- `orders_by_channel`;
+- `sales_by_cash_register`;
+- `sales_by_operator`;
+- `cash_sessions_by_register`;
+- `filter_options`;
+- `active_filters`;
+- `filter_scope`.
 
 ## Interface mobile e tablet
 
-Os quatro detalhamentos são consumidos da mesma resposta BFF do relatório. O componente visual não executa nova chamada, não consulta Supabase diretamente e não cria uma segunda fonte de autorização.
+Os quatro detalhamentos continuam dentro do mesmo painel. A leitura inicial não exige toque. A troca de recorte tem orçamento máximo de **um toque**:
 
-O contrato de interação é de **zero toque adicional** para leitura:
-
-- os quatro cartões são exibidos no próprio painel, sem modal, acordeão ou navegação intermediária;
-- desktop e tablet largo usam duas colunas;
-- até 820 px os cartões passam para uma coluna;
-- linhas operacionais mantêm altura mínima de 64 px e chegam a 72 px em telas pequenas;
-- valores `null` permanecem descritos como protegidos, nunca convertidos para `R$ 0,00`;
-- ausência de registros apresenta estado vazio específico para cada detalhamento.
+- canal, operador e caixa aparecem como chips grandes;
+- cada chip dispara uma única chamada BFF;
+- não há acesso direto ao Supabase;
+- não há modal, acordeão ou tela intermediária;
+- o alvo mínimo é 48 px, 52 px em tablet/celular e 56 px em telas estreitas;
+- os chips têm rolagem horizontal quando a quantidade excede a largura;
+- o resumo geral não muda silenciosamente quando apenas o detalhamento é filtrado;
+- valores `null` permanecem descritos como protegidos, nunca convertidos para `R$ 0,00`.
 
 Arquivos envolvidos:
 
-- `src/operational-report-breakdowns.ts` — normalização fail-closed dos quatro conjuntos;
-- `src/OperationReportBreakdowns.tsx` — apresentação sem chamadas externas;
-- `src/OperationReports.tsx` — conexão com a resposta consolidada;
-- `src/operation-reports.css` — layout responsivo e alvos visuais;
-- `src/operation-report-breakdowns.test.ts` — contratos de redação, responsividade e orçamento de toques.
+- `src/operational-report-breakdowns.ts` — normalização fail-closed de detalhamentos, período, filtros e opções;
+- `src/OperationReportBreakdowns.tsx` — chips de um toque e consulta exclusiva pelo BFF;
+- `src/operation-report-breakdown-filters.css` — alvos grandes e responsividade;
+- `src/operation-report-breakdowns.test.ts` — contratos de BFF, loja, redação e orçamento de toques.
 
 ## Métricas globais
 
@@ -77,13 +110,16 @@ O consolidado inclui quantidade por status, fila ativa, prontas, concluídas e c
 
 ## Manifesto e auditoria determinística
 
-A fronteira é versionada em `security/operational-report-surface.json`. O manifesto controla:
+A fronteira é versionada em `security/operational-report-surface.json` com schema v2. O manifesto controla:
 
-- assinatura pública e implementação interna;
-- migrations base e complementar;
+- assinatura pública e duas implementações internas;
+- migrations base, detalhamentos e filtros;
 - capacidades `view_reports` e `view_finance`;
 - contratos de owner, manager e viewer;
 - quatro detalhamentos obrigatórios;
+- três filtros obrigatórios;
+- escopo `breakdowns_only`;
+- orçamento máximo de um toque;
 - campos financeiros que devem permanecer redigidos.
 
 Comandos locais:
@@ -93,7 +129,7 @@ npm run test:operational-report-surface
 npm run audit:operational-report-surface
 ```
 
-Os dois comandos integram `verify:fast` e `verify` e bloqueiam drift no manifesto, perda de isolamento, grants da função interna, remoção da redação financeira ou automação indevida do ensaio vivo.
+Os dois comandos integram `verify:fast` e `verify` e bloqueiam drift no manifesto, perda de isolamento, grants das funções internas, remoção da redação financeira, perda de filtros backend ou automação indevida do ensaio vivo.
 
 ## Ensaio vivo de homologação
 
@@ -110,27 +146,31 @@ O ensaio valida:
 - viewer com quantidades operacionais e valores financeiros redigidos;
 - bloqueio de acesso a loja sem atribuição;
 - manager e owner com visão financeira na loja autorizada;
-- presença dos quatro detalhamentos;
-- ausência de execução direta da implementação interna;
-- grants corretos da função pública.
+- presença dos quatro detalhamentos e das opções de filtro;
+- aplicação de filtro por canal com `active_filters` coerente;
+- ausência de execução direta das duas implementações internas;
+- grants corretos da função pública filtrada;
+- inexistência da assinatura pública antiga de três argumentos.
 
 ## Aplicação e validação
 
 Migrations preparadas:
 
 - `supabase/migrations/20260729223000_harden_operational_reports_by_store_and_finance.sql`;
-- `supabase/migrations/20260729224500_add_operational_report_breakdowns.sql`.
+- `supabase/migrations/20260729224500_add_operational_report_breakdowns.sql`;
+- `supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql`.
 
 Antes de aplicar em homologação:
 
-1. confirmar que as migrations do ciclo de encomendas já foram aplicadas na ordem;
+1. confirmar que as migrations anteriores do ciclo foram aplicadas na ordem;
 2. confirmar o projeto Supabase de homologação;
 3. executar backup lógico redigido;
 4. aplicar somente na homologação;
 5. executar o auditor determinístico;
 6. testar owner, manager, viewer e uma atribuição sem `view_finance`;
 7. verificar que valores protegidos chegam como `null`, nunca como zero falso;
-8. executar o ensaio vivo com rollback;
-9. executar o gate integral e smoke test mobile/tablet.
+8. validar canal, operador e caixa em lojas distintas;
+9. executar o ensaio vivo com rollback;
+10. executar o gate integral e smoke test mobile/tablet.
 
 As migrations não devem ser aplicadas em produção sem aprovação expressa, backup, rollback preparado e smoke tests confirmados.
