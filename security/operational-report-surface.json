@@ -1,9 +1,11 @@
 {
-  "schemaVersion": 1,
-  "publicFunction": "public.staff_get_operational_reports(date,date,uuid)",
+  "schemaVersion": 2,
+  "publicFunction": "public.staff_get_operational_reports(date,date,uuid,text,uuid,uuid)",
   "baseInternalFunction": "public.staff_get_operational_reports_base_internal(date,date,uuid)",
+  "breakdownInternalFunction": "public.staff_get_operational_reports_breakdowns_internal(date,date,uuid)",
   "baseHardeningMigration": "supabase/migrations/20260729223000_harden_operational_reports_by_store_and_finance.sql",
   "breakdownMigration": "supabase/migrations/20260729224500_add_operational_report_breakdowns.sql",
+  "filterMigration": "supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql",
   "liveTest": "supabase/tests/operational_reports_boundary_live.sql",
   "workflow": ".github/workflows/operational-reports-boundary-live-homologation.yml",
   "capabilities": [
@@ -21,6 +23,13 @@
     "sales_by_operator",
     "cash_sessions_by_register"
   ],
+  "filters": [
+    "target_channel",
+    "target_operator_user_id",
+    "target_register_id"
+  ],
+  "filterScope": "breakdowns_only",
+  "touchBudget": 1,
   "protectedFinancialFields": [
     "gross",
     "fees",
