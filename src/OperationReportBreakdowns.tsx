@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BadgeDollarSign,
   MonitorSmartphone,
@@ -8,12 +8,29 @@ import {
 import {
   channelLabel,
   normalizeOperationalReportBreakdowns,
+  normalizeOperationalReportFilterOptions,
+  normalizeOperationalReportFilters,
+  normalizeOperationalReportPeriod,
   type NullableNumber,
   type OperationalReportBreakdownPayload,
+  type OperationalReportFilterOption,
+  type OperationalReportFilters,
 } from "./operational-report-breakdowns";
+import { bffRpc } from "./services/bff-rpc";
+import "./operation-report-breakdown-filters.css";
 
 type Props = {
   report: OperationalReportBreakdownPayload;
+};
+
+type FilterKey = "channel" | "operatorUserId" | "registerId";
+
+type FilterGroupProps = {
+  label: string;
+  activeValue: string | null;
+  options: OperationalReportFilterOption[];
+  disabled: boolean;
+  onChange: (value: string | null) => void;
 };
 
 const money = (value: number) =>
@@ -26,25 +43,145 @@ const number = (value: number) => Number(value || 0).toLocaleString("pt-BR");
 const moneyOrProtected = (value: NullableNumber) =>
   value === null ? "Protegido por permissão" : money(value);
 
-export default function OperationReportBreakdowns({ report }: Props) {
-  const breakdowns = useMemo(
-    () => normalizeOperationalReportBreakdowns(report),
-    [report],
+function FilterGroup({
+  label,
+  activeValue,
+  options,
+  disabled,
+  onChange,
+}: FilterGroupProps) {
+  return (
+    <div className="operation-report-filter-group" role="group" aria-label={label}>
+      <strong>{label}</strong>
+      <div className="operation-report-filter-chips">
+        <button
+          type="button"
+          aria-pressed={activeValue === null}
+          disabled={disabled}
+          onClick={() => onChange(null)}
+        >
+          Todos
+        </button>
+        {options.map((option) => (
+          <button
+            type="button"
+            key={option.value}
+            aria-pressed={activeValue === option.value}
+            disabled={disabled}
+            title={option.storeName ? `${option.label} · ${option.storeName}` : option.label}
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}{option.storeName ? ` · ${option.storeName}` : ""}
+          </button>
+        ))}
+      </div>
+    </div>
   );
+}
+
+export default function OperationReportBreakdowns({ report }: Props) {
+  const [scopedReport, setScopedReport] = useState<OperationalReportBreakdownPayload>(report);
+  const [filters, setFilters] = useState<OperationalReportFilters>(() =>
+    normalizeOperationalReportFilters(report),
+  );
+  const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    setScopedReport(report);
+    setFilters(normalizeOperationalReportFilters(report));
+    setNotice("");
+  }, [report]);
+
+  const breakdowns = useMemo(
+    () => normalizeOperationalReportBreakdowns(scopedReport),
+    [scopedReport],
+  );
+  const options = useMemo(
+    () => normalizeOperationalReportFilterOptions(scopedReport),
+    [scopedReport],
+  );
+  const period = useMemo(
+    () => normalizeOperationalReportPeriod(scopedReport),
+    [scopedReport],
+  );
+
+  const applyFilter = async (key: FilterKey, value: string | null) => {
+    const nextFilters = { ...filters, [key]: value };
+    setFilters(nextFilters);
+    setLoading(true);
+    setNotice("");
+
+    try {
+      const nextReport = await bffRpc<OperationalReportBreakdownPayload>(
+        "staff_get_operational_reports",
+        {
+          range_start: period.from,
+          range_end: period.to,
+          target_store_id: period.storeId,
+          target_channel: nextFilters.channel,
+          target_operator_user_id: nextFilters.operatorUserId,
+          target_register_id: nextFilters.registerId,
+        },
+      );
+      setScopedReport(nextReport);
+      setFilters(normalizeOperationalReportFilters(nextReport));
+    } catch (error) {
+      setFilters(normalizeOperationalReportFilters(scopedReport));
+      setNotice(error instanceof Error ? error.message : "Não foi possível aplicar o filtro.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const channelOptions = options.channels.length
+    ? options.channels
+    : [
+        { value: "online", label: channelLabel("online"), storeId: null, storeName: null },
+        { value: "presencial", label: channelLabel("presencial"), storeId: null, storeName: null },
+      ];
 
   return (
     <section
       className="operation-report-breakdowns"
       aria-label="Detalhamentos operacionais"
-      data-touch-budget="0"
+      data-touch-budget="1"
+      aria-busy={loading}
     >
       <header className="operation-report-breakdowns-heading">
         <div>
-          <small>Leitura imediata, sem abrir novas telas</small>
+          <small>Troque o recorte com um toque</small>
           <h3>Detalhamento da operação</h3>
-          <p>Canal, operador, caixa e sessões aparecem no mesmo painel.</p>
+          <p>Os filtros abaixo afetam somente estes quatro detalhamentos; o resumo geral permanece consolidado.</p>
         </div>
       </header>
+
+      <div className="operation-report-quick-filters" aria-label="Filtros rápidos do detalhamento">
+        <FilterGroup
+          label="Canal"
+          activeValue={filters.channel}
+          options={channelOptions}
+          disabled={loading}
+          onChange={(value) => void applyFilter("channel", value)}
+        />
+        <FilterGroup
+          label="Operador"
+          activeValue={filters.operatorUserId}
+          options={options.operators}
+          disabled={loading}
+          onChange={(value) => void applyFilter("operatorUserId", value)}
+        />
+        <FilterGroup
+          label="Caixa"
+          activeValue={filters.registerId}
+          options={options.registers}
+          disabled={loading}
+          onChange={(value) => void applyFilter("registerId", value)}
+        />
+      </div>
+
+      {notice ? <p className="operation-report-filter-notice" role="status">{notice}</p> : null}
+      {loading ? <p className="operation-report-filter-status" role="status">Atualizando recorte…</p> : null}
 
       <div className="operation-report-breakdowns-grid">
         <article className="operation-reports-card operation-report-breakdown-card">
@@ -74,7 +211,7 @@ export default function OperationReportBreakdowns({ report }: Props) {
                 </article>
               ))
             ) : (
-              <p>Sem vendas por canal no período.</p>
+              <p>Sem vendas no recorte selecionado.</p>
             )}
           </div>
         </article>
@@ -106,7 +243,7 @@ export default function OperationReportBreakdowns({ report }: Props) {
                 </article>
               ))
             ) : (
-              <p>Sem vendas vinculadas a caixa no período.</p>
+              <p>Sem vendas por caixa no recorte selecionado.</p>
             )}
           </div>
         </article>
@@ -136,7 +273,7 @@ export default function OperationReportBreakdowns({ report }: Props) {
                 </article>
               ))
             ) : (
-              <p>Sem vendas presenciais por operador no período.</p>
+              <p>Sem vendas por operador no recorte selecionado.</p>
             )}
           </div>
         </article>
@@ -170,7 +307,7 @@ export default function OperationReportBreakdowns({ report }: Props) {
                 </article>
               ))
             ) : (
-              <p>Sem sessões de caixa no período.</p>
+              <p>Sem sessões no recorte selecionado.</p>
             )}
           </div>
         </article>
