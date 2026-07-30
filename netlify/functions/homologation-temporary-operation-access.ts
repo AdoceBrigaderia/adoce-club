@@ -4,15 +4,15 @@ const env = (name: string) =>
   (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
   process.env[name];
 
-function svg(code: number, label: string) {
+function svg(width: number, label: string, height = 630) {
   const safe = label
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
   return new Response(`<?xml version="1.0" encoding="UTF-8"?>
-  <svg xmlns="http://www.w3.org/2000/svg" width="${code}" height="630">
-    <rect width="100%" height="630" fill="#fff8f5"/>
-    <text x="80" y="180" font-family="Arial" font-size="72" font-weight="700" fill="#4b1f17">${code}</text>
+  <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <rect width="100%" height="100%" fill="#fff8f5"/>
+    <text x="80" y="180" font-family="Arial" font-size="72" font-weight="700" fill="#4b1f17">${width}x${height}</text>
     <text x="80" y="280" font-family="Arial" font-size="34" fill="#7b2f43">${safe}</text>
   </svg>`, {
     status: 200,
@@ -21,6 +21,19 @@ function svg(code: number, label: string) {
       "Cache-Control": "no-store, max-age=0",
     },
   });
+}
+
+function createErrorDimensions(error: { status?: number; message?: string; code?: string }) {
+  const status = Number(error.status) || 0;
+  const message = (error.message || "").toLowerCase();
+  let category = 19;
+  if (message.includes("database error")) category = 11;
+  else if (message.includes("already") || message.includes("registered")) category = 12;
+  else if (message.includes("invalid") || message.includes("api key")) category = 13;
+  else if (message.includes("not authorized") || message.includes("not allowed") || message.includes("permission")) category = 14;
+  else if (message.includes("email")) category = 15;
+  else if (message.includes("rate") || message.includes("limit")) category = 16;
+  return { width: 1400 + status, height: 600 + category };
 }
 
 export default async (request: Request) => {
@@ -58,8 +71,10 @@ export default async (request: Request) => {
         temporary_homologation_access: true,
       },
     });
-    if (created.error || !created.data.user)
-      return svg(1204, `create_user:${created.error?.message || "user_not_created"}`);
+    if (created.error || !created.data.user) {
+      const detail = createErrorDimensions(created.error || {});
+      return svg(detail.width, `create_user:${created.error?.code || "no_code"}`, detail.height);
+    }
 
     const userId = created.data.user.id;
     const profile = await admin.from("profiles").upsert({
@@ -76,7 +91,7 @@ export default async (request: Request) => {
       temporary_password_expires_at: expiresAt.toISOString(),
       updated_at: now.toISOString(),
     }, { onConflict: "id" });
-    if (profile.error) return svg(1205, `upsert_profile:${profile.error.message}`);
+    if (profile.error) return svg(1205, `upsert_profile:${profile.error.code || "no_code"}`);
 
     const staff = await admin.from("staff_members").upsert({
       user_id: userId,
@@ -86,7 +101,7 @@ export default async (request: Request) => {
       temporary_password_issued_at: now.toISOString(),
       temporary_password_expires_at: expiresAt.toISOString(),
     }, { onConflict: "user_id" });
-    if (staff.error) return svg(1206, `upsert_staff:${staff.error.message}`);
+    if (staff.error) return svg(1206, `upsert_staff:${staff.error.code || "no_code"}`);
 
     const login = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
       method: "POST",
@@ -100,7 +115,7 @@ export default async (request: Request) => {
 
     return svg(1300, `ok:${phone}:${expiresAt.toISOString()}`);
   } catch (error) {
-    return svg(1299, error instanceof Error ? error.message : "unknown_error");
+    return svg(1299, error instanceof Error ? error.name : "unknown_error");
   }
 };
 
