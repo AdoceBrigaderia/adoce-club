@@ -47,6 +47,8 @@ export type OperationalReportFilters = {
   registerId: string | null;
 };
 
+export type OperationalReportFilterKey = keyof OperationalReportFilters;
+
 export type OperationalReportFilterOption = {
   value: string;
   label: string;
@@ -147,18 +149,35 @@ const normalizeFilterOptions = (
   labelKey: string,
   labelFallback: (optionValue: string) => string,
 ): OperationalReportFilterOption[] => {
-  const seen = new Set<string>();
-  return asRows(value).flatMap((row) => {
+  const normalized = new Map<string, OperationalReportFilterOption>();
+
+  asRows(value).forEach((row) => {
     const optionValue = text(row.value);
-    if (!optionValue || seen.has(optionValue)) return [];
-    seen.add(optionValue);
-    return [{
+    if (!optionValue) return;
+
+    const nextOption: OperationalReportFilterOption = {
       value: optionValue,
       label: text(row[labelKey], labelFallback(optionValue)),
       storeId: nullableText(row.store_id),
       storeName: nullableText(row.store_name),
-    }];
+    };
+    const current = normalized.get(optionValue);
+
+    if (!current) {
+      normalized.set(optionValue, nextOption);
+      return;
+    }
+
+    if (current.storeId !== nextOption.storeId) {
+      normalized.set(optionValue, {
+        ...current,
+        storeId: null,
+        storeName: "Várias lojas",
+      });
+    }
   });
+
+  return [...normalized.values()];
 };
 
 export const normalizeOperationalReportFilterOptions = (
@@ -170,6 +189,46 @@ export const normalizeOperationalReportFilterOptions = (
     operators: normalizeFilterOptions(options.operators, "label", () => "Operador sem nome"),
     registers: normalizeFilterOptions(options.registers, "label", () => "Caixa não identificado"),
   };
+};
+
+const optionStoreId = (
+  options: OperationalReportFilterOption[],
+  value: string | null,
+) => options.find((option) => option.value === value)?.storeId || null;
+
+export const changeOperationalReportFilter = (
+  current: OperationalReportFilters,
+  key: OperationalReportFilterKey,
+  value: string | null,
+  options: OperationalReportFilterOptions,
+): OperationalReportFilters => {
+  const next: OperationalReportFilters = { ...current, [key]: value };
+
+  if (key === "channel" && value === "online") {
+    next.operatorUserId = null;
+    next.registerId = null;
+    return next;
+  }
+
+  if (key === "operatorUserId" && value) {
+    next.channel = "presencial";
+    const operatorStoreId = optionStoreId(options.operators, value);
+    const registerStoreId = optionStoreId(options.registers, next.registerId);
+    if (operatorStoreId && registerStoreId && operatorStoreId !== registerStoreId) {
+      next.registerId = null;
+    }
+  }
+
+  if (key === "registerId" && value) {
+    next.channel = "presencial";
+    const registerStoreId = optionStoreId(options.registers, value);
+    const operatorStoreId = optionStoreId(options.operators, next.operatorUserId);
+    if (registerStoreId && operatorStoreId && registerStoreId !== operatorStoreId) {
+      next.operatorUserId = null;
+    }
+  }
+
+  return next;
 };
 
 export const normalizeOperationalReportBreakdowns = (
