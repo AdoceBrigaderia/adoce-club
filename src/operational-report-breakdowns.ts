@@ -41,7 +41,36 @@ export type CashSessionsByRegisterRow = {
   absolute_difference: NullableNumber;
 };
 
+export type OperationalReportFilters = {
+  channel: string | null;
+  operatorUserId: string | null;
+  registerId: string | null;
+};
+
+export type OperationalReportFilterOption = {
+  value: string;
+  label: string;
+  storeId: string | null;
+  storeName: string | null;
+};
+
+export type OperationalReportFilterOptions = {
+  channels: OperationalReportFilterOption[];
+  operators: OperationalReportFilterOption[];
+  registers: OperationalReportFilterOption[];
+};
+
+export type OperationalReportPeriod = {
+  from: string;
+  to: string;
+  storeId: string | null;
+};
+
 export type OperationalReportBreakdownPayload = {
+  period?: unknown;
+  filter_scope?: unknown;
+  active_filters?: unknown;
+  filter_options?: unknown;
   orders_by_channel?: unknown;
   sales_by_cash_register?: unknown;
   sales_by_operator?: unknown;
@@ -70,6 +99,8 @@ const text = (value: unknown, fallback = "") => {
   return normalized || fallback;
 };
 
+const nullableText = (value: unknown) => text(value) || null;
+
 const count = (value: unknown) => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 0;
@@ -88,6 +119,58 @@ export const channelLabel = (channel: string) =>
     online: "On-line",
     presencial: "Presencial",
   })[channel] || channel || "Canal não informado";
+
+export const normalizeOperationalReportPeriod = (
+  payload: OperationalReportBreakdownPayload,
+): OperationalReportPeriod => {
+  const period = asRecord(payload.period);
+  return {
+    from: text(period.from),
+    to: text(period.to),
+    storeId: nullableText(period.store_id),
+  };
+};
+
+export const normalizeOperationalReportFilters = (
+  payload: OperationalReportBreakdownPayload,
+): OperationalReportFilters => {
+  const filters = asRecord(payload.active_filters);
+  return {
+    channel: nullableText(filters.channel),
+    operatorUserId: nullableText(filters.operator_user_id),
+    registerId: nullableText(filters.register_id),
+  };
+};
+
+const normalizeFilterOptions = (
+  value: unknown,
+  labelKey: string,
+  labelFallback: (optionValue: string) => string,
+): OperationalReportFilterOption[] => {
+  const seen = new Set<string>();
+  return asRows(value).flatMap((row) => {
+    const optionValue = text(row.value);
+    if (!optionValue || seen.has(optionValue)) return [];
+    seen.add(optionValue);
+    return [{
+      value: optionValue,
+      label: text(row[labelKey], labelFallback(optionValue)),
+      storeId: nullableText(row.store_id),
+      storeName: nullableText(row.store_name),
+    }];
+  });
+};
+
+export const normalizeOperationalReportFilterOptions = (
+  payload: OperationalReportBreakdownPayload,
+): OperationalReportFilterOptions => {
+  const options = asRecord(payload.filter_options);
+  return {
+    channels: normalizeFilterOptions(options.channels, "label", channelLabel),
+    operators: normalizeFilterOptions(options.operators, "label", () => "Operador sem nome"),
+    registers: normalizeFilterOptions(options.registers, "label", () => "Caixa não identificado"),
+  };
+};
 
 export const normalizeOperationalReportBreakdowns = (
   payload: OperationalReportBreakdownPayload,
@@ -111,7 +194,7 @@ export const normalizeOperationalReportBreakdowns = (
   salesByOperator: asRows(payload.sales_by_operator).map((row) => ({
     store_id: text(row.store_id),
     store_name: text(row.store_name, "Loja não identificada"),
-    operator_user_id: text(row.operator_user_id) || null,
+    operator_user_id: nullableText(row.operator_user_id),
     operator_name: text(row.operator_name, "Operador sem nome"),
     finance_authorized: boolean(row.finance_authorized),
     orders: count(row.orders),
