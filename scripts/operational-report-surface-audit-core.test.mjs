@@ -9,6 +9,7 @@ const controlled = [
   "security/operational-report-surface.json",
   "supabase/migrations/20260729223000_harden_operational_reports_by_store_and_finance.sql",
   "supabase/migrations/20260729224500_add_operational_report_breakdowns.sql",
+  "supabase/migrations/20260729230000_filter_operational_report_breakdowns.sql",
   "supabase/tests/operational_reports_boundary_live.sql",
   ".github/workflows/operational-reports-boundary-live-homologation.yml",
 ];
@@ -29,10 +30,20 @@ function mutate(root, file, search, replacement = "") {
   writeFileSync(target, source.replace(search, replacement));
 }
 
-test("aprova a fronteira versionada dos relatórios", () => {
+function mutateAll(root, file, search, replacement = "") {
+  const target = join(root, file);
+  const source = readFileSync(target, "utf8");
+  assert.ok(source.includes(search), `fixture não contém ${search}`);
+  writeFileSync(target, source.split(search).join(replacement));
+}
+
+test("aprova a fronteira versionada e filtrada dos relatórios", () => {
   const result = auditOperationalReportSurface(process.cwd());
   assert.equal(result.violations.length, 0);
   assert.equal(result.breakdownCount, 4);
+  assert.equal(result.filterCount, 3);
+  assert.equal(result.touchBudget, 1);
+  assert.equal(result.controlledFileCount, 6);
   assert.ok(result.protectedFinancialFieldCount >= 10);
 });
 
@@ -56,6 +67,26 @@ test("reprova retorno do acesso à função interna", () => {
   }
 });
 
+test("reprova perda de filtro backend por operador", () => {
+  const root = fixture();
+  try {
+    mutateAll(root, controlled[3], "target_operator_user_id is null", "true");
+    assert.ok(auditOperationalReportSurface(root).violations.some((item) => item.code === "filter_contract_missing"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("reprova perda do isolamento por loja na migration filtrada", () => {
+  const root = fixture();
+  try {
+    mutate(root, controlled[3], "join report_stores store on store.id = customer_order.store_id", "join public.stores store on store.id = customer_order.store_id");
+    assert.ok(auditOperationalReportSurface(root).violations.some((item) => item.code === "filter_contract_missing"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("reprova perda de um detalhamento", () => {
   const root = fixture();
   try {
@@ -68,10 +99,22 @@ test("reprova perda de um detalhamento", () => {
   }
 });
 
+test("reprova aumento do orçamento de toques", () => {
+  const root = fixture();
+  try {
+    const manifest = JSON.parse(readFileSync(join(root, controlled[0]), "utf8"));
+    manifest.touchBudget = 2;
+    writeFileSync(join(root, controlled[0]), `${JSON.stringify(manifest, null, 2)}\n`);
+    assert.ok(auditOperationalReportSurface(root).violations.some((item) => item.code === "touch_budget_drift"));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("reprova perda do contrato viewer", () => {
   const root = fixture();
   try {
-    mutate(root, controlled[3], "Viewer recebeu valores financeiros no relatório", "viewer sem contrato");
+    mutate(root, controlled[4], "Viewer recebeu valores financeiros no relatório", "viewer sem contrato");
     assert.ok(auditOperationalReportSurface(root).violations.some((item) => item.code === "live_contract_missing"));
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -81,7 +124,7 @@ test("reprova perda do contrato viewer", () => {
 test("reprova gatilho automático no workflow vivo", () => {
   const root = fixture();
   try {
-    mutate(root, controlled[4], "  workflow_dispatch:", "  push:\n  workflow_dispatch:");
+    mutate(root, controlled[5], "  workflow_dispatch:", "  push:\n  workflow_dispatch:");
     assert.ok(auditOperationalReportSurface(root).violations.some((item) => item.code === "workflow_trigger_forbidden"));
   } finally {
     rmSync(root, { recursive: true, force: true });
