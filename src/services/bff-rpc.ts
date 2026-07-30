@@ -7,6 +7,10 @@ type BffRpcEnvelope<T> = {
   code?: string;
 };
 
+export type BffRpcRequestOptions = {
+  signal?: AbortSignal;
+};
+
 async function parseEnvelope<T>(response: Response) {
   const payload = (await response.json().catch(() => ({}))) as BffRpcEnvelope<T>;
   if (!response.ok) {
@@ -24,6 +28,7 @@ async function parseEnvelope<T>(response: Response) {
 async function requestRpc<T>(
   rpc: OperationBffRpcName,
   params: Record<string, unknown>,
+  options: BffRpcRequestOptions,
 ) {
   const csrfToken = readBffCsrfToken();
   if (!csrfToken) {
@@ -43,6 +48,7 @@ async function requestRpc<T>(
       "X-CSRF-Token": csrfToken,
     },
     body: JSON.stringify({ rpc, params }),
+    signal: options.signal,
   });
   return { response, data: response.ok ? await parseEnvelope<T>(response) : undefined };
 }
@@ -50,8 +56,9 @@ async function requestRpc<T>(
 export async function bffRpc<T = unknown>(
   rpc: OperationBffRpcName,
   params: Record<string, unknown> = {},
+  options: BffRpcRequestOptions = {},
 ): Promise<T> {
-  const first = await requestRpc<T>(rpc, params);
+  const first = await requestRpc<T>(rpc, params, options);
   if (first.response.ok) return first.data as T;
 
   const errorPayload = (await first.response.json().catch(() => ({}))) as BffRpcEnvelope<T>;
@@ -78,7 +85,7 @@ export async function bffRpc<T = unknown>(
     throw error;
   }
 
-  const retry = await requestRpc<T>(rpc, params);
+  const retry = await requestRpc<T>(rpc, params, options);
   if (retry.response.ok) return retry.data as T;
   return parseEnvelope<T>(retry.response);
 }
