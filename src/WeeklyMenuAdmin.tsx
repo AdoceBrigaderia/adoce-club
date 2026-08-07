@@ -167,10 +167,9 @@ export default function WeeklyMenuAdmin({
     await load();
   };
 
-  const pendingReleaseItems = visibleItems.filter(
+  const pendingReleaseItems = items.filter(
     (item) =>
       item.service_date === today &&
-      item.channel_slug === "online_orders" &&
       item.status === "published" &&
       item.quantity_planned !== null &&
       item.quantity_planned > (item.quantity_released || 0),
@@ -298,8 +297,7 @@ export default function WeeklyMenuAdmin({
         </span>
       </div>
 
-      {draft.service_date === today &&
-      draft.channel_slug === "online_orders" ? (
+      {draft.service_date === today ? (
         <div
           className={`weekly-production-release ${
             pendingReleaseItems.length ? "is-pending" : "is-complete"

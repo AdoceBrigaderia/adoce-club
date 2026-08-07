@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { operationWhatsAppUrl } from "./operation-whatsapp";
 import {
@@ -44,6 +44,7 @@ import OperationPedeJunto from "./OperationPedeJunto";
 import OperationInstantOrders from "./OperationInstantOrders";
 import OperationFinance from "./OperationFinance";
 import OperationCommerceSettings from "./OperationCommerceSettings";
+import MetaCatalogAdmin from "./MetaCatalogAdmin";
 import {
   CommercialEventSubcategory,
   CommercialProduct,
@@ -57,6 +58,7 @@ import {
 import "./operation-commercial.css";
 import "./operation-product-options.css";
 import "./operation-media-editor.css";
+import RequestQuoteDocument, { parsePreferences } from "./RequestQuoteDocument";
 
 type AdminTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
 const tabPresentation: Record<AdminTab, { eyebrow: string; title: string; description: string }> = {
@@ -279,6 +281,16 @@ const newProduct = (): CommercialProduct => ({
   published: false,
   active: true,
   sort_order: 100,
+  meta_retailer_id: "",
+  meta_product_id: null,
+  exibir_whatsapp: false,
+  meta_sync_status: "disabled",
+  meta_last_sync_at: null,
+  meta_last_error: null,
+  meta_last_error_temporary: null,
+  meta_sync_attempts: 0,
+  meta_payload_hash: null,
+  meta_batch_handle: null,
 });
 
 export default function OperationCommercialAdmin({
@@ -320,6 +332,7 @@ export default function OperationCommercialAdmin({
   const [optionForm, setOptionForm] = useState({ group: "recheio", label: "", adjustment: 0 });
   const [filter, setFilter] = useState("");
   const [requestFilter, setRequestFilter] = useState<RequestFilter>("active");
+  const [recentWebsiteRequestsOnly, setRecentWebsiteRequestsOnly] = useState(false);
   const [showManualRequest, setShowManualRequest] = useState(false);
   const [showCancellation, setShowCancellation] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
@@ -345,6 +358,7 @@ export default function OperationCommercialAdmin({
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDue, setTaskDue] = useState(toLocalInput(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const canManage = role === "owner" || role === "manager";
+  const requestsSectionRef = useRef<HTMLElement | null>(null);
 
   const openRequest = (request: ServiceRequest) => {
     setSelectedRequest(request);
@@ -422,6 +436,10 @@ export default function OperationCommercialAdmin({
     () => analyticsEvents.filter((event) => new Date(event.occurred_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000),
     [analyticsEvents],
   );
+  const recentWebsiteRequests = useMemo(
+    () => requests.filter((request) => request.source === "website" && new Date(request.created_at).getTime() >= Date.now() - 7 * 24 * 60 * 60 * 1000),
+    [requests],
+  );
   const activeRequests = useMemo(
     () =>
       requests.filter((request) =>
@@ -433,10 +451,26 @@ export default function OperationCommercialAdmin({
     const clean = filter.trim().toLocaleLowerCase("pt-BR");
     return requests
       .filter((request) => requestFilterMatches(request.status, requestFilter))
+      .filter((request) => !recentWebsiteRequestsOnly || recentWebsiteRequests.some((recentRequest) => recentRequest.id === request.id))
       .filter((request) => !clean || `${request.request_number} ${request.customer_name} ${request.customer_phone} ${request.commercial_products?.name || ""}`
         .toLocaleLowerCase("pt-BR")
         .includes(clean));
-  }, [filter, requestFilter, requests]);
+  }, [filter, recentWebsiteRequests, recentWebsiteRequestsOnly, requestFilter, requests]);
+
+  const selectRequestFilter = (nextFilter: RequestFilter) => {
+    setRecentWebsiteRequestsOnly(false);
+    setRequestFilter(nextFilter);
+  };
+
+  const showRecentWebsiteRequests = () => {
+    setFilter("");
+    setRequestFilter("all");
+    setRecentWebsiteRequestsOnly(true);
+    changeTab("requests");
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => requestsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    });
+  };
 
   const competingCount = (current: ServiceRequest) =>
     requests.filter(
@@ -556,18 +590,54 @@ export default function OperationCommercialAdmin({
         sort_order: selectedProduct.sort_order,
         published: selectedProduct.published,
         active: selectedProduct.active,
+        exibir_whatsapp: selectedProduct.exibir_whatsapp,
         updated_by: session.user.id,
       };
     const query = selectedProduct.id
       ? requireSupabase().from("commercial_products").update(payload).eq("id", selectedProduct.id)
       : requireSupabase().from("commercial_products").insert({ ...payload, created_by: session.user.id });
-    const { error } = await query;
+    const { data: savedProduct, error } = await query.select("id").single();
+    let syncWarning = "";
+    if (!error && savedProduct && selectedProduct.exibir_whatsapp) {
+      try {
+        const response = await fetch(`/api/admin/integrations/meta/catalog/products/${savedProduct.id}/sync`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        });
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        if (!response.ok) syncWarning = ` O cadastro local foi preservado; sincronização pendente: ${body.error || `HTTP ${response.status}`}`;
+      } catch {
+        syncWarning = " O cadastro local foi preservado; a sincronização será reprocessada depois.";
+      }
+    }
     setBusy(false);
     if (error) setNotice(error.message);
     else {
-      setNotice(selectedProduct.id ? "Produto atualizado no catálogo." : "Novo produto criado no catálogo.");
+      setNotice(`${selectedProduct.id ? "Produto atualizado no catálogo." : "Novo produto criado no catálogo."}${syncWarning}`);
       setSelectedProduct(null);
       await load();
+    }
+  };
+
+  const syncMetaProduct = async (product: CommercialProduct) => {
+    if (!product.id) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch(`/api/admin/integrations/meta/catalog/products/${product.id}/sync`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      });
+      const body = await response.json().catch(() => ({})) as { error?: string; status?: string };
+      if (!response.ok) throw new Error(body.error || `Falha HTTP ${response.status}.`);
+      setNotice(body.status === "synced" ? "Produto confirmado no catálogo da Meta." : "Produto enviado para processamento pela Meta.");
+      const { data } = await requireSupabase().from("commercial_products").select("*").eq("id", product.id).maybeSingle();
+      if (data) setSelectedProduct(data as CommercialProduct);
+      await load();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "A sincronização não foi concluída.");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -880,11 +950,11 @@ export default function OperationCommercialAdmin({
       </div> : null}
 
       {canManage && (["agenda", "requests", "crm", "feedback"] as AdminTab[]).includes(tab) ? <section className="operation-analytics-summary" aria-label="Resultados do site nos últimos sete dias">
-        <div><span>Últimos 7 dias</span><strong>Sinais reais do site</strong><small>Dados anônimos, sem nome, telefone, e-mail ou conteúdo digitado.</small></div>
+        <div><span>Últimos 7 dias</span><strong>Interesse no site</strong><small>Aberturas são anônimas. Solicitações recebidas têm contato e podem ser atendidas.</small></div>
         <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "page_view").length}</strong><small>páginas vistas</small></span>
         <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "whatsapp_click").length}</strong><small>cliques no WhatsApp</small></span>
-        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "prebook_start").length}</strong><small>pré-reservas iniciadas</small></span>
-        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "prebook_success").length}</strong><small>pré-reservas enviadas</small></span>
+        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "prebook_start").length}</strong><small>formulários abertos</small><em>Anônimo, não gera atendimento</em></span>
+        <button type="button" onClick={showRecentWebsiteRequests}><strong>{recentWebsiteRequests.length}</strong><small>solicitações recebidas</small><em>Ver atendimentos <ArrowRight /></em></button>
       </section> : null}
 
       <nav className="operation-commercial-tabs">
@@ -957,21 +1027,28 @@ export default function OperationCommercialAdmin({
 
       {tab === "requests" ? (
         <div className="operation-commercial-grid">
-          <section>
+          <section ref={requestsSectionRef}>
             <form className="operation-commercial-search" onSubmit={(event) => event.preventDefault()}><Search /><input value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Buscar número, cliente, telefone ou produto" /></form>
+            {recentWebsiteRequestsOnly ? <div className="operation-request-context" role="status">
+              <span><strong>Solicitações recebidas pelo site nos últimos 7 dias</strong><small>Inclui atendimentos ativos, concluídos, cancelados ou expirados.</small></span>
+              <button type="button" onClick={() => selectRequestFilter("active")}>Voltar à fila ativa</button>
+            </div> : null}
             <div className="operation-request-filters" role="group" aria-label="Filtrar pedidos por etapa">
               {([
                 ["active", "Em andamento"],
                 ["attention", "Precisam de retorno"],
                 ["confirmed", "Confirmados"],
+                ["completed", "Concluídos"],
+                ["cancelled", "Cancelados ou expirados"],
+                ["all", "Todos"],
               ] as [RequestFilter, string][]).map(([value, label]) => (
-                <button type="button" key={value} className={requestFilter === value ? "active" : ""} onClick={() => setRequestFilter(value)}>
+                <button type="button" key={value} className={!recentWebsiteRequestsOnly && requestFilter === value ? "active" : ""} onClick={() => selectRequestFilter(value)}>
                   {label}
                 </button>
               ))}
             </div>
             <div className="operation-request-list">
-              {filteredRequests.filter((request) => !["completed", "cancelled", "expired"].includes(request.status)).map((request) => (
+              {filteredRequests.map((request) => (
                 <button key={request.id} onClick={() => openRequest(request)}>
                   <span><small>{request.request_number}</small><strong>{request.customer_name}</strong><em>{request.commercial_products?.name}</em></span>
                   <span><strong>{dateTime(request.desired_start)}</strong><small>{request.customer_phone}</small></span>
@@ -1012,6 +1089,7 @@ export default function OperationCommercialAdmin({
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
+          <MetaCatalogAdmin session={session} onProductsChanged={load} />
           <section className="operation-segment-media">
             <div>
               <small>Fotos principais das páginas</small>
@@ -1252,6 +1330,17 @@ export default function OperationCommercialAdmin({
               </div>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.published} onChange={(event) => setSelectedProduct({ ...selectedProduct, published: event.target.checked })} /> Publicado para clientes</label>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.active} onChange={(event) => setSelectedProduct({ ...selectedProduct, active: event.target.checked })} /> Produto ativo</label>
+              <section className="operation-meta-product">
+                <label className="operation-check"><input type="checkbox" checked={selectedProduct.exibir_whatsapp} onChange={(event) => setSelectedProduct({ ...selectedProduct, exibir_whatsapp: event.target.checked })} /> Exibir no WhatsApp</label>
+                <dl>
+                  <div><dt>Identificador permanente</dt><dd>{selectedProduct.meta_retailer_id || "Será definido ao criar o produto"}</dd></div>
+                  <div><dt>Situação</dt><dd>{({ disabled: "Não enviado", pending: "Pendente", syncing: "Enviando", submitted: "Processando na Meta", synced: "Sincronizado", error: "Erro" } as Record<string, string>)[selectedProduct.meta_sync_status] || selectedProduct.meta_sync_status}</dd></div>
+                  <div><dt>Última sincronização</dt><dd>{selectedProduct.meta_last_sync_at ? dateTime(selectedProduct.meta_last_sync_at) : "Ainda não realizada"}</dd></div>
+                  <div><dt>Tentativas</dt><dd>{selectedProduct.meta_sync_attempts}</dd></div>
+                </dl>
+                {selectedProduct.meta_last_error ? <p role="alert">{selectedProduct.meta_last_error}</p> : null}
+                {selectedProduct.id ? <button type="button" disabled={busy} onClick={() => void syncMetaProduct(selectedProduct)}><RefreshCw /> {selectedProduct.meta_sync_status === "error" ? "Reprocessar" : "Sincronizar agora"}</button> : <small>Crie o produto antes da primeira sincronização.</small>}
+              </section>
               {selectedProduct.id ? <CommercialMediaAdmin
                 title={`Galeria de ${selectedProduct.name}`}
                 items={galleryFor({ productId: selectedProduct.id })}
@@ -1418,6 +1507,36 @@ export default function OperationCommercialAdmin({
               <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
             </div>
             <p>{selectedRequest.commercial_products?.name} · {dateTime(selectedRequest.desired_start)}</p>
+            {selectedRequest.selections?.preferences || selectedRequest.customer_notes ? (
+              <section className="drawer-customer-request">
+                <small>O que a cliente pediu</small>
+                {selectedRequest.selections?.preferences ? (() => {
+                  const items = parsePreferences(selectedRequest.selections.preferences || "");
+                  return items.length > 1 ? (
+                    <ul>{items.map((item, index) => <li key={index}>{item.quantity ? `${item.quantity} ` : ""}{item.description}</li>)}</ul>
+                  ) : (
+                    <p className="drawer-request-raw">{selectedRequest.selections.preferences}</p>
+                  );
+                })() : null}
+                {selectedRequest.customer_notes ? (
+                  <p className="drawer-request-note"><strong>Observação da cliente</strong>{selectedRequest.customer_notes}</p>
+                ) : null}
+              </section>
+            ) : null}
+            <RequestQuoteDocument data={{
+              requestNumber: selectedRequest.request_number,
+              customerName: selectedRequest.customer_name,
+              customerPhone: selectedRequest.customer_phone,
+              productName: selectedRequest.commercial_products?.name || "",
+              quantity: selectedRequest.quantity,
+              desiredStart: selectedRequest.desired_start,
+              serviceLocation: selectedRequest.service_location,
+              preferences: selectedRequest.selections?.preferences || "",
+              customerNotes: selectedRequest.customer_notes,
+              quotedTotal: selectedRequest.quoted_total,
+              depositAmount: selectedRequest.deposit_amount,
+              statusLabel: statuses[selectedRequest.status],
+            }} />
             <dl>
               <div><dt>WhatsApp</dt><dd>{selectedRequest.customer_phone}</dd></div>
               <div><dt>Quantidade</dt><dd>{selectedRequest.quantity}</dd></div>

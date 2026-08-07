@@ -20,6 +20,7 @@ import { serviceStatusMessage } from "./service-status";
 import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
 import { trackPublicEvent } from "./analytics";
 import InstantOrderPanel from "./InstantOrderPanel";
+import { pickupWindowForDay } from "./pickup-window";
 import "./adoce-hoje.css";
 import "./adoce-hoje-content.css";
 import "./today-promotions.css";
@@ -634,6 +635,10 @@ export default function AdoceHoje() {
     pausedMessage: "Retiradas pausadas no momento.",
   });
   const anyServiceOpen = pickupOpen || open;
+  const pickupWindow = pickupWindowForDay(
+    businessHours,
+    getFortalezaNow().weekday,
+  );
   const instantOrderFlavors = useMemo(() => flavors
     .filter((flavor) => flavor.available && flavor.price > 0)
     .map((flavor) => ({
@@ -1156,6 +1161,7 @@ export default function AdoceHoje() {
         onClose={() => setInstantOrderOpen(false)}
         flavors={instantOrderFlavors}
         initialFlavorId={initialOrderFlavorId}
+        pickupWindow={pickupWindow}
       />
       <WeeklyScheduleDialog
         open={scheduleOpen}

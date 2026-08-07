@@ -20,7 +20,7 @@
     "test:homologation-environment": "node --test scripts/homologation-environment-core.test.mjs",
     "test:homologation-preflight": "node --test scripts/homologation-preflight-report.test.mjs",
     "test:migration-integrity": "node --test scripts/migration-integrity-report.test.mjs scripts/migration-integrity-wiring.test.mjs",
-    "test:migration-reconciliation": "node scripts/migration-reconciliation-report.test.mjs",
+    "test:migration-reconciliation": "node --test scripts/migration-reconciliation-report.test.mjs",
     "test:migration-repair": "node scripts/homologation-migration-repair.test.mjs",
     "test:homologation-pending-migrations": "node scripts/homologation-pending-migrations.test.mjs",
     "test:homologation-migration-resume": "node scripts/validate-homologation-migration-resume.test.mjs",

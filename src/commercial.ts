@@ -35,6 +35,16 @@ export type CommercialProduct = {
   published: boolean;
   active: boolean;
   sort_order: number;
+  meta_retailer_id: string;
+  meta_product_id: string | null;
+  exibir_whatsapp: boolean;
+  meta_sync_status: "disabled" | "pending" | "syncing" | "submitted" | "synced" | "error";
+  meta_last_sync_at: string | null;
+  meta_last_error: string | null;
+  meta_last_error_temporary: boolean | null;
+  meta_sync_attempts: number;
+  meta_payload_hash: string | null;
+  meta_batch_handle: string | null;
   options?: CommercialProductOption[];
 };
 

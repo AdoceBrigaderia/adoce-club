@@ -1,0 +1,138 @@
+/* Orcamento da Adoce: fica escondido na tela e assume na impressao A4. */
+
+.quote-document {
+  display: none;
+  color: #2a1108;
+  font-size: 11pt;
+  line-height: 1.5;
+}
+
+.quote-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-bottom: 2px solid #e5cbbc;
+  padding-bottom: 12px;
+}
+.quote-header img { width: 54px; height: 54px; object-fit: contain; }
+.quote-header > div:nth-child(2) { display: flex; flex-direction: column; }
+.quote-header strong { font-size: 15pt; letter-spacing: -0.01em; }
+.quote-header span { color: #7a5a4c; font-size: 9.5pt; }
+.quote-number { margin-left: auto; text-align: right; display: flex; flex-direction: column; }
+.quote-number small { color: #b4472f; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: 8pt; }
+.quote-number strong { font-size: 13pt; }
+
+.quote-parties {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin: 16px 0;
+}
+.quote-parties > div { display: flex; flex-direction: column; }
+.quote-parties small,
+.quote-notes small,
+.quote-totals small {
+  color: #b4472f;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: 8pt;
+  margin-bottom: 2px;
+}
+.quote-parties strong { font-size: 11.5pt; }
+.quote-parties span { color: #7a5a4c; font-size: 10pt; }
+
+.quote-items h2 {
+  font-size: 12pt;
+  margin: 0 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #efdcd2;
+}
+.quote-items table { width: 100%; border-collapse: collapse; }
+.quote-items th {
+  text-align: left;
+  font-size: 8pt;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #7a5a4c;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5cbbc;
+}
+.quote-items td { padding: 7px 8px; border-bottom: 1px solid #f3e6df; }
+.quote-items .qty { width: 62px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.quote-items tfoot td { border-top: 2px solid #e5cbbc; border-bottom: none; font-weight: 800; }
+
+.quote-notes {
+  margin: 14px 0;
+  padding: 10px 12px;
+  background: #fff7ed;
+  border-left: 3px solid #e0836b;
+  border-radius: 0 6px 6px 0;
+  display: flex;
+  flex-direction: column;
+}
+.quote-notes p { margin: 0; }
+
+.quote-totals {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px solid #e5cbbc;
+}
+.quote-totals > div { display: flex; flex-direction: column; }
+.quote-totals strong { font-size: 13pt; font-variant-numeric: tabular-nums; }
+.quote-balance strong { color: #b4472f; }
+
+.quote-footer { margin-top: 18px; font-size: 9.5pt; color: #7a5a4c; }
+.quote-footer p { margin: 0 0 4px; }
+.quote-thanks { font-style: italic; }
+
+/* O que a cliente pediu, agora visivel na propria gaveta da operacao. */
+.drawer-customer-request {
+  background: #fff7ed;
+  border: 1px solid #f0d9cc;
+  border-left: 4px solid #e0836b;
+  border-radius: 0 10px 10px 0;
+  padding: 12px 14px;
+  margin: 14px 0;
+}
+.drawer-customer-request > small {
+  display: block;
+  color: #b4472f;
+  font-weight: 850;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.drawer-customer-request ul { margin: 0; padding-left: 18px; }
+.drawer-customer-request li { margin-bottom: 3px; font-weight: 650; }
+.drawer-customer-request .drawer-request-raw { margin: 0; font-weight: 650; }
+.drawer-customer-request .drawer-request-note {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed #e5cbbc;
+  font-style: italic;
+}
+.drawer-customer-request .drawer-request-note strong {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #b4472f;
+  margin-bottom: 3px;
+}
+
+@media print {
+  html[data-operation-print-format="a4"] .quote-document { display: block; }
+  html[data-operation-print-format="a4"] .print-scope > *:not(.quote-document) {
+    display: none !important;
+  }
+  html[data-operation-print-format="a4"] .quote-document,
+  html[data-operation-print-format="a4"] .quote-document * {
+    visibility: visible !important;
+  }
+}
