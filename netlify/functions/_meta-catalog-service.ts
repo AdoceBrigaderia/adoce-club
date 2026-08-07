@@ -6,6 +6,7 @@ import {
   type CatalogProductRow,
   type MetaSyncOrigin,
 } from "./_meta-catalog";
+import { ACCESS_COOKIE, SURFACE_COOKIE, parseCookies, validCsrf } from "./_shared/session-security";
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 
@@ -50,8 +51,10 @@ const serverConfiguration = () => {
 
 export async function authorizeMetaAdmin(request: Request, requireMetaConfiguration = true): Promise<MetaServiceContext | Response> {
   if (!allowedOrigin(request)) return json({ error: "Origem n?o autorizada." }, 403);
-  const authorization = request.headers.get("authorization") || "";
-  const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  if (request.method !== "GET" && !validCsrf(request)) return json({ error: "Valida??o CSRF inv?lida." }, 403);
+  const cookies = parseCookies(request);
+  if (cookies.get(SURFACE_COOKIE) !== "operation") return json({ error: "Sess?o operacional obrigat?ria." }, 403);
+  const accessToken = cookies.get(ACCESS_COOKIE) || "";
   if (!accessToken) return json({ error: "Sess?o obrigat?ria." }, 401);
 
   const config = serverConfiguration();

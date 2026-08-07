@@ -45,6 +45,7 @@ import OperationInstantOrders from "./OperationInstantOrders";
 import OperationFinance from "./OperationFinance";
 import OperationCommerceSettings from "./OperationCommerceSettings";
 import MetaCatalogAdmin from "./MetaCatalogAdmin";
+import { metaCatalogRequest } from "./services/meta-catalog-admin";
 import {
   CommercialEventSubcategory,
   CommercialProduct,
@@ -600,9 +601,8 @@ export default function OperationCommercialAdmin({
     let syncWarning = "";
     if (!error && savedProduct && selectedProduct.exibir_whatsapp) {
       try {
-        const response = await fetch(`/api/admin/integrations/meta/catalog/products/${savedProduct.id}/sync`, {
+        const response = await metaCatalogRequest(`/api/admin/integrations/meta/catalog/products/${savedProduct.id}/sync`, {
           method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
         });
         const body = await response.json().catch(() => ({})) as { error?: string };
         if (!response.ok) syncWarning = ` O cadastro local foi preservado; sincronização pendente: ${body.error || `HTTP ${response.status}`}`;
@@ -624,9 +624,8 @@ export default function OperationCommercialAdmin({
     setBusy(true);
     setNotice("");
     try {
-      const response = await fetch(`/api/admin/integrations/meta/catalog/products/${product.id}/sync`, {
+      const response = await metaCatalogRequest(`/api/admin/integrations/meta/catalog/products/${product.id}/sync`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
       });
       const body = await response.json().catch(() => ({})) as { error?: string; status?: string };
       if (!response.ok) throw new Error(body.error || `Falha HTTP ${response.status}.`);
@@ -1089,7 +1088,7 @@ export default function OperationCommercialAdmin({
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
-          <MetaCatalogAdmin session={session} onProductsChanged={load} />
+          <MetaCatalogAdmin onProductsChanged={load} />
           <section className="operation-segment-media">
             <div>
               <small>Fotos principais das páginas</small>

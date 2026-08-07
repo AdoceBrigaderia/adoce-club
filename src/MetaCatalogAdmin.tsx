@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { AlertTriangle, CheckCircle2, Clock3, RefreshCw, Send, Unplug } from "lucide-react";
 import "./meta-catalog-admin.css";
+import { metaCatalogRequest } from "./services/meta-catalog-admin";
 
 type MetaStatus = {
   configured: boolean;
@@ -32,7 +32,7 @@ const labels: Record<string, string> = {
   submitted: "Enviado", synced: "Sincronizado", error: "Erro", skipped: "Ignorado", started: "Iniciado",
 };
 
-export default function MetaCatalogAdmin({ session, onProductsChanged }: { session: Session; onProductsChanged: () => Promise<void> }) {
+export default function MetaCatalogAdmin({ onProductsChanged }: { onProductsChanged: () => Promise<void> }) {
   const [status, setStatus] = useState<MetaStatus | null>(null);
   const [history, setHistory] = useState<MetaHistoryItem[]>([]);
   const [filter, setFilter] = useState("");
@@ -40,14 +40,11 @@ export default function MetaCatalogAdmin({ session, onProductsChanged }: { sessi
   const [busy, setBusy] = useState(false);
 
   const request = useCallback(async (path: string, init?: RequestInit) => {
-    const response = await fetch(path, {
-      ...init,
-      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json", ...(init?.headers || {}) },
-    });
+    const response = await metaCatalogRequest(path, init);
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error((payload as { error?: string }).error || `Falha HTTP ${response.status}.`);
     return payload;
-  }, [session.access_token]);
+  }, []);
 
   const load = useCallback(async () => {
     try {
