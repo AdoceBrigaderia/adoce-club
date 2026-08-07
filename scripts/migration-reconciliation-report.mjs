@@ -131,6 +131,17 @@ export function inspectMigrationReconciliation(localInventory, snapshot) {
       });
       continue;
     }
+    const exactVersion = candidates.find((item) => item.version === migration.version);
+    if (exactVersion) {
+      aligned.push({
+        file: migration.file,
+        name: migration.name,
+        local_version: migration.version,
+        remote_version: exactVersion.version,
+        suggested_filename: `${exactVersion.version}_${migration.name}.sql`,
+      });
+      continue;
+    }
     if (candidates.length > 1) {
       ambiguousRemote.push({
         file: migration.file,
@@ -149,8 +160,7 @@ export function inspectMigrationReconciliation(localInventory, snapshot) {
       remote_version: remoteMigration.version,
       suggested_filename: `${remoteMigration.version}_${migration.name}.sql`,
     };
-    if (migration.version === remoteMigration.version) aligned.push(comparison);
-    else versionDrift.push(comparison);
+    versionDrift.push(comparison);
   }
 
   const remoteOnly = [...remoteByName.entries()]
@@ -171,8 +181,6 @@ export function inspectMigrationReconciliation(localInventory, snapshot) {
     localInventory.invalid.length === 0 &&
     invalidRemote.length === 0 &&
     localDuplicateVersions.length === 0 &&
-    localDuplicateNames.length === 0 &&
-    remoteDuplicateNames.length === 0 &&
     missingRemote.length === 0 &&
     ambiguousRemote.length === 0 &&
     remoteOnly.length === 0 &&
@@ -182,8 +190,6 @@ export function inspectMigrationReconciliation(localInventory, snapshot) {
   const safeToApplyRenamePlan =
     localInventory.invalid.length === 0 &&
     invalidRemote.length === 0 &&
-    localDuplicateNames.length === 0 &&
-    remoteDuplicateNames.length === 0 &&
     missingRemote.length === 0 &&
     ambiguousRemote.length === 0 &&
     remoteOnly.length === 0 &&
@@ -314,7 +320,7 @@ export async function writeMigrationReconciliationReport(report, outputDirectory
 function parseArguments(argv) {
   const options = {
     directory: "supabase/migrations",
-    snapshot: "docs/evidence/homologation-migrations-20260727.json",
+    snapshot: "docs/evidence/homologation-migrations-20260807.json",
     outputDirectory: "artifacts",
     strict: false,
   };

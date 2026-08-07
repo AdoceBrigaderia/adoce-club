@@ -16,7 +16,12 @@ export function atomizeHomologationMigrationBundle({ bundle, manifest }) {
   }
 
   const firstMigration = bundle.indexOf('-- BEGIN ');
-  if (firstMigration < 0) throw new Error('Bundle sem marcador da primeira migration.');
+  if (firstMigration < 0) {
+    if (manifest.migration_count === 0) {
+      return { bundle, manifest: { ...manifest, atomic_transaction: true, advisory_lock: null } };
+    }
+    throw new Error('Bundle sem marcador da primeira migration.');
+  }
   const preamble = bundle.slice(0, firstMigration).trimEnd();
   const migrations = bundle.slice(firstMigration).trim();
   const atomicBundle = [

@@ -53,19 +53,16 @@ test("mantém artefatos fora do Git e documenta o estado local e remoto", async 
   const ignore = await read(".gitignore");
   const status = await read("docs/migration-integrity-status.md");
   const snapshot = JSON.parse(
-    await read("docs/evidence/homologation-migrations-20260727.json"),
+    await read("docs/evidence/homologation-migrations-20260807.json"),
   );
 
   assert.match(ignore, /artifacts\/migration-integrity\.json/);
   assert.match(ignore, /artifacts\/migration-integrity\.md/);
   assert.match(ignore, /artifacts\/migration-reconciliation\.json/);
   assert.match(ignore, /artifacts\/migration-reconciliation\.md/);
-  assert.match(status, /20260727082000/);
-  assert.match(status, /20260727180000/);
-  assert.match(status, /20260727182000/);
-  assert.match(status, /57 migrations locais com drift/);
-  assert.match(status, /migration repair/);
+  assert.match(status, /152 migrations/);
+  assert.match(status, /07\/08\/2026/);
   assert.equal(snapshot.environment, "homologation");
   assert.equal(snapshot.project_id, "vazozolhbehnriytzcdc");
-  assert.equal(snapshot.migrations.length, 63);
+  assert.equal(snapshot.migrations.length, 152);
 });

@@ -9,7 +9,7 @@ import {
 } from './validate-homologation-migration-resume.mjs';
 
 const plan = JSON.parse(
-  fs.readFileSync('docs/evidence/homologation-pending-migrations-20260728.json', 'utf8'),
+  fs.readFileSync('docs/evidence/homologation-pending-migrations-20260728.superseded.json', 'utf8'),
 );
 const expected = plan.pending_migrations.map((migration) => migration.version);
 const names = new Map(

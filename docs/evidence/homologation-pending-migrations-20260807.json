@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "repository": "AdoceBrigaderia/adoce-club",
+  "branch": "homologacao-adoce",
+  "project_id": "vazozolhbehnriytzcdc",
+  "production_project_id": "uefwywizqhfvvijaopcn",
+  "production_forbidden": true,
+  "captured_at": "2026-08-07T17:25:44.117Z",
+  "source": "Supabase list_migrations ao vivo em 2026-08-07",
+  "baseline_status": "aligned",
+  "remote_last_applied": {
+    "version": "20260807114331",
+    "name": "release_production_all_channels"
+  },
+  "backup": {
+    "required": true,
+    "confirmed": true,
+    "status": "confirmed",
+    "evidence_file": "docs/evidence/homologation-backup-confirmed-20260728.json",
+    "restore_test_performed": false
+  },
+  "required_repairs": [
+    {
+      "name": "backend_only_tables_explicit_deny",
+      "keep_version": "20260727035116",
+      "superseded_version": "20260727035059",
+      "confirmed": true,
+      "verified_by": "live_history_snapshot_20260807"
+    },
+    {
+      "name": "operational_foreign_key_indexes",
+      "keep_version": "20260727035246",
+      "superseded_version": "20260727035343",
+      "confirmed": true,
+      "verified_by": "live_history_snapshot_20260807"
+    },
+    {
+      "name": "public_analytics_bff_only",
+      "keep_version": "20260727035513",
+      "superseded_version": "20260727040533",
+      "confirmed": true,
+      "verified_by": "live_history_snapshot_20260807"
+    }
+  ],
+  "dry_run": {
+    "required": false,
+    "status": "not_required",
+    "reason": "Nenhuma migration pendente no inventário vivo de 2026-08-07."
+  },
+  "application_workflow": {
+    "trigger": "workflow_dispatch",
+    "status": "not_required",
+    "scope": "homologation_only",
+    "production_forbidden": true
+  },
+  "pending_migrations": [],
+  "apply_policy": {
+    "partial_apply_forbidden": true,
+    "required_order": "ascending_version",
+    "allowed_only_after_backup": true,
+    "allowed_only_after_repairs": true,
+    "allowed_only_after_dry_run": true,
+    "production_apply_forbidden": true
+  }
+}
+

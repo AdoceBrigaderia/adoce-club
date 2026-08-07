@@ -1,0 +1,622 @@
+{
+  "schema_version": 1,
+  "environment": "homologation",
+  "project_id": "vazozolhbehnriytzcdc",
+  "captured_at": "2026-08-07T17:25:44.117Z",
+  "source": "Supabase list_migrations ao vivo em 2026-08-07",
+  "local_version_range": {
+    "minimum": "20260716123104",
+    "maximum": "20260807114331"
+  },
+  "migrations": [
+    {
+      "version": "20260716123104",
+      "name": "initial_production_schema"
+    },
+    {
+      "version": "20260716181939",
+      "name": "festival_pilot"
+    },
+    {
+      "version": "20260717084311",
+      "name": "bootstrap_initial_owners"
+    },
+    {
+      "version": "20260717084851",
+      "name": "expand_customer_catalog_and_operations"
+    },
+    {
+      "version": "20260717112555",
+      "name": "corrigir_busca_e_perfil_cliente"
+    },
+    {
+      "version": "20260717181106",
+      "name": "automate_referral_invites_and_today_catalog"
+    },
+    {
+      "version": "20260717195018",
+      "name": "publish_festival_catalog_and_whole_cakes"
+    },
+    {
+      "version": "20260717195422",
+      "name": "fix_festival_catalog_availability"
+    },
+    {
+      "version": "20260717202557",
+      "name": "fix_staff_reward_redemption"
+    },
+    {
+      "version": "20260717222446",
+      "name": "secure_customer_qr_and_staff_scanner"
+    },
+    {
+      "version": "20260718011638",
+      "name": "owner_stamp_adjustment"
+    },
+    {
+      "version": "20260718034134",
+      "name": "friendly_movement_customers"
+    },
+    {
+      "version": "20260718111815",
+      "name": "content_admin_and_notification_preferences"
+    },
+    {
+      "version": "20260718112136",
+      "name": "harden_content_admin"
+    },
+    {
+      "version": "20260718114144",
+      "name": "notification_preferences_opt_in_defaults"
+    },
+    {
+      "version": "20260718114713",
+      "name": "repair_flavor_text_encoding"
+    },
+    {
+      "version": "20260718184839",
+      "name": "add_member_codes_and_rollback_audit"
+    },
+    {
+      "version": "20260718235500",
+      "name": "fix_member_code_registration"
+    },
+    {
+      "version": "20260719040443",
+      "name": "club_groups_whatsapp_and_whole_cakes"
+    },
+    {
+      "version": "20260719185917",
+      "name": "commercial_catalog_agenda_crm"
+    },
+    {
+      "version": "20260719201000",
+      "name": "commercial_product_options"
+    },
+    {
+      "version": "20260720104203",
+      "name": "harden_customer_identity_and_account_actions"
+    },
+    {
+      "version": "20260720104214",
+      "name": "refine_commercial_catalog_media"
+    },
+    {
+      "version": "20260720104258",
+      "name": "fix_commercial_product_image_sources"
+    },
+    {
+      "version": "20260720104348",
+      "name": "optimize_commercial_segment_media_policies"
+    },
+    {
+      "version": "20260720132544",
+      "name": "customer_feedback"
+    },
+    {
+      "version": "20260720133233",
+      "name": "customer_feedback"
+    },
+    {
+      "version": "20260720143000",
+      "name": "private_director_plan_reviews"
+    },
+    {
+      "version": "20260720151732",
+      "name": "private_director_plan_reviews"
+    },
+    {
+      "version": "20260720171949",
+      "name": "add_event_subcategories"
+    },
+    {
+      "version": "20260720214955",
+      "name": "image_editor_originals"
+    },
+    {
+      "version": "20260721001738",
+      "name": "pede_junto_adoce"
+    },
+    {
+      "version": "20260721055223",
+      "name": "commercial_media_galleries"
+    },
+    {
+      "version": "20260721074102",
+      "name": "finalize_customer_account_deletion"
+    },
+    {
+      "version": "20260721194324",
+      "name": "weekly_service_menu"
+    },
+    {
+      "version": "20260721195049",
+      "name": "tighten_weekly_menu_grants"
+    },
+    {
+      "version": "20260722023733",
+      "name": "improve_service_request_audit"
+    },
+    {
+      "version": "20260722024148",
+      "name": "add_privacy_safe_site_analytics"
+    },
+    {
+      "version": "20260722143716",
+      "name": "operation_notifications"
+    },
+    {
+      "version": "20260722172238",
+      "name": "instant_orders_and_pickup"
+    },
+    {
+      "version": "20260722174831",
+      "name": "fix_existing_function_lint"
+    },
+    {
+      "version": "20260722202625",
+      "name": "require_customer_first_and_last_name"
+    },
+    {
+      "version": "20260722212224",
+      "name": "add_order_sauces_and_friendly_pickup"
+    },
+    {
+      "version": "20260722214817",
+      "name": "harden_pede_junto_status_inventory_and_cancel"
+    },
+    {
+      "version": "20260722224922",
+      "name": "link_instant_orders_to_club_rewards"
+    },
+    {
+      "version": "20260722232147",
+      "name": "archive_pede_junto_groups"
+    },
+    {
+      "version": "20260723003122",
+      "name": "allow_manager_service_request_audit"
+    },
+    {
+      "version": "20260723003920",
+      "name": "member_instant_order_loyalty_preview"
+    },
+    {
+      "version": "20260723005306",
+      "name": "customer_select_instant_order_reward"
+    },
+    {
+      "version": "20260723012027",
+      "name": "link_instant_order_by_phone_and_offer_club"
+    },
+    {
+      "version": "20260723015239",
+      "name": "commerce_settings_manual_sales_and_recovery"
+    },
+    {
+      "version": "20260723031104",
+      "name": "site_visual_assets"
+    },
+    {
+      "version": "20260723040344",
+      "name": "persist_flavor_inventory_across_days"
+    },
+    {
+      "version": "20260723040736",
+      "name": "restrict_inventory_carry_forward_to_controlled_stock"
+    },
+    {
+      "version": "20260723045128",
+      "name": "direct_finalize_instant_order"
+    },
+    {
+      "version": "20260723094500",
+      "name": "release_planned_production_into_inventory"
+    },
+    {
+      "version": "20260723101500",
+      "name": "forced_password_change"
+    },
+    {
+      "version": "20260723124000",
+      "name": "fix_instant_order_financial_fields"
+    },
+    {
+      "version": "20260725213624",
+      "name": "central_image_placeholders"
+    },
+    {
+      "version": "20260726005258",
+      "name": "site_visual_asset_versions"
+    },
+    {
+      "version": "20260726065557",
+      "name": "dynamic_image_asset_versions"
+    },
+    {
+      "version": "20260726085953",
+      "name": "gallery_media_versions"
+    },
+    {
+      "version": "20260726124842",
+      "name": "business_structure_and_cash"
+    },
+    {
+      "version": "20260726125952",
+      "name": "manual_sales_require_open_cash"
+    },
+    {
+      "version": "20260726160015",
+      "name": "temporary_password_expiry"
+    },
+    {
+      "version": "20260726160651",
+      "name": "lock_sensitive_function_execute"
+    },
+    {
+      "version": "20260726162124",
+      "name": "staff_permission_matrix"
+    },
+    {
+      "version": "20260726162430",
+      "name": "tighten_legacy_staff_reads"
+    },
+    {
+      "version": "20260726174225",
+      "name": "quick_sale_catalog"
+    },
+    {
+      "version": "20260726175003",
+      "name": "manual_loyalty_adjustment"
+    },
+    {
+      "version": "20260726184819",
+      "name": "normalize_customer_names"
+    },
+    {
+      "version": "20260726185007",
+      "name": "fix_compound_customer_names"
+    },
+    {
+      "version": "20260726185348",
+      "name": "whatsapp_cloud_otp"
+    },
+    {
+      "version": "20260726191325",
+      "name": "customer_nfc_qr_checkins"
+    },
+    {
+      "version": "20260726194558",
+      "name": "claim_whatsapp_registration"
+    },
+    {
+      "version": "20260726214545",
+      "name": "customer_account_workspace"
+    },
+    {
+      "version": "20260726224326",
+      "name": "customer_crm_360"
+    },
+    {
+      "version": "20260726224902",
+      "name": "operational_reports_hub"
+    },
+    {
+      "version": "20260726235134",
+      "name": "customer_registration_bff"
+    },
+    {
+      "version": "20260727005141",
+      "name": "cash_reconciliation_queue"
+    },
+    {
+      "version": "20260727010242",
+      "name": "whatsapp_operational_health"
+    },
+    {
+      "version": "20260727015050",
+      "name": "public_commerce_financial_integrity"
+    },
+    {
+      "version": "20260727024458",
+      "name": "google_wallet_customer_pass"
+    },
+    {
+      "version": "20260727030509",
+      "name": "anon_grants_hardening"
+    },
+    {
+      "version": "20260727030917",
+      "name": "public_order_bff_only"
+    },
+    {
+      "version": "20260727033336",
+      "name": "pede_junto_bff_only"
+    },
+    {
+      "version": "20260727034403",
+      "name": "quick_sale_favorites_and_ranking"
+    },
+    {
+      "version": "20260727034832",
+      "name": "quick_sale_favorites_hardening"
+    },
+    {
+      "version": "20260727035116",
+      "name": "backend_only_tables_explicit_deny"
+    },
+    {
+      "version": "20260727035246",
+      "name": "operational_foreign_key_indexes"
+    },
+    {
+      "version": "20260727035513",
+      "name": "public_analytics_bff_only"
+    },
+    {
+      "version": "20260727040605",
+      "name": "public_service_request_bff_only"
+    },
+    {
+      "version": "20260727041258",
+      "name": "site_feedback_bff_hardening"
+    },
+    {
+      "version": "20260727041839",
+      "name": "staff_permission_audit_and_owner_guard"
+    },
+    {
+      "version": "20260727050212",
+      "name": "public_endpoint_rate_limits"
+    },
+    {
+      "version": "20260727050354",
+      "name": "public_endpoint_rate_limits_clock_fix"
+    },
+    {
+      "version": "20260727051849",
+      "name": "lock_retired_direct_rpcs"
+    },
+    {
+      "version": "20260727052305",
+      "name": "lock_unrouted_authenticated_rpcs"
+    },
+    {
+      "version": "20260727082125",
+      "name": "site_feedback_notification_routing"
+    },
+    {
+      "version": "20260727082420",
+      "name": "site_feedback_profile_index"
+    },
+    {
+      "version": "20260727090435",
+      "name": "site_feedback_privacy_requests"
+    },
+    {
+      "version": "20260727090548",
+      "name": "site_feedback_privacy_category_constraint"
+    },
+    {
+      "version": "20260727091531",
+      "name": "privacy_request_operation"
+    },
+    {
+      "version": "20260727092930",
+      "name": "privacy_request_types_and_sla"
+    },
+    {
+      "version": "20260727095752",
+      "name": "privacy_identity_verification"
+    },
+    {
+      "version": "20260727095852",
+      "name": "privacy_identity_defaults"
+    },
+    {
+      "version": "20260727105843",
+      "name": "privacy_access_response_package"
+    },
+    {
+      "version": "20260727105905",
+      "name": "privacy_response_status_list"
+    },
+    {
+      "version": "20260727110153",
+      "name": "privacy_access_response_membership_order_fix"
+    },
+    {
+      "version": "20260727110914",
+      "name": "privacy_correction_consent_actions"
+    },
+    {
+      "version": "20260727110956",
+      "name": "privacy_action_status_list"
+    },
+    {
+      "version": "20260727111533",
+      "name": "privacy_resolution_outcome_guard"
+    },
+    {
+      "version": "20260727112539",
+      "name": "privacy_deletion_readiness"
+    },
+    {
+      "version": "20260727112924",
+      "name": "privacy_profile_anonymization"
+    },
+    {
+      "version": "20260727112947",
+      "name": "privacy_anonymization_null_email_guard"
+    },
+    {
+      "version": "20260727113133",
+      "name": "privacy_anonymization_plan_alignment"
+    },
+    {
+      "version": "20260727113213",
+      "name": "privacy_anonymization_generated_identity_email_fix"
+    },
+    {
+      "version": "20260727113349",
+      "name": "privacy_anonymization_preserve_member_code"
+    },
+    {
+      "version": "20260728073000",
+      "name": "cake_builder_configuration"
+    },
+    {
+      "version": "20260728090000",
+      "name": "costing_core_foundation"
+    },
+    {
+      "version": "20260728093000",
+      "name": "costing_commercial_catalog"
+    },
+    {
+      "version": "20260728103000",
+      "name": "cake_builder_costing_catalog_links"
+    },
+    {
+      "version": "20260728115000",
+      "name": "product_profitability_workspace"
+    },
+    {
+      "version": "20260728115100",
+      "name": "product_profitability_autoprofile"
+    },
+    {
+      "version": "20260728130000",
+      "name": "service_request_pricing_snapshots"
+    },
+    {
+      "version": "20260728154500",
+      "name": "site_visual_assets_bff"
+    },
+    {
+      "version": "20260728164000",
+      "name": "dynamic_image_assets_bff"
+    },
+    {
+      "version": "20260728165116",
+      "name": "harden_pede_junto_participant_rejoin"
+    },
+    {
+      "version": "20260728165303",
+      "name": "harden_public_instant_order_submission"
+    },
+    {
+      "version": "20260728170236",
+      "name": "harden_customer_registration_consent"
+    },
+    {
+      "version": "20260728170246",
+      "name": "festival_slice_yield_overrides"
+    },
+    {
+      "version": "20260728170307",
+      "name": "harden_pede_junto_public_writes"
+    },
+    {
+      "version": "20260728170501",
+      "name": "serialize_and_deduplicate_cash_operations"
+    },
+    {
+      "version": "20260728170941",
+      "name": "lock_private_cake_builder_helper"
+    },
+    {
+      "version": "20260728174500",
+      "name": "gallery_media_assets_bff"
+    },
+    {
+      "version": "20260728220000",
+      "name": "unified_configurable_products"
+    },
+    {
+      "version": "20260728221500",
+      "name": "configurable_product_constraints"
+    },
+    {
+      "version": "20260728223000",
+      "name": "service_request_configuration_workspace"
+    },
+    {
+      "version": "20260728224500",
+      "name": "configurable_product_consistency_and_crm"
+    },
+    {
+      "version": "20260728225000",
+      "name": "real_configurable_product_catalog"
+    },
+    {
+      "version": "20260803024900",
+      "name": "fix_customer_registration_name_permission"
+    },
+    {
+      "version": "20260803024942",
+      "name": "fix_customer_registration_capitalization_permission"
+    },
+    {
+      "version": "20260803095005",
+      "name": "restore_forced_password_completion_grant"
+    },
+    {
+      "version": "20260803095152",
+      "name": "restore_customer_club_rpc_grants"
+    },
+    {
+      "version": "20260804185307",
+      "name": "slice_availability_alerts"
+    },
+    {
+      "version": "20260805132853",
+      "name": "restore_submit_instant_order_v5_grants"
+    },
+    {
+      "version": "20260807062957",
+      "name": "meta_catalog_sync_20260731"
+    },
+    {
+      "version": "20260807063000",
+      "name": "instagram_channel_foundation_20260801"
+    },
+    {
+      "version": "20260807063003",
+      "name": "configurable_order_whatsapp_20260803"
+    },
+    {
+      "version": "20260807063006",
+      "name": "instant_order_payment_guard_20260803"
+    },
+    {
+      "version": "20260807063009",
+      "name": "recurring_weekly_service_menu_rules_20260805"
+    },
+    {
+      "version": "20260807114331",
+      "name": "release_production_all_channels"
+    }
+  ]
+}
+

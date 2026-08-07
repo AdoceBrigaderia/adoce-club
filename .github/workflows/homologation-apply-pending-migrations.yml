@@ -27,7 +27,7 @@ env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
   HOMOLOGATION_REF: vazozolhbehnriytzcdc
   PRODUCTION_REF: uefwywizqhfvvijaopcn
-  PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
+  PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.superseded.json
   SUPABASE_TELEMETRY_DISABLED: "true"
 
 jobs:
