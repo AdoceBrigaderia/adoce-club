@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { CreditCard, Save, Settings2, Timer } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
-import OperationBusinessStructure from "./OperationBusinessStructure";
-import OperationVisualSettings from "./OperationVisualSettings";
+import OperationBusinessStructureBff from "./OperationBusinessStructureBff";
+import OperationSiteVisualSettingsBff from "./OperationSiteVisualSettingsBff";
 import "./operation-commerce-tools.css";
 
 type PaymentMethod = {
@@ -57,7 +57,7 @@ export default function OperationCommerceSettings({
   return <section className="commerce-settings-page">
     <header className="commerce-tool-heading"><div><small>Regras da operação</small><h2>Configurações e estrutura</h2><p>Controle lojas, caixas, equipe, prazos, pagamentos e taxas em uma única área.</p></div><Settings2 /></header>
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
-    <OperationBusinessStructure session={session} />
+    <OperationBusinessStructureBff userId={session.user.id} />
     <div className="commerce-settings-grid">
       <section className="commerce-tool-card">
         <header><Timer /><div><small>Pedidos on-line</small><h3>Reserva e confirmação</h3></div></header>
@@ -77,10 +77,6 @@ export default function OperationCommerceSettings({
       </section>
     </div>
     <button className="commerce-primary-action" type="button" onClick={() => void save()} disabled={busy}><Save /> Salvar configurações</button>
-    <OperationVisualSettings
-      session={session}
-      onOpenFlavorImages={onOpenFlavorImages}
-      onOpenProductImages={onOpenProductImages}
-    />
+    <OperationSiteVisualSettingsBff />
   </section>;
 }

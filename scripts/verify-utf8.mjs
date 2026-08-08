@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -13,6 +13,7 @@ export function verifyUtf8Files(files) {
   const errors = [];
   for (const file of files) {
     if (!TEXT_EXTENSIONS.has(path.extname(file).toLowerCase())) continue;
+    if (!existsSync(file)) continue;
     const bytes = readFileSync(file);
     let source;
     try {
