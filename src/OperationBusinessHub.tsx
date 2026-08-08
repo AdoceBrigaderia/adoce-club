@@ -13,12 +13,15 @@ import OperationQuickCash from "./OperationQuickCash";
 import OperationQuickLoyalty from "./OperationQuickLoyalty";
 import OperationReports from "./OperationReports";
 import OperationWhatsAppHealth from "./OperationWhatsAppHealth";
+import OperationDailyPanel from "./OperationDailyPanel";
+import OperationInstantOrders from "./OperationInstantOrders";
 import { getBffSession, type BffSession } from "./services/bff-auth";
 
 export default function OperationBusinessHub() {
   const [session, setSession] = useState<BffSession | null>(null);
   const [error, setError] = useState("");
   const [businessRevision, setBusinessRevision] = useState(0);
+  const [showOrders, setShowOrders] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -65,6 +68,8 @@ export default function OperationBusinessHub() {
 
   return (
     <>
+      <OperationDailyPanel onOrders={() => setShowOrders(true)} onEmptyDay={() => document.getElementById("operation-admin-title")?.scrollIntoView({ behavior: "smooth" })} />
+      {showOrders ? <OperationInstantOrders /> : null}
       <OperationCustomerCheckIns />
       <OperationConfiguredOrders key={`orders-${businessRevision}`} />
       <OperationManualSale onCreated={refreshBusinessViews} />

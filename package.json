@@ -57,13 +57,15 @@
     "react": "latest",
     "react-dom": "latest",
     "react-icons": "^5.7.0",
-    "vite": "latest"
+    "vite": "latest",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@types/node": "latest",
     "@types/qrcode": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/web-push": "3.6.4",
     "supabase": "2.109.1",
     "typescript": "latest",
     "vitest": "latest"

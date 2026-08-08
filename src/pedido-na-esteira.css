@@ -1,0 +1,210 @@
+/* O pedido na esteira. Cores sÃ³ de adoce-tokens.css. */
+
+.pe-cartao {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 16%, transparent);
+  background: #fff;
+  color: var(--adoce-marrom);
+}
+
+.pe-critico { border-color: var(--adoce-terra); border-width: 2px; }
+.pe-atencao { border-color: color-mix(in srgb, var(--adoce-terra) 45%, transparent); }
+
+.pe-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pe-cliente { margin: 0; font-size: 1.125rem; }
+
+.pe-numero {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+}
+
+.pe-total { margin: 0; font-weight: 700; color: var(--adoce-terra); }
+
+/* ---- Linha do tempo ---- */
+
+.pe-linha {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 4px;
+}
+
+.pe-passo {
+  flex: 1 1 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.pe-bolinha {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--adoce-marrom) 18%, transparent);
+  background: #fff;
+}
+
+.pe-bolinha svg { width: 13px; height: 13px; }
+
+.pe-passo-nome {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+}
+
+.pe-passo-feito .pe-bolinha {
+  border-color: var(--adoce-terra);
+  background: var(--adoce-terra);
+  color: #fff;
+}
+
+.pe-passo-agora .pe-bolinha {
+  border-color: var(--adoce-terra);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--adoce-rosa) 70%, transparent);
+}
+
+.pe-passo-agora .pe-passo-nome {
+  color: var(--adoce-terra);
+  font-weight: 700;
+}
+
+.pe-final {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--adoce-dourado) 30%, #fff);
+  font-size: 0.875rem;
+  justify-self: start;
+}
+
+/* ---- Itens ---- */
+
+.pe-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9375rem;
+}
+
+.pe-presente {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 6px;
+  color: var(--adoce-terra);
+  font-size: 0.8125rem;
+}
+
+.pe-presente svg { width: 14px; height: 14px; }
+
+.pe-retirada,
+.pe-atraso,
+.pe-cobranca {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.pe-retirada { color: color-mix(in srgb, var(--adoce-marrom) 70%, transparent); }
+.pe-atraso { color: var(--adoce-terra); font-weight: 600; }
+
+.pe-cobranca {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--adoce-dourado) 28%, #fff);
+}
+
+/* ---- AÃ§Ãµes ---- */
+
+.pe-acoes { display: grid; gap: 8px; }
+
+.pe-avancar,
+.pe-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pe-avancar {
+  border: none;
+  background: var(--adoce-terra);
+  color: #fff;
+}
+
+.pe-whatsapp {
+  border: 1px solid var(--adoce-terra);
+  background: transparent;
+  color: var(--adoce-terra);
+}
+
+.pe-whatsapp svg { width: 18px; height: 18px; }
+
+/* ---- PrÃ©via da mensagem ---- */
+
+.pe-previa summary {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+  cursor: pointer;
+}
+
+.pe-previa pre {
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--adoce-rosa) 30%, #fff);
+  font: inherit;
+  font-size: 0.875rem;
+  white-space: pre-wrap;
+}
+
+.pe-atalhos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.pe-atalhos button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 40%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adoce-terra);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.pe-atalhos svg { width: 14px; height: 14px; }
+
+@media (min-width: 560px) {
+  .pe-acoes { grid-template-columns: 1fr 1fr; }
+}
+

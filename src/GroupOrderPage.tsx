@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import PublicHeader from "./PublicHeader";
+import PedeJuntoPrazo from "./PedeJuntoPrazo";
 import {
   buildPedeJuntoWhatsAppMessage,
   money,
@@ -470,6 +471,7 @@ export default function GroupOrderPage() {
               </small>
             </aside>
             <article className={`pede-junto-room ${progress.tone}`}>
+              <PedeJuntoPrazo room={room} />
               <header>
                 <div>
                   <small>{pedeJuntoStatuses[room.status]}</small>
