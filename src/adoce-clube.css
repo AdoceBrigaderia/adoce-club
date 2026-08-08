@@ -1,0 +1,187 @@
+/* Area do cliente e as duas cartelas. Cores vem de adoce-tokens.css. */
+
+.adoce-clube {
+  background: var(--adoce-fundo);
+  color: var(--adoce-texto);
+  font-family: var(--adoce-fonte);
+  min-height: 100dvh;
+  padding: calc(var(--adoce-e4) + var(--adoce-safe-top)) var(--adoce-e4)
+           calc(var(--adoce-e6) + var(--adoce-safe-bottom));
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.ac-vazio { color: var(--adoce-texto-suave); font-size: var(--adoce-t-pequeno); }
+
+.ac-topo { display: flex; align-items: center; justify-content: space-between; gap: var(--adoce-e3); }
+.ac-ola { margin: 0; font-size: var(--adoce-t-menor); color: var(--adoce-texto-suave); }
+.ac-titulo {
+  margin: 2px 0 0;
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-titulo);
+  font-weight: 400;
+  color: var(--adoce-marrom);
+}
+.ac-logo {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1.5px solid var(--adoce-dourado); object-fit: cover;
+}
+
+/* ---------- presente disponivel ---------- */
+.ac-presente {
+  margin-top: var(--adoce-e4);
+  background: var(--adoce-superficie);
+  border: 1.5px solid var(--adoce-dourado);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e4);
+  text-align: center;
+}
+.ac-presente-icone {
+  width: 46px; height: 46px; margin: 0 auto var(--adoce-e2);
+  border-radius: 50%; background: var(--adoce-rosa);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--adoce-terra);
+}
+.ac-presente-icone svg { width: 22px; height: 22px; }
+.ac-presente-titulo {
+  margin: 0; font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-medio); color: var(--adoce-marrom);
+}
+.ac-presente-texto {
+  margin: var(--adoce-e2) 0 var(--adoce-e3);
+  font-size: var(--adoce-t-menor); color: var(--adoce-texto-suave); line-height: 1.55;
+}
+
+.ac-principal {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 50px;
+  border-radius: var(--adoce-raio);
+  background: var(--adoce-terra);
+  color: var(--adoce-creme);
+  font-size: var(--adoce-t-base); font-weight: 500;
+  text-decoration: none;
+}
+.ac-principal:active { background: var(--adoce-terra-escuro); }
+
+/* ---------- cartela ---------- */
+.ac-cartela {
+  margin-top: var(--adoce-e3);
+  background: var(--adoce-superficie-2);
+  border: 1.5px solid var(--adoce-dourado);
+  border-radius: var(--adoce-raio-grande);
+  padding: var(--adoce-e4);
+}
+.ac-cartela-topo {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--adoce-e3); margin-bottom: var(--adoce-e4);
+}
+.ac-cartela-legenda {
+  margin: 0; font-size: var(--adoce-t-micro);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--adoce-terra); font-weight: 500;
+}
+.ac-cartela-titulo {
+  margin: 2px 0 0;
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-grande);
+  font-weight: 400; color: var(--adoce-marrom);
+}
+.ac-cartela-conta { margin: 0; white-space: nowrap; }
+.ac-cartela-conta strong { font-size: var(--adoce-t-titulo); font-weight: 500; color: var(--adoce-marrom); }
+.ac-cartela-conta small { font-size: var(--adoce-t-pequeno); color: var(--adoce-texto-fraco); }
+
+.ac-grade { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--adoce-e2); }
+.ac-marca {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.ac-marca svg { width: 55%; height: 55%; }
+.ac-marca.feita { background: var(--adoce-rosa); color: var(--adoce-erro-texto); }
+.ac-marca.vazia {
+  background: var(--adoce-borda);
+  border: 1px dashed var(--adoce-borda-tracejada);
+  color: var(--adoce-terra);
+}
+.ac-marca.presente {
+  background: var(--adoce-atencao-fundo);
+  border: 1.5px solid var(--adoce-dourado);
+  color: var(--adoce-terra);
+}
+
+.ac-cartela-rodape {
+  margin: var(--adoce-e4) 0 0;
+  text-align: center;
+  font-size: var(--adoce-t-menor);
+  color: var(--adoce-marrom-claro);
+  line-height: 1.5;
+}
+
+/* ---------- compartilhar ---------- */
+.ac-compartilhar {
+  margin-top: var(--adoce-e3);
+  display: flex; align-items: center; justify-content: center; gap: var(--adoce-e2);
+  min-height: 50px;
+  border-radius: var(--adoce-raio);
+  background: var(--adoce-terra);
+  color: var(--adoce-creme);
+  font-size: var(--adoce-t-base); font-weight: 500;
+  text-decoration: none;
+}
+.ac-compartilhar svg { width: 19px; height: 19px; }
+
+/* ---------- codigo de membro ---------- */
+.ac-codigo {
+  margin-top: var(--adoce-e3);
+  background: var(--adoce-superficie);
+  border: 1px solid var(--adoce-borda);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e4);
+  text-align: center;
+}
+.ac-codigo-legenda { margin: 0; font-size: var(--adoce-t-menor); color: var(--adoce-texto-suave); }
+.ac-codigo-valor {
+  margin: var(--adoce-e2) 0;
+  font-size: var(--adoce-t-grande);
+  letter-spacing: .18em;
+  font-variant-numeric: tabular-nums;
+  color: var(--adoce-marrom);
+}
+.ac-codigo-nota { margin: 0; font-size: var(--adoce-t-micro); color: var(--adoce-texto-fraco); }
+
+/* ---------- carteira ---------- */
+.ac-carteira {
+  margin-top: var(--adoce-e3);
+  display: flex; align-items: center; gap: var(--adoce-e3);
+  background: var(--adoce-superficie);
+  border: 1px solid var(--adoce-borda);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e3) var(--adoce-e4);
+  min-height: var(--adoce-toque);
+  text-decoration: none;
+}
+.ac-carteira svg { width: 21px; height: 21px; color: var(--adoce-terra); flex-shrink: 0; }
+.ac-carteira strong { display: block; font-size: var(--adoce-t-pequeno); font-weight: 500; color: var(--adoce-texto); }
+.ac-carteira small { display: block; margin-top: 2px; font-size: var(--adoce-t-micro); color: var(--adoce-texto-suave); }
+
+/* ---------- convite para entrar ---------- */
+.ac-convite { text-align: center; padding-top: var(--adoce-e6); }
+.ac-convite img {
+  width: 76px; height: 76px; border-radius: 50%;
+  border: 2px solid var(--adoce-dourado); object-fit: cover;
+}
+.ac-convite h1 {
+  margin: var(--adoce-e4) 0 0;
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-titulo); font-weight: 400; color: var(--adoce-marrom);
+}
+.ac-convite p {
+  margin: var(--adoce-e2) 0 var(--adoce-e4);
+  font-size: var(--adoce-t-pequeno); color: var(--adoce-texto-suave); line-height: 1.55;
+}

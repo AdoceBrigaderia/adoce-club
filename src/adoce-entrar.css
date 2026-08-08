@@ -1,0 +1,154 @@
+/* Entrar no Clube — um campo so. Cores vem de adoce-tokens.css. */
+
+.adoce-entrar {
+  background: var(--adoce-fundo);
+  color: var(--adoce-texto);
+  font-family: var(--adoce-fonte);
+  min-height: 100dvh;
+  padding: calc(var(--adoce-e5) + var(--adoce-safe-top)) var(--adoce-e4)
+           calc(var(--adoce-e6) + var(--adoce-safe-bottom));
+  max-width: 460px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.ae-voltar {
+  align-self: flex-start;
+  display: flex; align-items: center; gap: var(--adoce-e1);
+  background: none; border: 0;
+  color: var(--adoce-terra);
+  font-size: var(--adoce-t-pequeno);
+  min-height: var(--adoce-toque);
+  padding: 0;
+  cursor: pointer;
+}
+.ae-voltar svg { width: 18px; height: 18px; }
+
+.ae-marca { text-align: center; margin-bottom: var(--adoce-e4); }
+.ae-marca img {
+  width: 76px; height: 76px;
+  border-radius: 50%;
+  border: 2px solid var(--adoce-dourado);
+  object-fit: cover;
+}
+
+.ae-titulo {
+  margin: 0;
+  text-align: center;
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-titulo);
+  font-weight: 400;
+  color: var(--adoce-marrom);
+  line-height: 1.15;
+}
+.ae-sub {
+  margin: var(--adoce-e2) 0 0;
+  text-align: center;
+  font-size: var(--adoce-t-pequeno);
+  color: var(--adoce-texto-suave);
+  line-height: 1.5;
+}
+.ae-sub strong { color: var(--adoce-texto); font-weight: 500; }
+
+.ae-form { margin-top: var(--adoce-e5); display: flex; flex-direction: column; gap: var(--adoce-e3); }
+
+.ae-campo { display: flex; flex-direction: column; gap: var(--adoce-e1); }
+.ae-campo span {
+  font-size: var(--adoce-t-pequeno);
+  font-weight: 500;
+  color: var(--adoce-texto);
+}
+.ae-campo input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 var(--adoce-e3);
+  font-size: var(--adoce-t-base);
+  font-family: inherit;
+  color: var(--adoce-texto);
+  background: var(--adoce-superficie);
+  border: 1.5px solid var(--adoce-borda-forte);
+  border-radius: var(--adoce-raio);
+  outline: none;
+}
+.ae-campo input::placeholder { color: var(--adoce-texto-fraco); }
+.ae-campo input:focus-visible {
+  border-color: var(--adoce-terra);
+  box-shadow: 0 0 0 3px var(--adoce-rosa);
+}
+
+.ae-codigo {
+  text-align: center;
+  letter-spacing: .5em;
+  font-size: var(--adoce-t-titulo) !important;
+  font-variant-numeric: tabular-nums;
+  padding-left: .5em !important;
+}
+
+.ae-principal {
+  min-height: 52px;
+  border: 0;
+  border-radius: var(--adoce-raio);
+  background: var(--adoce-terra);
+  color: var(--adoce-creme);
+  font-family: inherit;
+  font-size: var(--adoce-t-base);
+  font-weight: 500;
+  cursor: pointer;
+}
+.ae-principal:active:not(:disabled) { background: var(--adoce-terra-escuro); }
+.ae-principal:disabled { background: var(--adoce-borda-forte); color: var(--adoce-texto-fraco); cursor: default; }
+
+.ae-aviso {
+  margin: 0;
+  padding: var(--adoce-e2) var(--adoce-e3);
+  background: var(--adoce-erro-fundo);
+  border-left: 3px solid var(--adoce-erro);
+  border-radius: 0 var(--adoce-raio) var(--adoce-raio) 0;
+  color: var(--adoce-erro-texto);
+  font-size: var(--adoce-t-menor);
+  line-height: 1.5;
+}
+
+.ae-nota {
+  margin: 0;
+  text-align: center;
+  font-size: var(--adoce-t-menor);
+  color: var(--adoce-texto-suave);
+  line-height: 1.55;
+}
+
+.ae-primeira {
+  margin: var(--adoce-e5) 0 0;
+  padding-top: var(--adoce-e4);
+  border-top: 1px solid var(--adoce-borda);
+  text-align: center;
+  font-size: var(--adoce-t-menor);
+  color: var(--adoce-texto-suave);
+  line-height: 1.6;
+}
+
+.ae-privacidade {
+  margin: var(--adoce-e4) 0 0;
+  padding: var(--adoce-e3);
+  background: var(--adoce-superficie-2);
+  border: 1px dashed var(--adoce-borda-tracejada);
+  border-radius: var(--adoce-raio-card);
+  text-align: center;
+  font-size: var(--adoce-t-menor);
+  color: var(--adoce-marrom-claro);
+  line-height: 1.55;
+}
+
+.ae-reenviar {
+  margin-top: var(--adoce-e4);
+  display: flex; align-items: center; justify-content: center; gap: var(--adoce-e2);
+  background: none; border: 0;
+  color: var(--adoce-terra);
+  font-family: inherit;
+  font-size: var(--adoce-t-pequeno);
+  min-height: var(--adoce-toque);
+  cursor: pointer;
+}
+.ae-reenviar:disabled { color: var(--adoce-texto-fraco); cursor: default; }
+.ae-reenviar svg { width: 17px; height: 17px; }

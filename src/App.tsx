@@ -5,7 +5,9 @@ import { installPublicAnalytics } from "./analytics";
 const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
 const CakeOrderExperience = lazy(() => import("./CakeOrderExperience"));
 const ConfigurableProductCatalogPage = lazy(() => import("./ConfigurableProductCatalogPage"));
-const ClubExperience = lazy(() => import("./ClubExperience"));
+const AdoceHome = lazy(() => import("./AdoceHome"));
+const AdoceClube = lazy(() => import("./AdoceClube"));
+const AdoceEntrar = lazy(() => import("./AdoceEntrar"));
 const GroupOrderPage = lazy(() => import("./GroupOrderPage"));
 const LegalPage = lazy(() => import("./LegalPage"));
 const OrderPolicyPage = lazy(() => import("./OrderPolicyPage"));
@@ -137,6 +139,20 @@ export default function App() {
         <CustomerRegistrationPage />
       </Suspense>
     );
+  // O acesso por código ainda usa o fluxo atual. A nova tela permanece
+  // disponível apenas para validação até o envio por WhatsApp estar pronto.
+  if (location.hash.startsWith("#entrar-novo"))
+    return (
+      <Suspense fallback={loading}>
+        <AdoceEntrar />
+      </Suspense>
+    );
+  if (location.hash.startsWith("#clube"))
+    return (
+      <Suspense fallback={loading}>
+        <AdoceClube />
+      </Suspense>
+    );
 
   if (
     visualValidationMode &&
@@ -244,12 +260,6 @@ export default function App() {
         <FeedbackPage />
       </Suspense>
     );
-  if (location.hash.startsWith("#clube"))
-    return (
-      <Suspense fallback={loading}>
-        <ClubExperience />
-      </Suspense>
-    );
   if (location.hash.startsWith("#termos"))
     return (
       <Suspense fallback={loading}>
@@ -262,5 +272,10 @@ export default function App() {
         <LegalPage kind="privacy" />
       </Suspense>
     );
-  return <MarketingLanding />;
+  if (location.hash.startsWith("#home-antiga")) return <MarketingLanding />;
+  return (
+    <Suspense fallback={loading}>
+      <AdoceHome />
+    </Suspense>
+  );
 }

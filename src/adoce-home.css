@@ -1,0 +1,198 @@
+/* Home da Adoce — aprovada em 07/08/2026.
+   Todas as cores vem de adoce-tokens.css. Nenhum hex proprio aqui. */
+
+.adoce-home {
+  background: var(--adoce-fundo);
+  color: var(--adoce-texto);
+  font-family: var(--adoce-fonte);
+  min-height: 100dvh;
+  padding-bottom: calc(var(--adoce-e6) + var(--adoce-safe-bottom));
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* ---------- topo ---------- */
+.ah-topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--adoce-e3) var(--adoce-e4);
+  padding-top: calc(var(--adoce-e3) + var(--adoce-safe-top));
+  background: var(--adoce-superficie);
+  border-bottom: 1px solid var(--adoce-borda);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.ah-marca { display: flex; align-items: center; gap: var(--adoce-e2); }
+.ah-marca img {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1.5px solid var(--adoce-dourado); object-fit: cover;
+}
+.ah-marca span {
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-grande);
+  color: var(--adoce-marrom);
+}
+.ah-acoes { display: flex; gap: var(--adoce-e4); }
+.ah-acoes a {
+  color: var(--adoce-terra);
+  display: flex; align-items: center; justify-content: center;
+  min-width: var(--adoce-toque); min-height: var(--adoce-toque);
+}
+.ah-acoes svg { width: 21px; height: 21px; }
+
+/* ---------- faixa de status ---------- */
+.ah-status {
+  margin: var(--adoce-e4) var(--adoce-e4) 0;
+  padding: var(--adoce-e3) var(--adoce-e4);
+  border-radius: 0 var(--adoce-raio-card) var(--adoce-raio-card) 0;
+}
+.ah-status.aberta { background: var(--adoce-ok-fundo); border-left: 3px solid var(--adoce-ok); }
+.ah-status.fechada { background: var(--adoce-atencao-fundo); border-left: 3px solid var(--adoce-atencao); }
+.ah-status-titulo {
+  margin: 0; display: flex; align-items: center; gap: var(--adoce-e2);
+  font-size: var(--adoce-t-menor); font-weight: 500;
+}
+.ah-status.aberta .ah-status-titulo { color: var(--adoce-ok-texto); }
+.ah-status.fechada .ah-status-titulo { color: var(--adoce-atencao-texto); }
+.ah-ponto { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.ah-status-texto {
+  margin: var(--adoce-e1) 0 0; font-size: var(--adoce-t-pequeno); line-height: 1.5;
+}
+.ah-status.aberta .ah-status-texto { color: var(--adoce-ok-texto); }
+.ah-status.fechada .ah-status-texto { color: var(--adoce-atencao-texto); }
+
+/* ---------- secoes ---------- */
+.ah-secao { padding: var(--adoce-e5) var(--adoce-e4) 0; }
+.ah-eyebrow {
+  margin: 0 0 var(--adoce-e1);
+  font-size: var(--adoce-t-micro);
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--adoce-terra); font-weight: 500;
+}
+.ah-titulo {
+  margin: 0 0 var(--adoce-e3);
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-titulo);
+  font-weight: 400; color: var(--adoce-marrom); line-height: 1.15;
+}
+.ah-titulo-menor {
+  margin: 0 0 var(--adoce-e3);
+  font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-grande);
+  font-weight: 400; color: var(--adoce-marrom);
+}
+
+/* ---------- lista de fatias ---------- */
+.ah-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--adoce-e2); }
+.ah-fatia {
+  display: flex; align-items: center; gap: var(--adoce-e3);
+  background: var(--adoce-superficie);
+  border: 1px solid var(--adoce-borda);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e2);
+}
+.ah-foto {
+  width: 58px; height: 58px; flex-shrink: 0;
+  border-radius: var(--adoce-raio);
+  background: var(--adoce-rosa);
+  overflow: hidden; display: flex; align-items: center; justify-content: center;
+}
+.ah-foto img { width: 100%; height: 100%; object-fit: cover; }
+.ah-fatia-info { flex: 1; min-width: 0; }
+.ah-fatia-nome {
+  margin: 0; font-size: var(--adoce-t-pequeno); font-weight: 500;
+  color: var(--adoce-texto); line-height: 1.3;
+}
+.ah-fatia-qtd { margin: 3px 0 0; font-size: var(--adoce-t-menor); color: var(--adoce-texto-suave); }
+.ah-fatia-ultimas { margin: 3px 0 0; font-size: var(--adoce-t-menor); color: var(--adoce-erro-texto); font-weight: 500; }
+.ah-reservar {
+  flex-shrink: 0;
+  background: var(--adoce-terra); color: var(--adoce-creme);
+  font-size: var(--adoce-t-pequeno); font-weight: 500;
+  padding: 0 var(--adoce-e3);
+  min-height: var(--adoce-toque);
+  border-radius: var(--adoce-raio);
+  display: flex; align-items: center; text-decoration: none;
+}
+.ah-reservar:active { background: var(--adoce-terra-escuro); }
+.ah-ver-todos, .ah-secundario {
+  display: block; text-align: center;
+  margin-top: var(--adoce-e3);
+  color: var(--adoce-terra); font-size: var(--adoce-t-pequeno);
+  min-height: var(--adoce-toque); line-height: var(--adoce-toque);
+  text-decoration: none;
+}
+.ah-vazio { color: var(--adoce-texto-suave); font-size: var(--adoce-t-pequeno); }
+.ah-esgotado {
+  background: var(--adoce-superficie); border: 1px solid var(--adoce-borda);
+  border-radius: var(--adoce-raio-card); padding: var(--adoce-e4); text-align: center;
+}
+.ah-esgotado p { margin: 0 0 var(--adoce-e1); font-size: var(--adoce-t-pequeno); color: var(--adoce-texto-suave); }
+.ah-esgotado strong { color: var(--adoce-texto); }
+
+/* ---------- faixa da Beth ---------- */
+.ah-beth {
+  margin: var(--adoce-e5) var(--adoce-e4) 0;
+  background: var(--adoce-marrom);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e4);
+  display: flex; align-items: center; gap: var(--adoce-e3);
+}
+.ah-beth-icone {
+  width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%;
+  background: rgba(255, 247, 237, .12);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--adoce-rosa-escuro);
+}
+.ah-beth-icone svg { width: 22px; height: 22px; }
+.ah-beth-titulo {
+  margin: 0; font-family: var(--adoce-fonte-voz);
+  font-size: var(--adoce-t-medio); color: var(--adoce-creme);
+}
+.ah-beth-texto {
+  margin: 3px 0 0; font-size: var(--adoce-t-menor);
+  color: var(--adoce-texto-claro); line-height: 1.45;
+}
+
+/* ---------- clube ---------- */
+.ah-clube {
+  margin: var(--adoce-e2) var(--adoce-e4) 0;
+  background: var(--adoce-rosa);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e3) var(--adoce-e4);
+  display: flex; align-items: center; gap: var(--adoce-e3);
+}
+.ah-clube-info { flex: 1; }
+.ah-clube-titulo { margin: 0; font-size: var(--adoce-t-pequeno); font-weight: 500; color: var(--adoce-marrom); }
+.ah-clube-texto { margin: 3px 0 var(--adoce-e2); font-size: var(--adoce-t-menor); color: var(--adoce-marrom-claro); }
+.ah-barra { height: 5px; background: rgba(61, 31, 20, .12); border-radius: 3px; overflow: hidden; }
+.ah-barra span { display: block; height: 100%; background: var(--adoce-terra); }
+.ah-clube-num {
+  text-decoration: none; color: var(--adoce-marrom);
+  display: flex; align-items: baseline;
+  min-height: var(--adoce-toque);
+}
+.ah-clube-num strong { font-size: var(--adoce-t-grande); font-weight: 500; }
+.ah-clube-num small { font-size: var(--adoce-t-menor); color: var(--adoce-texto-fraco); }
+
+/* ---------- encomendas ---------- */
+.ah-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--adoce-e2); }
+.ah-card {
+  background: var(--adoce-superficie);
+  border: 1px solid var(--adoce-borda);
+  border-radius: var(--adoce-raio-card);
+  padding: var(--adoce-e3);
+  text-decoration: none;
+}
+.ah-card svg { width: 20px; height: 20px; color: var(--adoce-terra); }
+.ah-card p { margin: var(--adoce-e2) 0 0; font-size: var(--adoce-t-pequeno); color: var(--adoce-texto); }
+.ah-card small { display: block; margin-top: 2px; font-size: var(--adoce-t-micro); color: var(--adoce-texto-suave); }
+.ah-outros {
+  display: flex; align-items: center; gap: var(--adoce-e1);
+  margin-top: var(--adoce-e3);
+  color: var(--adoce-texto-suave); font-size: var(--adoce-t-menor);
+  text-decoration: none; min-height: var(--adoce-toque);
+}
+.ah-outros svg { width: 15px; height: 15px; }

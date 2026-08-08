@@ -1,0 +1,185 @@
+/* Agenda de encomendas. Cores só de adoce-tokens.css. */
+
+.agenda-enc {
+  display: grid;
+  gap: 18px;
+  padding: 16px 16px 48px;
+  max-width: 720px;
+  margin: 0 auto;
+  color: var(--adoce-marrom);
+}
+
+.ae-legenda {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+.ae-topo h1 { margin: 0; font-size: 1.5rem; }
+
+/* ---- Quanto o cliente quer ---- */
+
+.ae-pedido {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ae-pedido label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 70%, transparent);
+}
+
+.ae-pedido input {
+  min-height: var(--adoce-toque);
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 30%, transparent);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--adoce-marrom);
+  font: inherit;
+  font-size: 1rem;
+}
+
+/* ---- Calendário ---- */
+
+.ae-calendario {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.ae-dia {
+  width: 100%;
+  min-height: 74px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-rosa) 30%, #fff);
+  color: var(--adoce-marrom);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ae-dia-semana {
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+}
+
+.ae-dia-numero { font-size: 1.125rem; font-weight: 700; }
+
+.ae-dia-vagas {
+  font-size: 0.625rem;
+  line-height: 1.1;
+  text-align: center;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}
+
+.ae-dia-marca { width: 15px; height: 15px; color: var(--adoce-terra); }
+
+.ae-dia-livre { border-color: color-mix(in srgb, var(--adoce-terra) 25%, transparent); }
+
+.ae-dia-avaliar {
+  border-style: dashed;
+  border-color: var(--adoce-terra);
+}
+
+.ae-dia-fechado {
+  opacity: 0.5;
+  background: color-mix(in srgb, var(--adoce-marrom) 6%, #fff);
+}
+
+.ae-dia-escolhido {
+  border-width: 2px;
+  border-color: var(--adoce-terra);
+  background: color-mix(in srgb, var(--adoce-rosa) 70%, #fff);
+}
+
+/* ---- Veredito ---- */
+
+.ae-veredito {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 20%, transparent);
+  background: #fff;
+}
+
+.ae-veredito h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.ae-veredito h2 svg { width: 20px; height: 20px; }
+
+.ae-veredito-livre h2 { color: var(--adoce-terra); }
+.ae-veredito-avaliar { background: color-mix(in srgb, var(--adoce-dourado) 20%, #fff); }
+.ae-veredito-fechado { background: color-mix(in srgb, var(--adoce-marrom) 5%, #fff); }
+
+.ae-veredito-data {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 65%, transparent);
+}
+
+.ae-motivos {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.9375rem;
+}
+
+.ae-restam,
+.ae-alternativa { margin: 0; font-size: 0.9375rem; }
+.ae-alternativa strong { color: var(--adoce-terra); }
+
+.ae-resposta {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-rosa) 40%, #fff);
+}
+
+.ae-resposta p { margin: 0; font-size: 1rem; line-height: 1.45; }
+
+.ae-resposta button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  border: 1px solid var(--adoce-terra);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adoce-terra);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ae-resposta button svg { width: 18px; height: 18px; }
+
+.ae-dica {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}
