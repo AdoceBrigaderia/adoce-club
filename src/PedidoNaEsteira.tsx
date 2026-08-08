@@ -6,7 +6,7 @@
 //
 // Cada avanco abre a mensagem pronta no WhatsApp do cliente. E de proposito
 // que sejam a mesma acao: se avancar e avisar forem dois botoes, um dia alguem
-// avanca e nao avisa â€” e ai nasce a proxima Juliana.
+// avanca e nao avisa — e ai nasce a proxima Juliana.
 
 import { useState } from "react";
 import { Check, Copy, Gift, MessageCircle } from "lucide-react";
@@ -42,7 +42,7 @@ export default function PedidoNaEsteira({
   const [copiado, setCopiado] = useState<Etapa | null>(null);
 
   // Copia primeiro, abre depois. O link wa.me abre a conversa com o texto
-  // pronto, mas NAO envia â€” e no WhatsApp Business e no computador as vezes o
+  // pronto, mas NAO envia — e no WhatsApp Business e no computador as vezes o
   // texto nem aparece. Com o texto na area de transferencia, sempre da para
   // colar. Foi parte do que falhou com a Juliana Sousa em 07/08.
   const avisar = async (etapa: Etapa, abrirConversa = true) => {
@@ -98,8 +98,8 @@ export default function PedidoNaEsteira({
       <ul className="pe-itens">
         {pedido.itens.map((item, indice) => (
           <li key={`${item.sabor}-${indice}`}>
-            <strong>{item.quantidade}Ã—</strong> {item.sabor}
-            {item.calda ? ` Â· ${item.calda.toLowerCase()}` : " Â· sem calda"}
+            <strong>{item.quantidade}×</strong> {item.sabor}
+            {item.calda ? ` · ${item.calda.toLowerCase()}` : " · sem calda"}
             {item.presente ? (
               <span className="pe-presente">
                 <Gift aria-hidden="true" /> presente
@@ -111,7 +111,7 @@ export default function PedidoNaEsteira({
 
       {pedido.retirada ? (
         <p className="pe-retirada">
-          Retira a partir das {pedido.retirada.aPartirDe} Â· {pedido.retirada.local}
+          Retira a partir das {pedido.retirada.aPartirDe} · {pedido.retirada.local}
         </p>
       ) : null}
 
@@ -119,7 +119,7 @@ export default function PedidoNaEsteira({
 
       {podeCobrar(pedido) ? (
         <p className="pe-cobranca">
-          JÃ¡ pode pedir o pagamento â€” o pedido estÃ¡ separado.
+          Já pode pedir o pagamento — o pedido está separado.
         </p>
       ) : null}
 
@@ -136,7 +136,7 @@ export default function PedidoNaEsteira({
           onClick={() => void avisar(pedido.etapa)}
         >
           {copiado === pedido.etapa ? <Check aria-hidden="true" /> : <MessageCircle aria-hidden="true" />}
-          {copiado === pedido.etapa ? "Copiado â€” abrindo o zap" : "Copiar e abrir o WhatsApp"}
+          {copiado === pedido.etapa ? "Copiado — abrindo o zap" : "Copiar e abrir o WhatsApp"}
         </button>
       </div>
 
@@ -163,4 +163,3 @@ export default function PedidoNaEsteira({
     </article>
   );
 }
-

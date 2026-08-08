@@ -156,4 +156,3 @@ export function proximaAtualizacaoMs(restaMs: number) {
   if (restaMs > HORA) return MINUTO;
   return 15_000;
 }
-

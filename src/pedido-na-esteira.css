@@ -1,4 +1,4 @@
-/* O pedido na esteira. Cores sÃ³ de adoce-tokens.css. */
+/* O pedido na esteira. Cores só de adoce-tokens.css. */
 
 .pe-cartao {
   display: grid;
@@ -130,7 +130,7 @@
   background: color-mix(in srgb, var(--adoce-dourado) 28%, #fff);
 }
 
-/* ---- AÃ§Ãµes ---- */
+/* ---- Ações ---- */
 
 .pe-acoes { display: grid; gap: 8px; }
 
@@ -162,7 +162,7 @@
 
 .pe-whatsapp svg { width: 18px; height: 18px; }
 
-/* ---- PrÃ©via da mensagem ---- */
+/* ---- Prévia da mensagem ---- */
 
 .pe-previa summary {
   font-size: 0.8125rem;
@@ -207,4 +207,3 @@
 @media (min-width: 560px) {
   .pe-acoes { grid-template-columns: 1fr 1fr; }
 }
-

@@ -1,7 +1,7 @@
 // O painel do dia da operacao.
 //
 // Uma tela para a manha inteira. Desenhada para o celular, de pe, com uma mao
-// so â€” porque e assim que a operacao acontece de verdade.
+// so — porque e assim que a operacao acontece de verdade.
 //
 // A ordem da tela e a ordem das perguntas:
 //   1. O que precisa de mim agora  (as acoes, no topo, impossiveis de ignorar)
@@ -69,7 +69,7 @@ export default function PainelDoDia({
     <main className="painel-dia" aria-busy={carregando}>
       <header className="pd-topo">
         <div>
-          <p className="pd-legenda">OperaÃ§Ã£o Adoce Â· hoje</p>
+          <p className="pd-legenda">Operação Adoce · hoje</p>
           <h1 className="pd-frase">{frasedoDia(estado)}</h1>
         </div>
         {onAtualizar ? (
@@ -85,7 +85,7 @@ export default function PainelDoDia({
       </header>
 
       {acoes.length ? (
-        <section className="pd-acoes" aria-label="Precisa da sua aÃ§Ã£o">
+        <section className="pd-acoes" aria-label="Precisa da sua ação">
           {acoes.map((acao) => {
             const Icone = ICONE[acao.gravidade];
             return (
@@ -106,13 +106,13 @@ export default function PainelDoDia({
           })}
         </section>
       ) : (
-        <p className="pd-tranquilo">Nada esperando por vocÃª agora. ðŸ’—</p>
+        <p className="pd-tranquilo">Nada esperando por você agora. 💗</p>
       )}
 
       <section className="pd-numeros" aria-label="Resumo do dia">
         <p>
           <strong>{resumo.totalDisponivel}</strong>
-          <span>disponÃ­veis</span>
+          <span>disponíveis</span>
         </p>
         <p>
           <strong>{resumo.totalVendido}</strong>
@@ -169,9 +169,9 @@ export default function PainelDoDia({
                 <div>
                   <p className="pd-pedido-cliente">{p.cliente}</p>
                   <p className="pd-pedido-detalhe">
-                    {p.fatias} {p.fatias === 1 ? "fatia" : "fatias"} Â· {dinheiro(p.total)} Â·{" "}
+                    {p.fatias} {p.fatias === 1 ? "fatia" : "fatias"} · {dinheiro(p.total)} ·{" "}
                     {horaCurta(p.criadoEm)}
-                    {p.retiradaEm ? ` Â· retira ${horaCurta(p.retiradaEm)}` : ""}
+                    {p.retiradaEm ? ` · retira ${horaCurta(p.retiradaEm)}` : ""}
                   </p>
                 </div>
                 <span className="pd-pedido-status">
@@ -187,10 +187,9 @@ export default function PainelDoDia({
             ))}
           </ul>
         ) : (
-          <p className="pd-vazio">Nenhum pedido atÃ© agora.</p>
+          <p className="pd-vazio">Nenhum pedido até agora.</p>
         )}
       </section>
     </main>
   );
 }
-

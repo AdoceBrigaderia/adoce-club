@@ -51,7 +51,7 @@ function dia(overrides: Partial<EstadoDoDia> = {}): EstadoDoDia {
 const chaves = (estado: EstadoDoDia) => acoesDoDia(estado).map((a) => a.chave);
 
 describe("contagem de fatias", () => {
-  it("disponÃ­vel Ã© o que foi liberado menos o que saiu", () => {
+  it("disponível é o que foi liberado menos o que saiu", () => {
     expect(disponivel(sabor("x", { liberado: 13, vendido: 5 }))).toBe(8);
   });
 
@@ -60,14 +60,14 @@ describe("contagem de fatias", () => {
     expect(aLiberar(sabor("x", { planejado: 2, liberado: 10 }))).toBe(0);
   });
 
-  it("a liberar Ã© o planejado que ainda nÃ£o virou estoque", () => {
+  it("a liberar é o planejado que ainda não virou estoque", () => {
     expect(aLiberar(sabor("x", { planejado: 13, liberado: 0 }))).toBe(13);
   });
 });
 
 describe("o bug dos 11 dias", () => {
   // Em 28/07 havia 78 fatias planejadas e o site mostrava esgotado.
-  // O painel precisa gritar exatamente nesse cenÃ¡rio.
+  // O painel precisa gritar exatamente nesse cenário.
   const esgotadoComEstoque = dia({
     sabores: [
       sabor("Chocolatudo", { planejado: 13, liberado: 0 }),
@@ -75,18 +75,18 @@ describe("o bug dos 11 dias", () => {
     ],
   });
 
-  it("aponta a produÃ§Ã£o nÃ£o liberada como crÃ­tico", () => {
+  it("aponta a produção não liberada como crítico", () => {
     const acao = acoesDoDia(esgotadoComEstoque).find((a) => a.chave === "liberar-producao");
     expect(acao?.gravidade).toBe("critico");
     expect(acao?.titulo).toContain("26");
-    expect(acao?.botao).toBe("Liberar produÃ§Ã£o");
+    expect(acao?.botao).toBe("Liberar produção");
   });
 
-  it("diz na frase do dia que o site estÃ¡ mostrando esgotado", () => {
+  it("diz na frase do dia que o site está mostrando esgotado", () => {
     expect(frasedoDia(esgotadoComEstoque)).toContain("Esgotado no site");
   });
 
-  it("nÃ£o trata como dia vazio, porque produÃ§Ã£o existe", () => {
+  it("não trata como dia vazio, porque produção existe", () => {
     expect(chaves(esgotadoComEstoque)).not.toContain("dia-vazio");
   });
 });
@@ -101,13 +101,13 @@ describe("pedidos sem resposta", () => {
     expect(chaves(estado)[0]).toBe("pedidos-novos");
   });
 
-  it("cita o cliente quando Ã© um sÃ³", () => {
+  it("cita o cliente quando é um só", () => {
     const acao = acoesDoDia(dia({ pedidos: [pedido()] }))[0];
     expect(acao.detalhe).toContain("Juliana Sousa");
     expect(acao.detalhe).toContain("2 fatias");
   });
 
-  it("pedido cancelado nÃ£o pede aÃ§Ã£o nem entra na receita", () => {
+  it("pedido cancelado não pede ação nem entra na receita", () => {
     const estado = dia({ pedidos: [pedido({ status: "cancelado" })] });
     expect(chaves(estado)).not.toContain("pedidos-novos");
     expect(resumoDoDia(estado).receita).toBe(0);
@@ -116,44 +116,44 @@ describe("pedidos sem resposta", () => {
 });
 
 describe("avisos parados", () => {
-  it("poucos avisos sÃ£o atenÃ§Ã£o", () => {
+  it("poucos avisos são atenção", () => {
     const acao = acoesDoDia(dia({ avisosPendentes: 2 })).find((a) => a.chave === "avisos-parados");
     expect(acao?.gravidade).toBe("atencao");
   });
 
-  it("muitos avisos viram crÃ­tico", () => {
+  it("muitos avisos viram crítico", () => {
     const acao = acoesDoDia(dia({ avisosPendentes: 117 })).find((a) => a.chave === "avisos-parados");
     expect(acao?.gravidade).toBe("critico");
     expect(acao?.titulo).toContain("117");
   });
 
-  it("silÃªncio sÃ³ quando realmente nÃ£o hÃ¡ nada", () => {
+  it("silêncio só quando realmente não há nada", () => {
     expect(chaves(dia())).toEqual([]);
   });
 });
 
-describe("dia nÃ£o montado", () => {
-  it("avisa quando nÃ£o existe fatia nenhuma", () => {
+describe("dia não montado", () => {
+  it("avisa quando não existe fatia nenhuma", () => {
     const estado = dia({ sabores: [] });
     expect(chaves(estado)).toContain("dia-vazio");
-    expect(frasedoDia(estado)).toContain("ainda nÃ£o tem fatia");
+    expect(frasedoDia(estado)).toContain("ainda não tem fatia");
   });
 });
 
 describe("loja fechada", () => {
-  it("avisa quando hÃ¡ fatia liberada e o site nÃ£o aceita reserva", () => {
+  it("avisa quando há fatia liberada e o site não aceita reserva", () => {
     const estado = dia({ lojaAberta: false });
     expect(chaves(estado)).toContain("loja-fechada");
   });
 
-  it("nÃ£o avisa se nÃ£o hÃ¡ o que vender", () => {
+  it("não avisa se não há o que vender", () => {
     const estado = dia({ lojaAberta: false, sabores: [sabor("x", { liberado: 13, vendido: 13 })] });
     expect(chaves(estado)).not.toContain("loja-fechada");
   });
 });
 
-describe("ordem dos sabores no balcÃ£o", () => {
-  it("o que estÃ¡ acabando aparece primeiro", () => {
+describe("ordem dos sabores no balcão", () => {
+  it("o que está acabando aparece primeiro", () => {
     const sabores = [
       sabor("Sobrando", { liberado: 13, vendido: 1 }),
       sabor("Acabando", { liberado: 13, vendido: 11 }),
@@ -176,7 +176,7 @@ describe("ordem dos sabores no balcÃ£o", () => {
 });
 
 describe("resumo", () => {
-  it("soma disponÃ­vel, a liberar, vendido e receita", () => {
+  it("soma disponível, a liberar, vendido e receita", () => {
     const estado = dia({
       sabores: [
         sabor("A", { planejado: 13, liberado: 13, vendido: 4 }),
@@ -197,4 +197,3 @@ describe("resumo", () => {
     expect(chaves(estado)).toEqual([]);
   });
 });
-

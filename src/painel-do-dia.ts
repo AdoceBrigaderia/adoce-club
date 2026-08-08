@@ -1,4 +1,4 @@
-// O painel do dia da operacao â€” as regras.
+// O painel do dia da operacao — as regras.
 //
 // Existem cerca de 40 telas de operacao neste projeto. O Rubens nao acha o
 // botao de liberar producao porque ele esta em uma entre quarenta. Em 28/07 a
@@ -13,7 +13,7 @@
 //   3. O que ja aconteceu?
 //
 // Regra de ouro: quando faltar informacao, este arquivo diz que falta. Ele
-// nunca inventa "tudo certo" no silencio â€” foi exatamente assim que os 11 dias
+// nunca inventa "tudo certo" no silencio — foi exatamente assim que os 11 dias
 // passaram despercebidos.
 
 export type SaborDoDia = {
@@ -113,7 +113,7 @@ export function acoesDoDia(estado: EstadoDoDia): Acao[] {
         : `${novos.length} pedidos esperando resposta`,
       detalhe: novos.length === 1
         ? `${novos[0].cliente} pediu ${novos[0].fatias} ${novos[0].fatias === 1 ? "fatia" : "fatias"}.`
-        : "Cliente que pede e nÃ£o recebe retorno nÃ£o volta.",
+        : "Cliente que pede e não recebe retorno não volta.",
       botao: "Ver pedidos",
     });
   }
@@ -123,8 +123,8 @@ export function acoesDoDia(estado: EstadoDoDia): Acao[] {
     acoes.push({
       chave: "avisos-parados",
       gravidade: estado.avisosPendentes > 5 ? "critico" : "atencao",
-      titulo: `${estado.avisosPendentes} ${estado.avisosPendentes === 1 ? "aviso nÃ£o entregue" : "avisos nÃ£o entregues"}`,
-      detalhe: "Os avisos estÃ£o registrados, mas ninguÃ©m recebeu no celular.",
+      titulo: `${estado.avisosPendentes} ${estado.avisosPendentes === 1 ? "aviso não entregue" : "avisos não entregues"}`,
+      detalhe: "Os avisos estão registrados, mas ninguém recebeu no celular.",
     });
   }
 
@@ -135,9 +135,9 @@ export function acoesDoDia(estado: EstadoDoDia): Acao[] {
       gravidade: resumo.totalDisponivel === 0 ? "critico" : "atencao",
       titulo: `${resumo.totalALiberar} ${resumo.totalALiberar === 1 ? "fatia pronta" : "fatias prontas"} sem liberar`,
       detalhe: resumo.totalDisponivel === 0
-        ? "O site estÃ¡ mostrando esgotado enquanto essas fatias esperam."
-        : "Liberar deixa essas fatias disponÃ­veis para reserva agora.",
-      botao: "Liberar produÃ§Ã£o",
+        ? "O site está mostrando esgotado enquanto essas fatias esperam."
+        : "Liberar deixa essas fatias disponíveis para reserva agora.",
+      botao: "Liberar produção",
     });
   }
 
@@ -147,8 +147,8 @@ export function acoesDoDia(estado: EstadoDoDia): Acao[] {
       chave: "dia-vazio",
       gravidade: "critico",
       titulo: "Nenhuma fatia cadastrada para hoje",
-      detalhe: "Sem produÃ§Ã£o cadastrada, o site mostra a loja esgotada.",
-      botao: "Cadastrar produÃ§Ã£o",
+      detalhe: "Sem produção cadastrada, o site mostra a loja esgotada.",
+      botao: "Cadastrar produção",
     });
   }
 
@@ -157,8 +157,8 @@ export function acoesDoDia(estado: EstadoDoDia): Acao[] {
     acoes.push({
       chave: "loja-fechada",
       gravidade: "atencao",
-      titulo: "Loja fechada com fatias disponÃ­veis",
-      detalhe: `${resumo.totalDisponivel} ${resumo.totalDisponivel === 1 ? "fatia estÃ¡" : "fatias estÃ£o"} liberadas, mas o site nÃ£o aceita reserva.`,
+      titulo: "Loja fechada com fatias disponíveis",
+      detalhe: `${resumo.totalDisponivel} ${resumo.totalDisponivel === 1 ? "fatia está" : "fatias estão"} liberadas, mas o site não aceita reserva.`,
     });
   }
 
@@ -169,7 +169,7 @@ export function acoesDoDia(estado: EstadoDoDia): Acao[] {
       chave: "aguardando-pagamento",
       gravidade: "informativo",
       titulo: `${separados.length} ${separados.length === 1 ? "pedido separado" : "pedidos separados"} aguardando pagamento`,
-      detalhe: "O cliente sÃ³ paga depois que a Adoce confirma a reserva.",
+      detalhe: "O cliente só paga depois que a Adoce confirma a reserva.",
     });
   }
 
@@ -199,13 +199,13 @@ export function saboresOrdenados(sabores: SaborDoDia[]) {
 /** Frase curta do topo, que resume o dia em uma linha. */
 export function frasedoDia(estado: EstadoDoDia) {
   const resumo = resumoDoDia(estado);
-  if (resumo.diaVazio) return "Hoje ainda nÃ£o tem fatia cadastrada.";
+  if (resumo.diaVazio) return "Hoje ainda não tem fatia cadastrada.";
   if (resumo.totalDisponivel === 0 && resumo.totalALiberar === 0)
     return "Tudo vendido por hoje.";
   if (resumo.totalDisponivel === 0 && resumo.totalALiberar > 0)
     return `Esgotado no site, com ${resumo.totalALiberar} para liberar.`;
   if (resumo.totalDisponivel === 0) return "Tudo vendido por hoje.";
-  return `${resumo.totalDisponivel} ${resumo.totalDisponivel === 1 ? "fatia disponÃ­vel" : "fatias disponÃ­veis"} agora.`;
+  return `${resumo.totalDisponivel} ${resumo.totalDisponivel === 1 ? "fatia disponível" : "fatias disponíveis"} agora.`;
 }
 
 export function dinheiro(valor: number) {
@@ -214,4 +214,3 @@ export function dinheiro(valor: number) {
     currency: "BRL",
   }).format(valor);
 }
-

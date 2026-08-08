@@ -33,18 +33,18 @@ function pedido(overrides: Partial<Pedido> = {}): Pedido {
 describe("a regra do pagamento", () => {
   // "o cliente so deve realizar o pagamento depois que a gente confirme
   //  que aquele produto foi reservado ou separado pra ele"
-  it("nÃ£o cobra antes de separar", () => {
+  it("não cobra antes de separar", () => {
     for (const etapa of ["awaiting_confirmation", "reserved", "preparing"] as Etapa[]) {
       expect(podeCobrar(pedido({ etapa }))).toBe(false);
     }
   });
 
-  it("sÃ³ libera a cobranÃ§a depois de separado", () => {
+  it("só libera a cobrança depois de separado", () => {
     expect(podeCobrar(pedido({ etapa: "awaiting_payment" }))).toBe(true);
     expect(podeCobrar(pedido({ etapa: "ready" }))).toBe(true);
   });
 
-  it("nÃ£o cobra duas vezes", () => {
+  it("não cobra duas vezes", () => {
     expect(podeCobrar(pedido({ etapa: "awaiting_payment", pago: true }))).toBe(false);
   });
 });
@@ -62,12 +62,12 @@ describe("caminho do pedido", () => {
     expect(caminho).toEqual(ESTEIRA);
   });
 
-  it("quem jÃ¡ pagou pula a etapa de aguardar pagamento", () => {
+  it("quem já pagou pula a etapa de aguardar pagamento", () => {
     expect(proximaEtapa(pedido({ etapa: "preparing", pago: true }))).toBe("ready");
     expect(rotuloDoAvanco(pedido({ etapa: "preparing", pago: true }))).toBe("Marcar como separado");
   });
 
-  it("etapas finais nÃ£o avanÃ§am", () => {
+  it("etapas finais não avançam", () => {
     for (const etapa of ["completed", "cancelled", "expired"] as Etapa[]) {
       expect(proximaEtapa(pedido({ etapa }))).toBeNull();
       expect(encerrado(etapa)).toBe(true);
@@ -81,8 +81,8 @@ describe("caminho do pedido", () => {
 });
 
 describe("mensagens ao cliente", () => {
-  it("nunca promete separaÃ§Ã£o antes de separar", () => {
-    // O erro que eu cometi ao escrever a confirmaÃ§Ã£o da Juliana Vidal.
+  it("nunca promete separação antes de separar", () => {
+    // O erro que eu cometi ao escrever a confirmação da Juliana Vidal.
     for (const etapa of ["awaiting_confirmation", "reserved"] as Etapa[]) {
       const texto = mensagemParaCliente(pedido({ etapa })).toLowerCase();
       expect(texto).not.toContain("separada");
@@ -90,25 +90,25 @@ describe("mensagens ao cliente", () => {
     }
   });
 
-  it("a reserva confirmada fala em guardado, nÃ£o em separado", () => {
+  it("a reserva confirmada fala em guardado, não em separado", () => {
     const texto = mensagemParaCliente(pedido({ etapa: "reserved" }));
     expect(texto).toContain("guardado no seu nome");
     expect(texto).toContain("Cantinho da Adoce");
     expect(texto).toContain("18h");
   });
 
-  it("a cobranÃ§a explica por que sÃ³ agora", () => {
+  it("a cobrança explica por que só agora", () => {
     const texto = mensagemParaCliente(pedido({ etapa: "awaiting_payment" }));
-    expect(texto).toContain("depois de garantir que estÃ¡ tudo separado");
+    expect(texto).toContain("depois de garantir que está tudo separado");
   });
 
-  it("usa o primeiro nome e fecha com coraÃ§Ã£o", () => {
+  it("usa o primeiro nome e fecha com coração", () => {
     const texto = mensagemParaCliente(pedido());
     expect(texto.startsWith("Juliana,")).toBe(true);
-    expect(texto).toContain("ðŸ’—");
+    expect(texto).toContain("💗");
   });
 
-  it("mostra a calda de cada fatia, e diz quando nÃ£o tem", () => {
+  it("mostra a calda de cada fatia, e diz quando não tem", () => {
     const texto = mensagemParaCliente(pedido({ etapa: "reserved" }));
     expect(texto).toContain("Chocolatudo com calda de chocolate");
     expect(texto).toContain("Torta de Pudim, sem calda");
@@ -121,14 +121,14 @@ describe("mensagens ao cliente", () => {
         itens: [{ sabor: "Chocolatudo", quantidade: 1, calda: null, presente: true }],
       }),
     );
-    expect(texto).toContain("ðŸŽ sua fatia-presente");
+    expect(texto).toContain("🎁 sua fatia-presente");
     // Presente nunca vira cupom nem valor negativo.
     expect(texto).not.toMatch(/-\s*R\$|R\$\s*-/);
     expect(texto.toLowerCase()).not.toContain("desconto");
     expect(texto.toLowerCase()).not.toContain("cupom");
   });
 
-  it("o cancelamento nÃ£o culpa o cliente e oferece conserto", () => {
+  it("o cancelamento não culpa o cliente e oferece conserto", () => {
     const texto = mensagemParaCliente(pedido({ etapa: "cancelled" }));
     expect(texto).toContain("engano nosso");
   });
@@ -144,25 +144,25 @@ describe("link do WhatsApp", () => {
   it("limpa o telefone e leva a mensagem pronta", () => {
     const link = linkDeWhatsApp(pedido({ etapa: "reserved" }));
     expect(link.startsWith("https://wa.me/5585997773599?text=")).toBe(true);
-    expect(decodeURIComponent(link)).toContain("reserva estÃ¡ confirmada");
+    expect(decodeURIComponent(link)).toContain("reserva está confirmada");
   });
 });
 
 describe("pedido parado", () => {
   const agora = Date.now();
 
-  it("sem resposta por 15 minutos jÃ¡ Ã© crÃ­tico", () => {
+  it("sem resposta por 15 minutos já é crítico", () => {
     const resultado = pendencia(pedido(), agora, agora - 20 * 60_000);
     expect(resultado?.gravidade).toBe("critico");
     expect(resultado?.texto).toContain("20 min");
   });
 
-  it("conta em horas quando passa de uma hora â€” o caso da Juliana Sousa", () => {
+  it("conta em horas quando passa de uma hora — o caso da Juliana Sousa", () => {
     const resultado = pendencia(pedido(), agora, agora - 5 * 3_600_000);
     expect(resultado?.texto).toContain("5h");
   });
 
-  it("recÃ©m-chegado nÃ£o vira alarme", () => {
+  it("recém-chegado não vira alarme", () => {
     expect(pendencia(pedido(), agora, agora - 2 * 60_000)).toBeNull();
   });
 
@@ -170,4 +170,3 @@ describe("pedido parado", () => {
     expect(pendencia(pedido({ etapa: "completed" }), agora, agora - 99 * 3_600_000)).toBeNull();
   });
 });
-
