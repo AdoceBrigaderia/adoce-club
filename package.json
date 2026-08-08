@@ -11,8 +11,9 @@
     "build": "tsc -b && vite build",
     "test": "vitest run --exclude 'tests/e2e/**'",
     "lint": "tsc -b --pretty false",
+    "verify:encoding": "node scripts/verify-utf8.mjs",
     "verify:fast": "npm run lint && npm run test && npm run test:homologation-preview-server",
-    "verify": "npm run lint && npm run test && npm run test:homologation-preview-server && npm run test:image-library-audit && npm run test:browser-security-audit && npm run test:homologation-environment && npm run test:homologation-preflight && npm run test:migration-integrity && npm run test:migration-reconciliation && npm run test:migration-repair && npm run test:homologation-pending-migrations && npm run test:homologation-migration-apply && npm run test:homologation-migration-bundle && npm run audit:image-library && npm run audit:browser-security && npm run build && npm run verify:security-build",
+    "verify": "npm run verify:encoding && npm run lint && npm run test && npm run test:homologation-preview-server && npm run test:image-library-audit && npm run test:browser-security-audit && npm run test:homologation-environment && npm run test:homologation-preflight && npm run test:migration-integrity && npm run test:migration-reconciliation && npm run test:migration-repair && npm run test:homologation-pending-migrations && npm run test:homologation-migration-apply && npm run test:homologation-migration-bundle && npm run audit:image-library && npm run audit:browser-security && npm run build && npm run verify:security-build",
     "verify:security-build": "node scripts/verify-security-build.mjs",
     "test:homologation-preview-server": "node --test scripts/serve-homologation-preview.test.mjs",
     "test:image-library-audit": "node --test scripts/image-library-audit-core.test.mjs",
@@ -43,7 +44,7 @@
     "release:check": "node scripts/release-check.mjs",
     "release:preview": "npm run report:migration-integrity && npm run report:migration-reconciliation && npm run report:homologation-pending-migrations && npm run report:homologation-preflight && npm run gate:homologation-environment && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --alias=homologacao-adoce --skip-functions-cache",
     "release:prod": "node scripts/production-approval-gate.mjs && npm run audit:migrations && npm run audit:migration-reconciliation && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --skip-functions-cache",
-    "prebuild": "node scripts/expose-homologation-migration-bundle.mjs && node scripts/atomize-homologation-migration-bundle.mjs && npm run generate:pwa-icons && npm run docs:build"
+    "prebuild": "npm run verify:encoding && node scripts/expose-homologation-migration-bundle.mjs && node scripts/atomize-homologation-migration-bundle.mjs && npm run generate:pwa-icons && npm run docs:build"
   },
   "dependencies": {
     "@napi-rs/canvas": "latest",

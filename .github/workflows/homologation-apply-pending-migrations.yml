@@ -137,7 +137,7 @@ jobs:
             (version) => !output.includes(version) && !applied.includes(version),
           );
           if (applied.some((version) => !expected.includes(version))) {
-            throw new Error('HistÃ³rico remoto contÃ©m migration extra fora do plano aprovado.');
+            throw new Error('Histórico remoto contém migration extra fora do plano aprovado.');
           }
           if (JSON.stringify(pending) !== JSON.stringify(expectedPending)) {
             throw new Error(
@@ -145,7 +145,7 @@ jobs:
             );
           }
           if (new Set([...applied, ...pending]).size !== 22) {
-            throw new Error('O conjunto aplicado mais pendente nÃ£o totaliza exatamente 22 migrations.');
+            throw new Error('O conjunto aplicado mais pendente não totaliza exatamente 22 migrations.');
           }
           if (plan.pending_migrations.length !== 22) throw new Error('Plano não contém 22 migrations.');
           if (missing.length) throw new Error(`Dry-run não listou: ${missing.join(', ')}`);
