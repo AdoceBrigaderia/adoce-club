@@ -6,7 +6,7 @@ const apply = args.has('--apply');
 const strict = args.has('--strict');
 const root = process.cwd();
 const migrationsDir = path.join(root, 'supabase', 'migrations');
-const snapshotPath = path.join(root, 'docs', 'evidence', 'homologation-migrations-20260727.json');
+const snapshotPath = path.join(root, 'docs', 'evidence', 'homologation-migrations-20260807.json');
 const repairPlanPath = path.join(root, 'docs', 'evidence', 'homologation-migration-repair-plan-20260727.json');
 const reportPath = path.join(root, 'docs', 'evidence', 'homologation-migration-filename-reconciliation-20260728.json');
 

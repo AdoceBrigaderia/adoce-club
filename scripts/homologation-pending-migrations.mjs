@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 
 const FILE_PATTERN = /^(\d{14})_([a-z0-9][a-z0-9_]*)\.sql$/;
 const EXPECTED_PROJECT = "vazozolhbehnriytzcdc";
-const EXPECTED_BRANCH = "reestruturacao/ux-crm-operacao-imagens-v1";
+const EXPECTED_BRANCH = "homologacao-adoce";
 
 const duplicates = (values) => {
   const seen = new Set();
@@ -34,7 +34,9 @@ export function inspectPendingMigrationPlan(plan, files, remoteNames = []) {
     stage: String(item.stage || ""),
     file: `${item.version}_${item.name}.sql`,
   }));
-  if (!normalized.length) errors.push("lista pendente vazia");
+  const alignedBaseline = plan?.baseline_status === "aligned";
+  if (!normalized.length && !alignedBaseline) errors.push("lista pendente vazia sem baseline alinhada");
+  if (normalized.length && alignedBaseline) errors.push("baseline alinhada não pode declarar pendências");
   if (duplicates(normalized.map((item) => item.version)).length) errors.push("versões repetidas no plano");
   if (duplicates(normalized.map((item) => item.name)).length) errors.push("nomes repetidos no plano");
 
@@ -68,7 +70,7 @@ export function inspectPendingMigrationPlan(plan, files, remoteNames = []) {
   const blockers = [];
   if (plan?.backup?.confirmed !== true) blockers.push("backup_nao_confirmado");
   if (repairs.some((repair) => repair.confirmed !== true)) blockers.push("repairs_pendentes");
-  if (plan?.dry_run?.status !== "passed") blockers.push("dry_run_pendente");
+  if (normalized.length && plan?.dry_run?.status !== "passed") blockers.push("dry_run_pendente");
   if (errors.length) blockers.push("plano_invalido");
 
   return {
@@ -115,8 +117,8 @@ export function renderPendingMigrationMarkdown(report) {
 export async function runPendingMigrationCli(argv = process.argv.slice(2)) {
   const strict = argv.includes("--strict");
   const requireReady = argv.includes("--require-ready");
-  const planPath = "docs/evidence/homologation-pending-migrations-20260728.json";
-  const remoteSnapshotPath = "docs/evidence/homologation-migrations-20260727.json";
+  const planPath = "docs/evidence/homologation-pending-migrations-20260807.json";
+  const remoteSnapshotPath = "docs/evidence/homologation-migrations-20260807.json";
   const plan = JSON.parse(await readFile(planPath, "utf8"));
   const remoteSnapshot = JSON.parse(await readFile(remoteSnapshotPath, "utf8"));
   const remoteNames = Array.isArray(remoteSnapshot.migrations)

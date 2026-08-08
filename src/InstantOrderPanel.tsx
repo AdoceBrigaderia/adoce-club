@@ -15,6 +15,12 @@ import {
 } from "lucide-react";
 import { trackPublicEvent } from "./analytics";
 import {
+  isPickupTimeAllowed,
+  pickupWindowHint,
+  pickupWindowMessage,
+  type PickupWindow,
+} from "./pickup-window";
+import {
   loadPublicInstantOrderOptions,
   previewPublicInstantOrderLoyalty,
   quotePublicInstantOrder,
@@ -50,16 +56,19 @@ export default function InstantOrderPanel({
   onClose,
   flavors,
   initialFlavorId,
+  pickupWindow = null,
 }: {
   open: boolean;
   onClose: () => void;
   flavors: InstantOrderFlavor[];
   initialFlavorId?: string | null;
+  pickupWindow?: PickupWindow | null;
 }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [pickupTime, setPickupTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<PublicInstantOrderSubmission | null>(null);
@@ -291,6 +300,8 @@ export default function InstantOrderPanel({
       );
     if (phone.replace(/\D/g, "").length < 10)
       return setNotice("Informe um WhatsApp válido com DDD.");
+    if (!isPickupTimeAllowed(pickupTime, pickupWindow))
+      return setNotice(pickupWindowMessage(pickupWindow));
     if (!quote)
       return setNotice(
         "Aguarde um instante enquanto confirmamos preços e disponibilidade.",
@@ -314,7 +325,10 @@ export default function InstantOrderPanel({
         customerName: name.trim(),
         customerPhone: phone,
         items: selectedItems,
-        notes: notes.trim(),
+        notes: [
+          `Horário desejado para retirada: ${pickupTime}`,
+          notes.trim(),
+        ].filter(Boolean).join("\n"),
         paymentMethod,
         reward: selectedReward,
       });
@@ -621,11 +635,23 @@ export default function InstantOrderPanel({
                 </small>
               </label>
               <label>
+                Horário desejado para retirada
+                <input
+                  required
+                  type="time"
+                  value={pickupTime}
+                  min={pickupWindow?.min}
+                  max={pickupWindow?.max}
+                  onChange={(event) => setPickupTime(event.target.value)}
+                />
+                {pickupWindow ? <small>{pickupWindowHint(pickupWindow)}</small> : null}
+              </label>
+              <label>
                 Observação <small>(opcional)</small>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Horário desejado ou alguma informação importante"
+                  placeholder="Alguma informação importante"
                 />
               </label>
               {notice ? (

@@ -111,6 +111,23 @@ test("bloqueia plano automático quando o histórico remoto repete um nome", asy
   ]);
 });
 
+test("alinha nomes históricos repetidos quando cada par versão-nome é exato", async () => {
+  const { report } = await inspect(
+    {
+      "20260727080000_primeira.sql": "select 1;",
+      "20260727080001_primeira.sql": "select 2;",
+    },
+    [
+      { version: "20260727080000", name: "primeira" },
+      { version: "20260727080001", name: "primeira" },
+    ],
+  );
+
+  assert.equal(report.passed, true);
+  assert.equal(report.aligned_count, 2);
+  assert.deepEqual(report.ambiguous_remote, []);
+});
+
 test("detecta versões locais duplicadas e migrations sem correspondente remoto", async () => {
   const { report } = await inspect(
     {

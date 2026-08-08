@@ -5,7 +5,7 @@ import path from 'node:path';
 const projectId = 'vazozolhbehnriytzcdc';
 const productionProjectId = 'uefwywizqhfvvijaopcn';
 const outputName = 'migrations-2f2e6bd6b6154fc184622467a54e62ca.sql';
-const planPath = path.resolve('docs/evidence/homologation-pending-migrations-20260728.json');
+const planPath = path.resolve('docs/evidence/homologation-pending-migrations-20260807.json');
 const outputDirectory = path.resolve('public/homologation-internal');
 const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
 
@@ -13,8 +13,8 @@ if (plan.project_id !== projectId) throw new Error('Plano não pertence à homol
 if (plan.production_project_id !== productionProjectId || plan.production_forbidden !== true) {
   throw new Error('Bloqueio de produção inválido.');
 }
-if (!Array.isArray(plan.pending_migrations) || plan.pending_migrations.length !== 22) {
-  throw new Error('O bundle exige exatamente 22 migrations.');
+if (!Array.isArray(plan.pending_migrations)) {
+  throw new Error('O bundle exige uma lista de migrations pendentes.');
 }
 
 const sections = [

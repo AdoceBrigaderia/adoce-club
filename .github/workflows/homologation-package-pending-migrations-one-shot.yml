@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - .github/workflows/homologation-package-pending-migrations-one-shot.yml
-      - docs/evidence/homologation-pending-migrations-20260728.json
+      - docs/evidence/homologation-pending-migrations-20260728.superseded.json
       - scripts/expose-homologation-migration-bundle.mjs
       - scripts/atomize-homologation-migration-bundle.mjs
       - scripts/validate-homologation-migration-bundle.mjs
@@ -22,7 +22,7 @@ permissions:
 
 env:
   EXPECTED_BRANCH: reestruturacao/ux-crm-operacao-imagens-v1
-  PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.json
+  PENDING_PLAN: docs/evidence/homologation-pending-migrations-20260728.superseded.json
   HOMOLOGATION_REF: vazozolhbehnriytzcdc
   PRODUCTION_REF: uefwywizqhfvvijaopcn
   HOMOLOGATION_SITE_ID: f0cc51be-a0ec-4451-9644-a394592cdc37

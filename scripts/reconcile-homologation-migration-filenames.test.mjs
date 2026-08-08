@@ -12,7 +12,7 @@ function fixture() {
   fs.mkdirSync(path.join(root, 'supabase', 'migrations'), { recursive: true });
   fs.mkdirSync(path.join(root, 'docs', 'evidence'), { recursive: true });
   fs.writeFileSync(
-    path.join(root, 'docs', 'evidence', 'homologation-migrations-20260727.json'),
+    path.join(root, 'docs', 'evidence', 'homologation-migrations-20260807.json'),
     JSON.stringify({
       project_id: 'vazozolhbehnriytzcdc',
       migrations: [
