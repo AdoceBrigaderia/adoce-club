@@ -63,7 +63,7 @@ function sala(overrides: Partial<PedeJuntoRoom> = {}): PedeJuntoRoom {
   };
 }
 
-describe("relÃ³gio", () => {
+describe("relógio", () => {
   it("mostra dias quando falta muito", () => {
     expect(relogioDe(2 * 24 * HORA)).toBe("2 dias");
     expect(relogioDe(25 * HORA)).toBe("1 dia");
@@ -73,11 +73,11 @@ describe("relÃ³gio", () => {
     expect(relogioDe(2 * HORA + 14 * MINUTO)).toBe("2h14");
   });
 
-  it("omite os minutos quando Ã© hora cheia", () => {
+  it("omite os minutos quando é hora cheia", () => {
     expect(relogioDe(3 * HORA)).toBe("3h");
   });
 
-  it("nunca mostra zero minuto enquanto ainda hÃ¡ tempo", () => {
+  it("nunca mostra zero minuto enquanto ainda há tempo", () => {
     expect(relogioDe(30_000)).toBe("1 min");
   });
 
@@ -93,27 +93,27 @@ describe("tempo restante", () => {
     expect(tempoRestante(passado)).toBe(0);
   });
 
-  it("nÃ£o quebra com data invÃ¡lida", () => {
-    expect(tempoRestante("nao Ã© data")).toBe(0);
+  it("não quebra com data inválida", () => {
+    expect(tempoRestante("nao é data")).toBe(0);
   });
 });
 
-describe("urgÃªncia", () => {
-  it("Ã© tranquilo com folga", () => {
+describe("urgência", () => {
+  it("é tranquilo com folga", () => {
     expect(urgenciaDe(5 * HORA)).toBe("tranquilo");
   });
 
-  it("vira atenÃ§Ã£o nas Ãºltimas duas horas", () => {
+  it("vira atenção nas últimas duas horas", () => {
     expect(urgenciaDe(90 * MINUTO)).toBe("atencao");
   });
 
-  it("vira Ãºltima chamada na Ãºltima meia hora", () => {
+  it("vira última chamada na última meia hora", () => {
     expect(urgenciaDe(20 * MINUTO)).toBe("ultima_chamada");
   });
 });
 
-describe("quem ainda nÃ£o escolheu", () => {
-  it("aponta sÃ³ quem entrou e nÃ£o pediu nada", () => {
+describe("quem ainda não escolheu", () => {
+  it("aponta só quem entrou e não pediu nada", () => {
     const participantes = [comFatia("Ana"), participante("Bruno")];
     expect(quemAindaNaoEscolheu(participantes).map((p) => p.name)).toEqual(["Bruno"]);
   });
@@ -126,7 +126,7 @@ describe("quem ainda nÃ£o escolheu", () => {
     expect(quemAindaNaoEscolheu(participantes)).toHaveLength(0);
   });
 
-  it("nÃ£o conta item cancelado como escolha", () => {
+  it("não conta item cancelado como escolha", () => {
     const participantes = [
       participante("Elis", {
         items: [
@@ -146,13 +146,13 @@ describe("quem ainda nÃ£o escolheu", () => {
 });
 
 describe("frase do grupo", () => {
-  it("nomeia quem falta, para o organizador nÃ£o cobrar todo mundo", () => {
+  it("nomeia quem falta, para o organizador não cobrar todo mundo", () => {
     const room = sala({ participants: [comFatia("Ana"), participante("Bruno Silva")] });
     expect(prazoDoGrupo(room).frase).toContain("Bruno");
     expect(prazoDoGrupo(room).frase).not.toContain("Ana");
   });
 
-  it("junta os nomes com e, sem vÃ­rgula sobrando", () => {
+  it("junta os nomes com e, sem vírgula sobrando", () => {
     const room = sala({
       participants: [participante("Ana"), participante("Bruno"), participante("Carla")],
     });
@@ -160,7 +160,7 @@ describe("frase do grupo", () => {
   });
 
   it("com folga e todo mundo servido, convida mais gente em vez de cobrar", () => {
-    // O Rubens foi explÃ­cito: cinco Ã© o mÃ­nimo, nÃ£o o teto. JÃ¡ houve grupo
+    // O Rubens foi explícito: cinco é o mínimo, não o teto. Já houve grupo
     // com onze moradores.
     const room = sala({ participants: [comFatia("Ana"), comFatia("Bruno")] });
     expect(prazoDoGrupo(room).frase).toContain("Ainda cabe mais gente");
@@ -174,7 +174,7 @@ describe("frase do grupo", () => {
     expect(prazoDoGrupo(room).frase).toContain("todo mundo já escolheu");
   });
 
-  it("nÃ£o apressa com medo â€” nunca diz que vai acabar", () => {
+  it("não apressa com medo — nunca diz que vai acabar", () => {
     const room = sala({
       closes_at: new Date(Date.now() + 10 * MINUTO).toISOString(),
       participants: [participante("Ana")],
@@ -185,7 +185,7 @@ describe("frase do grupo", () => {
     expect(frase.toLowerCase()).not.toContain("acabar");
   });
 
-  it("grupo fechado nÃ£o mostra contagem", () => {
+  it("grupo fechado não mostra contagem", () => {
     const room = sala({ status: "submitted" });
     const prazo = prazoDoGrupo(room);
     expect(prazo.urgencia).toBe("encerrado");
@@ -199,12 +199,12 @@ describe("frase do grupo", () => {
 });
 
 describe("lembrete para o WhatsApp", () => {
-  it("nÃ£o gera lembrete quando ninguÃ©m falta", () => {
+  it("não gera lembrete quando ninguém falta", () => {
     const room = sala({ participants: [comFatia("Ana")] });
     expect(lembreteDeQuemFalta(room)).toBe("");
   });
 
-  it("cita o grupo, o prazo e sÃ³ quem falta", () => {
+  it("cita o grupo, o prazo e só quem falta", () => {
     const room = sala({ participants: [comFatia("Ana"), participante("Bruno")] });
     const texto = lembreteDeQuemFalta(room);
     expect(texto).toContain("Intervalo da firma");
@@ -213,14 +213,14 @@ describe("lembrete para o WhatsApp", () => {
     expect(texto).toContain("💗");
   });
 
-  it("nÃ£o manda link â€” cliente sem internet nÃ£o abre e se constrange", () => {
+  it("não manda link — cliente sem internet não abre e se constrange", () => {
     const room = sala({ participants: [participante("Bruno")] });
     expect(lembreteDeQuemFalta(room)).not.toContain("http");
   });
 });
 
-describe("ritmo de atualizaÃ§Ã£o", () => {
-  it("Ã© lento quando falta muito tempo", () => {
+describe("ritmo de atualização", () => {
+  it("é lento quando falta muito tempo", () => {
     expect(proximaAtualizacaoMs(5 * HORA)).toBe(MINUTO);
   });
 

@@ -1,5 +1,5 @@
-/* Painel do dia da operaÃ§Ã£o.
-   Mobile-first, uma mÃ£o sÃ³. Todas as cores vÃªm de adoce-tokens.css. */
+/* Painel do dia da operação.
+   Mobile-first, uma mão só. Todas as cores vêm de adoce-tokens.css. */
 
 .painel-dia {
   display: grid;
@@ -46,7 +46,7 @@
 
 .pd-atualizar svg { width: 20px; height: 20px; }
 
-/* ---- AÃ§Ãµes: o que precisa de vocÃª agora ---- */
+/* ---- Ações: o que precisa de você agora ---- */
 
 .pd-acoes { display: grid; gap: 12px; }
 
@@ -94,7 +94,7 @@
 
 .pd-acao button svg { width: 18px; height: 18px; }
 
-/* CrÃ­tico ganha contorno, nÃ£o vermelho de alarme: a marca continua sendo a marca. */
+/* Crítico ganha contorno, não vermelho de alarme: a marca continua sendo a marca. */
 .pd-acao-critico {
   border-color: var(--adoce-terra);
   background: color-mix(in srgb, var(--adoce-rosa) 70%, #fff);
@@ -118,7 +118,7 @@
   font-size: 1rem;
 }
 
-/* ---- NÃºmeros ---- */
+/* ---- Números ---- */
 
 .pd-numeros {
   display: grid;
@@ -217,4 +217,3 @@
 @media (min-width: 720px) {
   .pd-frase { font-size: 1.75rem; }
 }
-

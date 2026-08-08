@@ -2,7 +2,7 @@
 //
 // Em 07/08 a Juliana Sousa pediu duas fatias e ninguem respondeu. Em 08/08 a
 // Juliana Vidal reservou e ficou sem saber se estava valendo. Nos dois casos o
-// pedido estava certo no banco â€” o que faltava era o cliente saber em que pe
+// pedido estava certo no banco — o que faltava era o cliente saber em que pe
 // estava.
 //
 // Aqui cada etapa sabe tres coisas: como ela se chama para a operacao, como ela
@@ -62,23 +62,23 @@ export const JORNADA: Record<Etapa, Definicao> = {
     passo: 2,
     operacao: "Reserva confirmada",
     cliente: "Reserva confirmada",
-    resumo: "EstÃ¡ tudo disponÃ­vel e guardado no seu nome.",
-    avancar: "Iniciar separaÃ§Ã£o",
+    resumo: "Está tudo disponível e guardado no seu nome.",
+    avancar: "Iniciar separação",
     proxima: "preparing",
   },
   preparing: {
     passo: 3,
-    operacao: "Em separaÃ§Ã£o",
-    cliente: "Em separaÃ§Ã£o",
-    resumo: "Suas fatias estÃ£o sendo embaladas agora.",
+    operacao: "Em separação",
+    cliente: "Em separação",
+    resumo: "Suas fatias estão sendo embaladas agora.",
     avancar: "Marcar como separado",
     proxima: "awaiting_payment",
   },
   awaiting_payment: {
     passo: 4,
-    operacao: "Separado Â· aguardando pagamento",
+    operacao: "Separado · aguardando pagamento",
     cliente: "Separado",
-    resumo: "EstÃ¡ tudo separado e esperando por vocÃª.",
+    resumo: "Está tudo separado e esperando por você.",
     avancar: "Liberar para retirada",
     proxima: "ready",
   },
@@ -102,7 +102,7 @@ export const JORNADA: Record<Etapa, Definicao> = {
     passo: 6,
     operacao: "Retirado",
     cliente: "Retirado",
-    resumo: "Pedido entregue. Obrigado pela preferÃªncia!",
+    resumo: "Pedido entregue. Obrigado pela preferência!",
   },
   cancelled: {
     passo: null,
@@ -164,21 +164,21 @@ const dinheiro = (valor: number) =>
 function listaDeItens(pedido: Pedido) {
   return pedido.itens.map((item) => {
     const calda = item.calda ? ` com ${item.calda.toLowerCase()}` : ", sem calda";
-    const presente = item.presente ? " ðŸŽ sua fatia-presente" : "";
+    const presente = item.presente ? " 🎁 sua fatia-presente" : "";
     return `${item.quantidade} ${item.quantidade === 1 ? "fatia" : "fatias"} de ${item.sabor}${calda}${presente}`;
   });
 }
 
 function ondeRetirar(pedido: Pedido) {
   if (!pedido.retirada) return "";
-  return `A retirada Ã© a partir das ${pedido.retirada.aPartirDe}, no ${pedido.retirada.local}.`;
+  return `A retirada é a partir das ${pedido.retirada.aPartirDe}, no ${pedido.retirada.local}.`;
 }
 
 /**
  * Mensagem para o cliente ao entrar em cada etapa.
  *
  * Tom da casa: cordial, explica o porque, fecha com coracao. E nunca promete o
- * que ainda nao aconteceu â€” foi por isso que "ja estao separadas" saiu daqui.
+ * que ainda nao aconteceu — foi por isso que "ja estao separadas" saiu daqui.
  */
 export function mensagemParaCliente(pedido: Pedido): string {
   const primeiroNome = pedido.cliente.split(/\s+/)[0];
@@ -188,29 +188,29 @@ export function mensagemParaCliente(pedido: Pedido): string {
   switch (pedido.etapa) {
     case "awaiting_confirmation":
       return [
-        `${primeiroNome}, recebemos seu pedido! ðŸ’—`,
+        `${primeiroNome}, recebemos seu pedido! 💗`,
         "",
         ...itens,
         "",
         `Total: ${total}`,
         "",
-        "Estamos conferindo se temos tudo e jÃ¡ confirmamos com vocÃª.",
+        "Estamos conferindo se temos tudo e já confirmamos com você.",
       ].join("\n");
 
     case "reserved":
       return [
-        `${primeiroNome}, sua reserva estÃ¡ confirmada! ðŸ’—`,
+        `${primeiroNome}, sua reserva está confirmada! 💗`,
         "",
         ...itens,
         "",
         `Total: ${total}`,
         "",
-        `EstÃ¡ tudo guardado no seu nome. ${ondeRetirar(pedido)}`.trim(),
+        `Está tudo guardado no seu nome. ${ondeRetirar(pedido)}`.trim(),
       ].join("\n");
 
     case "preparing":
       return [
-        `${primeiroNome}, comeÃ§amos a separar seu pedido. ðŸ’—`,
+        `${primeiroNome}, começamos a separar seu pedido. 💗`,
         "",
         ...itens,
         "",
@@ -219,19 +219,19 @@ export function mensagemParaCliente(pedido: Pedido): string {
 
     case "awaiting_payment":
       return [
-        `${primeiroNome}, seu pedido estÃ¡ separado! ðŸ’—`,
+        `${primeiroNome}, seu pedido está separado! 💗`,
         "",
         ...itens,
         "",
         `Total: ${total}`,
         "",
-        "Agora sim pode pagar com tranquilidade â€” sÃ³ pedimos o pagamento depois de garantir que estÃ¡ tudo separado para vocÃª.",
+        "Agora sim pode pagar com tranquilidade — só pedimos o pagamento depois de garantir que está tudo separado para você.",
         ondeRetirar(pedido),
       ].filter(Boolean).join("\n");
 
     case "paid":
       return [
-        `${primeiroNome}, recebemos seu pagamento. Obrigado! ðŸ’—`,
+        `${primeiroNome}, recebemos seu pagamento. Obrigado! 💗`,
         "",
         `Total: ${total}`,
         "",
@@ -240,7 +240,7 @@ export function mensagemParaCliente(pedido: Pedido): string {
 
     case "ready":
       return [
-        `${primeiroNome}, seu pedido estÃ¡ pronto para retirar! ðŸ’—`,
+        `${primeiroNome}, seu pedido está pronto para retirar! 💗`,
         "",
         ...itens,
         "",
@@ -249,23 +249,23 @@ export function mensagemParaCliente(pedido: Pedido): string {
 
     case "completed":
       return [
-        `${primeiroNome}, obrigado por hoje! ðŸ’—`,
+        `${primeiroNome}, obrigado por hoje! 💗`,
         "",
-        "Esperamos que vocÃª aproveite cada pedaÃ§o. Qualquer coisa, Ã© sÃ³ chamar.",
+        "Esperamos que você aproveite cada pedaço. Qualquer coisa, é só chamar.",
       ].join("\n");
 
     case "cancelled":
       return [
         `${primeiroNome}, seu pedido foi cancelado.`,
         "",
-        "Se foi engano nosso, nos avise que resolvemos na hora. ðŸ’—",
+        "Se foi engano nosso, nos avise que resolvemos na hora. 💗",
       ].join("\n");
 
     case "expired":
       return [
         `${primeiroNome}, o prazo do seu pedido terminou e ele foi liberado.`,
         "",
-        "Se ainda quiser, Ã© sÃ³ fazer uma nova reserva â€” teremos prazer. ðŸ’—",
+        "Se ainda quiser, é só fazer uma nova reserva — teremos prazer. 💗",
       ].join("\n");
   }
 }
@@ -280,7 +280,7 @@ export function linkDeWhatsApp(pedido: Pedido) {
  * O que a operacao esta devendo a este pedido, se estiver.
  *
  * Serve para o painel do dia destacar pedido parado. Silencio nao e sinal de
- * que esta tudo bem â€” foi isso que custou a Juliana Sousa.
+ * que esta tudo bem — foi isso que custou a Juliana Sousa.
  */
 export function pendencia(pedido: Pedido, agoraMs: number, criadoEmMs: number) {
   if (encerrado(pedido.etapa)) return null;
@@ -288,15 +288,14 @@ export function pendencia(pedido: Pedido, agoraMs: number, criadoEmMs: number) {
   if (pedido.etapa === "awaiting_confirmation" && minutos >= 15) {
     return {
       gravidade: "critico" as const,
-      texto: `Sem resposta hÃ¡ ${minutos >= 60 ? `${Math.floor(minutos / 60)}h` : `${minutos} min`}.`,
+      texto: `Sem resposta há ${minutos >= 60 ? `${Math.floor(minutos / 60)}h` : `${minutos} min`}.`,
     };
   }
   if (pedido.etapa === "awaiting_payment" && minutos >= 24 * 60) {
     return {
       gravidade: "atencao" as const,
-      texto: "Separado hÃ¡ mais de um dia, aguardando pagamento.",
+      texto: "Separado há mais de um dia, aguardando pagamento.",
     };
   }
   return null;
 }
-

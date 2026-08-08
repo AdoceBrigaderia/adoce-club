@@ -4,7 +4,7 @@
 // quanto tempo ainda tem, e quem ainda nao escolheu.
 //
 // A segunda parte e a que importa. Hoje o organizador cobra todo mundo no zap,
-// se cansa e desiste â€” e a venda morre ai. Se a tela diz "faltam o Bruno e a
+// se cansa e desiste — e a venda morre ai. Se a tela diz "faltam o Bruno e a
 // Carla", ele cobra duas pessoas em vez de onze.
 //
 // O botao copia um lembrete pronto para o WhatsApp, sem link: quem nao tem
@@ -79,4 +79,3 @@ export default function PedeJuntoPrazo({ room }: { room: PedeJuntoRoom }) {
     </section>
   );
 }
-
