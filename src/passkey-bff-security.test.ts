@@ -9,6 +9,10 @@ const finish = readFileSync(
   new URL("../netlify/functions/auth-bff-passkey-finish.ts", import.meta.url),
   "utf8",
 );
+const management = readFileSync(
+  new URL("../netlify/functions/auth-bff-passkeys.ts", import.meta.url),
+  "utf8",
+);
 const client = readFileSync(
   new URL("./services/bff-passkeys.ts", import.meta.url),
   "utf8",
@@ -27,9 +31,18 @@ describe("passkeys protegidas pelo BFF", () => {
   it("exige sessão e CSRF para cadastrar nova chave", () => {
     expect(start).toContain('action === "registration"');
     expect(start).toContain("validCsrf(request)");
-    expect(start).toContain("ACCESS_COOKIE");
+    expect(start).toContain("sessionTokens(request)");
+    expect(start).toContain("client.auth.setSession");
     expect(finish).toContain("validCsrf(request)");
-    expect(finish).toContain("ACCESS_COOKIE");
+    expect(finish).toContain("sessionTokens(request)");
+    expect(finish).toContain("client.auth.setSession");
+  });
+
+  it("recusa uma sessão incompleta antes de listar ou alterar passkeys", () => {
+    expect(management).toContain("sessionTokens(request)");
+    expect(management).toContain("client.auth.setSession");
+    expect(management).toContain("!sessionTokensForRequest");
+    expect(management).toContain("Sessão obrigatória.");
   });
 
   it("valida perfil e acesso operacional antes dos cookies", () => {
