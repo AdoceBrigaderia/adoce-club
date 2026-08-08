@@ -3,6 +3,7 @@ import { Check, Clock3, Droplets, Gift, Heart, MessageCircle, PackageCheck, Plus
 import { requireSupabase } from "./lib/supabase";
 import { openOperationWhatsApp, operationWhatsAppUrl } from "./operation-whatsapp";
 import OperationManualSale from "./OperationManualSale";
+import PedidoNaEsteira from "./PedidoNaEsteira";
 import "./operation-instant-orders.css";
 import "./operation-instant-orders-enhancements.css";
 import "./operation-print.css";
@@ -446,6 +447,9 @@ export default function OperationInstantOrders() {
           <button type="button" onClick={() => void setRewardItem()} disabled={busy || !rewardFlavorId}><Gift /> {selected.instant_order_items.some((item) => item.is_reward) ? "Atualizar fatia premiada" : "Incluir fatia premiada"}</button>
         </section> : null}
         <div className="instant-order-operation-items">{selected.instant_order_items.map((item) => <span key={item.id} className={item.is_reward ? "reward-item" : ""}><b>{item.quantity}×</b><span>{item.flavor_name}{item.is_reward ? <small><Gift /> Fatia premiada do Clube Adoce</small> : null}{item.instant_order_item_sauces?.length ? <small>{item.instant_order_item_sauces.slice().sort((a, b) => a.unit_number - b.unit_number).map((choice) => `Fatia ${choice.unit_number}: ${choice.sauce_name}`).join(" · ")}</small> : null}</span><strong>{item.is_reward && Number(item.unit_price) === 0 ? "GRÁTIS" : money(item.quantity * Number(item.unit_price))}</strong></span>)}</div>
+        {["awaiting_confirmation", "reserved", "preparing", "awaiting_payment", "ready", "completed"].includes(selected.status) ? (
+          <PedidoNaEsteira criadoEm={selected.created_at} pedido={{ numero: selected.order_number, cliente: selected.customer_name, telefone: selected.customer_phone, etapa: selected.status as any, itens: selected.instant_order_items.map((item) => ({ sabor: item.flavor_name, quantidade: item.quantity, calda: item.instant_order_item_sauces?.[0]?.sauce_name || null, presente: item.is_reward })), total: Number(selected.total), retirada: selected.pickup_label ? { local: selected.pickup_label, aPartirDe: selected.pickup_address } : null, pago: selected.payment_status === "paid" }} onAvancar={(next) => void update(next as InstantOrderStatus)} />
+        ) : null}
         <div className="instant-order-operation-total"><span>Total</span><strong>{money(selected.total)}</strong></div>
         {selected.payment_method_label ? <p><strong>Pagamento:</strong> {selected.payment_method_label}</p> : null}
         {selected.status === "expired" ? <section className="expired-recovery-box">
