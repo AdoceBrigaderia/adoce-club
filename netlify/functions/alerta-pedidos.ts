@@ -1,4 +1,4 @@
-// Alarme de pedidos da Adoce â€” entrega por Web Push.
+// Alarme de pedidos da Adoce — entrega por Web Push.
 //
 // Em 07/08/2026 a cliente Juliana Sousa pediu duas fatias pelo site as 12h40 e
 // ninguem soube. Ela ligou as 18h, chateada, e os dois sabores ja haviam
@@ -114,7 +114,7 @@ export default async function handler() {
 
       const corpo = JSON.stringify({
         title: alerta.title,
-        body: alerta.message || "Abra a OperaÃ§Ã£o Adoce para conferir.",
+        body: alerta.message || "Abra a Operação Adoce para conferir.",
         url: alerta.action_url || "#operacao",
         tag: `adoce-${alerta.event_type}`,
         urgent: alerta.priority === "urgent",

@@ -1,12 +1,12 @@
-// Rede de seguranca dos avisos da Adoce â€” entrega por Telegram.
+// Rede de seguranca dos avisos da Adoce — entrega por Telegram.
 //
 // O Web Push (alerta-pedidos.ts) e o canal oficial. Este aqui existe porque um
 // aviso perdido custou uma cliente: em 07/08/2026 a Juliana pediu duas fatias
 // as 12h40, ninguem soube, e as 18h os dois sabores tinham acabado.
 //
 // Dois canais independentes, lendo filas diferentes: se um falhar, o outro
-// avisa. Este le outbox_events, que guarda o pedido inteiro â€” sabores, caldas,
-// total â€” e por isso a mensagem daqui e mais completa que a do push.
+// avisa. Este le outbox_events, que guarda o pedido inteiro — sabores, caldas,
+// total — e por isso a mensagem daqui e mais completa que a do push.
 //
 // Nada disto chega ao cliente. E so para o Rubens e a Beth.
 //
@@ -98,21 +98,21 @@ async function textoDePedido(evento: Evento) {
   const linhas = (itens || []).map((i) => {
     const caldas = (i.instant_order_item_sauces || [])
       .map((s) => s.sauce_name || "sem calda");
-    const calda = caldas.length ? ` Â· ${[...new Set(caldas)].join(", ")}` : "";
-    return `â€¢ ${i.quantity}Ã— ${i.flavor_name}${calda}${i.is_reward ? " ðŸŽ presente" : ""}`;
+    const calda = caldas.length ? ` · ${[...new Set(caldas)].join(", ")}` : "";
+    return `• ${i.quantity}× ${i.flavor_name}${calda}${i.is_reward ? " 🎁 presente" : ""}`;
   });
 
   const telefone = String(p.customer_phone || "").replace(/\D/g, "");
 
   return [
-    `ðŸ° <b>Pedido novo</b> â€” ${numero}`,
+    `🍰 <b>Pedido novo</b> — ${numero}`,
     ``,
     `<b>${p.customer_name}</b>`,
     linhas.join("\n"),
     ``,
     `Total: <b>${dinheiro(p.total)}</b>`,
-    p.customer_notes ? `ObservaÃ§Ã£o: <i>${p.customer_notes}</i>` : "",
-    `Feito Ã s ${horaFortaleza(p.created_at)}`,
+    p.customer_notes ? `Observação: <i>${p.customer_notes}</i>` : "",
+    `Feito às ${horaFortaleza(p.created_at)}`,
     ``,
     `<a href="https://wa.me/${telefone}">Responder no WhatsApp</a>`,
   ].filter(Boolean).join("\n");
@@ -132,7 +132,7 @@ async function textoDeSolicitacao(evento: Evento) {
   const telefone = String(s.customer_phone || "").replace(/\D/g, "");
 
   return [
-    `ðŸ“‹ <b>OrÃ§amento novo</b> â€” ${s.request_number}`,
+    `📋 <b>Orçamento novo</b> — ${s.request_number}`,
     ``,
     `<b>${s.customer_name}</b>`,
     `${s.quantity} unidade(s)`,
@@ -140,7 +140,7 @@ async function textoDeSolicitacao(evento: Evento) {
     ``,
     `Para: ${horaFortaleza(String(s.desired_start))}`,
     s.service_location ? `Local: ${s.service_location}` : "",
-    s.customer_notes ? `ObservaÃ§Ã£o: <i>${s.customer_notes}</i>` : "",
+    s.customer_notes ? `Observação: <i>${s.customer_notes}</i>` : "",
     ``,
     `<a href="https://wa.me/${telefone}">Responder no WhatsApp</a>`,
   ].filter(Boolean).join("\n");
