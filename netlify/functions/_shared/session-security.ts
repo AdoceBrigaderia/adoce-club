@@ -49,6 +49,13 @@ export function parseCookies(request: Request) {
   return result;
 }
 
+export function sessionTokens(request: Request) {
+  const cookies = parseCookies(request);
+  const accessToken = cookies.get(ACCESS_COOKIE) || "";
+  const refreshToken = cookies.get(REFRESH_COOKIE) || "";
+  return accessToken && refreshToken ? { accessToken, refreshToken } : null;
+}
+
 function cookie(
   name: string,
   value: string,

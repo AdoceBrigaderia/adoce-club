@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import {
-  ACCESS_COOKIE,
   allowedOrigin,
-  parseCookies,
   secureJson,
+  sessionTokens,
   sessionCookies,
   validCsrf,
   type AuthSurface,
@@ -68,18 +67,23 @@ export default async (request: Request) => {
   if (action === "registration") {
     if (!validCsrf(request))
       return secureJson({ error: "Validação CSRF inválida." }, 403);
-    const accessToken = parseCookies(request).get(ACCESS_COOKIE) || "";
-    if (!accessToken)
+    const sessionTokensForRequest = sessionTokens(request);
+    if (!sessionTokensForRequest)
       return secureJson({ error: "Entre antes de cadastrar uma chave de acesso." }, 401);
 
     const client = createClient(supabaseUrl, publishableKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
       auth: {
         persistSession: false,
         autoRefreshToken: false,
         experimental: { passkey: true },
       },
     });
+    const { data: sessionData, error: sessionError } = await client.auth.setSession({
+      access_token: sessionTokensForRequest.accessToken,
+      refresh_token: sessionTokensForRequest.refreshToken,
+    });
+    if (sessionError || !sessionData.session)
+      return secureJson({ error: "Entre antes de cadastrar uma chave de acesso." }, 401);
     const result = await passkeyApi(client).verifyRegistration({
       challengeId,
       credential: body.credential,

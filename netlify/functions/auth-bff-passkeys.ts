@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import {
-  ACCESS_COOKIE,
   allowedOrigin,
-  parseCookies,
   secureJson,
+  sessionTokens,
   validCsrf,
 } from "./_shared/session-security";
 
@@ -44,8 +43,8 @@ export default async (request: Request) => {
   if (!['GET', 'POST'].includes(request.method))
     return secureJson({ error: "Método não permitido." }, 405);
 
-  const accessToken = parseCookies(request).get(ACCESS_COOKIE) || "";
-  if (!accessToken)
+  const sessionTokensForRequest = sessionTokens(request);
+  if (!sessionTokensForRequest)
     return secureJson({ error: "Sessão obrigatória." }, 401);
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
@@ -55,13 +54,18 @@ export default async (request: Request) => {
     return secureJson({ error: "Chaves de acesso indisponíveis neste ambiente." }, 503);
 
   const client = createClient(supabaseUrl, publishableKey, {
-    global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       experimental: { passkey: true },
     },
   });
+  const { data: sessionData, error: sessionError } = await client.auth.setSession({
+    access_token: sessionTokensForRequest.accessToken,
+    refresh_token: sessionTokensForRequest.refreshToken,
+  });
+  if (sessionError || !sessionData.session)
+    return secureJson({ error: "Sessão obrigatória." }, 401);
 
   if (request.method === "GET") {
     const result = await api(client).list();
