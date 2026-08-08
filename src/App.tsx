@@ -19,14 +19,6 @@ const CustomerRegistrationPage = lazy(() =>
 );
 const PasskeyClientGateway = lazy(() => import("./PasskeyClientGateway"));
 const PasskeyOperationGateway = lazy(() => import("./PasskeyOperationGateway"));
-const HomologationClientAccountPreview = lazy(() =>
-  import("./HomologationClientAccountPreview"),
-);
-const HomologationOperationPreview = lazy(() =>
-  import("./HomologationOperationPreview"),
-);
-const SocialCampaign = lazy(() => import("./SocialCampaign"));
-const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
 
 const loading = (
   <main className="access-loading">
@@ -70,6 +62,7 @@ export function titleForRoute(hash: string) {
 
 export default function App() {
   const [, refreshRoute] = useState(0);
+  const host = location.hostname.toLowerCase();
 
   useEffect(() => installPublicAnalytics(), []);
   useEffect(() => {
@@ -82,50 +75,6 @@ export default function App() {
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
-
-  const host = location.hostname.toLowerCase();
-  const visualValidationMode =
-    import.meta.env.VITE_ADOCE_VALIDATION_MODE === "visual";
-
-  if (location.hash.startsWith("#campanha-story"))
-    return (
-      <Suspense fallback={loading}>
-        <SocialCampaign format="story" />
-      </Suspense>
-    );
-  if (location.hash.startsWith("#campanha-feed"))
-    return (
-      <Suspense fallback={loading}>
-        <SocialCampaign format="feed" />
-      </Suspense>
-    );
-  if (location.hash.startsWith("#lancamento-story"))
-    return (
-      <Suspense fallback={loading}>
-        <LaunchCampaign format="story" />
-      </Suspense>
-    );
-  if (location.hash.startsWith("#lancamento-facebook"))
-    return (
-      <Suspense fallback={loading}>
-        <LaunchCampaign format="facebook" />
-      </Suspense>
-    );
-  if (location.hash.startsWith("#lancamento-carrossel-"))
-    return (
-      <Suspense fallback={loading}>
-        <LaunchCampaign
-          format="carousel"
-          slide={Number(location.hash.split("-").at(-1)) || 1}
-        />
-      </Suspense>
-    );
-  if (location.hash.startsWith("#lancamento-feed"))
-    return (
-      <Suspense fallback={loading}>
-        <LaunchCampaign format="feed" />
-      </Suspense>
-    );
 
   if (location.hash.startsWith("#check-in"))
     return (
@@ -151,31 +100,6 @@ export default function App() {
     return (
       <Suspense fallback={loading}>
         <AdoceClube />
-      </Suspense>
-    );
-
-  if (
-    visualValidationMode &&
-    (host.startsWith("operacao.") || location.hash.startsWith("#operacao"))
-  )
-    return (
-      <Suspense fallback={loading}>
-        <HomologationOperationPreview />
-      </Suspense>
-    );
-
-  if (
-    visualValidationMode &&
-    (host.startsWith("clube.") ||
-      location.hash.startsWith("#clube") ||
-      location.hash.startsWith("#entrar") ||
-      location.hash.startsWith("#minha-conta") ||
-      location.hash.startsWith("#acesso-direto") ||
-      location.hash.startsWith("#cartao/"))
-  )
-    return (
-      <Suspense fallback={loading}>
-        <HomologationClientAccountPreview />
       </Suspense>
     );
 

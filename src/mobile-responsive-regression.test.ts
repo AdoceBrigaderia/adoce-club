@@ -5,7 +5,6 @@ const main = readFileSync("src/main.tsx", "utf8");
 const fixes = readFileSync("src/mobile-responsive-fixes.css", "utf8");
 const pageFixes = readFileSync("src/mobile-page-layout-fixes.css", "utf8");
 const landing = readFileSync("src/MarketingLanding.tsx", "utf8");
-const navigator = readFileSync("src/HomologationVisualNavigator.tsx", "utf8");
 
 describe("responsividade móvel do Portal Adoce", () => {
   it("carrega as correções depois dos estilos antigos", () => {
@@ -40,13 +39,6 @@ describe("responsividade móvel do Portal Adoce", () => {
     expect(fixes).toContain(".home-proof-strip");
   });
 
-  it("compacta o aviso sem esconder o cabeçalho público", () => {
-    expect(pageFixes).toContain(".homologation-validation-banner span");
-    expect(pageFixes).toContain("display: none");
-    expect(pageFixes).toContain("body:has(.homologation-validation-banner)");
-    expect(pageFixes).toContain("top: 34px");
-  });
-
   it("empilha cadastro clube encomendas e pede junto", () => {
     expect(pageFixes).toContain(".join-form-wrap");
     expect(pageFixes).toContain(".wallet-card");
@@ -55,17 +47,6 @@ describe("responsividade móvel do Portal Adoce", () => {
     expect(pageFixes).toContain(".group-order-hero");
     expect(pageFixes).toContain(".cake-order-hero");
     expect(pageFixes).toContain("max-width: 100vw");
-  });
-
-  it("transforma o roteiro aberto em uma folha móvel rolável", () => {
-    expect(navigator).toContain("homologation-visual-navigator");
-    expect(navigator).toContain("homologation-visual-route-note");
-    expect(fixes).toContain(".homologation-visual-navigator.is-open");
-    expect(fixes).toContain("100dvh");
-    expect(fixes).toContain("overflow-x: hidden");
-    expect(fixes).toContain("overflow-y: auto");
-    expect(pageFixes).toContain("overflow-wrap: anywhere");
-    expect(pageFixes).toContain("white-space: pre-wrap");
   });
 
   it("respeita áreas seguras de iOS e continua touch-first", () => {

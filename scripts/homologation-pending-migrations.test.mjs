@@ -41,14 +41,14 @@ test("rejeita baseline alinhada que declara uma migration pendente", async () =>
 
 test("rejeita migration posterior que não esteja explicitamente no plano", async () => {
   const { plan, files, remoteNames } = await loadFixture();
-  const report = inspectPendingMigrationPlan(plan, [...files, "20260808000000_nao_planejada.sql"], remoteNames);
+  const report = inspectPendingMigrationPlan(plan, [...files, "20260809000000_nao_planejada.sql"], remoteNames);
   assert.equal(report.structural_passed, false);
-  assert.deepEqual(report.unexpected_pending_files, ["20260808000000_nao_planejada.sql"]);
+  assert.deepEqual(report.unexpected_pending_files, ["20260809000000_nao_planejada.sql"]);
 });
 
 test("ignora drift local quando o nome já está representado no snapshot remoto", async () => {
   const { plan, files, remoteNames } = await loadFixture();
-  const report = inspectPendingMigrationPlan(plan, [...files, "20260808000000_privacy_anonymization_preserve_member_code.sql"], remoteNames);
+  const report = inspectPendingMigrationPlan(plan, [...files, "20260809000000_privacy_anonymization_preserve_member_code.sql"], remoteNames);
   assert.equal(report.structural_passed, true, report.errors.join("\n"));
   assert.deepEqual(report.unexpected_pending_files, []);
 });
@@ -58,10 +58,10 @@ test("exige dry-run se uma baseline de aplicação declara pendências", async (
   const readyPlan = {
     ...plan,
     baseline_status: "pending_apply",
-    pending_migrations: [{ version: "20260808000000", name: "teste", stage: "test" }],
+    pending_migrations: [{ version: "20260809000000", name: "teste", stage: "test" }],
     dry_run: { ...plan.dry_run, status: "passed" },
   };
-  const report = inspectPendingMigrationPlan(readyPlan, ["20260808000000_teste.sql"], remoteNames);
+  const report = inspectPendingMigrationPlan(readyPlan, ["20260809000000_teste.sql"], remoteNames);
   assert.equal(report.structural_passed, true, report.errors.join("\n"));
   assert.equal(report.ready_for_apply, true);
   assert.deepEqual(report.apply_blockers, []);

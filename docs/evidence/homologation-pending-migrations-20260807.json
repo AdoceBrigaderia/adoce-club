@@ -6,12 +6,12 @@
   "project_id": "vazozolhbehnriytzcdc",
   "production_project_id": "uefwywizqhfvvijaopcn",
   "production_forbidden": true,
-  "captured_at": "2026-08-07T17:25:44.117Z",
-  "source": "Supabase list_migrations ao vivo em 2026-08-07",
+  "captured_at": "2026-08-08T18:00:00.000Z",
+  "source": "Supabase list_migrations ao vivo em 2026-08-08",
   "baseline_status": "aligned",
   "remote_last_applied": {
-    "version": "20260807114331",
-    "name": "release_production_all_channels"
+    "version": "20260808175956",
+    "name": "sync_inventory_rollover_audit"
   },
   "backup": {
     "required": true,
@@ -46,7 +46,7 @@
   "dry_run": {
     "required": false,
     "status": "not_required",
-    "reason": "Nenhuma migration pendente no inventário vivo de 2026-08-07."
+    "reason": "Nenhuma migration pendente no inventário vivo de 2026-08-08."
   },
   "application_workflow": {
     "trigger": "workflow_dispatch",

@@ -616,6 +616,34 @@
     {
       "version": "20260807114331",
       "name": "release_production_all_channels"
+    },
+    {
+      "version": "20260808175734",
+      "name": "harden_anon_privileges"
+    },
+    {
+      "version": "20260808175737",
+      "name": "lock_legacy_instant_order_submits"
+    },
+    {
+      "version": "20260808175740",
+      "name": "synchronize_instant_order_reservations"
+    },
+    {
+      "version": "20260808175743",
+      "name": "inventory_day_rollover_policy"
+    },
+    {
+      "version": "20260808175746",
+      "name": "disable_inventory_rollover_cron"
+    },
+    {
+      "version": "20260808175749",
+      "name": "sanitize_analytics_tokens"
+    },
+    {
+      "version": "20260808175956",
+      "name": "sync_inventory_rollover_audit"
     }
   ]
 }
