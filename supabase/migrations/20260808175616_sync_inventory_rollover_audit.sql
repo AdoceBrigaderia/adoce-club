@@ -1,3 +1,5 @@
+-- This follow-up is required because the preceding capture migration was already
+-- applied to homologation before the audit-event side effect was reconciled.
 create or replace function private.carry_forward_flavor_inventory(target_date date default ((now() at time zone 'America/Fortaleza')::date))
 returns integer language plpgsql security definer set search_path to '' as $$
 declare copied_rows integer:=0; fortaleza_today date:=(now() at time zone 'America/Fortaleza')::date;
