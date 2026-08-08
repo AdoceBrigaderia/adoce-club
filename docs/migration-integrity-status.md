@@ -1,10 +1,10 @@
 # Integridade e reconciliação das migrations de homologação
 
-Atualização de 07/08/2026. Esta evidência acompanha a branch `homologacao-adoce` e o Supabase de homologação `vazozolhbehnriytzcdc`. Produção não participa desta auditoria.
+Atualização de 08/08/2026. Esta evidência acompanha a branch `homologacao-adoce` e o Supabase de homologação `vazozolhbehnriytzcdc`. Produção não participa desta auditoria.
 
 ## Resultado atual
 
-A consulta ao histórico vivo da homologação confirmou 152 migrations aplicadas. O inventário local possui os mesmos 152 arquivos, com versões e nomes idênticos. Não há migration pendente, drift de versão, nome duplicado ou arquivo sem correspondência.
+A consulta ao histórico vivo da homologação confirmou 159 migrations aplicadas. O inventário local possui os mesmos 159 arquivos, com versões e nomes idênticos. Não há migration pendente, drift de versão, nome duplicado ou arquivo sem correspondência.
 
 O snapshot gerado diretamente da consulta ao vivo está em:
 

@@ -60,9 +60,9 @@ test("mantém artefatos fora do Git e documenta o estado local e remoto", async 
   assert.match(ignore, /artifacts\/migration-integrity\.md/);
   assert.match(ignore, /artifacts\/migration-reconciliation\.json/);
   assert.match(ignore, /artifacts\/migration-reconciliation\.md/);
-  assert.match(status, /152 migrations/);
-  assert.match(status, /07\/08\/2026/);
+  assert.match(status, /159 migrations/);
+  assert.match(status, /08\/08\/2026/);
   assert.equal(snapshot.environment, "homologation");
   assert.equal(snapshot.project_id, "vazozolhbehnriytzcdc");
-  assert.equal(snapshot.migrations.length, 152);
+  assert.equal(snapshot.migrations.length, 159);
 });

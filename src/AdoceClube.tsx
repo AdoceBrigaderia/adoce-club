@@ -10,9 +10,8 @@
 // primeira vez.
 
 import { useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { CakeSlice, Gift, Heart } from "lucide-react";
-import { requireSupabase, supabase as configurado } from "./lib/supabase";
+import { loadConnectedClubSummary } from "./ConnectedClubSummary";
 import "./adoce-clube.css";
 
 const TOTAL_CLUBE = 14;
@@ -94,34 +93,15 @@ export default function AdoceClube() {
   const [carregando, setCarregando] = useState(true);
 
   useEffect(() => {
-    if (!configurado) { setCarregando(false); return; }
-    const supabase = requireSupabase();
-    void supabase.auth.getSession().then(async ({ data }) => {
-      const sessao: Session | null = data.session;
-      if (!sessao) { setCarregando(false); return; }
-
-      const [{ data: perfil }, { data: vinculos }] = await Promise.all([
-        supabase.from("profiles").select("full_name,member_code").eq("id", sessao.user.id).maybeSingle(),
-        supabase.from("account_memberships").select("account_id,is_primary").eq("profile_id", sessao.user.id).eq("active", true),
-      ]);
-      const contaId = vinculos?.find((v) => v.is_primary)?.account_id || vinculos?.[0]?.account_id;
-      if (!contaId) { setCarregando(false); return; }
-
-      const { data: trilhas } = await supabase
-        .from("loyalty_tracks").select("kind,current_progress").eq("account_id", contaId);
-
-      const principal = trilhas?.find((t) => t.kind === "main")?.current_progress || 0;
-      const indicacao = trilhas?.find((t) => t.kind === "referral")?.current_progress || 0;
-
-      setEstado({
-        primeiroNome: (perfil?.full_name || "").split(/\s+/)[0] || "",
-        codigo: perfil?.member_code || "",
-        clube: principal % TOTAL_CLUBE,
-        presentes: Math.floor(principal / TOTAL_CLUBE),
-        indicacoes: indicacao % TOTAL_INDICACAO,
+    void loadConnectedClubSummary().then((resumo) => {
+      if (resumo) setEstado({
+        primeiroNome: resumo.firstName,
+        codigo: resumo.memberCode,
+        clube: resumo.progress % TOTAL_CLUBE,
+        presentes: resumo.completedCycles,
+        indicacoes: resumo.referralProgress % TOTAL_INDICACAO,
       });
-      setCarregando(false);
-    }).catch(() => setCarregando(false));
+    }).catch(() => undefined).finally(() => setCarregando(false));
   }, []);
 
   if (carregando) {

@@ -5,10 +5,6 @@ import AppErrorBoundary from "./AppErrorBoundary";
 import { installBrowserBootstrap } from "./browser-bootstrap";
 import { installCustomerCheckInReturn } from "./customer-checkin-return";
 import { installCustomerNameNormalization } from "./customer-name-normalization";
-import HomologationValidationBanner, {
-  isVisualValidationMode,
-} from "./HomologationValidationBanner";
-import HomologationVisualNavigator from "./HomologationVisualNavigator";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import {
@@ -17,16 +13,12 @@ import {
   shouldRecoverPreloadError,
 } from "./runtime-recovery";
 import "./customer-name-normalization.css";
-import "./homologation-validation.css";
 import "./styles.css";
 import "./theme.css";
 import "./mobile-responsive-fixes.css";
 import "./mobile-page-layout-fixes.css";
 import "./adoce-tokens.css";
 
-const visualValidationMode = isVisualValidationMode(
-  import.meta.env.VITE_ADOCE_VALIDATION_MODE,
-);
 const removeBrowserBootstrap = installBrowserBootstrap();
 const removeCustomerCheckInReturn = installCustomerCheckInReturn();
 const removeCustomerNameNormalization = installCustomerNameNormalization();
@@ -49,16 +41,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AppErrorBoundary>
       <SiteVisualOverrides>
-        <HomologationValidationBanner />
         <App />
-        <HomologationVisualNavigator />
         <PublicContactDock />
       </SiteVisualOverrides>
     </AppErrorBoundary>
   </React.StrictMode>,
 );
 
-if (!visualValidationMode && "serviceWorker" in navigator) {
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", () =>
     void navigator.serviceWorker.register("/sw.js"),
   );

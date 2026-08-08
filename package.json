@@ -43,9 +43,7 @@
     "release:check": "node scripts/release-check.mjs",
     "release:preview": "npm run report:migration-integrity && npm run report:migration-reconciliation && npm run report:homologation-pending-migrations && npm run report:homologation-preflight && npm run gate:homologation-environment && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --alias=homologacao-adoce --skip-functions-cache",
     "release:prod": "node scripts/production-approval-gate.mjs && npm run audit:migrations && npm run audit:migration-reconciliation && npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --skip-functions-cache",
-    "prebuild": "node scripts/expose-homologation-migration-bundle.mjs && node scripts/atomize-homologation-migration-bundle.mjs && npm run generate:pwa-icons && npm run docs:build",
-    "launch:build": "node scripts/generate-launch-page-v3.mjs",
-    "launch:verify": "node scripts/verify-launch-v3.cjs"
+    "prebuild": "node scripts/expose-homologation-migration-bundle.mjs && node scripts/atomize-homologation-migration-bundle.mjs && npm run generate:pwa-icons && npm run docs:build"
   },
   "dependencies": {
     "@napi-rs/canvas": "latest",
