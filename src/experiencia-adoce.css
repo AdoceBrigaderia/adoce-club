@@ -1,0 +1,228 @@
+/* Festas, Adoce na Escola e Decoração.
+   Mesma linguagem do resto do site. Cores só de adoce-tokens.css. */
+
+.experiencia {
+  padding: 0 0 56px;
+  color: var(--adoce-marrom);
+  background: color-mix(in srgb, var(--adoce-rosa) 16%, #fff);
+}
+
+.experiencia h2 {
+  margin: 0 0 14px;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+/* ---- Capa ---- */
+
+.exp-capa {
+  position: relative;
+  min-height: 260px;
+  display: flex;
+  align-items: flex-end;
+  background: var(--adoce-marrom);
+  overflow: hidden;
+}
+
+.exp-capa-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.62;
+}
+
+.exp-capa-texto {
+  position: relative;
+  padding: 24px 20px 26px;
+  max-width: 620px;
+  margin: 0 auto;
+  width: 100%;
+  color: #fff;
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.5);
+}
+
+.exp-legenda {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-dourado) 92%, #fff);
+}
+
+.exp-capa h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.18;
+  font-weight: 400;
+}
+
+/* ---- Blocos ---- */
+
+.exp-intro,
+.exp-passos,
+.exp-opcoes,
+.exp-fotos,
+.exp-conversa {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 26px 20px 0;
+}
+
+.exp-intro p {
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+/* ---- Como funciona ---- */
+
+.exp-passos ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.exp-passos li { display: flex; gap: 14px; }
+
+.exp-numero {
+  flex: 0 0 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--adoce-terra);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9375rem;
+}
+
+.exp-passos h3 { margin: 4px 0 4px; font-size: 1rem; }
+
+.exp-passos li p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--adoce-marrom) 74%, transparent);
+}
+
+.exp-prazo {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--adoce-dourado) 26%, #fff);
+  font-size: 0.9375rem;
+}
+
+/* ---- Opções ---- */
+
+.exp-opcoes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+
+.exp-opcoes li {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.exp-opcao-texto { min-width: 0; flex: 1 1 200px; }
+.exp-opcoes h3 { margin: 0 0 4px; font-size: 1.0625rem; }
+
+.exp-opcoes p {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent);
+}
+
+.exp-preco {
+  margin-top: 8px !important;
+  font-size: 1.0625rem !important;
+  font-weight: 700;
+  color: var(--adoce-terra) !important;
+}
+
+.exp-prazo-item {
+  font-size: 0.75rem !important;
+  color: color-mix(in srgb, var(--adoce-marrom) 56%, transparent) !important;
+}
+
+/* ---- Fotos empilhadas, sem carrossel ---- */
+
+.exp-galeria { display: grid; gap: 10px; }
+
+.exp-galeria img {
+  width: 100%;
+  border-radius: 16px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  display: block;
+}
+
+/* ---- Conversa ---- */
+
+.exp-conversa {
+  margin-top: 26px;
+  padding-bottom: 26px;
+}
+
+.exp-conversa > p { margin: 0 0 10px; font-size: 0.9375rem; }
+
+.exp-conversa ul {
+  margin: 0 0 18px;
+  padding-left: 20px;
+  display: grid;
+  gap: 5px;
+  font-size: 0.9375rem;
+}
+
+.exp-falar,
+.exp-principal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  padding: 0 20px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.exp-falar {
+  flex: 0 0 auto;
+  border: 1px solid var(--adoce-terra);
+  color: var(--adoce-terra);
+  font-size: 0.9375rem;
+}
+
+.exp-principal {
+  width: 100%;
+  min-height: 54px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font-size: 1rem;
+}
+
+.exp-falar svg, .exp-principal svg { width: 18px; height: 18px; }
+
+.exp-nota {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+@media (min-width: 720px) {
+  .exp-capa { min-height: 340px; }
+  .exp-capa h1 { font-size: 2.25rem; }
+  .exp-galeria { grid-template-columns: 1fr 1fr; }
+}

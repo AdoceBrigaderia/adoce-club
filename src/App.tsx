@@ -1,10 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import MarketingLanding from "./MarketingLanding";
 import { installPublicAnalytics } from "./analytics";
+import { segmentoDaRota } from "./catalogo-de-encomendas";
 
 const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
 const CakeOrderExperience = lazy(() => import("./CakeOrderExperience"));
 const ConfigurableProductCatalogPage = lazy(() => import("./ConfigurableProductCatalogPage"));
+const CatalogoDeEncomendas = lazy(() => import("./CatalogoDeEncomendas"));
 const AdoceHome = lazy(() => import("./AdoceHome"));
 const AdoceClube = lazy(() => import("./AdoceClube"));
 const AdoceEntrar = lazy(() => import("./AdoceEntrar"));
@@ -130,13 +132,13 @@ export default function App() {
   if (location.hash.startsWith("#encomendas"))
     return (
       <Suspense fallback={loading}>
-        <CakeOrderExperience />
+        <CatalogoDeEncomendas segmentoInicial={segmentoDaRota(location.hash) || "cakes"} />
       </Suspense>
     );
   if (location.hash.startsWith("#docinhos"))
     return (
       <Suspense fallback={loading}>
-        <ConfigurableProductCatalogPage segment="sweets" />
+        <CatalogoDeEncomendas segmentoInicial="sweets" />
       </Suspense>
     );
   if (location.hash.startsWith("#biscoitos"))
@@ -148,19 +150,25 @@ export default function App() {
   if (location.hash.startsWith("#eventos"))
     return (
       <Suspense fallback={loading}>
-        <CommercialCatalog initialSegment="events" />
+        <CatalogoDeEncomendas segmentoInicial="events" />
       </Suspense>
     );
   if (location.hash.startsWith("#adoce-na-escola"))
     return (
       <Suspense fallback={loading}>
-        <ConfigurableProductCatalogPage segment="school" />
+        <CatalogoDeEncomendas segmentoInicial="school" />
       </Suspense>
     );
   if (location.hash.startsWith("#aluguel-decoracao"))
     return (
       <Suspense fallback={loading}>
-        <CommercialCatalog initialSegment="rentals" />
+        <CatalogoDeEncomendas segmentoInicial="rentals" />
+      </Suspense>
+    );
+  if (location.hash.startsWith("#montador-antigo"))
+    return (
+      <Suspense fallback={loading}>
+        <CakeOrderExperience />
       </Suspense>
     );
   if (

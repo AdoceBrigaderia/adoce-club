@@ -1,0 +1,172 @@
+/* Acompanhar o pedido — a tela de quem espera.
+   Cores só de adoce-tokens.css. */
+
+.acompanha {
+  display: grid;
+  gap: 18px;
+  padding: 20px 16px 48px;
+  max-width: 520px;
+  margin: 0 auto;
+  color: var(--adoce-marrom);
+}
+
+.ac-topo { display: grid; gap: 6px; }
+
+.ac-numero {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+}
+
+.ac-topo h1 { margin: 0; font-size: 1.625rem; line-height: 1.2; font-weight: 400; }
+
+.ac-agora {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--adoce-marrom) 78%, transparent);
+}
+
+/* ---- Linha do tempo ---- */
+
+.ac-linha {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  display: flex;
+  gap: 4px;
+}
+
+.ac-passo { flex: 1 1 0; display: grid; justify-items: center; gap: 6px; text-align: center; }
+
+.ac-bolinha {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--adoce-marrom) 18%, transparent);
+  background: #fff;
+}
+
+.ac-bolinha svg { width: 13px; height: 13px; }
+
+.ac-passo-nome {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+}
+
+.ac-feito .ac-bolinha { border-color: var(--adoce-terra); background: var(--adoce-terra); color: #fff; }
+
+.ac-agora .ac-bolinha,
+.ac-passo.ac-agora .ac-bolinha {
+  border-color: var(--adoce-terra);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--adoce-rosa) 65%, transparent);
+}
+
+.ac-passo.ac-agora .ac-passo-nome { color: var(--adoce-terra); font-weight: 700; }
+
+.ac-seguir {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-rosa) 40%, #fff);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+/* ---- Pagamento: só depois de separado ---- */
+
+.ac-pagamento {
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--adoce-terra);
+  background: color-mix(in srgb, var(--adoce-dourado) 24%, #fff);
+}
+
+.ac-pagamento p { margin: 0; font-size: 0.9375rem; line-height: 1.5; }
+
+/* ---- Itens ---- */
+
+.ac-itens {
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.ac-itens h2 {
+  margin: 0 0 12px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+.ac-itens ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.ac-itens li { display: flex; align-items: baseline; gap: 10px; font-size: 0.9375rem; }
+
+.ac-qtd { font-weight: 700; color: var(--adoce-terra); }
+.ac-sabor { flex: 1 1 auto; display: grid; }
+.ac-sabor small { font-size: 0.8125rem; color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent); }
+
+.ac-presente {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--adoce-terra);
+}
+
+.ac-presente svg { width: 14px; height: 14px; }
+
+.ac-total {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--adoce-terra) 14%, transparent);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+/* ---- Retirada ---- */
+
+.ac-retirada {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.ac-retirada > svg { width: 22px; height: 22px; color: var(--adoce-terra); flex: 0 0 auto; }
+.ac-retirada p { margin: 0; }
+.ac-local { font-size: 1rem; font-weight: 600; }
+.ac-hora { font-size: 0.875rem; color: color-mix(in srgb, var(--adoce-marrom) 70%, transparent); }
+.ac-contagem { margin-top: 4px !important; font-size: 0.875rem; color: var(--adoce-terra); font-weight: 600; }
+
+/* ---- Falar ---- */
+
+.ac-falar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  border: 1px solid var(--adoce-terra);
+  border-radius: 999px;
+  color: var(--adoce-terra);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ac-falar svg { width: 18px; height: 18px; }
+
+.ac-nota {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}

@@ -1,0 +1,126 @@
+/* Cadastro no balcão. Dois campos, alvos grandes, nada mais.
+   Cores só de adoce-tokens.css. */
+
+.cadastro {
+  display: grid;
+  gap: 14px;
+  padding: 16px 16px 40px;
+  max-width: 480px;
+  margin: 0 auto;
+  color: var(--adoce-marrom);
+}
+
+.cad-voltar {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--adoce-toque);
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--adoce-terra);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cad-voltar svg { width: 18px; height: 18px; }
+
+.cad-titulo { margin: 0; font-size: 1.5rem; }
+
+/* A frase que a Adoce fala em voz alta antes de anotar. */
+.cad-fala {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-dourado) 26%, #fff);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.cad-campo { display: grid; gap: 6px; }
+
+.cad-campo > span {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent);
+}
+
+.cad-campo input {
+  min-height: 58px;
+  padding: 0 16px;
+  border: 2px solid color-mix(in srgb, var(--adoce-terra) 35%, transparent);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--adoce-marrom);
+  font: inherit;
+  font-size: 1.125rem;
+}
+
+.cad-campo input:focus {
+  outline: none;
+  border-color: var(--adoce-terra);
+}
+
+.cad-campo input[aria-invalid="true"] { border-color: var(--adoce-terra); }
+
+.cad-campo small {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--adoce-terra);
+}
+
+.cad-repetido {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--adoce-terra);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--adoce-rosa) 45%, #fff);
+}
+
+.cad-repetido p { margin: 0; font-size: 0.9375rem; }
+
+.cad-repetido button {
+  justify-self: start;
+  min-height: var(--adoce-toque);
+  padding: 0 18px;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-marrom);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cad-erro { margin: 0; font-size: 0.9375rem; color: var(--adoce-terra); font-weight: 600; }
+
+.cad-salvar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 58px;
+  margin-top: 4px;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cad-salvar:disabled { opacity: 0.55; cursor: default; }
+.cad-salvar svg { width: 20px; height: 20px; }
+
+.cad-nota {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
