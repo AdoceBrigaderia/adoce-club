@@ -1,0 +1,1229 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Check,
+  Bell,
+  CalendarDays,
+  Clock3,
+  Heart,
+  House,
+  MapPin,
+  MessageCircle,
+  Images,
+  Megaphone,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  X,
+} from "lucide-react";
+import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
+import GroupOrderArtwork from "./GroupOrderArtwork";
+import { serviceStatusMessage } from "./service-status";
+import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
+import { trackPublicEvent } from "./analytics";
+import InstantOrderPanel from "./InstantOrderPanel";
+import { pickupWindowsForDay } from "./pickup-window";
+import PublicCatalogNav from "./PublicCatalogNav";
+import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
+import SliceAvailabilityAlert from "./SliceAvailabilityAlert";
+import {
+  formatBatchAvailability,
+  totalBatchFree,
+  type AvailabilityBatch,
+} from "./availability-batches";
+import "./adoce-hoje.css";
+import "./adoce-hoje-content.css";
+import "./today-promotions.css";
+import "./today-availability-compact.css";
+
+type Availability = "all" | "available" | "traditional" | "premium" | "fruited" | "other";
+type Flavor = {
+  id: string;
+  name: string;
+  note: string;
+  price: number;
+  image: string;
+  available: boolean;
+  premium: boolean;
+  status?: string;
+  illustrative?: boolean;
+  availabilityNote?: string;
+  quantityAvailable?: number | null;
+  quantityReserved?: number;
+  availabilityBatches?: AvailabilityBatch[];
+  photos?: FlavorPhoto[];
+  wholeCakePrice?: number;
+  wholeCakeImage?: string;
+  wholeCakeAvailable?: boolean;
+};
+type FlavorPhoto = {
+  id: string;
+  flavor_id: string;
+  image_path: string;
+  alt_text: string;
+  image_role: "cover" | "gallery";
+  sort_order: number;
+};
+type Promotion = {
+  id: string;
+  title: string;
+  body: string;
+  starts_at: string;
+  ends_at: string | null;
+};
+type Channel = {
+  slug: string;
+  label: string;
+  status: "open" | "closed" | "opening_soon" | "paused";
+  message: string | null;
+  next_change_at: string | null;
+};
+
+export function sortFlavorsByAvailability<T extends { available: boolean; name: string }>(items: T[]) {
+  return [...items].sort(
+    (a, b) =>
+      Number(b.available) - Number(a.available) ||
+      a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+  );
+}
+
+export type ServiceKind = "pickup" | "stall";
+type ServiceWindow = {
+  kind: ServiceKind;
+  start: number;
+  end: number;
+  label: string;
+};
+export type BusinessHour = {
+  channel_slug: string;
+  weekday: number;
+  opens_at: string;
+  closes_at: string;
+  active: boolean;
+  note: string | null;
+};
+export type BusinessHourException = {
+  channel_slug: string;
+  service_date: string;
+  closed: boolean;
+  opens_at: string | null;
+  closes_at: string | null;
+  message: string | null;
+};
+
+const weeklyServiceWindows: Record<number, ServiceWindow[]> = {
+  0: [],
+  1: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 22,
+      label: "Retirada na Adoce, das 9h às 22h.",
+    },
+  ],
+  2: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 22,
+      label: "Retirada na Adoce, das 9h às 22h.",
+    },
+  ],
+  3: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 22,
+      label: "Retirada na Adoce, das 9h às 22h.",
+    },
+  ],
+  4: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 18,
+      label: "Retirada na Adoce, das 9h às 18h.",
+    },
+    {
+      kind: "stall",
+      start: 19.5,
+      end: 23,
+      label: "Cantinho da Adoce, das 19h30 às 23h.",
+    },
+  ],
+  5: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 18,
+      label: "Retirada na Adoce, das 9h às 18h.",
+    },
+    {
+      kind: "stall",
+      start: 19.5,
+      end: 23,
+      label: "Cantinho da Adoce, das 19h30 às 23h.",
+    },
+  ],
+  6: [
+    {
+      kind: "pickup",
+      start: 9,
+      end: 16,
+      label: "Retirada na Adoce, das 9h às 16h.",
+    },
+    {
+      kind: "stall",
+      start: 17,
+      end: 23,
+      label: "Cantinho da Adoce, das 17h às 23h.",
+    },
+  ],
+};
+
+function getFortalezaNow() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Fortaleza",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value || "0";
+  const weekdays: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return {
+    weekday: weekdays[value("weekday")] ?? 0,
+    hour: Number(value("hour")) + Number(value("minute")) / 60,
+    date: new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Fortaleza",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date()),
+  };
+}
+
+function timeNumber(value: string | null) {
+  if (!value) return 0;
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours + minutes / 60;
+}
+
+function clockLabel(value: number) {
+  const hours = Math.floor(value);
+  const minutes = Math.round((value - hours) * 60);
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function dateAfter(date: string, days: number) {
+  const result = new Date(`${date}T12:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result.toISOString().slice(0, 10);
+}
+
+function scrollToTodaySection(id: "sabores" | "atendimento") {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+export function serviceState(
+  kind: ServiceKind,
+  hours: BusinessHour[],
+  exceptions: BusinessHourException[],
+  currentTime = getFortalezaNow(),
+) {
+  const now = currentTime;
+  const slug = kind === "stall" ? "in_person" : "online_orders";
+  const exception = exceptions.find(
+    (item) => item.channel_slug === slug && item.service_date === now.date,
+  );
+  const databaseWindows: ServiceWindow[] = hours
+    .filter(
+      (item) =>
+        item.active &&
+        item.weekday === now.weekday &&
+        item.channel_slug === slug,
+    )
+    .map((item) => ({
+      kind,
+      start: timeNumber(item.opens_at),
+      end: timeNumber(item.closes_at),
+      label:
+        item.note ||
+        `${kind === "stall" ? "Cantinho da Adoce" : "Retirada na Adoce"}, das ${item.opens_at.slice(0, 5)} às ${item.closes_at.slice(0, 5)}.`,
+    }));
+  const fallbackWindows = weeklyServiceWindows[now.weekday].filter(
+    (window) => window.kind === kind,
+  );
+  const hasChannelSchedule = hours.some(
+    (item) => item.active && item.channel_slug === slug,
+  );
+  const today = exception
+    ? exception.closed
+      ? []
+      : [
+          {
+            kind,
+            start: timeNumber(exception.opens_at),
+            end: timeNumber(exception.closes_at),
+            label:
+              exception.message ||
+              `Funcionamento especial das ${exception.opens_at?.slice(0, 5)} às ${exception.closes_at?.slice(0, 5)}.`,
+          },
+        ]
+    : hasChannelSchedule
+      ? databaseWindows
+      : fallbackWindows;
+  const active = today.find(
+    (window) => now.hour >= window.start && now.hour < window.end,
+  );
+  const firstWindow = today[0];
+  const lastWindow = today[today.length - 1];
+  const beforeOpening = Boolean(firstWindow && now.hour < firstWindow.start);
+  const finishedToday = Boolean(lastWindow && now.hour >= lastWindow.end);
+  const subject = kind === "stall" ? "O Cantinho da Adoce" : "A retirada";
+  const timingMessage = beforeOpening
+    ? `${subject} abre hoje às ${clockLabel(firstWindow.start)} e funciona até ${clockLabel(lastWindow.end)}.`
+    : finishedToday
+      ? `${subject} encerrou o atendimento de hoje às ${clockLabel(lastWindow.end)}.`
+      : today.map((window) => window.label).join(" ");
+  return {
+    open: Boolean(active),
+    phase: active
+      ? ("open" as const)
+      : beforeOpening
+        ? ("before_opening" as const)
+        : finishedToday
+          ? ("finished_today" as const)
+          : ("unavailable" as const),
+    message:
+      active?.label ||
+      (exception?.closed
+        ? exception.message || "Fechado excepcionalmente hoje."
+        : "") ||
+      timingMessage ||
+      (kind === "stall"
+        ? "O Cantinho da Adoce não funciona hoje."
+        : "Não há retirada programada hoje."),
+  };
+}
+
+export function serviceHeadline(
+  kind: ServiceKind,
+  state: ReturnType<typeof serviceState>,
+) {
+  if (state.open) {
+    return kind === "stall" ? "Cantinho da Adoce aberto agora" : "Retirada aberta agora";
+  }
+  if (state.phase === "before_opening") {
+    return kind === "stall" ? "O Cantinho da Adoce abre mais tarde" : "A retirada abre mais tarde";
+  }
+  if (state.phase === "finished_today") {
+    return kind === "stall" ? "Cantinho da Adoce encerrado hoje" : "Retirada encerrada hoje";
+  }
+  return kind === "stall" ? "Cantinho da Adoce fechado hoje" : "Sem retirada neste momento";
+}
+
+const fallback: Flavor[] = [
+  {
+    id: "kinder",
+    name: "Kinder Bueno",
+    note: "Chocolate cremoso com Kinder Bueno.",
+    price: 20,
+    image: "/adoce-hoje/kinder-bueno.webp",
+    available: false,
+    premium: true,
+  },
+  {
+    id: "ninho",
+    name: "Chocolate trufado com brigadeiro de Ninho e pedaços de morango",
+    note: "Chocolate trufado, Ninho e morangos.",
+    price: 16,
+    image: "/adoce-hoje/trufado-ninho-morango.webp",
+    available: true,
+    premium: false,
+  },
+  {
+    id: "choco-morango",
+    name: "Chocolatudo trufado com morangos",
+    note: "Chocolate super molhadinho, toque trufado e morangos.",
+    price: 16,
+    image: "/adoce-hoje/chocolatudo-trufado-morangos.webp",
+    available: true,
+    premium: false,
+  },
+  {
+    id: "castanha",
+    name: "Brigadeiro de chocolate com castanha de caju",
+    note: "Brigadeiro cremoso com a crocância da castanha de caju.",
+    price: 16,
+    image: "/adoce-hoje/brigadeiro-castanha.webp",
+    available: true,
+    premium: false,
+  },
+  {
+    id: "red",
+    name: "Red Velvet com Ninho e Nutella",
+    note: "Red Velvet, Ninho e Nutella.",
+    price: 16,
+    image: "/adoce-hoje/red-velvet.webp",
+    available: false,
+    premium: false,
+  },
+  {
+    id: "choco",
+    name: "Chocolatudo",
+    note: "Chocolate intenso e muito recheio.",
+    price: 16,
+    image: "/adoce-hoje/chocolatudo.webp",
+    available: true,
+    premium: false,
+  },
+  {
+    id: "ferrero",
+    name: "Ferrero Rocher",
+    note: "Chocolate, creme e crocância.",
+    price: 16,
+    image: "/adoce-hoje/ferrero-rocher.webp",
+    available: true,
+    premium: false,
+  },
+  {
+    id: "oreo",
+    name: "Oreo",
+    note: "Chocolate, creme e Oreo.",
+    price: 16,
+    image: "/adoce-hoje/oreo.webp",
+    available: true,
+    premium: false,
+  },
+  {
+    id: "limao",
+    name: "Limão com frutas vermelhas",
+    note: "Cítrica, cremosa e frutada.",
+    price: 16,
+    image: "/adoce-hoje/limao-frutas-vermelhas.webp",
+    available: false,
+    premium: false,
+  },
+  {
+    id: "abacaxi",
+    name: "Abacaxi com coco",
+    note: "Tropical, cremosa e molhadinha.",
+    price: 16,
+    image: "/adoce-hoje/abacaxi-coco.webp",
+    available: true,
+    premium: false,
+  },
+];
+
+const whatsappBase = "https://wa.me/5585982156026?text=";
+const maps =
+  "https://www.google.com/maps/search/?api=1&query=Festival%20de%20Fatias%20Adoce%20Brigaderia";
+const orderLink = (flavor?: string) =>
+  whatsappBase +
+  encodeURIComponent(
+    flavor
+      ? `Olá, Adoce! Quero saber se a fatia ${flavor} está disponível.`
+      : "Olá, Adoce! Quero conhecer os sabores disponíveis hoje.",
+  );
+
+function Brand() {
+  return (
+    <a className="today-brand" href="/">
+      <img src="/site/logo.webp" alt="Adoce Brigaderia" />
+      <span>
+        <strong>Adoce Brigaderia</strong>
+        <small>Festival de Fatias</small>
+      </span>
+    </a>
+  );
+}
+
+export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?: boolean }) {
+  const [filter, setFilter] = useState<Availability>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [flavors, setFlavors] = useState<Flavor[]>(
+    fallback.map((flavor) => ({ ...flavor, available: false })),
+  );
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
+  const [hourExceptions, setHourExceptions] = useState<BusinessHourException[]>(
+    [],
+  );
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const openSchedule = () => {
+    trackPublicEvent("schedule_open", { source: "adoce_hoje" });
+    setScheduleOpen(true);
+  };
+  const [selectedFlavor, setSelectedFlavor] = useState<Flavor | null>(null);
+  const [viewedImage, setViewedImage] = useState<ProductImage | null>(null);
+  const [alertFlavor, setAlertFlavor] = useState<Flavor | null>(null);
+  const [instantOrderOpen, setInstantOrderOpen] = useState(false);
+  const cartAutoOpened = useRef(false);
+  const [initialOrderFlavorId, setInitialOrderFlavorId] = useState<string | null>(null);
+  const [updated, setUpdated] = useState(false);
+  useEffect(() => {
+    document.title = "Fatias · Adoce";
+  }, []);
+  const dateLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Fortaleza",
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      }).format(new Date()),
+    [],
+  );
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    void (async () => {
+      const supabase = requireSupabase();
+      const today = getFortalezaNow().date;
+      const scheduleEnd = dateAfter(today, 6);
+      const now = new Date().toISOString();
+      const [
+        { data: catalog, error: catalogError },
+        { data: availability },
+        { data: availabilityBatchData },
+        { data: channelData },
+        { data: hoursData },
+        { data: exceptionData },
+        { data: imageData },
+        { data: promotionData },
+        { data: weeklyMenuData },
+      ] = await Promise.all([
+        supabase
+          .from("flavors")
+          .select(
+            "id,name,category,short_description,description,image_path,base_price,whole_cake_price,whole_cake_image_path,whole_cake_available",
+          )
+          .eq("active", true)
+          .order("name"),
+        supabase
+          .from("flavor_availability")
+          .select("flavor_id,status,note,quantity_available,quantity_reserved")
+          .eq("service_date", today),
+        supabase.rpc("get_public_flavor_availability_batches", {
+          target_service_date: today,
+        }),
+        supabase
+          .from("store_channels")
+          .select("slug,label,status,message,next_change_at")
+          .order("slug"),
+        supabase
+          .from("business_hours")
+          .select("channel_slug,weekday,opens_at,closes_at,active,note")
+          .eq("active", true),
+        supabase
+          .from("business_hour_exceptions")
+          .select("channel_slug,service_date,closed,opens_at,closes_at,message")
+          .gte("service_date", today)
+          .lte("service_date", scheduleEnd),
+        supabase
+          .from("flavor_images")
+          .select("id,flavor_id,image_path,alt_text,image_role,sort_order")
+          .eq("active", true)
+          .order("sort_order"),
+        supabase
+          .from("promotions")
+          .select("id,title,body,starts_at,ends_at")
+          .eq("active", true)
+          .lte("starts_at", now)
+          .or(`ends_at.is.null,ends_at.gte.${now}`)
+          .order("starts_at", { ascending: false }),
+        supabase
+          .from("weekly_service_menu")
+          .select(
+            "id,service_date,channel_slug,flavor_id,quantity_planned,quantity_reserved,status,note",
+          )
+          .gte("service_date", today)
+          .lte("service_date", scheduleEnd)
+          .neq("status", "hidden")
+          .order("service_date"),
+      ]);
+      if (catalog?.length) {
+        const photos = (imageData || []) as FlavorPhoto[];
+        setFlavors(
+          catalog.map((item) => {
+            const status = availability?.find((a) => a.flavor_id === item.id);
+            const itemBatches = ((availabilityBatchData || []) as AvailabilityBatch[])
+              .filter((batch) => batch.flavor_id === item.id);
+            return {
+              id: item.id,
+              name: item.name,
+              note:
+                item.short_description ||
+                item.description ||
+                "Feita com carinho em cada camada.",
+              price: Number(item.base_price || 0),
+              image: item.image_path || "/adoce-hoje/sabores-hoje.webp",
+              available: Boolean(
+                status &&
+                ["available", "last_units", "preorder_only"].includes(
+                  status.status,
+                ),
+              ),
+              premium: item.category === "premium",
+              status: status?.status,
+              illustrative: Boolean(item.image_path?.includes("ilustrativa")),
+              availabilityNote: status?.note || undefined,
+              quantityAvailable: status?.quantity_available,
+              quantityReserved: status?.quantity_reserved || 0,
+              availabilityBatches: itemBatches,
+              photos: photos.filter((photo) => photo.flavor_id === item.id),
+              wholeCakePrice: item.whole_cake_price
+                ? Number(item.whole_cake_price)
+                : undefined,
+              wholeCakeImage: item.whole_cake_image_path || undefined,
+              wholeCakeAvailable: Boolean(item.whole_cake_available),
+            };
+          }),
+        );
+      }
+      if (channelData) setChannels(channelData as Channel[]);
+      if (hoursData) setBusinessHours(hoursData as BusinessHour[]);
+      if (exceptionData)
+        setHourExceptions(exceptionData as BusinessHourException[]);
+      if (promotionData) setPromotions(promotionData as Promotion[]);
+      if (weeklyMenuData) setWeeklyMenu(weeklyMenuData as WeeklyMenuItem[]);
+      setUpdated(!catalogError);
+    })();
+  }, []);
+  const visible = useMemo(
+    () =>
+      sortFlavorsByAvailability(flavors.filter((flavor) => {
+        const normalizedName = flavor.name.toLocaleLowerCase("pt-BR");
+        const matchesSearch = normalizedName.includes(searchQuery.trim().toLocaleLowerCase("pt-BR"));
+        const fruited = /(morango|uva|lim[aã]o|abacaxi|coco|maracuj[aá]|fruta)/i.test(flavor.name);
+        const matchesFilter = filter === "all"
+          || (filter === "available" && flavor.available)
+          || (filter === "traditional" && !flavor.premium)
+          || (filter === "premium" && flavor.premium)
+          || (filter === "fruited" && fruited)
+          || (filter === "other" && !fruited && !flavor.premium);
+        return matchesSearch && matchesFilter;
+      })),
+    [flavors, filter, searchQuery],
+  );
+  const wholeCakes = useMemo(() => {
+    const configured = flavors
+      .filter(
+        (flavor) =>
+          flavor.wholeCakeAvailable &&
+          flavor.wholeCakeImage &&
+          flavor.wholeCakePrice,
+      )
+      .map((flavor) => ({
+        name: flavor.name,
+        image: flavor.wholeCakeImage!,
+        price: flavor.wholeCakePrice!,
+      }));
+    configured.sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+      );
+    return configured;
+  }, [flavors]);
+  const inPerson = channels.find((c) => c.slug === "in_person");
+  const online = channels.find((c) => c.slug === "online_orders");
+  const stallState = serviceState("stall", businessHours, hourExceptions);
+  const pickupState = serviceState("pickup", businessHours, hourExceptions);
+  const stallPaused = inPerson?.status === "paused";
+  const open = stallPaused ? false : stallState.open;
+  const availableCount = flavors.filter((f) => f.available).length;
+  const stallHeadline = stallPaused
+    ? "Cantinho da Adoce pausado agora"
+    : serviceHeadline("stall", stallState);
+  const stallMessage = serviceStatusMessage({
+    open,
+    paused: inPerson?.status === "paused",
+    channelMessage: inPerson?.message,
+    scheduleMessage: stallState.message,
+    pausedMessage: "Atendimento presencial pausado no momento.",
+  });
+  const pickupPaused = online?.status === "paused";
+  const pickupOpen = pickupPaused ? false : pickupState.open;
+  const pickupHeadline = pickupPaused
+    ? "Retiradas pausadas agora"
+    : serviceHeadline("pickup", pickupState);
+  const pickupMessage = serviceStatusMessage({
+    open: pickupOpen,
+    paused: online?.status === "paused",
+    channelMessage: online?.message,
+    scheduleMessage: pickupState.message,
+    pausedMessage: "Retiradas pausadas no momento.",
+  });
+  const anyServiceOpen = pickupOpen || open;
+  // A retirada acontece no Cantinho da Adoce, no horario presencial - nao no
+  // horario de reserva online, que fica aberto o dia inteiro.
+  const pickupWindows = pickupWindowsForDay(businessHours, getFortalezaNow().weekday);
+  const instantOrderFlavors = useMemo(() => flavors
+    .filter((flavor) => flavor.available && flavor.price > 0)
+    .map((flavor) => ({
+      id: flavor.id,
+      name: flavor.name,
+      image: flavor.image,
+      price: flavor.price,
+      free: flavor.quantityAvailable === null || flavor.quantityAvailable === undefined
+        ? null
+        : flavor.availabilityBatches?.length
+          ? totalBatchFree(flavor.availabilityBatches)
+          : Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0),
+      batches: flavor.availabilityBatches || [],
+    }))
+    .filter((flavor) => flavor.free === null || flavor.free > 0), [flavors]);
+  const openInstantOrder = (flavorId?: string) => {
+    setInitialOrderFlavorId(flavorId || null);
+    setInstantOrderOpen(true);
+    trackPublicEvent("instant_order_open", { source: flavorId ? "flavor" : "adoce_hoje" });
+  };
+  useEffect(() => {
+    if (!openCartOnLoad || cartAutoOpened.current) return;
+    cartAutoOpened.current = true;
+    const requestedFlavorId = new URLSearchParams(location.hash.split("?")[1] || "").get("flavor");
+    setInitialOrderFlavorId(requestedFlavorId);
+    setInstantOrderOpen(true);
+    trackPublicEvent("instant_order_open", { source: "cart" });
+  }, [openCartOnLoad]);
+  return (
+    <main className="today-page">
+      <section className="today-hero">
+        <div className="today-hero-copy">
+          <div className="today-live">
+            <span /> Informações atualizadas
+          </div>
+          <p className="today-kicker">{dateLabel}</p>
+          <h1>
+            Descubra o que pode <em>adoçar seu dia.</em>
+          </h1>
+          <p className="today-lead">
+            Sabores, disponibilidade e formas de atendimento reunidos para você
+            escolher sua fatia e combinar a retirada com facilidade.
+          </p>
+          <div className="today-hero-actions">
+            {instantOrderFlavors.length ? <button type="button" className="today-primary" onClick={() => openInstantOrder()}>
+              <ShoppingBag /> Montar pedido para retirada
+            </button> : <a className="today-primary" href={orderLink()} target="_blank" rel="noreferrer">
+              <MessageCircle /> Consultar a Adoce
+            </a>}
+            <button
+              type="button"
+              className="today-secondary"
+              onClick={() => scrollToTodaySection("sabores")}
+            >
+              <ShoppingBag /> Ver sabores de hoje
+            </button>
+          </div>
+        </div>
+        <div className="today-service-experience" id="atendimento">
+          <div className="today-live-showcase" aria-label="Sabores disponíveis para retirada">
+            <header>
+              <span><Heart /> Sabores disponíveis hoje</span>
+              <strong>
+                {availableCount
+                  ? availableCount === 1
+                    ? "Tem um sabor esperando por você"
+                    : `Tem ${availableCount} sabores esperando por você`
+                  : "Quer saber o que saiu hoje?"}
+              </strong>
+              <small>
+                {updated
+                  ? anyServiceOpen
+                    ? "Toque no seu favorito e peça pelo WhatsApp."
+                    : "Gostou de algum? Toque no sabor para confirmar e combinar a retirada."
+                  : "Só um instante: estamos preparando as delícias de hoje."}
+              </small>
+              <button className="today-weekly-link" type="button" onClick={openSchedule}>
+                <CalendarDays />
+                <span>
+                  <strong>Sabores da semana</strong>
+                  <small>Veja os próximos sete dias</small>
+                </span>
+              </button>
+            </header>
+            <div className="today-live-flavor-grid">
+              {flavors
+                .filter((flavor) => flavor.available)
+                .slice(0, 4)
+                .map((flavor) => (
+                  <button
+                    type="button"
+                    className="today-live-flavor"
+                    key={flavor.id}
+                    onClick={() => openInstantOrder(flavor.id)}
+                    aria-label={`Adicionar ${flavor.name} ao pedido`}
+                  >
+                    <figure>
+                      <img src={flavor.image} alt={`Fatia ${flavor.name}`} />
+                      <figcaption>{flavor.name}</figcaption>
+                    </figure>
+                  </button>
+                ))}
+            </div>
+            <div className="today-mobile-context">
+              <div className="today-live">
+                <span /> Informações atualizadas
+              </div>
+              <p className="today-lead">
+                Sabores, disponibilidade e formas de atendimento reunidos para você
+                escolher sua fatia e combinar a retirada com facilidade.
+              </p>
+            </div>
+          </div>
+
+          <div className="today-service-grid" aria-label="Canais de atendimento de hoje">
+            <article className={`today-service-card ${pickupOpen ? "is-open" : "is-closed"}`}>
+              <img
+                src="/site/adoce-hoje-retirada-ilustracao.webp"
+                alt="Ilustração de um pedido on-line sendo retirado no endereço da Adoce"
+              />
+              <div className="today-service-card-body">
+                <p className="today-service-kind"><House /> Pedido on-line</p>
+                <h2>Pedidos para retirada</h2>
+                <p className="today-service-description">
+                  Peça pelo WhatsApp e, depois da confirmação, retire no endereço da Adoce. A área de produção não é aberta à visitação.
+                </p>
+                <div className="today-channel-status" role="status">
+                  <span aria-hidden="true" />
+                  <div>
+                    <strong>{pickupHeadline}</strong>
+                    <small>{pickupMessage}</small>
+                  </div>
+                </div>
+                {!pickupOpen ? (
+                  <p className="today-next-step">
+                    Você ainda pode chamar a Adoce e consultar o próximo horário disponível.
+                  </p>
+                ) : null}
+                {pickupOpen && instantOrderFlavors.length ? <button type="button" className="today-service-action" onClick={() => openInstantOrder()}>
+                  <ShoppingBag /> Pedir para retirar
+                </button> : <a href={orderLink()} target="_blank" rel="noreferrer">
+                  <MessageCircle /> Consultar próximo horário
+                </a>}
+              </div>
+            </article>
+
+            <article className={`today-service-card ${open ? "is-open" : "is-closed"}`}>
+              <img
+                src="/site/adoce-hoje-barraquinha-ilustracao.webp"
+                alt="Ilustração do Cantinho da Adoce iluminado e com fatias expostas"
+              />
+              <div className="today-service-card-body">
+                <p className="today-service-kind"><Store /> Atendimento presencial</p>
+                <h2>Cantinho da Adoce</h2>
+                <p className="today-service-description">
+                  O Festival de Fatias presencial acontece somente nos dias e horários informados{" "}
+                  <button className="today-inline-link" type="button" onClick={openSchedule}>
+                    aqui
+                  </button>.
+                </p>
+                <div className="today-channel-status" role="status">
+                  <span aria-hidden="true" />
+                  <div>
+                    <strong>{stallHeadline}</strong>
+                    <small>{stallMessage}</small>
+                  </div>
+                </div>
+                {!open ? (
+                  <p className="today-next-step">
+                    O Cantinho da Adoce está fechado, mas os pedidos para retirada funcionam separadamente.
+                  </p>
+                ) : null}
+                <a
+                  href={open ? maps : orderLink()}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {open ? <MapPin /> : <MessageCircle />}
+                  {open ? "Como chegar ao Cantinho da Adoce" : "Consultar retirada"}
+                </a>
+              </div>
+            </article>
+          </div>
+
+        </div>
+      </section>
+      <section className="today-group-order" aria-labelledby="pede-junto-adoce">
+        <GroupOrderArtwork />
+        <div>
+          <p className="today-kicker">Pede Junto Adoce</p>
+          <h2 id="pede-junto-adoce">
+            Cada um escolhe e paga a sua. Com 5, a entrega é grátis.
+          </h2>
+          <p>
+            No trabalho, condomínio, faculdade ou clínica: compartilhe a sala,
+            chegue a cinco fatias e continue adicionando quantas quiser.
+          </p>
+          <ul>
+            <li>
+              <Check /> Sabores identificados no pacote
+            </li>
+            <li>
+              <Check /> Cada pessoa recebe o próprio link de pagamento
+            </li>
+            <li>
+              <Check /> Entrega por motorista de aplicativo
+            </li>
+          </ul>
+          <a
+            className="today-primary"
+            href="/#pede-junto"
+          >
+            <MessageCircle /> Abrir meu Pede Junto
+          </a>
+        </div>
+      </section>
+      {promotions.length > 0 && (
+        <section
+          className="today-active-promotions"
+          aria-labelledby="promocoes-ativas"
+        >
+          <div className="today-section-head">
+            <div>
+              <p className="today-kicker">Novidades Adoce</p>
+              <h2 id="promocoes-ativas">Promoções em destaque</h2>
+            </div>
+            <p>
+              Informações atualizadas pela Adoce e válidas somente durante o
+              período indicado.
+            </p>
+          </div>
+          <div className="today-promotion-grid">
+            {promotions.map((promotion) => (
+              <article key={promotion.id}>
+                <Megaphone />
+                <div>
+                  <h3>{promotion.title}</h3>
+                  <p>{promotion.body}</p>
+                </div>
+                <a href={orderLink()} target="_blank" rel="noreferrer">
+                  Consultar
+                </a>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+      <section className="today-flavors" id="sabores">
+        <PublicCatalogNav active="slices" />
+        <div className="today-catalog-intro">
+          <p className="today-kicker">Catálogo Adoce</p>
+          <h1>Fatias</h1>
+          <a className="today-menu-link" href="/#cardapio-fatias"><CalendarDays /> Ver cardápio semanal</a>
+        </div>
+        <div className="today-category-filters" aria-label="Categorias do cardápio">
+          <button className={filter === "all" || filter === "available" ? "active" : ""} onClick={() => setFilter("all")}>Hoje</button>
+          <button className={filter === "traditional" ? "active" : ""} onClick={() => setFilter("traditional")}>Tradicionais</button>
+          <button className={filter === "premium" ? "active" : ""} onClick={() => setFilter("premium")}>Premium</button>
+        </div>
+        <label className="today-search"><Search /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar sabor..." /></label>
+        <div className="today-card-grid">
+          {visible.map((flavor) => (
+            <article
+              className={`today-flavor-card ${flavor.available ? "" : "unavailable"}`}
+              key={flavor.id}
+            >
+              <button
+                className={`today-favorite ${favoriteIds.has(flavor.id) ? "active" : ""}`}
+                type="button"
+                aria-label={`${favoriteIds.has(flavor.id) ? "Remover" : "Adicionar"} ${flavor.name} dos favoritos`}
+                onClick={() => setFavoriteIds((current) => {
+                  const next = new Set(current);
+                  if (next.has(flavor.id)) next.delete(flavor.id); else next.add(flavor.id);
+                  return next;
+                })}
+              ><Heart /></button>
+              {!flavor.available ? <button className="today-unavailable-prompt" type="button" onClick={() => setAlertFlavor(flavor)}>
+                <strong>Indisponível no momento</strong><span>Quer receber um aviso quando voltar?</span>
+              </button> : null}
+              <button className="today-card-image product-image-trigger" type="button" onClick={() => setViewedImage({ src: flavor.image, alt: `Fatia ${flavor.name}` })} aria-label={`Ampliar foto de ${flavor.name}`}>
+                <img
+                  src={flavor.image}
+                  alt={`Fatia ${flavor.name}`}
+                  loading="lazy"
+                />
+                {flavor.available ? <span
+                  className={`today-availability-seal ${flavor.status === "preorder_only" ? "upcoming" : "available compact"}`}
+                  aria-label={flavor.availabilityBatches?.length ? formatBatchAvailability(flavor.availabilityBatches).join(". ") : flavor.status === "preorder_only" ? "Disponível hoje às 19h30" : "Disponível hoje"}
+                  title={flavor.availabilityBatches?.length ? formatBatchAvailability(flavor.availabilityBatches).join(". ") : flavor.status === "preorder_only" ? "Disponível hoje às 19h30" : "Disponível hoje"}
+                >
+                  <Heart />{flavor.status === "preorder_only" ? <strong>Hoje às 19h30</strong> : null}
+                </span> : null}
+                {flavor.premium && (
+                  <span className="today-premium">
+                    <Sparkles /> Premium
+                  </span>
+                )}
+                {flavor.illustrative && (
+                  <span className="today-illustrative">Imagem ilustrativa</span>
+                )}
+                {(flavor.photos?.length || 0) > 1 && <span className="today-gallery-button"><Images /> Ver fotos</span>}
+              </button>
+              <div className="today-card-body">
+                <div>
+                  <div className="today-card-status">
+                    {flavor.available ? (
+                      <>
+                        <span className="now" />{" "}
+                        {flavor.status === "preorder_only"
+                          ? "Festival de hoje à noite"
+                          : flavor.status === "last_units"
+                            ? "Últimas unidades"
+                            : "Disponível hoje"}
+                      </>
+                    ) : (
+                      <>
+                        <Clock3 /> Consulte antes de pedir
+                      </>
+                    )}
+                  </div>
+                  {flavor.available && flavor.availabilityBatches?.length ? (
+                    <div className="today-batch-availability" aria-label="Disponibilidade por horário">
+                      {formatBatchAvailability(flavor.availabilityBatches).map((line) => (
+                        <small key={line}><Clock3 /> {line}</small>
+                      ))}
+                    </div>
+                  ) : flavor.available && flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
+                    <div className="today-stock-count">
+                      {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} fatia(s) disponível(is) agora
+                    </div>
+                  ) : null}
+                  <h3>{flavor.name}</h3>
+                  <p>{flavor.note}</p>
+                  <strong className="today-card-price">{flavor.price ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}` : "Consulte"}</strong>
+                </div>
+              </div>
+              {flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
+                <button className="today-order-flavor" type="button" onClick={() => openInstantOrder(flavor.id)}>
+                  <ShoppingBag /> <span>Adicionar ao pedido</span>
+                </button>
+              ) : (
+                <button className="today-order-flavor today-alert-flavor" type="button" onClick={() => setAlertFlavor(flavor)}>
+                  <Bell /> <span>Avise quando voltar</span>
+                </button>
+              )}
+              {(flavor.photos?.length || 0) > 1 && (
+                <button
+                  className="today-gallery-link"
+                  type="button"
+                  onClick={() => setSelectedFlavor(flavor)}
+                >
+                  Conhecer o produto
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+      {wholeCakes.length > 0 && (
+      <section className="today-cakes" id="tortas-inteiras">
+        <div className="today-section-head">
+          <div>
+            <p className="today-kicker">Para celebrar por inteiro</p>
+            <h2>Tortas inteiras por encomenda</h2>
+          </div>
+          <p>
+            Veja as fotos dos produtos e o valor cadastrado para o tamanho G.
+            Outros tamanhos ficam sob consulta.
+          </p>
+        </div>
+        <div className="today-cake-rail">
+          {wholeCakes.map((cake) => (
+            <article key={cake.name}>
+              <button className="product-image-trigger" type="button" onClick={() => setViewedImage({ src: cake.image, alt: `Torta ${cake.name}` })} aria-label={`Ampliar foto da torta ${cake.name}`}><img src={cake.image} alt={`Torta ${cake.name}`} loading="lazy" /></button>
+              <div>
+                <h3>{cake.name}</h3>
+                <p>Por encomenda · serve até 35 pessoas</p>
+                <strong>
+                  {cake.price.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+                </strong>
+              </div>
+              <a
+                href={orderLink(`Torta inteira ${cake.name}`)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Consultar esta torta
+              </a>
+            </article>
+          ))}
+        </div>
+      </section>
+      )}
+      <section className="today-orders-bridge">
+        <ShoppingBag />
+        <div>
+          <p className="today-kicker">Celebrações e produtos</p>
+          <h2>Procurando tortas, docinhos ou uma experiência para seu evento?</h2>
+        </div>
+        <a className="today-primary" href="/#encomendas">
+          Ver celebrações e produtos
+        </a>
+      </section>
+      <section className="today-policy-callout">
+        <Clock3 />
+        <div>
+          <p className="today-kicker">Antes de encomendar</p>
+          <h2>Nossa produção artesanal segue uma política de pedidos.</h2>
+          <p>Veja quais produtos podem ser encomendados em cada dia da semana.</p>
+        </div>
+        <a className="today-secondary" href="/#politica-de-pedidos">
+          Conferir política de pedidos
+        </a>
+      </section>
+      <section className="today-event" id="localizacao">
+        <div className="today-event-copy">
+          <p className="today-kicker">Atendimento Adoce</p>
+          <h2>
+            {anyServiceOpen
+              ? "Escolha o atendimento que funciona agora."
+              : "Consulte o próximo horário."}
+          </h2>
+          <p>
+             <strong>{stallHeadline}.</strong> {stallMessage}
+          </p>
+          <p>
+             <strong>{pickupHeadline}.</strong> {pickupMessage} O local de produção não é aberto à visitação.
+            Endereço para retirada confirmada: Rua Professor Odílio Filho,
+            227, Passaré.
+          </p>
+          {open ? <a className="today-primary" href={maps} target="_blank" rel="noreferrer">
+            <MapPin /> Como chegar ao Cantinho da Adoce
+          </a> : pickupOpen && instantOrderFlavors.length ? <button type="button" className="today-primary" onClick={() => openInstantOrder()}>
+            <ShoppingBag /> Pedir para retirar
+          </button> : <a className="today-primary" href={orderLink()} target="_blank" rel="noreferrer">
+            <MessageCircle /> Consultar próximo horário
+          </a>}
+        </div>
+        <div className="today-contact">
+          <Heart />
+          <h3>Fale com a gente</h3>
+          <a href={orderLink()} target="_blank" rel="noreferrer">
+            85 98215-6026
+          </a>
+          <a
+            href="https://wa.me/5585981994370"
+            target="_blank"
+            rel="noreferrer"
+          >
+            85 98199-4370
+          </a>
+          <small>
+            Confirme o sabor e a forma de atendimento antes do deslocamento.
+          </small>
+        </div>
+      </section>
+      <footer className="today-footer">
+        <Brand />
+        <p>Aqui na Adoce você compra a fatia e a felicidade vai junto.</p>
+      </footer>
+      <div className="today-mobile-bar">
+        {open ? (
+          <a href={maps} target="_blank" rel="noreferrer">
+            <MapPin /> Chegar
+          </a>
+        ) : (
+          <button type="button" onClick={openSchedule}>
+            <CalendarDays /> Sabores da semana
+          </button>
+        )}
+        {instantOrderFlavors.length ? <button type="button" onClick={() => openInstantOrder()}>
+          <ShoppingBag /> Montar pedido
+        </button> : <a href={orderLink()} target="_blank" rel="noreferrer">
+          <MessageCircle /> Consultar
+        </a>}
+      </div>
+      <InstantOrderPanel
+        open={instantOrderOpen}
+        onClose={() => setInstantOrderOpen(false)}
+        flavors={instantOrderFlavors}
+        initialFlavorId={initialOrderFlavorId}
+        pickupWindows={pickupWindows}
+      />
+      <WeeklyScheduleDialog
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        today={getFortalezaNow().date}
+        hours={businessHours}
+        exceptions={hourExceptions}
+        menuItems={weeklyMenu}
+        flavors={flavors.map((flavor) => ({
+          id: flavor.id,
+          name: flavor.name,
+          image: flavor.image,
+        }))}
+      />
+      <ProductImageViewer
+        image={viewedImage}
+        images={[
+          ...visible.map((flavor) => ({ src: flavor.image, alt: `Fatia ${flavor.name}` })),
+          ...wholeCakes.map((cake) => ({ src: cake.image, alt: `Torta ${cake.name}` })),
+          ...(selectedFlavor?.photos || []).map((photo) => ({ src: photo.image_path, alt: photo.alt_text || selectedFlavor?.name || "Produto Adoce" })),
+        ]}
+        onClose={() => setViewedImage(null)}
+      />
+      {alertFlavor ? <SliceAvailabilityAlert flavorId={alertFlavor.id} flavorName={alertFlavor.name} onClose={() => setAlertFlavor(null)} /> : null}
+      {selectedFlavor && (
+        <div
+          className="today-gallery-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Fotos de ${selectedFlavor.name}`}
+          onClick={() => setSelectedFlavor(null)}
+        >
+          <div onClick={(event) => event.stopPropagation()}>
+            <button
+              className="today-gallery-close"
+              type="button"
+              aria-label="Fechar fotos"
+              onClick={() => setSelectedFlavor(null)}
+            >
+              <X />
+            </button>
+            <p className="today-kicker">Galeria do sabor</p>
+            <h2>{selectedFlavor.name}</h2>
+            <p>{selectedFlavor.note}</p>
+            <p className="today-gallery-price"><strong>{selectedFlavor.price ? `R$ ${selectedFlavor.price.toFixed(2).replace(".", ",")}` : "Consulte o valor"}</strong></p>
+            <div className="today-gallery-photos">
+              {(selectedFlavor.photos || []).map((photo) => (
+                <figure key={photo.id}>
+                  <button className="product-image-trigger" type="button" onClick={() => setViewedImage({ src: photo.image_path, alt: photo.alt_text || selectedFlavor.name })} aria-label={`Ampliar ${photo.alt_text || selectedFlavor.name}`}>
+                    <img src={photo.image_path} alt={photo.alt_text || selectedFlavor.name} />
+                  </button>
+                  <figcaption>
+                    {photo.image_role === "cover"
+                      ? "Foto principal"
+                      : "Mais detalhes"}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+            <a
+              className="today-primary"
+              href={orderLink(selectedFlavor.name)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <MessageCircle /> Consultar disponibilidade
+            </a>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}

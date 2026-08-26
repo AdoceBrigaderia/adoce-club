@@ -1,0 +1,68 @@
+[
+  {
+    "file": "a4-site-campanha-premium-a.png",
+    "size": "2480x3508",
+    "target": "https://www.adocebrigaderia.com.br/",
+    "qrCrop": [
+      1688,
+      2328,
+      610,
+      610
+    ]
+  },
+  {
+    "file": "a4-site-campanha-premium-b.png",
+    "size": "2480x3508",
+    "target": "https://www.adocebrigaderia.com.br/",
+    "qrCrop": [
+      1451,
+      2691,
+      673,
+      673
+    ]
+  },
+  {
+    "file": "a4-site-campanha-premium-c.png",
+    "size": "2480x3508",
+    "target": "https://www.adocebrigaderia.com.br/",
+    "qrCrop": [
+      274,
+      2686,
+      659,
+      659
+    ]
+  },
+  {
+    "file": "a4-clube-cartao-premium-a.png",
+    "size": "2480x3508",
+    "target": "https://www.adocebrigaderia.com.br/#clube",
+    "qrCrop": [
+      1574,
+      2841,
+      470,
+      470
+    ]
+  },
+  {
+    "file": "a4-clube-cartao-premium-b.png",
+    "size": "2480x3508",
+    "target": "https://www.adocebrigaderia.com.br/#clube",
+    "qrCrop": [
+      1695,
+      2929,
+      513,
+      513
+    ]
+  },
+  {
+    "file": "a4-clube-cartao-premium-c.png",
+    "size": "2480x3508",
+    "target": "https://www.adocebrigaderia.com.br/#clube",
+    "qrCrop": [
+      1887,
+      2662,
+      455,
+      455
+    ]
+  }
+]

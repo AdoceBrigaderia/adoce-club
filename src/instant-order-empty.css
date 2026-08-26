@@ -1,0 +1,41 @@
+.instant-order-empty {
+  margin-top: 24px;
+  padding: 30px 20px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  border: 1px dashed #dfc2b2;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.instant-order-empty > svg {
+  width: 38px;
+  height: 38px;
+  color: #f26965;
+}
+
+.instant-order-empty > strong {
+  font: 700 1.3rem 'Playfair Display',Georgia,serif;
+}
+
+.instant-order-empty > p {
+  max-width: 330px;
+  margin: 0;
+  color: #7f5b50;
+  line-height: 1.5;
+}
+
+.instant-order-empty > a {
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #f26965;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 850;
+}

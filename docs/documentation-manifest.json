@@ -1,0 +1,31 @@
+{
+  "title": "Adoce — Documentação do Produto",
+  "subtitle": "Uma experiência digital que começa na carteira e continua todos os dias.",
+  "version": "4.1",
+  "updatedAt": "25/08/2026",
+  "files": [
+    "00-visao-do-produto.md",
+    "01-regras-de-negocio.md",
+    "02-jornadas-e-experiencia.md",
+    "03-operacao-e-administracao.md",
+    "04-arquitetura-dados-seguranca.md",
+    "05-roadmap-e-decisoes.md",
+    "06-publicacao-e-dominio.md",
+    "07-status-publicacao.md",
+    "08-fundacao-producao.md",
+    "09-catalogo-agenda-crm.md",
+    "10-seguranca-identidade-validacao.md",
+    "11-apresentacao-comercial-e-midias.md",
+    "12-pede-junto-adoce.md",
+    "13-metodo-economico-de-publicacao.md",
+    "14-arquitetura-informacao-operacao.md",
+    "15-guia-de-marca-e-interface.md",
+    "16-protocolo-de-auditoria-e-aceite.md",
+    "17-mapa-funcional-e-estado-real.md",
+    "18-guia-de-entrega-para-outra-ia.md",
+    "19-integracao-catalogo-meta.md",
+    "20-integracao-instagram.md",
+    "21-especificacao-executavel-operacao-e-whatsapp.md",
+    "22-operacao-sqlserver-caixa-estoque.md"
+  ]
+}

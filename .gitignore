@@ -1,0 +1,59 @@
+node_modules/
+dist/
+launch-dist/
+.env
+*.log
+coverage/
+tsconfig.tsbuildinfo
+tmp/
+.codex-remote-attachments/
+output/
+outputs/
+exports/
+.private/
+marketing-assets/campanha-adoce-premium-a4/
+marketing-assets/**/*.zip
+
+# Local Netlify folder
+.netlify
+.env.local
+.env.*.local
+
+# Segredos e configuracoes locais
+!.env.example
+CHAVES-WEB-PUSH.txt
+.claude/
+.netlify-production-reference/
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+*.cer
+
+# Dependencias e builds
+.netlify/
+
+# Logs e temporarios
+*.err
+*.out
+*.tmp
+*.bak
+*.cache
+$null
+.codex-devserver.*
+.codex-show-ui.*
+
+# Pacotes locais de auditoria e backup
+ADOCE_AUDITORIA_*/
+ADOCE_AUDITORIA_*.zip
+BACKUP_FONTE_OFICIAL_*.zip
+FONTE_OFICIAL_DIAGNOSTICO_*.txt
+
+
+
+
+
+
+
+

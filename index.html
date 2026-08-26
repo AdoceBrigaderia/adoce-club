@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1A0C08" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Adoce" />
+    <meta name="description" content="Adoce Brigaderia em Fortaleza: Festival de Fatias, Clube Adoce, tortas, docinhos, encomendas e experiências para eventos." />
+    <link rel="canonical" href="https://www.adocebrigaderia.com.br/" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Adoce" />
+    <meta property="og:title" content="Adoce | Fatias artesanais e Clube Adoce em Fortaleza" />
+    <meta property="og:description" content="Conheça os sabores do Festival, participe do Clube Adoce e solicite tortas, docinhos e eventos." />
+    <meta property="og:url" content="https://www.adocebrigaderia.com.br/" />
+    <meta property="og:image" content="https://www.adocebrigaderia.com.br/site/logo.webp" />
+    <meta property="og:image:alt" content="Logo oficial da Adoce Brigaderia" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Adoce | Fortaleza" />
+    <meta name="twitter:description" content="Festival de Fatias, Clube Adoce, encomendas e eventos com produção artesanal." />
+    <meta name="twitter:image" content="https://www.adocebrigaderia.com.br/site/logo.webp" />
+    <meta name="twitter:image:alt" content="Logo oficial da Adoce Brigaderia" />
+    <link id="app-manifest" rel="manifest" />
+    <link rel="icon" href="/pwa/clube/icon-192.png" />
+    <link rel="apple-touch-icon" href="/pwa/clube/apple-touch-icon.png" />
+    <script>
+      (() => {
+        const operation = location.hash.startsWith("#operacao");
+        document.getElementById("app-manifest").href = operation
+          ? "/manifest-operacao.webmanifest"
+          : "/manifest-clube.webmanifest";
+        if (operation) {
+          document.querySelector('link[rel="icon"]').href = "/pwa/operacao/icon-192.png";
+          document.querySelector('link[rel="apple-touch-icon"]').href = "/pwa/operacao/apple-touch-icon.png";
+          document.querySelector('meta[name="apple-mobile-web-app-title"]').content = "Adoce Operação";
+        }
+      })();
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Bakery",
+        "name": "Adoce",
+        "url": "https://www.adocebrigaderia.com.br/",
+        "image": "https://www.adocebrigaderia.com.br/site/logo.webp",
+        "telephone": ["+55 85 98215-6026", "+55 85 98199-4370"],
+        "taxID": "66.349.134/0001-20",
+        "foundingDate": "2023",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Rua Professor Odílio Filho, 227",
+          "addressLocality": "Fortaleza",
+          "addressRegion": "CE",
+          "addressCountry": "BR"
+        },
+        "sameAs": [
+          "https://www.instagram.com/_adocebrigaderia_/",
+          "https://www.facebook.com/adocebrigaderia"
+        ]
+      }
+    </script>
+    <title>Adoce | Fatias artesanais e Clube Adoce em Fortaleza</title>
+  </head>
+  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+</html>

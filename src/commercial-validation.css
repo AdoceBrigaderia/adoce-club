@@ -1,0 +1,73 @@
+.commercial-request input[aria-invalid="true"],
+.commercial-request textarea[aria-invalid="true"] {
+  border-color: #d8564d;
+  box-shadow: 0 0 0 3px rgba(216, 86, 77, 0.11);
+}
+
+.commercial-field-error {
+  display: block !important;
+  color: #a23f38 !important;
+  font-size: 0.67rem !important;
+  font-weight: 750 !important;
+  line-height: 1.45;
+}
+
+.commercial-date-guidance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: #f7eee6;
+  color: #75554a;
+  font-size: 0.64rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.commercial-date-guidance svg {
+  width: 15px;
+  flex: 0 0 auto;
+  color: var(--c-coral);
+}
+
+.commercial-date-guidance strong {
+  color: var(--c-chocolate);
+}
+
+.commercial-date-error {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid #efb3ad;
+  border-radius: 10px;
+  background: #fff0ed;
+  color: #843f38;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.commercial-date-error button {
+  justify-self: start;
+  border: 0;
+  border-radius: 8px;
+  background: var(--c-chocolate);
+  color: white;
+  padding: 9px 11px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+@media (max-width: 620px) {
+  .commercial-date-guidance {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    font-size: 0.68rem;
+  }
+
+  .commercial-date-error button {
+    width: 100%;
+  }
+}
+.commercial-catalog-error{margin:0 0 28px;padding:18px;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:12px;align-items:center;border:1px solid #ebcfc3;border-radius:14px;background:#fff8f3;color:#5d382f}.commercial-catalog-error>svg{width:24px;color:#ef6a61}.commercial-catalog-error strong{font:600 1.05rem 'Playfair Display',Georgia,serif}.commercial-catalog-error p{margin:4px 0 0;color:#806057;font-size:.7rem;line-height:1.5}.commercial-catalog-error button,.commercial-catalog-error a{min-height:40px;padding:0 12px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:.65rem;font-weight:850;text-decoration:none}.commercial-catalog-error button{border:1px solid #dfc1b4;background:white;color:#5d382f}.commercial-catalog-error a{background:#ef6a61;color:white}@media(max-width:760px){.commercial-catalog-error{grid-template-columns:auto 1fr}.commercial-catalog-error button,.commercial-catalog-error a{grid-column:2}}

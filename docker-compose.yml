@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    ports: ["8080:80"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: adoce, POSTGRES_PASSWORD: adoce, POSTGRES_DB: adoce }
+    volumes: ["adoce-db:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U adoce"], interval: 5s, timeout: 3s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 10 }
+volumes: { adoce-db: {} }

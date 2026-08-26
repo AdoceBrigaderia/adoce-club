@@ -1,0 +1,66 @@
+.public-catalog-navigation {
+  width: min(100% - 24px, 1180px);
+  margin: 18px auto 24px;
+}
+
+.public-catalog-intro {
+  margin: 0 0 16px;
+}
+
+.public-catalog-intro span {
+  display: block;
+  margin-bottom: 5px;
+  color: #ef466b;
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  font: 800 .68rem/1.2 Inter, system-ui, sans-serif;
+}
+
+.public-catalog-intro h2 {
+  max-width: 15ch;
+  margin: 0;
+  color: #32150f;
+  font: 700 clamp(2rem, 10vw, 4rem)/.92 'Playfair Display',Georgia,serif;
+}
+
+.public-catalog-nav {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.public-catalog-nav a {
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #efd1ca;
+  border-radius: 14px;
+  background: #fffdfb;
+  color: #32150f;
+  text-align: center;
+  text-decoration: none;
+  font: 800 .72rem/1.15 Inter, system-ui, sans-serif;
+}
+
+.public-catalog-nav a.active {
+  border-color: #f33d68;
+  background: #f33d68;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(243, 61, 104, .18);
+}
+
+@media (min-width: 768px) {
+  .public-catalog-navigation { margin-block: 24px 30px; }
+  .public-catalog-intro h2 { max-width: none; }
+  .public-catalog-nav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0;
+  }
+  .public-catalog-nav a { min-height: 54px; font-size: .78rem; }
+}

@@ -1,0 +1,181 @@
+/* Ficha de 58 mm — impressora térmica.
+   Preto no branco de propósito: térmica não imprime cinza. */
+
+.ficha58 {
+  --f-util: 48mm;
+  width: var(--f-util);
+  margin: 0 auto;
+  padding: 4mm 0 6mm;
+  background: #fff;
+  color: #000;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.ficha58 p { margin: 0; }
+
+/* ---- Marca ---- */
+
+.f-marca { display: grid; justify-items: center; gap: 1mm; }
+
+.f-logo {
+  width: 26mm;
+  height: 26mm;
+  object-fit: contain;
+  margin-bottom: 1mm;
+}
+
+.f-sub {
+  font-size: 7.5pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---- Divisórias: caractere, não borda ---- */
+
+.f-linha {
+  border: none;
+  margin: 2.5mm 0;
+  color: #000;
+  overflow: hidden;
+  height: 1em;
+}
+
+.f-linha::before {
+  content: "----------------------------------------";
+  display: block;
+  font-family: monospace;
+  font-size: 8pt;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.f-linha-larga { margin: 4mm 0 3mm; }
+
+/* ---- Identificação ---- */
+
+.f-numero {
+  font-size: 11pt;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.f-emissao { font-size: 8pt; }
+
+/* ---- Blocos ---- */
+
+.f-bloco { display: grid; gap: 0.8mm; text-align: left; }
+
+.f-bloco h2 {
+  margin: 0 0 0.5mm;
+  font-size: 7.5pt;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.f-destaque { font-size: 10.5pt; font-weight: 700; }
+
+.f-obs { font-size: 9pt; }
+
+/* ---- Itens ---- */
+
+.f-itens {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8mm;
+}
+
+.f-itens li {
+  display: grid;
+  grid-template-columns: 8mm 1fr;
+  gap: 2mm;
+  font-size: 10pt;
+}
+
+.f-qtd { font-weight: 700; text-align: right; }
+.f-desc { text-align: left; }
+
+/* ---- Total ---- */
+
+.f-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 10pt;
+  letter-spacing: 0.1em;
+}
+
+.f-total strong { font-size: 11pt; letter-spacing: 0; }
+
+/* ---- Fecho ---- */
+
+.f-carinho { display: grid; justify-items: center; gap: 2.5mm; }
+
+.f-recado {
+  font-size: 10.5pt;
+  line-height: 1.45;
+  font-style: italic;
+}
+
+.f-agradece {
+  font-size: 9.5pt;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+.f-insta { font-size: 8.5pt; letter-spacing: 0.06em; }
+
+.f-qr {
+  width: 22mm;
+  height: 22mm;
+  image-rendering: pixelated; /* térmica agradece a borda dura */
+}
+
+.f-qr-legenda {
+  font-size: 7.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---- Impressão ---- */
+
+@page ficha-58mm {
+  size: 58mm auto;
+  margin: 0;
+}
+
+@media print {
+  .ficha58 { display: none !important; }
+  html[data-operation-print-format="thermal"] .print-scope > * { display: none !important; }
+  html[data-operation-print-format="thermal"] .print-scope > .ficha58 { display: block !important; }
+  html[data-operation-print-format="thermal"] .ficha58,
+  html[data-operation-print-format="thermal"] .ficha58 * { visibility: visible !important; }
+
+  html[data-operation-print-format="thermal"] .ficha58 {
+    page: ficha-58mm;
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 58mm;
+    padding: 3mm 5mm 8mm; /* a térmica come as bordas */
+  }
+
+  /* Meio-tom vira sujeira no papel: tudo preto puro. */
+  .ficha58 * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Na tela, simula o papel para conferência antes de imprimir. */
+@media screen {
+  .ficha58 {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.14);
+    border-radius: 4px;
+  }
+}

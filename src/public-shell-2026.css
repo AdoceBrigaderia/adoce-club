@@ -1,0 +1,227 @@
+:root {
+  --public-shell-top: calc(86px + env(safe-area-inset-top));
+  --public-shell-bottom: calc(82px + env(safe-area-inset-bottom));
+}
+
+body:has(.public-app-shell) {
+  padding-top: var(--public-shell-top);
+  padding-bottom: var(--public-shell-bottom);
+  overflow-x: hidden;
+  background: #fffaf7;
+}
+
+.public-app-shell {
+  min-height: calc(100vh - var(--public-shell-top) - var(--public-shell-bottom));
+}
+
+.public-shell-header.public-header {
+  position: fixed;
+  z-index: 500;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--public-shell-top);
+  min-height: 0;
+  padding: env(safe-area-inset-top) 8px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 1px solid rgba(106, 52, 42, .08);
+  color: #341810;
+  background: rgba(255, 251, 249, .96);
+  box-shadow: 0 8px 26px rgba(96, 43, 34, .08);
+  backdrop-filter: blur(18px);
+}
+
+.public-shell-header .public-menu {
+  position: static;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(103, 46, 36, .08);
+  border-radius: 16px;
+  color: #341810;
+  background: rgba(255, 255, 255, .76);
+  box-shadow: 0 7px 18px rgba(90, 39, 31, .08);
+}
+
+.public-shell-header .public-header-actions {
+  min-width: 0;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.public-shell-header .public-menu svg {
+  width: 25px;
+  height: 25px;
+}
+
+.public-shell-header .public-member-greeting {
+  justify-self: start;
+  min-width: 0;
+  max-width: none !important;
+  display: flex;
+  gap: 4px;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  color: #341810;
+  text-decoration: none;
+  white-space: nowrap;
+  font: 500 clamp(.72rem, 3.35vw, 1rem)/1.05 system-ui, sans-serif;
+}
+
+.public-shell-header .public-member-greeting strong { font-weight: 800; }
+
+.public-shell-header .public-brand {
+  position: static;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  filter: none;
+}
+
+.public-shell-header .public-brand img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  box-shadow: none;
+}
+
+.public-shell-header .public-member-status {
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+}
+
+.public-shell-header .public-member-qr {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  color: #341810;
+  border: 1px solid rgba(103, 46, 36, .08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .8);
+  box-shadow: 0 6px 16px rgba(90, 39, 31, .07);
+}
+
+.public-shell-header .public-member-qr svg { width: 24px; height: 24px; }
+
+.public-shell-header .public-member-progress {
+  color: #341810;
+  text-decoration: none;
+  white-space: nowrap;
+  font: 800 clamp(.65rem, 3vw, .92rem)/1 system-ui, sans-serif;
+}
+
+.public-shell-header > nav {
+  position: fixed;
+  z-index: 510;
+  top: var(--public-shell-top);
+  right: 0;
+  left: auto;
+  width: min(238px, calc(100vw - 16px));
+  max-height: calc(100vh - var(--public-shell-top) - 16px);
+  padding: 12px;
+  display: none;
+  overflow-y: auto;
+  border: 1px solid rgba(103, 46, 36, .1);
+  border-radius: 20px 0 0 20px;
+  background: rgba(255, 252, 250, .98);
+  box-shadow: -10px 18px 42px rgba(69, 27, 21, .18);
+}
+
+.public-shell-header > nav.open { display: grid; gap: 4px; }
+.public-shell-header > nav a {
+  min-height: 44px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  color: #341810;
+  text-decoration: none;
+  border-radius: 13px;
+  font: 700 .88rem/1 system-ui, sans-serif;
+}
+.public-shell-header > nav a:hover,
+.public-shell-header > nav a:focus-visible { background: #fff0f4; color: #ed2d63; }
+
+.public-shell-nav.public-mobile-nav {
+  position: fixed;
+  z-index: 500;
+  right: 10px;
+  bottom: max(7px, env(safe-area-inset-bottom));
+  left: 10px;
+  min-height: 70px;
+  padding: 7px 6px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  border: 1px solid rgba(89, 41, 32, .08);
+  border-radius: 24px;
+  background: rgba(255, 252, 250, .97);
+  box-shadow: 0 16px 38px rgba(73, 31, 24, .14);
+  backdrop-filter: blur(18px);
+}
+
+.public-shell-nav.public-mobile-nav a {
+  min-width: 0;
+  min-height: 54px;
+  padding: 5px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #75615c;
+  text-decoration: none;
+  border-radius: 17px;
+  background: transparent;
+  font: 650 .66rem/1 system-ui, sans-serif;
+}
+
+.public-shell-nav.public-mobile-nav a.active { color: #ed2d63; background: #fff0f4; }
+.public-shell-nav.public-mobile-nav svg { width: 25px; height: 25px; stroke-width: 2; }
+.public-shell-nav.public-mobile-nav a.active svg { fill: rgba(237, 45, 99, .12); }
+
+.customer-app-shell .access-shell,
+.customer-app-shell .access-page,
+.customer-app-shell .member-app { min-height: calc(100vh - var(--public-shell-top) - var(--public-shell-bottom)); }
+
+@media (min-width: 390px) {
+  .public-shell-header.public-header {
+    padding-inline: 14px;
+    grid-template-columns: minmax(0, 1fr) 74px minmax(0, 1fr);
+    gap: 8px;
+  }
+  .public-shell-header .public-menu { width: 48px; height: 48px; }
+  .public-shell-header .public-menu svg { width: 28px; height: 28px; }
+  .public-shell-header .public-brand { width: 74px; height: 74px; }
+  .public-shell-header .public-member-qr { width: 46px; height: 46px; flex-basis: 46px; }
+  .public-shell-header .public-member-qr svg { width: 28px; height: 28px; }
+}
+
+@media (min-width: 768px) {
+  :root { --public-shell-top: 96px; --public-shell-bottom: 88px; }
+  .public-shell-header.public-header {
+    grid-template-columns: minmax(0, 1fr) 86px minmax(0, 1fr);
+    padding-inline: max(28px, calc((100vw - 1180px) / 2));
+  }
+  .public-shell-header .public-brand { width: 86px; height: 86px; }
+  .public-shell-header .public-member-status { gap: 14px; }
+  .public-shell-nav.public-mobile-nav {
+    width: min(680px, calc(100vw - 32px));
+    min-height: 76px;
+    margin-inline: auto;
+  }
+  .public-shell-nav.public-mobile-nav a { font-size: .82rem; }
+}

@@ -1,0 +1,2 @@
+-- Dados fixos essenciais são inseridos pela migração inicial.
+-- Este arquivo fica reservado para dados locais de demonstração sem informações reais de clientes.

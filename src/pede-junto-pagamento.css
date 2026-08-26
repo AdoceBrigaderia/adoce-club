@@ -1,0 +1,322 @@
+/* Pede Junto — cada um paga a sua.
+   Cores só de adoce-tokens.css. */
+
+.pj {
+  font-family: var(--adoce-fonte);
+  padding: 0 0 48px;
+  color: var(--adoce-marrom);
+  background: color-mix(in srgb, var(--adoce-rosa) 16%, #fff);
+}
+
+/* ---- Navegação: entrada e saída ---- */
+
+.pj-barra {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--adoce-marrom);
+}
+
+.pj-voltar,
+.pj-atalho {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--adoce-rosa) 90%, #fff);
+}
+
+.pj-voltar svg { width: 18px; height: 18px; }
+
+.pj-atalho { border: 1px solid color-mix(in srgb, var(--adoce-rosa) 45%, transparent); }
+
+/* ---- Capa ---- */
+
+.pj-capa {
+  padding: 26px 20px 28px;
+  background: var(--adoce-marrom);
+  color: color-mix(in srgb, var(--adoce-rosa) 88%, #fff);
+}
+
+.pj-legenda {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-dourado) 82%, transparent);
+}
+
+.pj-capa h1 { margin: 0; font-family: var(--adoce-fonte-voz); font-weight: 700; font-size: var(--adoce-t-capa); line-height: 1.15; }
+
+.pj-resumo {
+  margin: 12px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--adoce-rosa) 78%, #fff);
+}
+
+.pj-selo {
+  margin: 12px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--adoce-dourado);
+}
+
+/* ---- A minha parte: o que eu preciso fazer ---- */
+
+.pj-minha-vez {
+  max-width: 620px;
+  margin: -14px auto 0;
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--adoce-terra);
+  display: grid;
+  gap: 10px;
+  position: relative;
+  z-index: 2;
+  width: calc(100% - 32px);
+}
+
+.pj-minha-vez.ok { box-shadow: 0 0 0 1px color-mix(in srgb, var(--adoce-terra) 30%, transparent); }
+
+.pj-minha-linha {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.pj-minha-linha strong { font-size: 1.375rem; }
+
+.pj-situacao {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--adoce-marrom) 76%, transparent);
+}
+
+.pj-pagar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--adoce-toque);
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pj-pago {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--adoce-terra);
+}
+
+.pj-pago svg { width: 18px; height: 18px; }
+
+/* ---- Quem está no grupo ---- */
+
+.pj-gente,
+.pj-organizador,
+.pj-fechado,
+.pj-chat {
+  max-width: 620px;
+  margin: 20px auto 0;
+  padding: 0 16px;
+}
+
+.pj-gente h2,
+.pj-chat h2 {
+  margin: 0 0 10px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+}
+
+.pj-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+
+.pj-lista li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  font-size: 0.9375rem;
+}
+
+.pj-lista li:first-child { border-radius: 14px 14px 0 0; }
+.pj-lista li:last-child { border-radius: 0 0 14px 14px; }
+.pj-lista li:only-child { border-radius: 14px; }
+
+.pj-nome { flex: 1; }
+
+.pj-fatias { color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent); font-size: 0.8125rem; }
+
+.pj-marca svg { width: 18px; height: 18px; color: color-mix(in srgb, var(--adoce-marrom) 35%, transparent); }
+
+.pj-ok .pj-marca svg { color: var(--adoce-terra); }
+
+.pj-conta {
+  margin: 10px 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+/* ---- O organizador acompanha, não cobra ---- */
+
+.pj-organizador p,
+.pj-fechado p {
+  margin: 0 0 12px;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--adoce-marrom) 78%, transparent);
+}
+
+.pj-lembrar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid var(--adoce-terra);
+  color: var(--adoce-terra);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pj-lembrar svg { width: 17px; height: 17px; }
+
+.pj-fechado p { font-weight: 600; color: var(--adoce-terra); }
+
+/* ---- Minichat ---- */
+
+.pj-vazio {
+  margin: 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-rosa) 30%, #fff);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent);
+}
+
+.pj-recados {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.pj-recados li {
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.pj-recados li.pj-adoce {
+  background: color-mix(in srgb, var(--adoce-terra) 12%, #fff);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--adoce-terra) 28%, transparent);
+}
+
+.pj-autor {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 52%, transparent);
+}
+
+.pj-adoce .pj-autor { color: var(--adoce-terra); }
+
+.pj-recados p { margin: 3px 0 0; font-size: 0.9375rem; line-height: 1.45; }
+
+.pj-escrever { display: flex; gap: 8px; margin-top: 12px; }
+
+.pj-escrever input {
+  flex: 1;
+  min-height: var(--adoce-toque);
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--adoce-marrom) 18%, transparent);
+  background: #fff;
+  font: inherit;
+  font-size: 1rem; /* menos que isto e o iPhone dá zoom sozinho */
+  color: inherit;
+}
+
+.pj-escrever button {
+  width: var(--adoce-toque);
+  height: var(--adoce-toque);
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  cursor: pointer;
+}
+
+.pj-escrever button:disabled { opacity: 0.4; cursor: default; }
+.pj-escrever button svg { width: 18px; height: 18px; }
+
+.pj-oculto {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Saída ---- */
+
+.pj-rodape {
+  display: grid;
+  gap: 10px;
+  max-width: 620px;
+  margin: 28px auto 0;
+  padding: 20px 16px 0;
+  border-top: 1px solid color-mix(in srgb, var(--adoce-terra) 14%, transparent);
+}
+
+.pj-principal,
+.pj-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--adoce-toque);
+  border-radius: 999px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pj-principal { background: var(--adoce-terra); color: #fff; }
+
+.pj-secundario {
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 35%, transparent);
+  color: var(--adoce-terra);
+}

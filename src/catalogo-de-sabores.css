@@ -1,0 +1,317 @@
+/* Nossos sabores — a vitrine permanente.
+   A foto manda: ocupa a largura toda do cartão.
+   Cores só de adoce-tokens.css. */
+
+.sabores {
+  font-family: var(--adoce-fonte);
+  padding: 0 0 48px;
+  color: var(--adoce-marrom);
+  background: color-mix(in srgb, var(--adoce-rosa) 16%, #fff);
+}
+
+/* Paginas estaticas de sabor. Usam a mesma folha para que a pagina entregue
+   no HTML tenha a identidade do catalogo sem criar outra fonte de tokens. */
+.sab-detalhe-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+  max-width: 1040px;
+  margin: 0 auto;
+  background: var(--adoce-superficie);
+  border: 1px solid var(--adoce-borda);
+  border-radius: var(--adoce-raio-grande);
+  overflow: hidden;
+  box-shadow: var(--adoce-sombra-alta);
+}
+
+.sab-detalhe-foto { min-height: 520px; background: var(--adoce-marrom); }
+.sab-detalhe-foto img { display: block; width: 100%; height: 100%; min-height: 520px; object-fit: cover; }
+.sab-detalhe-corpo { padding: clamp(var(--adoce-e5), 5vw, 56px); display: flex; flex-direction: column; justify-content: center; gap: var(--adoce-e4); }
+.sab-detalhe-corpo h1 { margin: 0; font-family: var(--adoce-fonte-voz); font-size: var(--adoce-t-capa); line-height: 1.05; }
+.sab-detalhe-corpo p { margin: 0; }
+.sab-detalhe-preco { display: flex; align-items: baseline; gap: var(--adoce-e2); }
+.sab-detalhe-preco strong { font-family: var(--adoce-fonte-voz); font-size: var(--adoce-t-titulo); }
+.sab-detalhe-preco span { color: var(--adoce-texto-suave); }
+.sab-detalhe-estado { padding: var(--adoce-e3); background: var(--adoce-rosa); border-radius: var(--adoce-raio); font-weight: 700; }
+.sab-detalhe .sab-principal { display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: var(--adoce-e3) var(--adoce-e5); text-decoration: none; border-radius: var(--adoce-raio-pilula); }
+
+.sab-seo-lista { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--adoce-e4); list-style: none; max-width: 1040px; margin: 0 auto; padding: var(--adoce-e5); }
+.sab-seo-lista a { display: block; height: 100%; color: var(--adoce-marrom); background: var(--adoce-superficie); text-decoration: none; border: 1px solid var(--adoce-borda); border-radius: var(--adoce-raio-card); overflow: hidden; }
+.sab-seo-lista img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--adoce-marrom); }
+.sab-seo-lista span { display: grid; gap: var(--adoce-e1); padding: var(--adoce-e4); }
+.sab-seo-lista strong { font-family: var(--adoce-fonte-voz); font-size: var(--adoce-t-medio); }
+.sab-seo-lista small { color: var(--adoce-texto-suave); }
+.seo-landing { min-height: 60vh; padding: var(--adoce-e6); background: var(--adoce-fundo); color: var(--adoce-marrom); }
+
+@media (max-width: 760px) {
+  .sab-detalhe-card { grid-template-columns: 1fr; border-radius: 0; }
+  .sab-detalhe-foto, .sab-detalhe-foto img { min-height: 340px; max-height: 56vh; }
+  .sab-seo-lista { grid-template-columns: 1fr; padding: var(--adoce-e4); }
+  .sab-detalhe .sab-principal { width: 100%; min-height: var(--adoce-toque); }
+}
+
+/* ---- Barra de navegação: toda tela precisa de saída ---- */
+
+.sab-barra {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--adoce-marrom);
+  border-bottom: 1px solid color-mix(in srgb, var(--adoce-rosa) 18%, transparent);
+}
+
+.sab-voltar,
+.sab-atalho {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: color-mix(in srgb, var(--adoce-rosa) 90%, #fff);
+}
+
+.sab-voltar svg { width: 18px; height: 18px; }
+
+.sab-atalho {
+  border: 1px solid color-mix(in srgb, var(--adoce-rosa) 45%, transparent);
+}
+
+/* ---- Rodapé: saída também no fim ---- */
+
+.sab-rodape {
+  display: grid;
+  gap: 10px;
+  max-width: 620px;
+  margin: 8px auto 0;
+  padding: 20px 16px 0;
+  border-top: 1px solid color-mix(in srgb, var(--adoce-terra) 14%, transparent);
+}
+
+.sab-principal,
+.sab-secundario {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--adoce-toque);
+  border-radius: 999px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sab-principal { background: var(--adoce-terra); color: #fff; }
+
+.sab-secundario {
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 35%, transparent);
+  color: var(--adoce-terra);
+}
+
+/* ---- Capa ---- */
+
+.sab-capa {
+  padding: 26px 20px 28px;
+  background: var(--adoce-marrom);
+  color: color-mix(in srgb, var(--adoce-rosa) 88%, #fff);
+}
+
+.sab-legenda {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-dourado) 82%, transparent);
+}
+
+.sab-capa h1 { margin: 0; font-family: var(--adoce-fonte-voz); font-weight: 700; font-size: var(--adoce-t-capa); line-height: 1.15; font-weight: 400; }
+
+.sab-capa h1 em {
+  display: block;
+  font-style: italic;
+  color: color-mix(in srgb, var(--adoce-rosa) 72%, var(--adoce-dourado));
+}
+
+.sab-resumo {
+  margin: 12px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--adoce-rosa) 78%, #fff);
+}
+
+/* ---- Lista ---- */
+
+.sab-lista {
+  list-style: none;
+  margin: 0 auto;
+  padding: 16px;
+  max-width: 620px;
+  display: grid;
+  gap: 16px;
+}
+
+.sab-item {
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sab-item.tem { box-shadow: 0 0 0 1px var(--adoce-terra); }
+
+/* O que não tem hoje não some — só fica um pouco atrás. */
+.sab-ausente .sab-foto img { filter: saturate(0.9); }
+
+/* ---- A foto: o que vende ---- */
+
+.sab-foto {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background: var(--adoce-marrom);
+}
+
+.sab-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.sab-sem-foto {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    color-mix(in srgb, var(--adoce-terra) 55%, #000),
+    var(--adoce-marrom)
+  );
+}
+
+.sab-sem-foto svg { width: 42px; height: 42px; color: color-mix(in srgb, var(--adoce-rosa) 60%, transparent); }
+
+.sab-nome {
+  font-family: var(--adoce-fonte-voz);
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  margin: 0;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  color: #fff;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.6);
+}
+
+.sab-estado {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--adoce-rosa) 92%, #fff);
+  color: var(--adoce-marrom);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.sab-estado.acabando { background: var(--adoce-dourado); color: #412402; }
+
+/* A foto abre. Reusa o ProductImageViewer que ja existe no projeto. */
+.sab-ampliar {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-creme);
+  color: var(--adoce-marrom);
+  cursor: pointer;
+}
+
+.sab-ampliar svg { width: 18px; height: 18px; }
+
+/* ---- Assinatura da marca ----
+   Item 9 do manual. Fechava toda peca impressa e nao existia no site. */
+.sab-assinatura {
+  margin: 0 0 18px;
+  font-family: var(--adoce-fonte-voz);
+  font-style: italic;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--adoce-texto-suave);
+}
+
+/* ---- Corpo ---- */
+
+.sab-corpo { display: grid; gap: 12px; padding: 14px 16px 16px; }
+
+/* O resumo de vitrine: uma linha, escrita para dar vontade. */
+.sab-frase {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--adoce-marrom) 82%, transparent);
+}
+
+.sab-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sab-preco { margin: 0; display: grid; }
+.sab-preco strong { font-size: 1.25rem; font-weight: 500; }
+
+/* "a fatia" — para ninguém achar que é o preço da torta inteira. */
+.sab-preco small {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+.sab-reservar,
+.sab-perguntar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: var(--adoce-toque);
+  padding: 0 20px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sab-reservar { border: none; background: var(--adoce-terra); color: #fff; }
+
+.sab-perguntar {
+  border: 1px solid var(--adoce-terra);
+  background: transparent;
+  color: var(--adoce-terra);
+}
+
+.sab-perguntar svg { width: 17px; height: 17px; }
+
+.sab-inteira {
+  justify-self: start;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+@media (min-width: 720px) {
+  .sab-capa { padding: 40px 24px; text-align: center; }
+  .sab-capa h1 { font-size: 2.25rem; }
+  .sab-lista { grid-template-columns: 1fr 1fr; }
+}

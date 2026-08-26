@@ -1,0 +1,162 @@
+/* Compartilhe Doçura — o cartão de indicações.
+   Mesma linguagem do Clube. Cores só de adoce-tokens.css. */
+
+.docura {
+  display: grid;
+  gap: 20px;
+  padding: 20px 16px 48px;
+  max-width: 520px;
+  margin: 0 auto;
+  color: var(--adoce-marrom);
+}
+
+.doc-topo { display: grid; gap: 4px; }
+
+.doc-legenda {
+  margin: 0;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+.doc-topo h1 { margin: 0; font-size: 1.625rem; font-weight: 400; }
+
+.doc-progresso {
+  margin: 6px 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--adoce-marrom) 78%, transparent);
+}
+
+/* ---- A cartela ---- */
+
+.doc-cartela {
+  list-style: none;
+  margin: 0;
+  padding: 18px 14px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--adoce-rosa) 45%, #fff);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+.doc-marca {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.doc-marca svg { width: 60%; height: 60%; }
+
+.doc-marca.vazia svg { color: color-mix(in srgb, var(--adoce-terra) 32%, transparent); }
+.doc-marca.feita { background: color-mix(in srgb, var(--adoce-terra) 12%, #fff); }
+.doc-marca.feita svg { color: var(--adoce-terra); fill: var(--adoce-terra); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- O convite ---- */
+
+.doc-convite {
+  padding: 18px 16px;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.doc-convite h2,
+.doc-lista h2 {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+.doc-codigo {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--adoce-terra);
+}
+
+.doc-explica {
+  margin: 8px 0 16px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent);
+}
+
+.doc-acoes { display: grid; gap: 8px; }
+
+.doc-enviar,
+.doc-copiar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.doc-enviar { border: none; background: var(--adoce-terra); color: #fff; }
+.doc-copiar { border: 1px solid var(--adoce-terra); background: transparent; color: var(--adoce-terra); }
+.doc-enviar svg, .doc-copiar svg { width: 18px; height: 18px; }
+
+.doc-previa summary {
+  margin-top: 14px;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+  cursor: pointer;
+}
+
+.doc-previa pre {
+  margin: 8px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--adoce-rosa) 32%, #fff);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ---- Listas ---- */
+
+.doc-lista ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+.doc-lista li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  font-size: 0.9375rem;
+}
+
+.doc-lista svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--adoce-terra); }
+.doc-lista li span { flex: 1 1 auto; }
+
+.doc-lista small {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+.doc-esperando svg { color: color-mix(in srgb, var(--adoce-terra) 45%, transparent); }
+.doc-esperando li { opacity: 0.85; }

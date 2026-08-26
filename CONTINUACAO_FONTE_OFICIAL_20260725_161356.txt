@@ -1,0 +1,44 @@
+﻿fonte-oficial/portal-adoce-2026-07-25
+[16:13:56] Branch atual: fonte-oficial/portal-adoce-2026-07-25
+[16:13:56] Verificando arquivos muito grandes.
+[16:13:57] Configurando o repositorio privado como remoto.
+error: No such remote 'fonte-oficial'
+[16:13:57] Remoto configurado.
+[16:13:57] Preparando arquivos para commit.
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/AccessApp.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/OperationCommercialAdmin.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/OperationFinance.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/OperationInstantOrders.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/OperationPedeJunto.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/operation-print.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/operation-print.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'continuar_consolidacao_fonte_oficial.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/operation-print.ts', LF will be replaced by CRLF the next time Git touches it
+.gitignore
+CONTINUACAO_FONTE_OFICIAL_20260725_161356.txt
+continuar_consolidacao_fonte_oficial.ps1
+src/AccessApp.tsx
+src/OperationCommercialAdmin.tsx
+src/OperationFinance.tsx
+src/OperationInstantOrders.tsx
+src/OperationPedeJunto.tsx
+src/lib/operation-print.ts
+src/operation-print.css
+src/operation-print.test.ts
+[16:13:58] Arquivos preparados: 11
+[fonte-oficial/portal-adoce-2026-07-25 26688e3] chore: consolida fonte oficial do portal Adoce em 25/07/2026
+ 11 files changed, 402 insertions(+), 11 deletions(-)
+ create mode 100644 CONTINUACAO_FONTE_OFICIAL_20260725_161356.txt
+ create mode 100644 continuar_consolidacao_fonte_oficial.ps1
+ create mode 100644 src/lib/operation-print.ts
+[16:14:02] Commit criado.
+[16:14:02] Enviando a branch para o GitHub privado.
+remote: 
+remote: Create a pull request for 'fonte-oficial/portal-adoce-2026-07-25' on GitHub by visiting:        
+remote:      https://github.com/RMBPS/adoce-club/pull/new/fonte-oficial/portal-adoce-2026-07-25        
+remote: 
+To https://github.com/RMBPS/adoce-club.git
+ * [new branch]      HEAD -> fonte-oficial/portal-adoce-2026-07-25
+branch 'fonte-oficial/portal-adoce-2026-07-25' set up to track 'fonte-oficial/fonte-oficial/portal-adoce-2026-07-25'.
+[16:14:25] Push concluido.

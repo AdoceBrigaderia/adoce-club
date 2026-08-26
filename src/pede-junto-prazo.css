@@ -1,0 +1,90 @@
+/* Faixa de prazo do Pede Junto.
+   Todas as cores saem de adoce-tokens.css. Nenhum valor solto aqui. */
+
+.pj-prazo {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 18%, transparent);
+  background: color-mix(in srgb, var(--adoce-rosa) 35%, #fff);
+  color: var(--adoce-marrom);
+}
+
+.pj-prazo-relogio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 70%, transparent);
+}
+
+.pj-prazo-relogio svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pj-prazo-relogio strong {
+  font-size: 1.125rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adoce-terra);
+}
+
+.pj-prazo-frase {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.pj-prazo-lembrete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--adoce-toque);
+  padding: 0 16px;
+  border: 1px solid var(--adoce-terra);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adoce-terra);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pj-prazo-lembrete svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pj-prazo-lembrete:hover {
+  background: color-mix(in srgb, var(--adoce-terra) 8%, transparent);
+}
+
+/* A urgencia muda a cor, nunca o tamanho nem o tom da frase.
+   Piscar ou crescer assusta; aqui a gente convida. */
+
+.pj-prazo-atencao {
+  border-color: color-mix(in srgb, var(--adoce-terra) 35%, transparent);
+  background: color-mix(in srgb, var(--adoce-rosa) 60%, #fff);
+}
+
+.pj-prazo-ultima_chamada {
+  border-color: var(--adoce-terra);
+  background: color-mix(in srgb, var(--adoce-rosa) 80%, #fff);
+}
+
+.pj-prazo-encerrado {
+  border-color: color-mix(in srgb, var(--adoce-marrom) 15%, transparent);
+  background: color-mix(in srgb, var(--adoce-dourado) 25%, #fff);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pj-prazo {
+    transition: background-color 240ms ease, border-color 240ms ease;
+  }
+}

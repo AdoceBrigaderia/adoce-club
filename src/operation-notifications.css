@@ -1,0 +1,38 @@
+.operation-notification-center { position: relative; }
+.operation-notification-trigger { position: relative; min-height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 0 13px; border: 1px solid #ead4c7; border-radius: 999px; background: #fffaf6; color: #39160f; font: 800 12px/1 "Segoe UI", sans-serif; cursor: pointer; }
+.operation-notification-trigger svg { width: 18px; height: 18px; color: #ef6665; }
+.operation-notification-trigger strong { min-width: 20px; height: 20px; display: grid; place-items: center; padding: 0 5px; border-radius: 999px; background: #ef6665; color: #fff; font-size: 10px; }
+.operation-notification-panel { position: absolute; z-index: 130; top: calc(100% + 12px); right: 0; width: min(430px, calc(100vw - 26px)); max-height: min(680px, calc(100vh - 100px)); display: grid; grid-template-rows: auto auto auto minmax(0, 1fr); overflow: hidden; border: 1px solid #ead4c7; border-radius: 24px; background: #fffaf6; box-shadow: 0 24px 60px rgba(55, 20, 13, .24); text-align: left; }
+.operation-notification-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 12px; border: 0; }
+.operation-notification-panel > header div { display: grid; gap: 4px; }
+.operation-notification-panel > header span { color: #ef6665; font: 800 9px/1.2 "Segoe UI", sans-serif; letter-spacing: .14em; text-transform: uppercase; }
+.operation-notification-panel > header h2 { margin: 0; color: #35150e; font: 700 30px/1 'Playfair Display',Georgia,serif; }
+.operation-notification-panel > header button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #f7e8de; color: #35150e; cursor: pointer; }
+.operation-notification-panel > header button svg { width: 18px; }
+.operation-notification-actions { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 20px 12px; }
+.operation-notification-actions button { min-height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #ead4c7; border-radius: 999px; background: #fff; color: #6d3c2e; font: 700 10px/1.2 "Segoe UI", sans-serif; cursor: pointer; }
+.operation-notification-actions button:disabled { opacity: .65; cursor: default; }
+.operation-notification-actions svg { width: 14px; height: 14px; }
+.operation-notification-notice { margin: 0 20px 12px; padding: 10px 12px; border-radius: 12px; background: #fff0e9; color: #8c4436; font: 600 11px/1.4 "Segoe UI", sans-serif; }
+.operation-notification-list { overflow-y: auto; border-top: 1px solid #f0ded3; }
+.operation-notification-list > button { width: 100%; display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 14px 18px; border: 0; border-bottom: 1px solid #f3e5dc; background: transparent; color: #35150e; text-align: left; cursor: pointer; }
+.operation-notification-list > button:hover { background: #fff2ea; }
+.operation-notification-list > button.read { opacity: .64; }
+.operation-notification-dot { width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: #c6a89b; }
+.operation-notification-list > button.urgent .operation-notification-dot { background: #e74d50; box-shadow: 0 0 0 4px rgba(231, 77, 80, .12); }
+.operation-notification-list > button.important .operation-notification-dot { background: #f0a33b; }
+.operation-notification-list > button span:nth-child(2) { display: grid; gap: 4px; }
+.operation-notification-list strong { font: 800 12px/1.3 "Segoe UI", sans-serif; }
+.operation-notification-list small { color: #8d6051; font: 500 11px/1.4 "Segoe UI", sans-serif; }
+.operation-notification-list time { color: #a77a6b; font: 700 9px/1.2 "Segoe UI", sans-serif; white-space: nowrap; }
+.operation-notification-empty { margin: 0; padding: 28px 22px; color: #8d6051; font: 500 12px/1.5 "Segoe UI", sans-serif; text-align: center; }
+@media (max-width: 720px) {
+  .operation-home > header { backdrop-filter: none; }
+  .operation-notification-trigger { width: 42px; padding: 0; justify-content: center; }
+  .operation-notification-trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .operation-notification-trigger strong { position: absolute; top: -6px; right: -6px; }
+  .operation-notification-panel { position: fixed; top: 76px; right: 10px; bottom: 84px; left: 10px; width: auto; max-height: none; border-radius: 20px; }
+  .operation-notification-panel > header { padding: 18px 16px 10px; }
+  .operation-notification-actions { padding-inline: 16px; }
+  .operation-notification-list > button { padding-inline: 14px; }
+}

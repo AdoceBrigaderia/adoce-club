@@ -1,0 +1,15 @@
+{
+  "files": [
+    "banner-pede-junto-adoce-200x100.png",
+    "banner-pede-junto-adoce-200x100.jpg"
+  ],
+  "pixels": "6000x3000",
+  "suggestedPrintSize": "200x100 cm",
+  "qrTarget": "https://www.adocebrigaderia.com.br/#pede-junto",
+  "qrCrop": [
+    4880,
+    155,
+    910,
+    890
+  ]
+}

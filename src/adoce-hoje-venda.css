@@ -1,0 +1,307 @@
+/* Adoce Hoje — a tela de venda. A foto manda.
+   Cores só de adoce-tokens.css. */
+
+.hoje {
+  padding: 0 0 120px;
+  color: var(--adoce-marrom);
+  background: color-mix(in srgb, var(--adoce-rosa) 18%, #fff);
+}
+
+/* ---- Capa ---- */
+
+.hoje-capa {
+  padding: 26px 20px 30px;
+  background: var(--adoce-marrom);
+  color: color-mix(in srgb, var(--adoce-rosa) 88%, #fff);
+}
+
+.hoje-data {
+  margin: 0 0 8px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-dourado) 78%, transparent);
+}
+
+.hoje-capa h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.12;
+  font-weight: 400;
+}
+
+.hoje-capa h1 em {
+  display: block;
+  font-style: italic;
+  color: color-mix(in srgb, var(--adoce-rosa) 70%, var(--adoce-dourado));
+}
+
+.hoje-faixa {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--adoce-rosa) 14%, transparent);
+  font-size: 0.8125rem;
+}
+
+.hoje-ponto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7BD3A0;
+}
+
+/* ---- Lista de sabores ---- */
+
+.hoje-lista {
+  list-style: none;
+  margin: 0 auto;
+  padding: 18px 16px 0;
+  max-width: 620px;
+  display: grid;
+  gap: 16px;
+}
+
+.hoje-sabor {
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* A foto ocupa quase meia tela: é ela que vende. */
+.hoje-foto {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: color-mix(in srgb, var(--adoce-marrom) 88%, #000);
+}
+
+.hoje-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.hoje-sem-foto {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    color-mix(in srgb, var(--adoce-terra) 55%, #000),
+    var(--adoce-marrom)
+  );
+}
+
+.hoje-nome {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  right: 16px;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+}
+
+.hoje-nome h2 { margin: 0; font-size: 1.375rem; font-weight: 400; line-height: 1.15; }
+
+.hoje-premium {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-dourado) 92%, #fff);
+}
+
+.hoje-estoque {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--adoce-rosa) 92%, #fff);
+  color: var(--adoce-marrom);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.hoje-estoque.acabando { background: var(--adoce-terra); color: #fff; }
+
+/* ---- Preço e ação ---- */
+
+.hoje-linha {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.hoje-preco { margin: 0; display: grid; }
+.hoje-preco strong { font-size: 1.1875rem; font-weight: 700; }
+.hoje-preco small { font-size: 0.75rem; color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent); }
+
+.hoje-quero {
+  min-height: var(--adoce-toque);
+  padding: 0 24px;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hoje-contador {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--adoce-rosa) 40%, #fff);
+}
+
+.hoje-contador button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--adoce-terra);
+  cursor: pointer;
+}
+
+.hoje-contador button:disabled { opacity: 0.4; cursor: default; }
+.hoje-contador button svg { width: 18px; height: 18px; }
+.hoje-contador strong { min-width: 24px; text-align: center; font-size: 1.0625rem; }
+
+/* ---- Caldas ---- */
+
+.hoje-caldas {
+  display: grid;
+  gap: 10px;
+  padding: 4px 16px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--adoce-terra) 12%, transparent);
+}
+
+.hoje-calda-linha { display: grid; gap: 6px; }
+
+.hoje-calda-rotulo {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}
+
+.hoje-calda-opcoes { display: flex; flex-wrap: wrap; gap: 7px; }
+
+.hoje-calda-opcoes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 32%, transparent);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--adoce-marrom);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.hoje-calda-opcoes button svg { width: 15px; height: 15px; }
+
+.hoje-calda-opcoes .escolhida {
+  border-color: var(--adoce-terra);
+  background: var(--adoce-terra);
+  color: #fff;
+  font-weight: 600;
+}
+
+.hoje-presente,
+.hoje-presente-marcado {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.hoje-presente {
+  justify-self: start;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px dashed var(--adoce-terra);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adoce-terra);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hoje-presente-marcado { color: var(--adoce-terra); font-weight: 600; }
+.hoje-presente svg, .hoje-presente-marcado svg { width: 16px; height: 16px; }
+
+.hoje-ultima {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+/* ---- Rodapé fixo com a conta ---- */
+
+.hoje-rodape {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1px solid color-mix(in srgb, var(--adoce-terra) 16%, transparent);
+}
+
+.hoje-conta { display: grid; }
+.hoje-conta strong { font-size: 1.25rem; }
+.hoje-conta small { font-size: 0.75rem; color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent); }
+
+.hoje-fechar {
+  min-height: 52px;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hoje-fechar:disabled { background: color-mix(in srgb, var(--adoce-terra) 45%, #fff); cursor: default; }
+
+.hoje-pendencia {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--adoce-terra);
+}
+
+.hoje-vazio {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 720px) {
+  .hoje-capa { padding: 40px 24px; text-align: center; }
+  .hoje-capa h1 { font-size: 2.5rem; }
+  .hoje-lista { grid-template-columns: 1fr 1fr; }
+  .hoje-rodape { justify-content: center; max-width: 620px; margin: 0 auto; border-radius: 20px 20px 0 0; }
+}

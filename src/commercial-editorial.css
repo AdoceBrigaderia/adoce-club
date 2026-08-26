@@ -1,0 +1,597 @@
+.commercial-proof-strip {
+  min-height: 74px;
+  padding: 16px max(24px, calc((100vw - 1180px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  background: #f7ded5;
+  border-bottom: 1px solid var(--c-line);
+  color: #68443a;
+}
+
+/* Direção aprovada: produto real ao centro, escolha clara e condições honestas. */
+.commercial-header {
+  max-width: none;
+  padding-inline: max(34px, calc((100vw - 1290px) / 2));
+  color: white;
+  background: var(--c-ink) url('/site/chocolate-texture.webp') center/700px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+
+.commercial-header .commercial-brand strong,
+.commercial-header > a:last-child {
+  color: white;
+}
+
+.commercial-hero {
+  min-height: 650px;
+  grid-template-columns: minmax(330px, .9fr) minmax(310px, .82fr) minmax(300px, .72fr);
+  gap: clamp(34px, 4vw, 72px);
+  padding-top: 72px;
+  padding-bottom: 72px;
+}
+
+.commercial-hero.without-media {
+  grid-template-columns: minmax(360px, 1.1fr) minmax(340px, .9fr);
+}
+
+.commercial-hero-copy {
+  min-width: 0;
+}
+
+.commercial-hero-copy > span {
+  display: block;
+  color: var(--c-coral);
+  text-transform: uppercase;
+  letter-spacing: .2em;
+  font-size: .62rem;
+  font-weight: 850;
+}
+
+.commercial-hero-copy h1 {
+  max-width: 660px;
+  margin: 18px 0 24px;
+  font-size: clamp(3.4rem, 5.2vw, 6rem);
+  line-height: .91;
+}
+
+.commercial-hero-copy > p {
+  max-width: 560px;
+  margin: 0;
+  color: #dfcfc7;
+  font-size: .93rem;
+  line-height: 1.75;
+}
+
+.commercial-hero-copy > button {
+  min-height: 52px;
+  margin-top: 30px;
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 11px;
+  color: white;
+  background: var(--c-coral);
+  font-size: .74rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.commercial-hero-copy > button svg {
+  width: 17px;
+}
+
+.commercial-hero-media {
+  min-width: 0;
+  margin: 0;
+  align-self: stretch;
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.commercial-hero-media img {
+  width: 100%;
+  height: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 34px 34px rgba(0, 0, 0, .38));
+}
+
+.commercial-hero-media figcaption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 255, 255, .17);
+  border-radius: 999px;
+  color: #ead8cf;
+  background: rgba(24, 10, 7, .78);
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+}
+
+.commercial-hero-compare {
+  min-width: 0;
+  align-self: center;
+  padding: clamp(24px, 3vw, 38px);
+  border-radius: 24px;
+  color: var(--c-chocolate);
+  background: var(--c-cream);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .24);
+}
+
+.commercial-hero-compare h2 {
+  margin: 0 0 18px;
+  font: 600 clamp(1.75rem, 2.6vw, 2.65rem) / 1 'Playfair Display',Georgia,serif;
+  letter-spacing: -.03em;
+}
+
+.commercial-hero-compare > button {
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 0;
+  border-top: 1px solid var(--c-line);
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.commercial-hero-compare > button:last-of-type {
+  border-bottom: 1px solid var(--c-line);
+}
+
+.commercial-hero-compare > button span {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.commercial-hero-compare strong {
+  font: 600 1.05rem 'Playfair Display',Georgia,serif;
+}
+
+.commercial-hero-compare small {
+  color: var(--c-muted);
+  font-size: .61rem;
+  line-height: 1.4;
+}
+
+.commercial-hero-compare b {
+  flex: none;
+  color: var(--c-coral);
+  font-size: .75rem;
+}
+
+.commercial-choice-flow {
+  min-height: 310px;
+  display: grid;
+  grid-template-columns: minmax(260px, .75fr) minmax(430px, 1.25fr);
+  grid-template-rows: auto auto;
+  align-items: stretch;
+  background: var(--c-cream);
+  border-bottom: 1px solid var(--c-line);
+}
+
+.commercial-choice-flow > div,
+.commercial-choice-flow > ol {
+  padding-inline: clamp(28px, 5vw, 74px);
+}
+
+.commercial-choice-flow > div {
+  grid-column: 1 / -1;
+  padding-top: clamp(38px, 5vw, 64px);
+  padding-bottom: 18px;
+}
+
+.commercial-choice-flow > div > span {
+  color: var(--c-coral);
+  text-transform: uppercase;
+  letter-spacing: .2em;
+  font-size: .58rem;
+  font-weight: 850;
+}
+
+.commercial-choice-flow h2 {
+  max-width: 900px;
+  margin: 12px 0 18px;
+  font: 600 clamp(2.2rem, 3.5vw, 3.7rem) / .96 'Playfair Display',Georgia,serif;
+  letter-spacing: -.04em;
+}
+
+.commercial-choice-flow p {
+  max-width: 600px;
+  margin: 0;
+  color: var(--c-muted);
+  font-size: .8rem;
+  line-height: 1.7;
+}
+
+.commercial-choice-flow > ol {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-content: center;
+  list-style: none;
+  padding-top: 0;
+  padding-bottom: clamp(38px, 5vw, 58px);
+}
+
+.commercial-choice-flow li {
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--c-line);
+  border-bottom: 1px solid var(--c-line);
+  color: #62443a;
+  font-size: .74rem;
+  font-weight: 750;
+}
+
+.commercial-choice-flow li b {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--c-coral);
+  background: #f7ded5;
+  font-size: .68rem;
+}
+
+.commercial-choice-flow > img {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  width: 100%;
+  height: 100%;
+  min-height: 310px;
+  object-fit: cover;
+  object-position: center;
+}
+
+.commercial-hero.segment-events h1,
+.commercial-hero.segment-school h1,
+.commercial-hero.segment-rentals h1 {
+  font-size: clamp(3.4rem, 5.4vw, 5.7rem);
+}
+
+.commercial-hero.event-mini_parties h1 {
+  font-size: clamp(3.35rem, 4.7vw, 5rem);
+}
+
+.commercial-proof-strip span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.commercial-proof-strip,
+.commercial-segments {
+  scrollbar-width: none;
+}
+
+.commercial-proof-strip::-webkit-scrollbar,
+.commercial-segments::-webkit-scrollbar {
+  display: none;
+}
+
+.commercial-proof-strip svg {
+  width: 18px;
+  color: var(--c-coral);
+}
+
+.commercial-subcategories {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 46px;
+  padding: 8px;
+  border: 1px solid var(--c-line);
+  border-radius: 20px;
+  background: #f8eade;
+}
+
+.commercial-subcategories button {
+  min-height: 82px;
+  display: grid;
+  gap: 5px;
+  align-content: center;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: #76574c;
+  text-align: left;
+  cursor: pointer;
+}
+
+.commercial-subcategories button span {
+  font: 600 1.35rem 'Playfair Display',Georgia,serif;
+  color: var(--c-chocolate);
+}
+
+.commercial-subcategories button small {
+  font-size: .68rem;
+}
+
+.commercial-subcategories button.active {
+  background: var(--c-chocolate);
+  box-shadow: 0 12px 28px rgba(43, 19, 13, .14);
+  color: #dfcfc7;
+}
+
+.commercial-subcategories button.active span {
+  color: white;
+}
+
+.commercial-segment-showcase {
+  margin: 48px 0 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--c-line);
+  border-radius: 26px;
+  background: #f4e4d9;
+}
+
+.commercial-segment-showcase img {
+  width: 100%;
+  height: 100%;
+  max-height: 760px;
+  object-fit: contain;
+  object-position: center;
+  background: #ead8cb;
+}
+
+.commercial-segment-showcase figcaption {
+  padding: clamp(28px, 4vw, 54px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: var(--c-chocolate);
+  color: white;
+}
+
+.commercial-segment-showcase figcaption strong {
+  font: 600 clamp(1.8rem, 3vw, 3rem) / 1 'Playfair Display',Georgia,serif;
+}
+
+.commercial-segment-showcase figcaption span {
+  margin-top: 15px;
+  color: #dbc7bd;
+  font-size: .78rem;
+  line-height: 1.6;
+}
+
+.showcase-events img { max-height: 800px; }
+.showcase-school img,
+.showcase-rentals img { max-height: 660px; }
+
+.commercial-product-list > article.with-image {
+  grid-template-columns: minmax(270px, .82fr) minmax(220px, .62fr) minmax(300px, 1fr) auto;
+  align-items: center;
+}
+
+.commercial-product-description {
+  display: block;
+  margin-top: 9px;
+  color: #6f5045;
+  font-size: .72rem;
+  line-height: 1.55;
+}
+
+.commercial-additional-price {
+  margin: 0 0 13px;
+  color: #6f5045;
+  font-size: .72rem;
+}
+
+.commercial-additional-price strong { color: var(--c-coral); }
+
+.commercial-product-list > article:not(.with-image) .commercial-product-main {
+  padding-left: 8px;
+}
+
+.commercial-product-list > article > button,
+.commercial-submit {
+  transition: background .2s ease, transform .2s ease;
+}
+
+.commercial-product-list > article > button:hover,
+.commercial-submit:hover {
+  background: #d95850;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1100px) {
+  .commercial-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr);
+  }
+
+  .commercial-hero.without-media { grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr); }
+
+  .commercial-hero-media {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 360px;
+  }
+
+  .commercial-hero-compare {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .commercial-choice-flow {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .commercial-choice-flow > img {
+    display: none;
+  }
+
+  .commercial-choice-flow > div,
+  .commercial-choice-flow > ol {
+    grid-column: 1 / -1;
+  }
+
+  .commercial-product-list > article.with-image {
+    grid-template-columns: minmax(250px, .75fr) 1fr;
+  }
+
+  .commercial-product-list > article.with-image .commercial-product-details {
+    grid-column: 2;
+  }
+
+  .commercial-product-list > article.with-image > button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .commercial-hero {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+
+  .commercial-hero.without-media { grid-template-columns: 1fr; }
+
+  .commercial-hero-media,
+  .commercial-hero-compare {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .commercial-hero-media {
+    min-height: 390px;
+  }
+
+  .commercial-hero-compare {
+    width: min(100%, 620px);
+  }
+
+  .commercial-choice-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .commercial-choice-flow > ol {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding-top: 0;
+  }
+
+  .commercial-choice-flow li + li { border-top: 0; }
+
+  .commercial-proof-strip {
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .commercial-proof-strip span { white-space: nowrap; }
+
+  .commercial-segment-showcase { grid-template-columns: 1fr; }
+
+  .commercial-segment-showcase figcaption { min-height: 190px; }
+}
+
+@media (max-width: 620px) {
+  .commercial-hero {
+    min-height: 0;
+    padding: 54px 18px 46px;
+  }
+
+  .commercial-header {
+    padding-inline: 16px;
+  }
+
+  .commercial-hero-copy h1,
+  .commercial-hero.segment-events h1,
+  .commercial-hero.segment-school h1,
+  .commercial-hero.segment-rentals h1 {
+    font-size: clamp(3rem, 14vw, 4rem);
+  }
+
+  .commercial-hero-copy > p {
+    font-size: .88rem;
+  }
+
+  .commercial-hero-copy > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .commercial-hero-media {
+    min-height: 330px;
+  }
+
+  .commercial-hero-media img {
+    max-height: 360px;
+  }
+
+  .commercial-hero-compare {
+    padding: 26px 20px;
+    border-radius: 20px;
+  }
+
+  .commercial-choice-flow > div,
+  .commercial-choice-flow > ol {
+    padding: 44px 18px;
+  }
+
+  .commercial-choice-flow > ol {
+    padding-top: 0;
+  }
+
+  .commercial-proof-strip { padding-inline: 18px; }
+
+  .commercial-subcategories {
+    margin-bottom: 34px;
+    padding: 6px;
+  }
+
+  .commercial-subcategories button {
+    min-height: 76px;
+    padding: 12px;
+  }
+
+  .commercial-subcategories button span { font-size: 1.05rem; }
+  .commercial-subcategories button small { font-size: .6rem; }
+
+  .commercial-segment-showcase {
+    margin-top: 32px;
+    border-radius: 20px;
+  }
+
+  .commercial-segment-showcase img {
+    max-height: none;
+    height: auto;
+  }
+
+  .commercial-segment-showcase figcaption { min-height: 150px; }
+
+  .commercial-product-list > article.with-image { grid-template-columns: 1fr; }
+
+  .commercial-product-list > article.with-image .commercial-product-details,
+  .commercial-product-list > article.with-image > button { grid-column: auto; }
+
+  .commercial-product-list > article.with-image > button { width: 100%; }
+}
