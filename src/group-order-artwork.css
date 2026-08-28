@@ -58,7 +58,7 @@
 }
 
 .group-art-box svg { width: 44px; height: 44px; color: #e76e6b; }
-.group-art-box strong { margin-top: .7rem; font: 700 2.2rem Georgia, serif; }
+.group-art-box strong { margin-top: .7rem; font: 700 2.2rem 'Playfair Display',Georgia,serif; }
 .group-art-box small { margin-top: .3rem; color: #875546; }
 .group-art-caption { display: flex; align-items: center; gap: .55rem; padding: .75rem 1rem; border-radius: 999px; background: #35130d; color: #fff8ef; font-weight: 850; }
 .group-art-caption svg { width: 18px; }

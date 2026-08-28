@@ -47,6 +47,8 @@ Para cada superfície alterada:
 7. repetir no celular;
 8. incluir tablet quando a operação for afetada.
 
+A conferência responsiva obrigatória cobre 320, 360, 375, 390, 412, 430, 768, 1024 e 1280 px. Uma tela não pode receber o estado **Visual aprovado** quando alguma dessas larguras aplicáveis não tiver sido verificada ou quando sua implementação depender de reduzir um layout de computador por media queries com `max-width`.
+
 Inspecione: primeiro enquadramento, rolagem, menus, modais, foco, teclado, estados vazios, carregamento, erro, sucesso, conteúdo longo e barras fixas.
 
 ## Auditoria funcional

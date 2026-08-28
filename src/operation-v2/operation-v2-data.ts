@@ -37,7 +37,7 @@ export const INITIAL_OPERATION_TASKS: OperationTask[] = [
   {
     id: "1047",
     customer: "Juliana Martins",
-    product: "Bolo de chocolate",
+    product: "Torta de chocolate",
     amount: 95,
     time: "10:30",
     status: "confirmation",
@@ -77,7 +77,7 @@ export const INITIAL_OPERATION_TASKS: OperationTask[] = [
   {
     id: "1043",
     customer: "Paula Ribeiro",
-    product: "Bolo red velvet",
+    product: "Torta red velvet",
     amount: 120,
     time: "09:45",
     status: "payment",
@@ -107,7 +107,7 @@ export const INITIAL_OPERATION_TASKS: OperationTask[] = [
   {
     id: "1040",
     customer: "Lucas Ferreira",
-    product: "Bolo de chocolate",
+    product: "Torta de chocolate",
     amount: 95,
     time: "09:00",
     status: "separating",
@@ -138,7 +138,7 @@ export const INITIAL_OPERATION_TASKS: OperationTask[] = [
   {
     id: "1037",
     customer: "Sofia Nascimento",
-    product: "Bolo de chocolate",
+    product: "Torta de chocolate",
     amount: 135,
     time: "13:00",
     status: "scheduled",
@@ -152,4 +152,3 @@ export const formatOperationCurrency = (value: number) =>
     style: "currency",
     currency: "BRL",
   }).format(value);
-

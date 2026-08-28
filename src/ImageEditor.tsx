@@ -20,6 +20,7 @@ import {
   validateProductImage,
   type EditedProductImage,
 } from "./admin-media";
+import { analyzeImageFit, imageOutputHeight, type ImageFitMode } from "./image-fit-analysis";
 import "./image-editor.css";
 
 export type ImageEditorPreset = {
@@ -28,6 +29,8 @@ export type ImageEditorPreset = {
   aspectWidth: number;
   aspectHeight: number;
   outputWidth?: number;
+  defaultFitMode?: ImageFitMode;
+  preserveTransparency?: boolean;
 };
 
 export const PRODUCT_IMAGE_PRESET: ImageEditorPreset = {
@@ -46,7 +49,6 @@ export const CATEGORY_IMAGE_PRESET: ImageEditorPreset = {
   outputWidth: 1400,
 };
 
-type FitMode = "cover" | "contain";
 type Point = { x: number; y: number };
 
 type ImageEditorProps = {
@@ -86,7 +88,7 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
   const [sourceUrl, setSourceUrl] = useState("");
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [viewport, setViewport] = useState({ width: 1, height: 1 });
-  const [fitMode, setFitMode] = useState<FitMode>("cover");
+  const [fitMode, setFitMode] = useState<ImageFitMode>(preset.defaultFitMode || "cover");
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
@@ -127,21 +129,24 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
   const baseScale = useMemo(() => {
     const widthScale = viewport.width / rotatedSize.width;
     const heightScale = viewport.height / rotatedSize.height;
+    if (fitMode === "stretch") return 1;
     return fitMode === "cover"
       ? Math.max(widthScale, heightScale)
       : Math.min(widthScale, heightScale);
   }, [fitMode, rotatedSize, viewport]);
 
   const scale = baseScale * zoom;
-  const minZoom = fitMode === "cover" ? 1 : 0.75;
+  const minZoom = fitMode === "contain" ? 0.75 : 1;
   const filter = comparing
     ? "none"
     : `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
 
   const clampOffset = (point: Point, nextZoom = zoom) => {
     const nextScale = baseScale * nextZoom;
-    const maxX = Math.max(0, (rotatedSize.width * nextScale - viewport.width) / 2);
-    const maxY = Math.max(0, (rotatedSize.height * nextScale - viewport.height) / 2);
+    const renderedWidth = fitMode === "stretch" ? viewport.width * nextZoom : rotatedSize.width * nextScale;
+    const renderedHeight = fitMode === "stretch" ? viewport.height * nextZoom : rotatedSize.height * nextScale;
+    const maxX = Math.max(0, (renderedWidth - viewport.width) / 2);
+    const maxY = Math.max(0, (renderedHeight - viewport.height) / 2);
     return {
       x: Math.max(-maxX, Math.min(maxX, point.x)),
       y: Math.max(-maxY, Math.min(maxY, point.y)),
@@ -209,7 +214,7 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
     setContrast(ORIGINAL_ADJUSTMENTS.contrast);
     setSaturation(ORIGINAL_ADJUSTMENTS.saturation);
     setRotation(0);
-    resetPosition("cover");
+    resetPosition(preset.defaultFitMode || "cover");
   };
 
   const apply = async () => {
@@ -218,17 +223,18 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
     setError("");
     try {
       const outputWidth = preset.outputWidth || 1200;
-      const outputHeight = Math.round(outputWidth * preset.aspectHeight / preset.aspectWidth);
+      const outputHeight = imageOutputHeight(outputWidth, preset.aspectWidth, preset.aspectHeight);
       const canvas = document.createElement("canvas");
       canvas.width = outputWidth;
       canvas.height = outputHeight;
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Não foi possível preparar a imagem.");
-      context.fillStyle = "#f2e4d9";
-      context.fillRect(0, 0, outputWidth, outputHeight);
+      context.clearRect(0, 0, outputWidth, outputHeight);
       const targetBaseScale = fitMode === "cover"
         ? Math.max(outputWidth / rotatedSize.width, outputHeight / rotatedSize.height)
-        : Math.min(outputWidth / rotatedSize.width, outputHeight / rotatedSize.height);
+        : fitMode === "contain"
+          ? Math.min(outputWidth / rotatedSize.width, outputHeight / rotatedSize.height)
+          : 1;
       const targetScale = targetBaseScale * zoom;
       const offsetScaleX = outputWidth / viewport.width;
       const offsetScaleY = outputHeight / viewport.height;
@@ -239,13 +245,23 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
       );
       context.rotate(rotation * Math.PI / 180);
       context.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%)`;
-      context.drawImage(
-        image,
-        -image.naturalWidth * targetScale / 2,
-        -image.naturalHeight * targetScale / 2,
-        image.naturalWidth * targetScale,
-        image.naturalHeight * targetScale,
-      );
+      if (fitMode === "stretch") {
+        context.drawImage(
+          image,
+          -outputWidth * zoom / 2,
+          -outputHeight * zoom / 2,
+          outputWidth * zoom,
+          outputHeight * zoom,
+        );
+      } else {
+        context.drawImage(
+          image,
+          -image.naturalWidth * targetScale / 2,
+          -image.naturalHeight * targetScale / 2,
+          image.naturalWidth * targetScale,
+          image.naturalHeight * targetScale,
+        );
+      }
       context.restore();
       const blob = await optimizedWebp(canvas);
       await onApply({ blob, sourceFile: file, width: outputWidth, height: outputHeight });
@@ -255,9 +271,18 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
     }
   };
 
-  const hasLowResolution = Boolean(
-    image && (rotatedSize.width < (preset.outputWidth || 1200) || rotatedSize.height < Math.round((preset.outputWidth || 1200) * preset.aspectHeight / preset.aspectWidth)),
-  );
+  const outputWidth = preset.outputWidth || 1200;
+  const outputHeight = imageOutputHeight(outputWidth, preset.aspectWidth, preset.aspectHeight);
+  const fitAnalysis = image
+    ? analyzeImageFit({
+      sourceWidth: rotatedSize.width,
+      sourceHeight: rotatedSize.height,
+      targetWidth: outputWidth,
+      targetHeight: outputHeight,
+      mode: fitMode,
+    })
+    : null;
+  const hasLowResolution = Boolean(fitAnalysis?.lowResolution);
 
   return createPortal(
     <div className="image-editor-backdrop" role="dialog" aria-modal="true" aria-label={`Editar ${title}`}>
@@ -283,25 +308,34 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
                   alt="Prévia da edição"
                   draggable={false}
                   style={{
-                    width: image?.naturalWidth || "auto",
-                    height: image?.naturalHeight || "auto",
+                    width: fitMode === "stretch" ? viewport.width : image?.naturalWidth || "auto",
+                    height: fitMode === "stretch" ? viewport.height : image?.naturalHeight || "auto",
                     transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) rotate(${rotation}deg) scale(${scale})`,
                     filter,
                   }}
                 />
               ) : null}
               <span className="image-editor-grid" aria-hidden="true" />
+              <strong className="image-editor-format-badge">Formato final {preset.aspectWidth}:{preset.aspectHeight}</strong>
               <small>Arraste para enquadrar · use dois dedos para ajustar</small>
             </div>
+            <p className={`image-editor-fill-status ${fitMode}`}>
+              <strong>{fitAnalysis?.title || "Analisando a imagem…"}</strong>
+              <span>{fitAnalysis?.detail || "Aguarde enquanto conferimos o tamanho e a proporção."}</span>
+              {image ? <small>Imagem enviada: {rotatedSize.width} × {rotatedSize.height} px · esperado: {outputWidth} × {outputHeight} px</small> : null}
+            </p>
             <div className={`image-editor-quality ${hasLowResolution ? "warning" : "good"}`}>
               <strong>{hasLowResolution ? "Resolução abaixo do recomendado" : "Boa resolução para publicação"}</strong>
-              <span>{preset.description} · saída em {preset.outputWidth || 1200} × {Math.round((preset.outputWidth || 1200) * preset.aspectHeight / preset.aspectWidth)} px</span>
+              <span>{preset.description} · saída exata em {outputWidth} × {outputHeight} px</span>
+              {hasLowResolution ? <small>A foto será ampliada e poderá perder nitidez.</small> : null}
+              {preset.preserveTransparency ? <small>Se a imagem tiver fundo transparente, o fundo da página continuará aparecendo.</small> : null}
             </div>
           </div>
           <aside className="image-editor-controls">
             <fieldset>
               <legend>Como ocupar o espaço</legend>
               <div className="image-editor-segmented">
+                <button type="button" className={fitMode === "stretch" ? "active" : ""} onClick={() => resetPosition("stretch")}><Maximize2 /> Esticar</button>
                 <button type="button" className={fitMode === "cover" ? "active" : ""} onClick={() => resetPosition("cover")}><Maximize2 /> Preencher</button>
                 <button type="button" className={fitMode === "contain" ? "active" : ""} onClick={() => resetPosition("contain")}><Minimize2 /> Foto inteira</button>
               </div>
@@ -331,7 +365,7 @@ export default function ImageEditor({ file, title, preset, onCancel, onApply }: 
         {error ? <p className="image-editor-error" role="alert">{error}</p> : null}
         <footer>
           <span>A original será guardada para futuras edições.</span>
-          <div><button type="button" onClick={onCancel}>Cancelar</button><button type="button" className="primary" disabled={busy || !image || Boolean(error)} onClick={() => void apply()}><Check /> {busy ? "Preparando..." : "Usar esta foto"}</button></div>
+          <div><button type="button" onClick={onCancel}>Cancelar</button><button type="button" className="primary" disabled={busy || !image || Boolean(error)} onClick={() => void apply()}><Check /> {busy ? "Preparando..." : "Salvar neste formato"}</button></div>
         </footer>
       </section>
     </div>,

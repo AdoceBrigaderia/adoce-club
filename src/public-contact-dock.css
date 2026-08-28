@@ -80,7 +80,7 @@ body:has(.instant-order-layer) .public-contact-dock {
 
 .public-contact-menu header strong {
   color: #35150e;
-  font: 700 16px/1.25 Georgia, serif;
+  font: 700 16px/1.25 'Playfair Display',Georgia,serif;
 }
 
 .public-contact-menu header button {

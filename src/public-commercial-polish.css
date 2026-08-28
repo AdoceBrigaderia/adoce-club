@@ -76,7 +76,7 @@
 
 .today-page-preview-bar strong {
   overflow: hidden;
-  font: 600 .74rem Manrope, Inter, sans-serif;
+  font: 600 .74rem Inter, sans-serif;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

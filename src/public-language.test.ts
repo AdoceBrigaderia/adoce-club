@@ -8,8 +8,8 @@ describe("linguagem pública da Adoce", () => {
   const pedeJunto = readFileSync(new URL("./GroupOrderPage.tsx", import.meta.url), "utf8");
 
   it("fala em disponibilidade de sabores em vez de termos internos", () => {
-    expect(today).toContain("Sabores disponíveis agora");
-    expect(today).toContain("Disponíveis hoje");
+    expect(today).toContain("Sabores disponíveis hoje");
+    expect(today).toContain(">Hoje</button>");
     expect(today).toContain("Disponível hoje");
     expect(today).not.toContain("Sinalizados hoje");
     expect(today).not.toContain("Sinalizado hoje");

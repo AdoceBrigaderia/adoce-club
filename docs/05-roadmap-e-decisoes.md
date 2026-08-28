@@ -89,7 +89,7 @@ As 24 pendências ativas estão concentradas nestes temas:
 
 | Tema | O que ainda precisa ser confirmado |
 | --- | --- |
-| Estoque e barraquinha | Responsáveis pela contagem e forma de conferir a transferência da produção |
+| Estoque e Cantinho da Adoce | Responsáveis pela contagem e forma de conferir a transferência da produção |
 | Carrinho e reserva | Limite temporário, extensão de prazo e tratamento de substituições |
 | Delivery | Existência de entrega própria, regiões, responsável, taxa e prazo |
 | Mercado Pago | Parcelamento, política de estorno e modelo da maquininha presencial |

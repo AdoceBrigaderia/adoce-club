@@ -1,0 +1,219 @@
+/* Painel do dia da operação.
+   Mobile-first, uma mão só. Todas as cores vêm de adoce-tokens.css. */
+
+.painel-dia {
+  display: grid;
+  gap: 20px;
+  padding: 16px 16px 48px;
+  max-width: 640px;
+  margin: 0 auto;
+  color: var(--adoce-marrom);
+}
+
+.pd-topo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pd-legenda {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+.pd-frase {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.25;
+}
+
+.pd-atualizar {
+  flex: 0 0 auto;
+  width: var(--adoce-toque);
+  height: var(--adoce-toque);
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 30%, transparent);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--adoce-terra);
+  cursor: pointer;
+}
+
+.pd-atualizar svg { width: 20px; height: 20px; }
+
+/* ---- Ações: o que precisa de você agora ---- */
+
+.pd-acoes { display: grid; gap: 12px; }
+
+.pd-acao {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--adoce-rosa) 40%, #fff);
+}
+
+.pd-acao-icone { width: 22px; height: 22px; grid-row: span 2; align-self: start; }
+
+.pd-acao-texto h2 {
+  margin: 0 0 2px;
+  font-size: 1.0625rem;
+  line-height: 1.3;
+}
+
+.pd-acao-texto p {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--adoce-marrom) 78%, transparent);
+}
+
+.pd-acao button {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--adoce-toque);
+  margin-top: 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pd-acao button svg { width: 18px; height: 18px; }
+
+/* Crítico ganha contorno, não vermelho de alarme: a marca continua sendo a marca. */
+.pd-acao-critico {
+  border-color: var(--adoce-terra);
+  background: color-mix(in srgb, var(--adoce-rosa) 70%, #fff);
+}
+
+.pd-acao-critico .pd-acao-icone { color: var(--adoce-terra); }
+
+.pd-acao-atencao {
+  border-color: color-mix(in srgb, var(--adoce-terra) 30%, transparent);
+}
+
+.pd-acao-informativo {
+  background: color-mix(in srgb, var(--adoce-dourado) 22%, #fff);
+}
+
+.pd-tranquilo {
+  margin: 0;
+  padding: 18px 16px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--adoce-dourado) 25%, #fff);
+  font-size: 1rem;
+}
+
+/* ---- Números ---- */
+
+.pd-numeros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  text-align: center;
+}
+
+.pd-numeros p { margin: 0; display: grid; gap: 2px; }
+
+.pd-numeros strong {
+  font-size: 1.1875rem;
+  color: var(--adoce-terra);
+}
+
+.pd-numeros span {
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}
+
+/* ---- Listas ---- */
+
+.pd-secao {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+.pd-sabores ul,
+.pd-pedidos ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.pd-sabor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--adoce-toque);
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-rosa) 26%, #fff);
+}
+
+.pd-sabor svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.pd-sabor-nome { flex: 1 1 auto; }
+.pd-sabor-conta { font-size: 0.9375rem; }
+.pd-sabor-conta em { font-style: normal; color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent); }
+
+.pd-sabor-acabando { border: 1px solid var(--adoce-terra); }
+.pd-sabor-acabando .pd-sabor-conta strong { color: var(--adoce-terra); }
+.pd-sabor-esperando { border: 1px dashed var(--adoce-terra); }
+.pd-sabor-esgotado { opacity: 0.55; }
+
+.pd-pedido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--adoce-rosa) 26%, #fff);
+}
+
+.pd-pedido p { margin: 0; }
+.pd-pedido-cliente { font-weight: 600; }
+
+.pd-pedido-detalhe {
+  font-size: 0.875rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent);
+}
+
+.pd-pedido-status {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+.pd-pedido-novo { border: 1px solid var(--adoce-terra); }
+.pd-pedido-novo .pd-pedido-status { color: var(--adoce-terra); font-weight: 700; }
+.pd-pedido-retirado { opacity: 0.6; }
+
+.pd-vazio {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}
+
+@media (min-width: 720px) {
+  .pd-frase { font-size: 1.75rem; }
+}

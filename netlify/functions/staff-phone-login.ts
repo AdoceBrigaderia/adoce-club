@@ -20,15 +20,19 @@ const json = (body: unknown, status = 200) =>
 const allowedOrigin = (request: Request) => {
   const origin = request.headers.get("origin");
   if (!origin) return true;
-  return new Set([
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "https://operacao.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:4182",
-    "http://127.0.0.1:4182",
-  ]).has(origin);
+  const configured = env("SITE_URL")?.replace(/\/$/, "");
+  return new Set(
+    [
+      configured,
+      "https://www.adocebrigaderia.com.br",
+      "https://clube.adocebrigaderia.com.br",
+      "https://operacao.adocebrigaderia.com.br",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:4182",
+      "http://127.0.0.1:4182",
+    ].filter(Boolean),
+  ).has(origin);
 };
 
 const normalizePhone = (value: string) => {
@@ -37,6 +41,14 @@ const normalizePhone = (value: string) => {
   return national.length === 10 || national.length === 11
     ? `+55${national}`
     : null;
+};
+
+const safelyMatches = (received: string, expected: string) => {
+  const size = Math.max(received.length, expected.length);
+  let difference = received.length ^ expected.length;
+  for (let index = 0; index < size; index += 1)
+    difference |= (received.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
+  return difference === 0;
 };
 
 export default async (request: Request) => {
@@ -53,6 +65,20 @@ export default async (request: Request) => {
   const password = body.password || "";
   if (!phone || !password)
     return json({ error: "Informe celular e senha." }, 400);
+
+  if (env("HOMOLOGATION_FAKE_LOGIN_ENABLED") === "true") {
+    const configuredPhone = normalizePhone(env("HOMOLOGATION_FAKE_USER") || "");
+    const configuredPassword = env("HOMOLOGATION_FAKE_PASSWORD") || "";
+    if (
+      configuredPhone &&
+      configuredPassword &&
+      safelyMatches(phone, configuredPhone) &&
+      safelyMatches(password, configuredPassword)
+    ) {
+      return json({ homologation_demo: true, must_change_password: false });
+    }
+    return json({ error: "Usuário ou senha incorretos." }, 401);
+  }
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =

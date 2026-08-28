@@ -20,6 +20,7 @@ type ArchiveRecord = {
   subtitle: string;
   status: string;
   occurredAt: string;
+  orderedAt: string;
   reason: string;
   actorId?: string | null;
 };
@@ -77,6 +78,8 @@ export default function OperationArchive() {
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<ArchiveCategory>("all");
   const [search, setSearch] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -86,11 +89,11 @@ export default function OperationArchive() {
     const supabase = requireSupabase();
     const [requests, orders, groups, profiles, actions, blocks, staff] = await Promise.all([
       supabase.from("service_requests")
-        .select("id,request_number,customer_name,customer_phone,status,internal_notes,updated_at,updated_by,commercial_products(name)")
+        .select("id,request_number,customer_name,customer_phone,status,internal_notes,created_at,updated_at,updated_by,commercial_products(name)")
         .in("status", ["completed", "cancelled", "expired"])
         .order("updated_at", { ascending: false }).limit(300),
       supabase.from("instant_orders")
-        .select("id,order_number,customer_name,customer_phone,status,cancellation_reason,updated_at,updated_by")
+        .select("id,order_number,customer_name,customer_phone,status,cancellation_reason,created_at,updated_at,updated_by")
         .in("status", ["completed", "cancelled", "expired"])
         .order("updated_at", { ascending: false }).limit(300),
       supabase.from("pede_junto_groups")
@@ -138,6 +141,7 @@ export default function OperationArchive() {
         subtitle: `${productName} · ${request.customer_phone}`,
         status: request.status,
         occurredAt: request.updated_at,
+        orderedAt: request.created_at,
         reason: request.status === "cancelled" ? cancellationNote(request.internal_notes) : request.status === "expired" ? "O prazo da solicitação foi encerrado." : "Atendimento concluído.",
         actorId: request.updated_by,
       });
@@ -149,6 +153,7 @@ export default function OperationArchive() {
       subtitle: order.customer_phone,
       status: order.status,
       occurredAt: order.updated_at,
+      orderedAt: order.created_at,
       reason: order.cancellation_reason || (order.status === "completed" ? "Pedido entregue." : "Prazo da reserva encerrado."),
       actorId: order.updated_by,
     }));
@@ -159,6 +164,7 @@ export default function OperationArchive() {
       subtitle: `Organizador: ${group.organizer_name}`,
       status: group.status,
       occurredAt: group.archived_at || group.updated_at,
+      orderedAt: group.archived_at || group.updated_at,
       reason: group.cancellation_reason || (group.status === "completed" ? "Grupo entregue e encerrado." : "Prazo do grupo encerrado."),
       actorId: group.archived_by,
     }));
@@ -179,6 +185,7 @@ export default function OperationArchive() {
           subtitle: profile.account_status === "anonymized" ? "Os dados pessoais já foram removidos." : (profile.phone_e164 || profile.email || profile.member_code || "Sem contato disponível"),
           status: profile.account_status,
           occurredAt: action?.created_at || profile.updated_at,
+          orderedAt: action?.created_at || profile.updated_at,
           reason: action?.reason_note || profile.status_reason_note || reasonLabels[action?.reason_code || profile.status_reason_code || ""] || "Alteração de cadastro registrada.",
           actorId: action?.actor_user_id,
         });
@@ -190,6 +197,7 @@ export default function OperationArchive() {
       subtitle: "Compromisso retirado da agenda",
       status: block.status,
       occurredAt: block.updated_at,
+      orderedAt: block.updated_at,
       reason: block.notes || "Cancelamento registrado pela equipe.",
       actorId: block.updated_by,
     }));
@@ -203,8 +211,10 @@ export default function OperationArchive() {
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
     return records.filter((record) => (category === "all" || record.category === category)
+      && (!from || record.orderedAt.slice(0, 10) >= from)
+      && (!to || record.orderedAt.slice(0, 10) <= to)
       && (!term || `${record.title} ${record.subtitle} ${record.reason}`.toLocaleLowerCase("pt-BR").includes(term)));
-  }, [category, records, search]);
+  }, [category, from, records, search, to]);
 
   const icon = (recordCategory: ArchiveRecord["category"]) => {
     if (recordCategory === "orders") return <ShoppingBag />;
@@ -228,13 +238,15 @@ export default function OperationArchive() {
         {(["all", "requests", "orders", "groups", "customers", "calendar"] as ArchiveCategory[]).map((key) => <button type="button" key={key} className={category === key ? "active" : ""} onClick={() => setCategory(key)}>{key === "all" ? "Tudo" : categoryLabels[key]}</button>)}
       </div>
       <label><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar no histórico" /></label>
+      <label>Pedido de<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
+      <label>Pedido até<input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label>
     </div>
     {notice ? <p className="operation-archive-notice" role="alert">{notice}</p> : null}
     <div className="operation-archive-list">
       {filtered.map((record) => <article key={record.id}>
         <div className="operation-archive-icon">{icon(record.category)}</div>
         <div className="operation-archive-copy"><small>{categoryLabels[record.category]}</small><strong>{record.title}</strong><span>{record.subtitle}</span><p><b>Motivo:</b> {record.reason}</p></div>
-        <div className="operation-archive-meta"><b>{statusLabels[record.status] || record.status}</b><time>{dateTime(record.occurredAt)}</time><small>Responsável: {record.actorId ? staffNames[record.actorId] || "Equipe Adoce" : "Sistema"}</small></div>
+        <div className="operation-archive-meta"><b>{statusLabels[record.status] || record.status}</b><time>Pedido em {dateTime(record.orderedAt)}</time><small>Atualizado em {dateTime(record.occurredAt)}</small><small>Responsável: {record.actorId ? staffNames[record.actorId] || "Equipe Adoce" : "Sistema"}</small></div>
       </article>)}
       {!busy && !filtered.length ? <div className="operation-archive-empty"><Archive /><strong>Nenhum registro neste filtro.</strong><span>As listas operacionais continuam limpas e somente itens encerrados aparecem aqui.</span></div> : null}
     </div>

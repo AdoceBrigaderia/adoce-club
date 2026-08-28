@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PRODUCT_IMAGE_LIMIT = 6;
-export const PRODUCT_IMAGE_MAX_BYTES = 6 * 1024 * 1024;
+export const PRODUCT_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
 export const PRODUCT_IMAGE_MAX_EDGE = 1600;
 export const PRODUCT_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -22,7 +22,7 @@ export function validateProductImage(file: Pick<File, "size" | "type">) {
     return "Use uma imagem JPG, PNG ou WebP.";
   }
   if (file.size > PRODUCT_IMAGE_MAX_BYTES) {
-    return "A imagem original deve ter no máximo 6 MB.";
+    return "A imagem original deve ter no máximo 4 MB.";
   }
   return "";
 }

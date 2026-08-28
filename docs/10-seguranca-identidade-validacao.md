@@ -10,17 +10,25 @@ status: Publicado no domínio principal, com validação controlada ainda necess
 
 O acesso cotidiano do cliente passa a usar **celular com DDD e senha**. O código enviado por e-mail permanece para o primeiro acesso, recuperação e validações de segurança.
 
+O Clube também aceita login social por **Google** e **Facebook**, sem substituir os métodos existentes. Os segredos desses provedores ficam configurados apenas no Supabase e nunca são enviados ao navegador. Quando o provedor confirma o mesmo e-mail já ligado à conta, a identidade social pode reutilizar o cadastro existente. Contas sem o mesmo e-mail confirmado não são unificadas automaticamente por telefone; possíveis duplicidades continuam seguindo a revisão administrativa. Instagram não é oferecido como botão de login porque não existe suporte nativo adequado para autenticação geral de clientes nesse fluxo.
+
+A operação oferece os mesmos botões de Google e Facebook como conveniência, sem transformar a conta social em autorização administrativa. Depois da autenticação, o acesso interno continua condicionado a um registro ativo do mesmo identificador em `staff_members`. Uma conta autenticada que não possua esse vínculo permanece fora da operação, e nenhuma permissão é inferida do e-mail ou dos metadados enviados pelo provedor.
+
 O primeiro acesso deve seguir esta ordem:
 
 1. confirmar o e-mail;
 2. concluir nome, termos e preferências;
 3. confirmar o WhatsApp;
 4. verificar que o telefone não pertence a outro cadastro;
-5. criar uma senha forte;
+5. criar uma senha com no mínimo 6 caracteres, sem exigência de maiúsculas, minúsculas, números ou símbolos;
 6. oferecer passkey/biometria como alternativa opcional;
 7. permitir que o cliente escolha continuar conectado no aparelho.
 
+A opção aparece como **Manter conectado** e explica que o login só será solicitado novamente quando o cliente escolher **Sair**. Com a sessão persistida, a Home pública pode reconhecer o cliente e mostrar somente o resumo do próprio cartão, sem expor dados de outra pessoa ou qualquer informação operacional.
+
 Passkeys permanecem sob sinalização de recurso experimental e não substituem a senha enquanto a integração não estiver validada nos aparelhos atendidos pela Adoce.
+
+O envio e a validação do código por e-mail passam por rotas do próprio site antes de chegar ao Supabase. Isso evita que uma falha de conexão direta do navegador apareça apenas como `Failed to fetch` e permite mensagens seguras de indisponibilidade, limite de tentativas ou conta não encontrada. A entrega para clientes reais depende de provedor SMTP liberado no ambiente de produção.
 
 ## Migração dos clientes existentes
 
@@ -90,6 +98,8 @@ Uma mudança só pode ser declarada pronta quando houver evidência de:
 13. revisão visual no computador e no celular;
 14. aprovação da prévia antes da publicação;
 15. verificação final nos domínios oficiais após a publicação.
+
+Pedidos públicos utilizam número rastreável e token aleatório de acesso, sem expor consultas por telefone ou dados de outros clientes. O vínculo com o Clube só pode ser consultado por sessão autenticada ou pela equipe. Mudanças para pronto ou entregue exigem pagamento aprovado no próprio banco, independentemente do botão usado pela interface.
 
 ## Estado desta entrega
 

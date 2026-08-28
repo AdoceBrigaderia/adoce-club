@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, ImagePlus, Images, RotateCcw } from "lucide-react";
+import { ArrowRight, ExternalLink, ImagePlus, Images, RotateCcw } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ImageEditor, { type ImageEditorPreset } from "./ImageEditor";
 import { uploadEditedProductImage, type EditedProductImage } from "./admin-media";
 import { requireSupabase } from "./lib/supabase";
-import { SITE_VISUAL_ASSETS, type SiteVisualAssetDefinition } from "./site-visual-assets";
+import { SITE_VISUAL_ASSETS, SITE_VISUAL_PAGE_LINKS, type SiteVisualAssetDefinition } from "./site-visual-assets";
+import { imageOutputHeight } from "./image-fit-analysis";
 import "./operation-visual-settings.css";
 
 type StoredVisualAsset = {
@@ -149,15 +150,30 @@ export default function OperationVisualSettings({
           const saved = storedByKey.get(definition.key);
           const currentUrl = saved?.image_url || definition.key;
           const working = busyKey === definition.key;
+          const outputHeight = imageOutputHeight(definition.outputWidth, definition.aspectWidth, definition.aspectHeight);
+          const fitLabel = definition.fitMode === "contain"
+            ? "A foto inteira será preservada; áreas livres mostrarão o fundo da página."
+            : definition.fitMode === "cover"
+              ? "A moldura será preenchida e as sobras poderão ser cortadas."
+              : "A moldura será preenchida por completo; se a proporção for diferente, a foto será distorcida sem ser cortada.";
           return <article key={definition.key}>
-            <div className="operation-visual-preview">
+            <div className={`operation-visual-preview fit-${definition.fitMode}`} style={{ aspectRatio: `${definition.aspectWidth} / ${definition.aspectHeight}` }}>
               <img src={currentUrl} alt={definition.alt} />
               <span>{saved ? "Personalizada" : "Original do projeto"}</span>
             </div>
             <div className="operation-visual-copy">
               <strong>{definition.label}</strong>
               <p>{definition.description}</p>
-              <small>Corte recomendado: {definition.aspectWidth}:{definition.aspectHeight}</small>
+              <small><b>Tamanho esperado: {definition.outputWidth} × {outputHeight} px</b></small>
+              <small>Proporção: {definition.aspectWidth}:{definition.aspectHeight} · {fitLabel}</small>
+              <div className="operation-visual-page-links" aria-label={`Páginas que usam ${definition.label}`}>
+                {SITE_VISUAL_PAGE_LINKS[definition.key].map((destination) => (
+                  <a key={destination.url} href={destination.url} target="_blank" rel="noreferrer">
+                    <ExternalLink />
+                    <span><b>{destination.label}</b><small>{destination.url}</small></span>
+                  </a>
+                ))}
+              </div>
             </div>
             <div className="operation-visual-actions">
               <label className="operation-visual-file">
@@ -196,6 +212,8 @@ export default function OperationVisualSettings({
         aspectWidth: pending.definition.aspectWidth,
         aspectHeight: pending.definition.aspectHeight,
         outputWidth: pending.definition.outputWidth,
+        defaultFitMode: pending.definition.fitMode,
+        preserveTransparency: true,
       } satisfies ImageEditorPreset}
       onCancel={() => setPending(null)}
       onApply={apply}

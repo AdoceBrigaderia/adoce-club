@@ -10,7 +10,7 @@
 
 .operation-segment-media > div:first-child h2 {
   margin: 4px 0 8px;
-  font: 600 1.8rem Georgia, serif;
+  font: 600 1.8rem 'Playfair Display',Georgia,serif;
 }
 
 .operation-segment-media > div:first-child p {

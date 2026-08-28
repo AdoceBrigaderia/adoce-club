@@ -18,9 +18,11 @@ describe("histórico separado das filas operacionais", () => {
     expect(access).toContain('<Archive /> Histórico');
   });
 
-  it("não mistura cancelados e concluídos nas listas de trabalho", () => {
-    expect(commercial).not.toContain('["completed", "Concluídos"]');
-    expect(commercial).not.toContain('["cancelled", "Cancelados"]');
+  it("mantém encerrados fora da fila ativa, mas permite consultá-los por filtro", () => {
+    expect(commercial).toContain('useState<RequestFilter>("active")');
+    expect(commercial).toContain('if (filter === "active") return !["completed", "cancelled", "expired"].includes(status)');
+    expect(commercial).toContain('["completed", "Concluídos"]');
+    expect(commercial).toContain('["cancelled", "Cancelados ou expirados"]');
     expect(instantOrders).toContain('.filter((order) => !["completed", "cancelled", "expired"].includes(order.status))');
   });
 

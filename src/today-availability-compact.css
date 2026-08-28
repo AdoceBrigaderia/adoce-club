@@ -1,0 +1,33 @@
+.today-page .today-availability-seal.available.compact {
+  top: 10px !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 10px !important;
+  width: 42px !important;
+  height: 42px !important;
+  aspect-ratio: 1 !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 2px solid #3a8b62 !important;
+  border-radius: 999px !important;
+  color: #3a8b62 !important;
+  background: rgba(255, 253, 251, 0.94) !important;
+  box-shadow: 0 5px 14px rgba(47, 105, 75, 0.16) !important;
+}
+
+.today-page .today-availability-seal.available.compact svg {
+  width: 23px !important;
+  height: 23px !important;
+  margin: 0 !important;
+  fill: none !important;
+  stroke: currentColor !important;
+  stroke-width: 2 !important;
+}
+
+@media (min-width: 768px) {
+  .today-page .today-availability-seal.available.compact {
+    width: 46px !important;
+    height: 46px !important;
+  }
+}

@@ -475,7 +475,7 @@ function MobileAgenda({
               <CalendarDays aria-hidden="true" />
               <span>
                 <strong>Confirmar produção planejada</strong>
-                <small>Bolo Red Velvet e Brownies (caixa)</small>
+                <small>Torta Red Velvet e Brownies (caixa)</small>
               </span>
               <b>2 itens</b>
             </header>
@@ -701,4 +701,3 @@ export default function OperationV2Demo() {
     </main>
   );
 }
-

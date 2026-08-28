@@ -103,6 +103,15 @@
   text-align: center;
   font-size: .67rem;
 }
+.image-editor-format-badge { position:absolute; left:12px; top:12px; z-index:2; padding:7px 9px; border-radius:8px; background:rgba(255,250,244,.92); color:#4a241b; box-shadow:0 4px 14px rgba(50,20,13,.15); font-size:.66rem; }
+.image-editor-fill-status { margin:0; padding:11px 13px; border:1px solid #ddc8b8; border-radius:11px; font-size:.68rem; line-height:1.45; }
+.image-editor-fill-status { display:grid; gap:3px; }
+.image-editor-fill-status strong { font-size:.76rem; }
+.image-editor-fill-status span,.image-editor-fill-status small { display:block; }
+.image-editor-fill-status small { margin-top:3px; opacity:.82; }
+.image-editor-fill-status.stretch { background:#fff0f3; color:#913a53; }
+.image-editor-fill-status.cover { background:#eaf4ed; color:#3f7657; }
+.image-editor-fill-status.contain { background:#fff4e8; color:#8e572f; }
 
 .image-editor-quality {
   padding: 12px 14px;
@@ -114,6 +123,7 @@
 }
 .image-editor-quality strong { font-size: .76rem; }
 .image-editor-quality span { color: #795b51; font-size: .65rem; }
+.image-editor-quality small { color:#a14f31; font-size:.62rem; }
 .image-editor-quality.good strong { color: #3f7657; }
 .image-editor-quality.warning strong { color: #a14f31; }
 
@@ -131,7 +141,7 @@
 .image-editor-controls label { display: grid; grid-template-columns: 1fr auto; gap: 7px; font-size: .68rem; }
 .image-editor-controls label output { color: #a34f47; }
 .image-editor-controls input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: #ef6a61; }
-.image-editor-segmented { padding: 4px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-radius: 10px; background: #f3e5db; }
+.image-editor-segmented { padding: 4px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border-radius: 10px; background: #f3e5db; }
 .image-editor-segmented button,
 .image-editor-actions-row button,
 .image-editor-auto,
@@ -181,6 +191,8 @@
   .image-editor-shell > header strong { font-size: 1rem; }
   .image-editor-shell > header small { font-size: .78rem; }
   .image-editor-stage > small { bottom: 8px; font-size: .74rem; }
+  .image-editor-format-badge { font-size:.72rem; }
+  .image-editor-fill-status { font-size:.76rem; }
   .image-editor-quality strong { font-size: .85rem; }
   .image-editor-quality span { font-size: .75rem; line-height: 1.4; }
   .image-editor-controls { gap: 13px; }

@@ -1,0 +1,248 @@
+.customer-app-shell .club-home {
+  width: min(100% - 24px, 1120px);
+  margin: 0 auto;
+  padding: 20px 0 calc(104px + env(safe-area-inset-bottom));
+}
+
+.customer-app-shell .club-home > header,
+.customer-app-shell .club-home > .club-bottom {
+  display: none;
+}
+
+.club-account-reference {
+  display: grid;
+  gap: 20px;
+  color: #2b130d;
+}
+
+.club-account-identity,
+.club-account-loyalty,
+.club-account-order-empty,
+.club-account-reference .club-preferences-panel {
+  border: 1px solid rgba(240, 106, 95, 0.22);
+  border-radius: 24px;
+  background: rgba(255, 250, 244, 0.94);
+  box-shadow: 0 14px 34px rgba(83, 37, 28, 0.07);
+}
+
+.club-account-identity {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+}
+
+.club-account-avatar {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  aspect-ratio: 1;
+  border: 5px solid #fff;
+  border-radius: 50%;
+  background: #f06a5f;
+  color: #fff;
+  font: 800 1.4rem/1 Inter, "Segoe UI", sans-serif;
+  box-shadow: 0 8px 18px rgba(240, 106, 95, 0.22);
+}
+
+.club-account-identity-copy { min-width: 0; }
+.club-account-identity-copy h1 {
+  margin: 0 0 8px;
+  font: 700 clamp(1.55rem, 8vw, 2.35rem)/1 'Playfair Display',Georgia,serif;
+}
+.club-account-identity-copy p {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin: 5px 0;
+  color: #78574d;
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+}
+.club-account-identity-copy p svg { width: 18px; flex: 0 0 auto; color: #ef3f70; }
+
+.club-account-edit {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  width: 54px;
+  color: #ef3f70;
+  text-decoration: none;
+  font-size: .72rem;
+}
+.club-account-edit svg { width: 44px; height: 44px; padding: 11px; border-radius: 50%; background: #fff; box-shadow: 0 7px 18px rgba(83, 37, 28, .08); }
+
+.club-account-heading small {
+  display: block;
+  margin-bottom: 6px;
+  color: #ef3f70;
+  font: 800 .72rem/1 Inter, sans-serif;
+  letter-spacing: .2em;
+}
+.club-account-heading h2 {
+  margin: 0;
+  font: 700 clamp(2.35rem, 12vw, 4.4rem)/.95 'Playfair Display',Georgia,serif;
+}
+.club-account-heading em { color: #ef3f70; font-style: normal; }
+
+.club-account-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.club-account-actions a {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 20px;
+  gap: 10px;
+  align-items: center;
+  min-height: 116px;
+  padding: 14px;
+  border: 1px solid rgba(240, 106, 95, .2);
+  border-radius: 22px;
+  background: rgba(255, 250, 244, .94);
+  color: #2b130d;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(83, 37, 28, .06);
+}
+.club-account-actions a > span { grid-row: 1 / span 2; display: grid; place-items: center; width: 48px; aspect-ratio: 1; border-radius: 50%; background: #ef2861; color: #fff; }
+.club-account-actions a > span svg { width: 25px; }
+.club-account-actions a > strong { align-self: end; font-size: .98rem; }
+.club-account-actions a > small { align-self: start; color: #78574d; font-size: .72rem; line-height: 1.35; }
+.club-account-actions a > svg { grid-column: 3; grid-row: 1 / span 2; width: 18px; color: #ef3f70; }
+
+.club-account-loyalty {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+.club-account-loyalty small { font: 700 1.35rem/1 'Playfair Display',Georgia,serif; }
+.club-account-loyalty h2 { margin: 7px 0 12px; font: 500 1rem/1.2 Inter, sans-serif; }
+.club-account-loyalty h2 strong { color: #ef2861; font-size: 1.8rem; }
+.club-account-stamps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+.club-account-stamps svg { width: 100%; height: auto; padding: 5px; border: 1px solid #ffafbf; border-radius: 50%; color: #c58b83; }
+.club-account-stamps svg.filled { fill: #ef2861; color: #ef2861; }
+.club-account-reward-ready {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 1px solid #ef2861;
+  border-radius: 14px;
+  background: #fff0f4;
+  color: #6b1730;
+}
+.club-account-reward-ready > svg { flex: 0 0 auto; width: 24px; color: #ef2861; }
+.club-account-reward-ready > span { display: grid; gap: 2px; }
+.club-account-reward-ready strong { font-size: .88rem; line-height: 1.25; }
+.club-account-reward-ready small { color: #78574d; font: 600 .68rem/1.35 Inter, sans-serif; }
+.club-account-loyalty button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: #ef2861;
+  color: #fff;
+  font-weight: 800;
+}
+
+.club-account-primary-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.club-account-primary-actions > button,
+.club-account-primary-actions > a {
+  display: flex;
+  min-width: 0;
+  min-height: 68px;
+  padding: 12px 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #ef2861;
+  border-radius: 18px;
+  background: #fffaf4;
+  color: #ef2861;
+  font: 800 .82rem/1.2 Inter, "Segoe UI", sans-serif;
+  text-align: center;
+  text-decoration: none;
+}
+
+.club-account-primary-actions > button {
+  cursor: pointer;
+}
+
+.club-account-primary-actions > button:hover,
+.club-account-primary-actions > a:hover,
+.club-account-primary-actions > button:focus-visible,
+.club-account-primary-actions > a:focus-visible {
+  background: #ef2861;
+  color: #fff;
+}
+
+.club-account-primary-actions svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.club-account-order-empty {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+}
+.club-account-order-empty > span { display: grid; place-items: center; width: 54px; aspect-ratio: 1; border-radius: 50%; background: #ffe7ea; color: #ef2861; }
+.club-account-order-empty div { display: grid; gap: 4px; }
+.club-account-order-empty small { color: #78574d; }
+
+.club-account-reference .club-preferences-panel { padding: 0; overflow: hidden; }
+.club-account-reference .club-preferences-panel > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 18px;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+.club-account-reference .club-preferences-panel > summary::-webkit-details-marker { display: none; }
+.club-account-reference .club-preferences-panel > summary svg:last-child { margin-left: auto; }
+.club-account-reference .club-preferences-panel[open] > summary svg:last-child { transform: rotate(180deg); }
+.club-account-reference .club-preferences-panel > p,
+.club-account-reference .club-preferences-panel > form,
+.club-account-reference .club-preferences-panel > .club-preference-links { margin-inline: 18px; }
+.club-account-reference .club-preferences-panel > .club-preference-links { margin-bottom: 18px; }
+
+.club-account-signout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 18px;
+  border: 1px solid #ef2861;
+  border-radius: 18px;
+  background: transparent;
+  color: #ef2861;
+  font-weight: 800;
+}
+.club-account-signout svg:last-child { margin-left: auto; }
+
+@media (min-width: 768px) {
+  .customer-app-shell .club-home { padding-top: 30px; padding-bottom: 42px; }
+  .club-account-reference { gap: 24px; }
+  .club-account-identity { grid-template-columns: 128px minmax(0, 1fr) 90px; padding: 28px; }
+  .club-account-avatar { width: 128px; font-size: 2.2rem; }
+  .club-account-identity-copy p { font-size: 1rem; }
+  .club-account-actions a { min-height: 142px; padding: 22px; }
+  .club-account-loyalty { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 28px; }
+  .club-account-loyalty button { min-width: 180px; padding-inline: 24px; }
+  .club-account-stamps { grid-template-columns: repeat(14, 1fr); }
+  .club-account-primary-actions > button,
+  .club-account-primary-actions > a { min-height: 76px; font-size: .95rem; }
+}

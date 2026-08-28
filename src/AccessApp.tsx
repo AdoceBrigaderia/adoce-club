@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -11,17 +12,21 @@ import type { Session } from "@supabase/supabase-js";
 import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import QRCode from "qrcode";
 import {
+  ArrowLeft,
   ArrowRight,
   Archive,
   CakeSlice,
   CalendarDays,
   Camera,
   Check,
+  ChevronDown,
   ClipboardCheck,
   CircleDollarSign,
   CircleHelp,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   Gift,
   Heart,
   History,
@@ -32,6 +37,10 @@ import {
   KeyRound,
   MessageCircle,
   MoreHorizontal,
+  Package,
+  MapPin,
+  CreditCard,
+  Pencil,
   Plus,
   Printer,
   QrCode,
@@ -44,11 +53,19 @@ import {
   SquarePlus,
   Smartphone,
   Sparkles,
+  Trash2,
   UserRound,
   Users,
   X,
 } from "lucide-react";
-import { requireSupabase } from "./lib/supabase";
+import { getRememberLoginPreference, requireSupabase } from "./lib/supabase";
+import {
+  decidirPorta,
+  rotaLimpaDepoisDoLogin,
+  tipoDoLinkDeAcesso,
+  tokenDoCartaoNaRota,
+  tokenDoMagicLink,
+} from "./identidade-do-clube";
 import "./operation-print.css";
 import { printOperation } from "./lib/operation-print";
 import {
@@ -56,6 +73,7 @@ import {
   getWhatsAppVerificationStatus,
   registerCustomerPasskey,
   requestEmailCode,
+  requestPasswordReset,
   signInWithPhonePassword,
   signInWithStaffPhonePassword,
   resetUserPasswordByManager,
@@ -65,12 +83,9 @@ import {
   whatsappVerificationLink,
   type WhatsAppChallenge,
 } from "./services/auth";
-import { matchesCustomerSearch } from "./customer-search";
+import { isCustomerProfile, matchesCustomerSearch } from "./customer-search";
 import {
   applyCustomerAccountAction,
-  customerAccountReasons,
-  type CustomerAccountAction,
-  type CustomerAccountReason,
 } from "./customer-account-actions";
 import {
   generateStaffAccessCode,
@@ -86,9 +101,19 @@ import {
   type ConsentEvent,
 } from "./customer-onboarding";
 import { updateCustomerName } from "./customer-profile-admin";
+import BalcaoAtendimento from "./BalcaoAtendimento";
+import CadastroRapido from "./CadastroRapido";
+import { mascaraTelefone } from "./cadastro-rapido";
+import { createStaffCustomer } from "./staff-create-customer";
+import { redeemRewardSlice } from "./staff-redeem-reward-slice";
+import type { Cliente } from "./balcao-atendimento";
 import "./access-app.css";
 import "./operation-dashboard.css";
+import "./operation-v3.css";
+import "./operation-tablet.css";
 import "./referral.css";
+import "./customer-v3.css";
+import "./customer-account-reference-2026.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
@@ -101,11 +126,29 @@ const OperationNotificationPreview = lazy(() =>
   })),
 );
 const DirectorPlanChecklist = lazy(() => import("./DirectorPlanChecklist"));
+const StaffProfileAdmin = lazy(() => import("./StaffProfileAdmin"));
+const WhatsAppAuthPilot = lazy(() => import("./WhatsAppAuthPilot"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 const passkeysEnabled = import.meta.env.VITE_ENABLE_PASSKEYS === "true";
+const whatsappAuthPilotUiEnabled =
+  import.meta.env.VITE_WHATSAPP_AUTH_PILOT_ENABLED === "true";
 const passwordRecoveryStorageKey = "adoce-password-recovery";
 const clubOrderInviteDraftKey = "adoce-club-order-invite";
+
+function readableError(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof error.message === "string" &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+  return fallback;
+}
 
 function readClubOrderInviteDraft() {
   try {
@@ -121,15 +164,28 @@ function readClubOrderInviteDraft() {
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "dashboard" | "attend" | "movements" | "orders" | "catalog" | "archive" | "team" | "content" | "director-plan" | "security";
+type OperationView = "dashboard" | "attend" | "movements" | "orders" | "catalog" | "archive" | "team" | "content" | "whatsapp-pilot" | "director-plan" | "security";
 type OperationCommercialTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
+type OperationNavigationLocation = {
+  view: OperationView;
+  commercialTab: OperationCommercialTab;
+};
 type OperationContentTab =
   | "catalog"
   | "today"
   | "operation"
   | "promotions"
   | "notifications";
+
+function clubViewFromLocation(): ClubView {
+  const requested = new URLSearchParams(location.hash.split("?")[1] || "").get(
+    "view",
+  );
+  if (requested === "qr" || requested === "profile") return requested;
+  return location.hash.startsWith("#minha-conta") ? "profile" : "card";
+}
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
+type MemberStatusFilter = "all" | "active" | "deactivated" | "pending";
 
 type NotificationPreferences = {
   flavors: boolean;
@@ -316,8 +372,16 @@ type Movement = {
   stamps_delta: number;
   created_at: string;
   subject_profile_id: string | null;
+  actor_user_id?: string | null;
   customer_first_name?: string;
+  actor_name?: string;
+  actor_avatar_url?: string;
 };
+
+type CustomerMovement = Pick<
+  Movement,
+  "id" | "reason" | "stamps_delta" | "created_at"
+>;
 
 type StaffMember = {
   user_id: string;
@@ -542,26 +606,24 @@ function rememberGroupInvite() {
 
 function MemberLoyaltyCard({ snapshot }: { snapshot: ClubSnapshot }) {
   const stamps = Array.from({ length: 14 }, (_, index) => index < snapshot.progress);
+  const remaining = Math.max(0, 14 - snapshot.progress);
   return (
     <article className="club-card-main">
-      <div className="club-card-head">
-        <div><small>CLUBE ADOCE</small><h2>Cartão do Membro</h2></div>
-        <img src="/site/logo.webp" alt="" />
-      </div>
-      <div className="club-member-identity">
-        <span>Código do Membro</span><strong>{snapshot.memberCode}</strong><small>{snapshot.name}</small>
-      </div>
       <div className="club-stamp-title">
-        <h3>Meus Carimbos</h3><strong>{snapshot.progress} de 14 carimbos</strong>
+        <span><Heart /><h1>Meus carimbos</h1></span>
+        <strong>{snapshot.progress}<small> de 14</small></strong>
       </div>
-      <div className="club-stamps">
+      <div className="club-stamps" aria-label={`${snapshot.progress} de 14 carimbos`}>
         {stamps.map((filled, index) => <span className={filled ? "filled" : ""} key={index}><Heart /></span>)}
       </div>
       {snapshot.rewards > 0 ? (
         <div className="club-reward-ready"><Gift /><span><strong>Fatia grátis disponível</strong><small>Minha Fatia Grátis já pode ser resgatada.</small></span></div>
       ) : (
-        <p>Você já possui {snapshot.progress} de 14 carimbos. Faltam apenas {14 - snapshot.progress} fatias para ganhar sua próxima fatia grátis.</p>
+        <p>Faltam <strong>{remaining}</strong> carimbo{remaining === 1 ? "" : "s"} para sua <strong>fatia grátis</strong>.</p>
       )}
+      <div className="club-member-identity">
+        <span>Seu cartão</span><strong>{snapshot.memberCode}</strong><small>{snapshot.name}</small>
+      </div>
       <div className="club-card-foot">
         <span><History /> {snapshot.completed} cartões preenchidos</span>
         <span><Gift /> {snapshot.rewards} fatia(s) grátis disponível(is)</span>
@@ -575,38 +637,141 @@ export function MemberDemo() {
     name: "Rubens Bezerra",
     memberCode: "ADOC 2026 0000 0123",
     progress: 8,
-    completed: 0,
-    rewards: 0,
+    completed: 1,
+    rewards: 1,
     referralProgress: 2,
     referralRewards: 0,
     referralCode: "ADOCE-DEMO",
     pendingReferrals: 0,
     acceptedInvites: [],
   };
+  const requestedView = new URLSearchParams(location.hash.split("?")[1] || "").get("view");
+  const initialView: ClubView = ["card", "qr", "share", "help", "profile", "group", "install"].includes(requestedView || "")
+    ? requestedView as ClubView
+    : "card";
+  const [demoView, setDemoView] = useState<ClubView>(initialView);
+  const [demoQr, setDemoQr] = useState("");
+  useEffect(() => {
+    QRCode.toDataURL(`${location.origin}/c/previa-clube-adoce`, {
+      width: 320,
+      margin: 1,
+      color: { dark: "#2b130d", light: "#ffffff" },
+    }).then(setDemoQr);
+  }, []);
+  const stamps = Array.from({ length: 14 }, (_, index) => index < snapshot.referralProgress);
   return (
-    <main className="club-home">
+    <main className="club-home club-demo-preview">
       <header>
         <Brand label="Clube Adoce" />
+        <span className="club-header-greeting">Olá, Rubens!</span>
         <div className="club-header-actions">
-          <a href="/#adoce-hoje"><CakeSlice /> Adoce Hoje</a>
-          <a href="/#entrar"><LogOut /> Entrar no Clube</a>
+          <button onClick={() => setDemoView("qr")}><QrCode /> Meu QR</button>
+          <button onClick={() => setDemoView("profile")}><Settings2 /> Preferências</button>
         </div>
       </header>
-      <section className="club-welcome">
-        <div>
-          <span>Área do Membro · Prévia local</span>
-          <h1>Olá, Rubens!</h1>
-          <p>Você já possui 8 de 14 carimbos. Faltam apenas 6 fatias para ganhar sua próxima fatia grátis.</p>
-        </div>
-        <div className="club-mini-stat"><Gift /><strong>0</strong><span>fatias grátis disponíveis</span></div>
-      </section>
-      <section className="club-grid">
-        <MemberLoyaltyCard snapshot={snapshot} />
-        <aside className="club-side">
-          <article><QrCode /><small>QR Code do Membro</small><h3>Código do Membro</h3><p>{snapshot.memberCode}</p></article>
-          <article><CircleHelp /><h3>Como funciona</h3><p>A cada fatia comprada, você recebe um carimbo no seu Cartão Clube Adoce. Complete 14 carimbos e ganhe uma fatia grátis. O cartão é pessoal e está vinculado ao cadastro do membro.</p></article>
-        </aside>
-      </section>
+      {(demoView === "card" || demoView === "qr") && (
+        <>
+          <section className="club-member-start">
+            <div className="club-member-welcome">
+              <span>Olá, Rubens!</span>
+              <p>Seu benefício está aqui. Acompanhe cada compra até a próxima fatia grátis.</p>
+            </div>
+            <MemberLoyaltyCard snapshot={snapshot} />
+            <a className="club-flavors-primary" href="/#adoce-hoje"><CakeSlice /> Ver sabores de hoje <ArrowRight /></a>
+            <div className="club-benefit-actions">
+              <button onClick={() => setDemoView("qr")}><QrCode /><span><strong>Meu QR</strong><small>Apresente no atendimento</small></span><ArrowRight /></button>
+              <button onClick={() => setDemoView("share")}><Users /><span><strong>Indicar e ganhar</strong><small>Compartilhe seu convite</small></span><ArrowRight /></button>
+            </div>
+          </section>
+          <section className="club-grid">
+            <article className="club-how-reward">
+              <CakeSlice />
+              <div><h2>Como funciona sua recompensa</h2><p><Heart /> A cada fatia comprada, você ganha 1 carimbo.</p><p><Gift /> Complete 14 carimbos e ganhe uma fatia grátis.</p><button onClick={() => setDemoView("help")}>Ver todas as regras <ArrowRight /></button></div>
+            </article>
+            <aside className="club-side">
+              <article><Sparkles /><small>Espalhe Doçura</small><h3>2 de 14 indicações</h3><p>Seu link pessoal já leva o convite junto.</p><button onClick={() => setDemoView("share")}>Convidar alguém</button></article>
+              <article><Settings2 /><h3>Seu Clube, do seu jeito</h3><p>Atualize seus dados e preferências em um só lugar.</p><button onClick={() => setDemoView("profile")}>Abrir preferências</button></article>
+            </aside>
+          </section>
+        </>
+      )}
+      {demoView === "share" && (
+        <section className="club-panel club-referral-guide">
+          <Sparkles /><small>Espalhe Doçura</small><h1>Convide com seu link.</h1><p>Na primeira compra, você e a pessoa convidada ganham um carimbo.</p>
+          <div className="referral-track">{stamps.map((filled, index) => <span className={filled ? "confirmed" : ""} key={index}><Heart /></span>)}</div>
+          <ol><li><b>1</b><span><strong>Envie seu link pessoal</strong><small>O WhatsApp abre com uma mensagem pronta.</small></span></li><li><b>2</b><span><strong>A pessoa se cadastra</strong><small>O convite fica vinculado automaticamente.</small></span></li><li><b>3</b><span><strong>Na primeira compra, os dois ganham</strong><small>O carimbo aparece no Clube.</small></span></li></ol>
+          <button className="access-primary"><Users /> Compartilhar pelo WhatsApp</button>
+        </section>
+      )}
+      {demoView === "help" && (
+        <section className="club-panel club-help">
+          <CircleHelp /><small>Cartão Clube Adoce</small><h1>Como funciona</h1><p>Cada fatia comprada vale um carimbo. Complete 14 e ganhe uma fatia grátis.</p>
+          <div className="club-help-list"><article><Heart /><span><strong>Como ganho carimbos?</strong><small>Cada fatia tradicional ou premium vale 1 carimbo.</small></span></article><article><QrCode /><span><strong>Como sou identificado?</strong><small>Abra Meu QR e apresente no atendimento.</small></span></article><article><Gift /><span><strong>O que acontece ao completar 14?</strong><small>Sua fatia grátis fica disponível para resgate.</small></span></article></div>
+        </section>
+      )}
+      {demoView === "profile" && (
+        <section className="club-account-reference">
+          <article className="club-account-loyalty">
+            <div>
+              <small>Clube Adoce</small>
+              <h2><strong>{snapshot.progress}</strong> de 14 carimbos</h2>
+              <div className="club-account-stamps" aria-label={`${snapshot.progress} de 14 carimbos`}>
+                {Array.from({ length: 14 }, (_, index) => <Heart key={index} className={index < snapshot.progress ? "filled" : ""} />)}
+              </div>
+              {snapshot.rewards > 0 && (
+                <div className="club-account-reward-ready" role="status">
+                  <Gift />
+                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Apresente seu QR Code para resgatar no atendimento.</small></span>
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => setDemoView("card")}>Ver meu cartão</button>
+          </article>
+          <div className="club-account-primary-actions" aria-label="Ações principais da conta">
+            <button type="button" onClick={() => setDemoView("qr")}><QrCode /><span>Gerar QR Code</span></button>
+            <a href="/#adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
+          </div>
+          <div className="club-account-actions">
+            <a href="/#carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
+            <a href="/#adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
+            <a href="#demo-profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
+            <a href="#demo-profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
+          </div>
+          <article className="club-account-order-empty">
+            <span><ShoppingCart /></span>
+            <div><strong>Nenhum pedido recente</strong><small>Quando você fizer um pedido, ele aparecerá aqui.</small></div>
+          </article>
+          <details id="demo-profile-settings" className="club-panel club-preferences-panel">
+            <summary><Settings2 /> Preferências e configurações <ChevronDown /></summary>
+            <p>Seus dados, comunicações e formas de usar o Clube ficam reunidos aqui.</p>
+            <div className="club-preference-links"><button type="button" onClick={() => setDemoView("help")}><CircleHelp /><span><strong>Como funciona o Clube</strong><small>Carimbos, recompensa e indicações</small></span><ArrowRight /></button><button type="button" onClick={() => setDemoView("group")}><Users /><span><strong>Cartão em grupo</strong><small>Compartilhar carimbos</small></span><ArrowRight /></button><button type="button" onClick={() => setDemoView("install")}><Download /><span><strong>Instalar Clube Adoce</strong><small>Criar um atalho neste aparelho</small></span><ArrowRight /></button></div>
+          </details>
+          <button className="club-account-signout" type="button"><LogOut /> Sair da conta <ArrowRight /></button>
+        </section>
+      )}
+      {demoView === "group" && (
+        <section className="club-panel club-group-panel">
+          <Users /><small>Família, amigos ou equipe</small><h1>Cartão em grupo</h1><p>Até cinco pessoas somam carimbos no mesmo cartão, cada uma com seu próprio acesso e QR.</p>
+          <div className="group-member-list"><h2>Família Bezerra</h2><article><span>R</span><p><strong>Rubens Bezerra</strong><small>{snapshot.memberCode} · Proprietário</small></p></article><article><span>B</span><p><strong>Beth Bezerra</strong><small>ADOC 2026 0000 0124 · Membro</small></p></article></div>
+          <div className="group-invite-box"><button className="access-primary" type="button"><Users /> Convidar uma pessoa</button><small>O convite será compartilhado com segurança.</small></div>
+        </section>
+      )}
+      {demoView === "install" && (
+        <section className="club-panel club-install-panel">
+          <Download /><small>Atalho no celular</small><h1>Leve o Clube Adoce com você.</h1><p>Abra carimbos e QR rapidamente, sem procurar o site toda vez.</p>
+          <div className="install-guide"><strong>Adicionar à tela inicial</strong><ol><li>Abra o menu do navegador.</li><li>Escolha “Adicionar à tela inicial”.</li><li>Confirme o nome Clube Adoce.</li></ol><button className="access-primary" type="button"><Download /> Instalar Clube Adoce</button></div>
+        </section>
+      )}
+      {demoView === "qr" && (
+        <div className="club-qr-backdrop"><section className="club-panel club-qr" role="dialog" aria-modal="true"><button className="club-qr-close" type="button" onClick={() => setDemoView("card")} aria-label="Fechar meu QR"><X /></button><QrCode /><small>Cartão Clube Adoce</small><h1>Meu QR do Clube</h1><p>Apresente este QR no atendimento para somar carimbos.</p><div className="club-member-code"><span>Código do Membro</span><strong>{snapshot.memberCode}</strong></div><div className="club-qr-image club-qr-demo-image">{demoQr ? <img src={demoQr} alt="QR Code de demonstração do Clube Adoce" /> : <QrCode />}</div><strong>Pronto para apresentar</strong></section></div>
+      )}
+      <nav className="club-bottom">
+        <button className={demoView === "card" ? "active" : ""} onClick={() => setDemoView("card")}><Heart /> Início</button>
+        <button className={demoView === "qr" ? "active" : ""} onClick={() => setDemoView("qr")}><QrCode /> Meu QR</button>
+        <a href="/#adoce-hoje"><CakeSlice /> Sabores</a>
+        <button className={demoView === "share" ? "active" : ""} onClick={() => setDemoView("share")}><Users /> Indicar</button>
+        <button className={demoView === "profile" ? "active" : ""} onClick={() => setDemoView("profile")}><Settings2 /> Preferências</button>
+      </nav>
     </main>
   );
 }
@@ -641,7 +806,7 @@ export function OperationDemo() {
             className={demoView === "attend" ? "active" : ""}
             onClick={() => setDemoView("attend")}
           >
-            <Search /> Clientes & Clube
+            <Search /> Clientes e Clube
           </button>
           <button
             className={demoView === "products" ? "active" : ""}
@@ -653,8 +818,15 @@ export function OperationDemo() {
         <section className="operation-work">
           {demoView === "dashboard" && (
             <section className="operation-dashboard">
-              <header className="operation-dashboard-heading"><div><span>Visão do dia</span><h1>Central da operação</h1><p>Comece pelo que precisa de atenção e chegue a cada tarefa sem procurar em vários menus.</p></div><button><RotateCcw /> Atualizar</button></header>
+              <header className="operation-dashboard-heading"><div><span>Visão do dia</span><h1>Bom dia, <em>Rubens</em></h1><p className="operation-dashboard-date">sexta-feira, 31 de julho de 2026</p></div><button><RotateCcw /> Atualizar</button></header>
               <div className="operation-dashboard-priority"><div><CircleHelp /><span><small>Precisa de atenção</small><strong>3</strong></span></div><p>Confira pagamentos, retiradas e itens com poucas unidades.</p></div>
+              <div className="operation-dashboard-shortcuts">
+                <div><small>Acesso rápido</small><h2>O que você quer fazer agora?</h2></div>
+                <button onClick={() => setDemoView("dashboard")}><ShoppingCart /><span>Venda rápida<small>Lançar ou acompanhar</small></span><ArrowRight /></button>
+                <button onClick={() => setDemoView("dashboard")}><CalendarDays /><span>Agenda<small>Compromissos de hoje</small></span><ArrowRight /></button>
+                <button onClick={() => setDemoView("attend")}><Users /><span>Clientes<small>Buscar e gerenciar Clube</small></span><ArrowRight /></button>
+                <button onClick={() => setDemoView("products")}><Settings2 /><span>Produtos<small>Disponibilidade e produção</small></span><ArrowRight /></button>
+              </div>
               <div className="operation-dashboard-metrics">
                 <button><ShoppingCart /><span><strong>4</strong><small>vendas em andamento</small></span><ArrowRight /></button>
                 <button><CircleDollarSign /><span><strong>2</strong><small>aguardando pagamento</small></span><ArrowRight /></button>
@@ -732,11 +904,24 @@ export function OperationDemo() {
           )}
         </section>
       </div>
+      <nav className="operation-mobile-tabbar" aria-label="Prévia da navegação móvel">
+        <button className={demoView === "dashboard" ? "active" : ""} onClick={() => setDemoView("dashboard")}><LayoutDashboard /><span>Início</span></button>
+        <button onClick={() => setDemoView("dashboard")}><ShoppingCart /><span>Vendas</span></button>
+        <button onClick={() => setDemoView("dashboard")}><CalendarDays /><span>Agenda</span></button>
+        <button className={demoView === "attend" ? "active" : ""} onClick={() => setDemoView("attend")}><Users /><span>Clientes</span></button>
+        <button className={demoView === "products" ? "active" : ""} onClick={() => setDemoView("products")}><MoreHorizontal /><span>Mais</span></button>
+      </nav>
     </main>
   );
 }
 
-function AuthScreen({ surface }: { surface: Surface }) {
+function AuthScreen({
+  surface,
+  onHomologationLogin,
+}: {
+  surface: Surface;
+  onHomologationLogin: (remember: boolean) => void;
+}) {
   const clubOrderDraft = useMemo(() => readClubOrderInviteDraft(), []);
   const directParams = useMemo(() => {
     if (!location.hash.startsWith("#acesso-direto?")) return null;
@@ -763,8 +948,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const [email, setEmail] = useState(directParams?.email || "");
   const [phone, setPhone] = useState(clubOrderDraft?.phone || "");
   const [password, setPassword] = useState("");
-  const [rememberLogin, setRememberLogin] = useState(true);
-  const [loginMode, setLoginMode] = useState<"password" | "email">(
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberLogin, setRememberLogin] = useState(
+    getRememberLoginPreference,
+  );
+  const [loginMode, setLoginMode] = useState<"password" | "email" | "forgot">(
     "password",
   );
   const [code, setCode] = useState(directParams?.code || "");
@@ -772,8 +960,8 @@ function AuthScreen({ surface }: { surface: Surface }) {
     useState<WhatsAppChallenge | null>(null);
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
-  const [marketing, setMarketing] = useState(false);
-  const [notificationPreferences, setNotificationPreferences] = useState({
+  const marketing = false;
+  const [notificationPreferences] = useState({
     ...defaultNotificationPreferences,
   });
   const [busy, setBusy] = useState(false);
@@ -798,6 +986,18 @@ function AuthScreen({ surface }: { surface: Surface }) {
   }, [registrationRoute, surface]);
 
   useEffect(() => {
+    if (surface !== "client") return;
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [loginMode, registering, stage, surface]);
+
+  useEffect(() => {
     if (surface !== "client" || !directParams || directAttempted.current) return;
     directAttempted.current = true;
     sessionStorage.setItem(passwordRecoveryStorageKey, "true");
@@ -805,7 +1005,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
     setMessage("Validando o acesso seguro gerado pela Adoce...");
     void verifyEmailCode(directParams.email, directParams.code)
       .then(() => {
-        location.hash = "minha-conta";
+        location.hash = "clube";
       })
       .catch((error) => {
         setStage("code");
@@ -824,30 +1024,52 @@ function AuthScreen({ surface }: { surface: Surface }) {
 
   const submitEmail = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (registering && !isRealCustomerName(name)) {
+      setMessage("Informe seu nome e sobrenome para criar seu cadastro.");
+      return;
+    }
     if (registering && (!name.trim() || phone.replace(/\D/g, "").length < 10 || !terms || !privacy)) {
       setMessage(
         "Informe seu nome e WhatsApp com DDD, e aceite os termos e a política de privacidade.",
       );
       return;
     }
+    if (registering && password.length < 6) {
+      setMessage("Crie uma senha com pelo menos 6 caracteres.");
+      return;
+    }
     setBusy(true);
     setMessage("");
     try {
+      if (surface === "client" && registering) {
+        sessionStorage.removeItem(passwordRecoveryStorageKey);
+      }
       await requestEmailCode(
         email,
         registering ? name : undefined,
         registering,
       );
-      if (surface === "client" && !registering) {
-        sessionStorage.setItem(passwordRecoveryStorageKey, "true");
-      }
       setStage("code");
       setMessage("Código enviado. Ele vale por 10 minutos.");
     } catch (error) {
-      setMessage(
+      const safeMessage =
         error instanceof Error
           ? error.message
-          : "Não foi possível enviar o código.",
+          : "Não foi possível enviar o código.";
+      if (
+        surface === "client" &&
+        !registering &&
+        safeMessage === "Não encontramos uma conta ativa com este e-mail."
+      ) {
+        setRegistering(true);
+        setLoginMode("email");
+        setMessage(
+          "Este e-mail ainda não tem cadastro. Complete seus dados para fazer parte.",
+        );
+        return;
+      }
+      setMessage(
+        safeMessage,
       );
     } finally {
       setBusy(false);
@@ -860,14 +1082,37 @@ function AuthScreen({ surface }: { surface: Surface }) {
     setMessage("");
     try {
       if (surface === "operation") {
-        await signInWithStaffPhonePassword(phone, password, rememberLogin);
+        const result = await signInWithStaffPhonePassword(phone, password, rememberLogin);
+        if (result.homologationDemo) onHomologationLogin(rememberLogin);
         location.hash = "operacao";
       } else {
-        await signInWithPhonePassword(phone, password, rememberLogin);
-        location.hash = "minha-conta";
+        const result = await signInWithPhonePassword(phone, password, rememberLogin);
+        if (result.homologationDemo) onHomologationLogin(rememberLogin);
+        location.hash = result.mustChangePassword ? "minha-conta" : "clube";
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível entrar agora.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitForgot = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      const result = await requestPasswordReset({ email, phone });
+      if (result.email) setEmail(result.email);
+      sessionStorage.setItem(passwordRecoveryStorageKey, "true");
+      setStage("code");
+      setMessage(
+        `Enviamos o acesso para ${result.hint || "seu e-mail"}. Se a mensagem tiver um código de 6 números, digite abaixo. Se tiver um botão, toque nele — o site abre para você criar a senha nova.`,
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Não foi possível enviar o acesso agora.",
+      );
     } finally {
       setBusy(false);
     }
@@ -884,6 +1129,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
     try {
       const result = await verifyEmailCode(email, code);
       if (registering && result.user) {
+        sessionStorage.removeItem(passwordRecoveryStorageKey);
         const supabase = requireSupabase();
         const cleanName = name.trim();
         const { error: metadataError } = await supabase.auth.updateUser({
@@ -938,20 +1184,18 @@ function AuthScreen({ surface }: { surface: Surface }) {
               marketing && notificationPreferences.whatsapp_enabled,
           });
         if (preferenceError) throw preferenceError;
-        if (metaWhatsAppEnabled) {
-          const challenge = await beginWhatsAppVerification(phone);
-          setWhatsAppChallenge(challenge);
-          setStage("whatsapp");
-          setMessage(
-            "Envie a mensagem pronta pelo WhatsApp e volte para confirmar.",
-          );
-          return;
-        }
+        const accessToken = result.session?.access_token;
+        if (!accessToken) throw new Error("Não foi possível concluir seu acesso agora.");
+        await upgradeCustomerSecurity(accessToken, phone, password);
+        await supabase.auth.refreshSession();
         await acceptRememberedReferral();
         sessionStorage.removeItem(clubOrderInviteDraftKey);
         window.dispatchEvent(new Event("adoce-profile-ready"));
-        location.hash = "minha-conta";
+        location.hash = "clube";
         return;
+      }
+      if (surface === "client") {
+        sessionStorage.setItem(passwordRecoveryStorageKey, "true");
       }
       location.hash = surface === "operation" ? "operacao" : "minha-conta";
     } catch (error) {
@@ -977,7 +1221,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
       await acceptRememberedReferral();
       sessionStorage.removeItem(clubOrderInviteDraftKey);
       window.dispatchEvent(new Event("adoce-profile-ready"));
-      location.hash = "minha-conta";
+      location.hash = "clube";
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -990,42 +1234,37 @@ function AuthScreen({ surface }: { surface: Surface }) {
   };
 
   return (
-    <main className={`access-page ${surface}`}>
+    <main className={`access-page ${surface}${registering ? " registering" : ""}`}>
       <header>
+        {surface === "client" && (
+          <button
+            type="button"
+            className="access-back-button"
+            aria-label="Voltar"
+            onClick={() => {
+              if (window.history.length > 1) window.history.back();
+              else window.location.hash = "inicio";
+            }}
+          >
+            <ArrowLeft />
+          </button>
+        )}
         <Brand
           label={surface === "operation" ? "Adoce Operação" : "Clube Adoce"}
         />
         {surface === "operation" && <a href="/#entrar">Sou membro</a>}
       </header>
       <section className="access-auth-shell">
-        <div className="access-auth-copy">
-          <span>
-            {surface === "operation"
-              ? "Operação segura"
-              : invited
-                ? "Você recebeu um convite"
-                : "Faça parte do Clube Adoce"}
-          </span>
-          <h1>
-            {surface === "operation"
-                ? "Cuidar de cada membro ficou mais simples."
-              : invited
-                ? "Você já começa mais perto da sua fatia premiada."
-                : "A cada fatia comprada, você recebe um carimbo."}
-          </h1>
-          <p>
-            {surface === "operation"
-              ? "Acesse para localizar membros, registrar compras e resgatar benefícios com histórico completo."
-              : invited
-                ? "Aceite o convite, faça parte do Clube e ganhe 1 carimbo extra quando fizer sua primeira compra."
-                : "Complete 14 carimbos e ganhe uma fatia grátis."}
-          </p>
+        {surface === "client" && <div className="access-auth-copy">
+          <span>{invited ? "Você recebeu um convite" : registering ? "Cadastro rápido" : "Faça parte do Clube Adoce"}</span>
+          <h1>{invited ? "Você já começa mais perto da sua fatia premiada." : registering ? "Seu cartão começa aqui." : "Entrar"}</h1>
+          <p>{invited ? "Aceite o convite e ganhe 1 carimbo extra na primeira compra." : registering ? "Preencha seus dados uma vez, confirme o código e entre direto no seu cartão." : "Acesse sua conta para acompanhar pedidos, carimbos e recompensas do Clube Adoce."}</p>
           <div className="access-promise">
             <Heart />
             <strong>1 fatia = 1 carimbo</strong>
             <small>Tradicional ou premium</small>
           </div>
-        </div>
+        </div>}
         <div className="access-auth-card">
           <img src="/site/logo.webp" alt="" />
           <h2>
@@ -1036,7 +1275,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
               : invited
                 ? "Aceitar convite e reservar meu carimbo"
                 : registering
-                  ? "Quero fazer parte"
+                  ? "Criar meu cartão"
+                  : loginMode === "forgot"
+                    ? "Esqueci a senha"
                   : loginMode === "password"
                     ? surface === "operation" ? "Entrar com senha" : "Entrar com celular"
                     : surface === "operation"
@@ -1047,13 +1288,17 @@ function AuthScreen({ surface }: { surface: Surface }) {
             {stage === "code"
               ? directParams
                 ? `Estamos validando o código seguro gerado para ${email}.`
-                : `Digite o código de 6 números enviado para ${email}.`
+                : "Se o e-mail tiver um código de 6 números, digite abaixo. Se tiver um botão ou link, toque nele — o site abre sozinho."
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
+              : registering
+                ? "Preencha uma vez. Depois, confirme o código do seu e-mail e seu cartão abrirá."
+              : loginMode === "forgot"
+                ? "Informe o WhatsApp ou o e-mail da conta. Enviamos um e-mail com código ou um botão para criar a senha nova."
               : loginMode === "password" && !registering
                 ? surface === "operation"
                   ? "Use seu celular com DDD e a senha da operação."
-                  : "Use seu celular com DDD e a senha criada no primeiro acesso."
+                  : "Use seu celular com DDD e a senha. Se a Adoce cadastrou você no balcão, use a senha temporária enviada no WhatsApp."
                 : surface === "operation"
                   ? "Rubens ou Beth podem redefinir a senha da equipe quando necessário."
                   : "O código por e-mail será usado no primeiro acesso ou na recuperação da conta."}
@@ -1066,8 +1311,8 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   <div className="input-icon">
                     <Smartphone />
                     <input
-                      value={phone}
-                      onChange={(event) => setPhone(event.target.value)}
+                      value={mascaraTelefone(phone)}
+                      onChange={(event) => setPhone(mascaraTelefone(event.target.value))}
                       inputMode="tel"
                       type="tel"
                       autoComplete="username"
@@ -1083,10 +1328,20 @@ function AuthScreen({ surface }: { surface: Surface }) {
                     <input
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
                       required
                     />
+                    <button
+                      type="button"
+                      className="password-visibility-toggle"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={showPassword}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                      <span>{showPassword ? "Ocultar" : "Mostrar"}</span>
+                    </button>
                   </div>
                 </label>
                 <label className="access-remember-login">
@@ -1095,13 +1350,24 @@ function AuthScreen({ surface }: { surface: Surface }) {
                     checked={rememberLogin}
                     onChange={(event) => setRememberLogin(event.target.checked)}
                   />
-                  <span>Continuar conectado neste aparelho</span>
+                  <span><strong>Manter conectado</strong><small>Não pedir login novamente neste aparelho até você escolher “Sair”.</small></span>
                 </label>
                 <button className="access-primary" disabled={busy}>
                   {busy ? "Entrando..." : surface === "operation" ? "Entrar na operação" : "Entrar no Clube"}
                   <ArrowRight />
                 </button>
                 {surface === "client" && (
+                  <>
+                  <button
+                    className="access-link"
+                    type="button"
+                    onClick={() => {
+                      setLoginMode("forgot");
+                      setMessage("");
+                    }}
+                  >
+                    Esqueci a senha
+                  </button>
                   <button
                     className="access-link"
                     type="button"
@@ -1110,10 +1376,44 @@ function AuthScreen({ surface }: { surface: Surface }) {
                       setMessage("");
                     }}
                   >
-                    Primeiro acesso, criar senha ou recuperar conta
+                    Primeiro acesso ou criar senha
                   </button>
+                  </>
                 )}
               </form>
+            ) : !registering && loginMode === "forgot" ? (
+            <form onSubmit={submitForgot}>
+              <label>
+                WhatsApp com DDD
+                <div className="input-icon">
+                  <Smartphone />
+                  <input
+                    value={mascaraTelefone(phone)}
+                    onChange={(event) => setPhone(mascaraTelefone(event.target.value))}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="(85) 99999-9999"
+                  />
+                </div>
+              </label>
+              <label>
+                E-mail da conta <span>(se lembrar)</span>
+                <div className="input-icon">
+                  <Mail />
+                  <input
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@exemplo.com"
+                  />
+                </div>
+              </label>
+              <button className="access-primary" disabled={busy}>
+                {busy ? "Enviando..." : "Enviar acesso para redefinir senha"}
+                <ArrowRight />
+              </button>
+            </form>
             ) : (
             <form onSubmit={submitEmail}>
               {registering && (
@@ -1147,8 +1447,8 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   <div className="input-icon">
                     <Smartphone />
                     <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      value={mascaraTelefone(phone)}
+                      onChange={(e) => setPhone(mascaraTelefone(e.target.value))}
                       inputMode="tel"
                       autoComplete="tel"
                       placeholder="(85) 99999-9999"
@@ -1158,47 +1458,53 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 </label>
               )}
               {registering && (
+                <label>
+                  Crie sua senha
+                  <div className="input-icon">
+                    <KeyRound />
+                    <input
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      minLength={6}
+                      placeholder="Mínimo de 6 caracteres"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="password-visibility-toggle"
+                      onClick={() => setShowPassword((visible) => !visible)}
+                      aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                      aria-pressed={showPassword}
+                    >
+                      {showPassword ? <EyeOff /> : <Eye />}
+                      <span>{showPassword ? "Ocultar" : "Mostrar"}</span>
+                    </button>
+                  </div>
+                </label>
+              )}
+              {registering && (
                 <div className="access-consents">
                   <label>
                     <input
                       type="checkbox"
-                      checked={terms}
-                      onChange={(e) => setTerms(e.target.checked)}
+                      checked={terms && privacy}
+                      onChange={(event) => {
+                        setTerms(event.target.checked);
+                        setPrivacy(event.target.checked);
+                      }}
                     />
-                    <span>Aceito os <a href="/#termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a>.</span>
+                    <span>Li e aceito os <a href="/#termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a> e a <a href="/#privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
                   </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={privacy}
-                      onChange={(e) => setPrivacy(e.target.checked)}
-                    />
-                    <span>Li e aceito a <a href="/#privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
-                  </label>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={marketing}
-                      onChange={(e) => setMarketing(e.target.checked)}
-                    />
-                    <span>
-                      Quero receber sabores e novidades. <em>Opcional</em>
-                    </span>
-                  </label>
-                  {marketing && (
-                    <NotificationPreferencesFields
-                      compact
-                      value={notificationPreferences}
-                      onChange={setNotificationPreferences}
-                    />
-                  )}
+                  <small className="access-fast-registration-note">Depois do código, você entra direto no seu cartão. Preferências de mensagens ficam para depois.</small>
                 </div>
               )}
               <button className="access-primary" disabled={busy}>
                 {busy
                   ? "Enviando..."
                   : registering
-                    ? "Validar meu primeiro acesso"
+                    ? "Criar meu cartão"
                     : surface === "operation"
                       ? "Receber código de acesso"
                       : "Receber código de segurança"}
@@ -1226,7 +1532,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 className="access-primary"
                 disabled={busy || code.length !== 6}
               >
-                {busy ? "Confirmando..." : surface === "operation" ? "Entrar na operação" : "Entrar no Clube"}
+                {busy ? "Confirmando..." : surface === "operation" ? "Entrar na operação" : registering ? "Abrir meu cartão" : "Entrar no Clube"}
                 <ArrowRight />
               </button>
               <button
@@ -1287,11 +1593,14 @@ function AuthScreen({ surface }: { surface: Surface }) {
               onClick={() => {
                 if (surface === "operation") {
                   setLoginMode(loginMode === "password" ? "email" : "password");
-                } else if (!registering && loginMode === "email") {
+                } else if (!registering && (loginMode === "email" || loginMode === "forgot")) {
                   setLoginMode("password");
                 } else {
                   setRegistering(!registering);
                   setLoginMode("email");
+                  if (!registering) {
+                    sessionStorage.removeItem(passwordRecoveryStorageKey);
+                  }
                 }
                 setMessage("");
               }}
@@ -1302,7 +1611,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   : "Entrar com código enviado por e-mail"
                 : registering
                 ? "Entrar no Clube"
-                : loginMode === "email"
+                : loginMode === "email" || loginMode === "forgot"
                   ? "Entrar com celular e senha"
                   : "Quero fazer parte"}
             </button>
@@ -1324,7 +1633,7 @@ function CustomerHome({ session }: { session: Session }) {
     null,
   );
   const [error, setError] = useState("");
-  const [view, setView] = useState<ClubView>("card");
+  const [view, setView] = useState<ClubView>(() => clubViewFromLocation());
   const [profileName, setProfileName] = useState("");
   const [profilePhone, setProfilePhone] = useState("");
   const [profileWhatsAppVerified, setProfileWhatsAppVerified] = useState(false);
@@ -1336,6 +1645,7 @@ function CustomerHome({ session }: { session: Session }) {
   const [accountStatus, setAccountStatus] = useState("active");
   const [securityPassword, setSecurityPassword] = useState("");
   const [securityPasswordConfirm, setSecurityPasswordConfirm] = useState("");
+  const [showSecurityPassword, setShowSecurityPassword] = useState(false);
   const [profileWhatsAppChallenge, setProfileWhatsAppChallenge] =
     useState<WhatsAppChallenge | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -1354,7 +1664,65 @@ function CustomerHome({ session }: { session: Session }) {
     () => rememberGroupInvite(),
   );
   const [groupShareUrl, setGroupShareUrl] = useState("");
+  const qrDialogRef = useRef<HTMLElement | null>(null);
+  const directQrOpenedRef = useRef(false);
   const installApp = useInstallApp();
+
+  useEffect(() => {
+    if (view === "qr") return;
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    forcedPasswordChange,
+    onboardingRequired,
+    passwordRecoveryRequested,
+    securityUpgradeRequired,
+    view,
+  ]);
+
+  useEffect(() => {
+    if (view !== "qr") return;
+    const dialog = qrDialogRef.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusable = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) || [],
+      );
+    window.requestAnimationFrame(() => focusable()[0]?.focus());
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setView("card");
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.body.classList.add("club-modal-open");
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.classList.remove("club-modal-open");
+      window.removeEventListener("keydown", handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [view]);
   const loadSnapshot = useCallback(async () => {
     const supabase = requireSupabase();
     setError("");
@@ -1737,13 +2105,8 @@ function CustomerHome({ session }: { session: Session }) {
       setMessage("As duas senhas precisam ser iguais.");
       return;
     }
-    if (
-      securityPassword.length < 10 ||
-      !/[a-z]/.test(securityPassword) ||
-      !/[A-Z]/.test(securityPassword) ||
-      !/\d/.test(securityPassword)
-    ) {
-      setMessage("Use no mínimo 10 caracteres, com maiúscula, minúscula e número.");
+    if (securityPassword.length < 6) {
+      setMessage("Use no mínimo 6 caracteres.");
       return;
     }
     setBusy(true);
@@ -1774,8 +2137,14 @@ function CustomerHome({ session }: { session: Session }) {
           : "Senha atualizada com segurança. Nos próximos acessos, use a nova senha.",
       );
       await loadSnapshot();
+      location.hash = "clube";
     } catch (upgradeError) {
-      setMessage(upgradeError instanceof Error ? upgradeError.message : "Não foi possível criar seu acesso seguro.");
+      setMessage(
+        readableError(
+          upgradeError,
+          "Não foi possível criar seu acesso seguro.",
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -1858,6 +2227,7 @@ function CustomerHome({ session }: { session: Session }) {
     await loadGroup();
   };
   const openCustomerQr = async () => {
+    directQrOpenedRef.current = true;
     setView("qr");
     setBusy(true);
     setMessage("");
@@ -1888,6 +2258,11 @@ function CustomerHome({ session }: { session: Session }) {
     setQrExpiresAt(issued.expires_at);
     setBusy(false);
   };
+  useEffect(() => {
+    if (view !== "qr" || directQrOpenedRef.current || qrImage) return;
+    directQrOpenedRef.current = true;
+    void openCustomerQr();
+  }, [view, qrImage]);
   if (onboardingRequired)
     return (
       <main className="club-onboarding">
@@ -2056,12 +2431,24 @@ function CustomerHome({ session }: { session: Session }) {
             )}
             <label>
               Nova senha
-              <input value={securityPassword} onChange={(event) => setSecurityPassword(event.target.value)} type="password" autoComplete="new-password" minLength={10} required />
-              <small>Mínimo de 10 caracteres, com maiúscula, minúscula e número.</small>
+              <div className="security-password-field">
+                <input value={securityPassword} onChange={(event) => setSecurityPassword(event.target.value)} type={showSecurityPassword ? "text" : "password"} autoComplete="new-password" minLength={6} required />
+                <button type="button" onClick={() => setShowSecurityPassword((visible) => !visible)} aria-label={showSecurityPassword ? "Ocultar nova senha" : "Mostrar nova senha"} aria-pressed={showSecurityPassword}>
+                  {showSecurityPassword ? <EyeOff /> : <Eye />}
+                  <span>{showSecurityPassword ? "Ocultar" : "Mostrar"}</span>
+                </button>
+              </div>
+              <small>Mínimo de 6 caracteres. Use como preferir.</small>
             </label>
             <label>
               Confirmar senha
-              <input value={securityPasswordConfirm} onChange={(event) => setSecurityPasswordConfirm(event.target.value)} type="password" autoComplete="new-password" minLength={10} required />
+              <div className="security-password-field">
+                <input value={securityPasswordConfirm} onChange={(event) => setSecurityPasswordConfirm(event.target.value)} type={showSecurityPassword ? "text" : "password"} autoComplete="new-password" minLength={6} required />
+                <button type="button" onClick={() => setShowSecurityPassword((visible) => !visible)} aria-label={showSecurityPassword ? "Ocultar confirmação da senha" : "Mostrar confirmação da senha"} aria-pressed={showSecurityPassword}>
+                  {showSecurityPassword ? <EyeOff /> : <Eye />}
+                  <span>{showSecurityPassword ? "Ocultar" : "Mostrar"}</span>
+                </button>
+              </div>
             </label>
             <button className="access-primary" disabled={busy}>
               {busy
@@ -2093,69 +2480,49 @@ function CustomerHome({ session }: { session: Session }) {
     <main className="club-home">
       <header>
         <Brand label="Clube Adoce" />
+        <span className="club-header-greeting">Olá, {snapshot.name.split(" ")[0]}!</span>
         <div className="club-header-actions">
-          <a href="/#adoce-hoje">
-            <CakeSlice /> Adoce Hoje
-          </a>
           <button onClick={() => void openCustomerQr()}>
             <QrCode /> Meu QR
           </button>
-          <button onClick={() => setView("help")}>
-            <CircleHelp /> Como funciona
+          <button onClick={() => setView("profile")}>
+            <Settings2 /> Preferências
           </button>
           <button onClick={() => void signOut()}>
             <LogOut /> Sair
           </button>
         </div>
       </header>
-      {view === "card" && (
+      {(view === "card" || view === "qr") && (
         <>
-          <section className="club-welcome">
-            <div>
-              <span>Área do Membro</span>
-              <h1>Olá, {snapshot.name.split(" ")[0]}!</h1>
-              {snapshot.rewards > 0 ? (
-                <p>
-                  Você completou seu cartão! Sua fatia grátis já está disponível
-                  para resgate.
-                </p>
-              ) : (
-                <p>
-                  Você já possui {snapshot.progress} de 14 carimbos. Faltam apenas{" "}
-                  {14 - snapshot.progress} fatias para ganhar sua próxima fatia
-                  grátis.
-                </p>
-              )}
-              <div className="club-quick-links">
-                <a href="/#adoce-hoje">
-                  <CakeSlice /> Ver sabores de hoje
-                </a>
-                <button onClick={() => setView("help")}>
-                  <CircleHelp /> Aprender a usar o Clube
-                </button>
-                {metaWhatsAppEnabled && (
-                  <button onClick={openGroup}>
-                    <Users /> Cartão em grupo
-                  </button>
-                )}
-                {!installApp.isInstalled && (
-                  <button
-                    className="club-install-shortcut"
-                    onClick={() => setView("install")}
-                  >
-                    <Download /> Instalar Clube Adoce
-                  </button>
-                )}
-              </div>
+          <section className="club-member-start">
+            <div className="club-member-welcome">
+              <span>Olá, {snapshot.name.split(" ")[0]}!</span>
+              <p>Seu benefício está aqui. Acompanhe cada compra até a próxima fatia grátis.</p>
             </div>
-            <div className="club-mini-stat">
-              <Gift />
-              <strong>{snapshot.rewards}</strong>
-              <span>Minha Fatia Grátis</span>
+            <MemberLoyaltyCard snapshot={snapshot} />
+            <a className="club-flavors-primary" href="/#adoce-hoje">
+              <CakeSlice /> Ver sabores de hoje <ArrowRight />
+            </a>
+            <div className="club-benefit-actions">
+              <button onClick={() => void openCustomerQr()}>
+                <QrCode /><span><strong>Meu QR</strong><small>Apresente no atendimento</small></span><ArrowRight />
+              </button>
+              <button onClick={() => setView("share")}>
+                <Users /><span><strong>Indicar e ganhar</strong><small>Compartilhe seu convite</small></span><ArrowRight />
+              </button>
             </div>
           </section>
           <section className="club-grid">
-            <MemberLoyaltyCard snapshot={snapshot} />
+            <article className="club-how-reward">
+              <CakeSlice />
+              <div>
+                <h2>Como funciona sua recompensa</h2>
+                <p><Heart /> A cada fatia comprada, você ganha 1 carimbo.</p>
+                <p><Gift /> Complete 14 carimbos e ganhe uma fatia grátis.</p>
+                <button onClick={() => setView("help")}>Ver todas as regras <ArrowRight /></button>
+              </div>
+            </article>
             <aside className="club-side">
               <article>
                 <Sparkles />
@@ -2174,13 +2541,10 @@ function CustomerHome({ session }: { session: Session }) {
                 </button>
               </article>
               <article>
-                <Smartphone />
-                <h3>Levar para a carteira</h3>
-                <p>
-                  Apple Wallet e Google Wallet serão sugeridos assim que os
-                  passes estiverem liberados.
-                </p>
-                <span>Próxima etapa</span>
+                <Settings2 />
+                <h3>Seu Clube, do seu jeito</h3>
+                <p>Atualize seus dados, notificações e preferências em um só lugar.</p>
+                <button onClick={() => setView("profile")}>Abrir preferências</button>
               </article>
             </aside>
           </section>
@@ -2340,10 +2704,18 @@ function CustomerHome({ session }: { session: Session }) {
         </section>
       )}
       {view === "qr" && (
-        <section className="club-panel club-qr">
+        <div
+          className="club-qr-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setView("card");
+          }}
+        >
+        <section className="club-panel club-qr" ref={qrDialogRef} role="dialog" aria-modal="true" aria-labelledby="club-qr-title">
+          <button className="club-qr-close" type="button" onClick={() => setView("card")} aria-label="Fechar meu QR"><X /></button>
           <QrCode />
           <small>Cartão Clube Adoce</small>
-          <h1>QR Code do Membro</h1>
+          <h1 id="club-qr-title">Meu QR do Clube</h1>
           <p>
             Este QR Code identifica seu Cartão Clube Adoce. Seu Código do Membro
             também pode ser usado para localizar você.
@@ -2378,6 +2750,7 @@ function CustomerHome({ session }: { session: Session }) {
             )
           )}
         </section>
+        </div>
       )}
       {view === "help" && (
         <section className="club-panel club-help">
@@ -2471,10 +2844,44 @@ function CustomerHome({ session }: { session: Session }) {
         </section>
       )}
       {view === "profile" && (
-        <section className="club-panel">
-          <UserRound />
-          <small>Meu perfil</small>
-          <h1>Seus dados no Clube.</h1>
+        <section className="club-account-reference">
+          <article className="club-account-loyalty">
+            <div>
+              <small>Clube Adoce</small>
+              <h2><strong>{snapshot.progress}</strong> de 14 carimbos</h2>
+              <div className="club-account-stamps" aria-label={`${snapshot.progress} de 14 carimbos`}>
+                {Array.from({ length: 14 }, (_, index) => <Heart key={index} className={index < snapshot.progress ? "filled" : ""} />)}
+              </div>
+              {snapshot.rewards > 0 && (
+                <div className="club-account-reward-ready" role="status">
+                  <Gift />
+                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Apresente seu QR Code para resgatar no atendimento.</small></span>
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={() => setView("card")}>Ver meu cartão</button>
+          </article>
+
+          <div className="club-account-primary-actions" aria-label="Ações principais da conta">
+            <button type="button" onClick={() => void openCustomerQr()}><QrCode /><span>Gerar QR Code</span></button>
+            <a href="/#adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
+          </div>
+
+          <div className="club-account-actions">
+            <a href="/#carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
+            <a href="/#adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
+            <a href="#profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
+            <a href="#profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
+          </div>
+
+          <article className="club-account-order-empty">
+            <span><ShoppingCart /></span>
+            <div><strong>Nenhum pedido recente</strong><small>Quando você fizer um pedido, ele aparecerá aqui.</small></div>
+          </article>
+
+          <details id="profile-settings" className="club-panel club-preferences-panel">
+            <summary><Settings2 /> Preferências e configurações <ChevronDown /></summary>
+            <p>Seus dados, comunicações e formas de usar o Clube ficam reunidos aqui.</p>
           <form onSubmit={saveProfile}>
             <label>
               Nome completo
@@ -2528,9 +2935,29 @@ function CustomerHome({ session }: { session: Session }) {
               onChange={setNotificationPreferences}
             />
             <button className="access-primary" disabled={busy}>
-              {busy ? "Salvando..." : "Salvar perfil e preferências"}
+              {busy ? "Salvando..." : "Salvar minhas preferências"}
             </button>
           </form>
+          <div className="club-preference-links">
+            <button type="button" onClick={() => setView("help")}>
+              <CircleHelp /><span><strong>Como funciona o Clube</strong><small>Carimbos, recompensa e indicações</small></span><ArrowRight />
+            </button>
+            {!installApp.isInstalled && (
+              <button type="button" onClick={() => setView("install")}>
+                <Download /><span><strong>Instalar Clube Adoce</strong><small>Criar um atalho neste aparelho</small></span><ArrowRight />
+              </button>
+            )}
+            {metaWhatsAppEnabled && (
+              <button type="button" onClick={openGroup}>
+                <Users /><span><strong>Cartão em grupo</strong><small>Compartilhar carimbos com pessoas próximas</small></span><ArrowRight />
+              </button>
+            )}
+            <button className="club-signout-setting" type="button" onClick={() => void signOut()}>
+              <LogOut /><span><strong>Sair deste aparelho</strong><small>Você precisará entrar novamente</small></span>
+            </button>
+          </div>
+          </details>
+          <button className="club-account-signout" type="button" onClick={() => void signOut()}><LogOut /> Sair da conta <ArrowRight /></button>
         </section>
       )}
       {message && (
@@ -2544,7 +2971,7 @@ function CustomerHome({ session }: { session: Session }) {
           className={view === "card" ? "active" : ""}
           onClick={() => setView("card")}
         >
-          <Heart /> Cartão
+          <Heart /> Início
         </button>
         <button
           className={view === "qr" ? "active" : ""}
@@ -2553,7 +2980,7 @@ function CustomerHome({ session }: { session: Session }) {
           <QrCode /> Meu QR
         </button>
         <a href="/#adoce-hoje">
-          <CakeSlice /> Hoje
+          <CakeSlice /> Sabores
         </a>
         <button
           className={view === "share" ? "active" : ""}
@@ -2565,7 +2992,7 @@ function CustomerHome({ session }: { session: Session }) {
           className={view === "profile" ? "active" : ""}
           onClick={() => setView("profile")}
         >
-          <UserRound /> Perfil
+          <Settings2 /> Preferências
         </button>
       </nav>
     </main>
@@ -2594,33 +3021,61 @@ function OperationHome({ session }: { session: Session }) {
   const [correctionQty, setCorrectionQty] = useState(1);
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionError, setCorrectionError] = useState("");
-  const [accountAction, setAccountAction] = useState<CustomerAccountAction>("deactivate");
-  const [accountReason, setAccountReason] = useState<CustomerAccountReason>("customer_request");
-  const [accountReasonNote, setAccountReasonNote] = useState("");
+  const [deleteCustomerOpen, setDeleteCustomerOpen] = useState(false);
+  const [deleteCustomerConfirmation, setDeleteCustomerConfirmation] = useState("");
   const [memberCounts, setMemberCounts] = useState<MemberCounts>({ total: 0, active: 0, deactivated: 0, pending: 0 });
+  const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("all");
+  const [cadastrando, setCadastrando] = useState(false);
+  const [counterFichas, setCounterFichas] = useState<Array<Cliente & { accountId: string; rewardId: string | null }>>([]);
+  const [acessoDoBalcao, setAcessoDoBalcao] = useState<{
+    fullName: string;
+    temporaryPassword: string;
+    whatsappUrl?: string;
+    accessMessage?: string;
+  } | null>(null);
+  const [entregaPresente, setEntregaPresente] = useState<{
+    profileId: string;
+    rewardId: string;
+    nome: string;
+  } | null>(null);
+  const [saboresPresente, setSaboresPresente] = useState<Array<{ id: string; name: string; remaining: number }>>([]);
   const [editingCustomerName, setEditingCustomerName] = useState(false);
   const [customerNameDraft, setCustomerNameDraft] = useState("");
   const [view, setView] = useState<OperationView>(() =>
     location.hash.includes("plano-diretor")
       ? "director-plan"
+      : location.hash.includes("historico-clube")
+        ? "movements"
+      : location.hash.includes("equipe")
+        ? "team"
+      : location.hash.includes("conteudo")
+        ? "content"
+      : location.hash.includes("seguranca")
+        ? "security"
+      : location.hash.includes("whatsapp-pilot") && whatsappAuthPilotUiEnabled
+        ? "whatsapp-pilot"
+      : location.hash.includes("catalogo-comercial")
+        ? "orders"
       : location.hash.includes("catalogo")
         ? "catalog"
-        : location.hash.includes("historico")
+        : location.hash.includes("arquivados") || location.hash.includes("historico")
           ? "archive"
-        : location.hash.includes("vendas") || location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes") || location.hash.includes("agenda") || location.hash.includes("financeiro") || location.hash.includes("configuracoes") || location.hash.includes("operacao-clientes")
+        : location.hash.includes("vendas") || location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes") || location.hash.includes("agenda") || location.hash.includes("financeiro") || location.hash.includes("configuracoes") || location.hash.includes("operacao-relacionamento")
           ? "orders"
-          : location.hash.includes("membros")
+          : location.hash.includes("membros") || location.hash.includes("operacao-clientes")
             ? "attend"
         : "dashboard",
   );
   const [commercialTab, setCommercialTab] = useState<OperationCommercialTab>(() =>
-    location.hash.includes("vendas")
+    location.hash.includes("catalogo-comercial")
+      ? "catalog"
+      : location.hash.includes("vendas")
       ? "sales"
       : location.hash.includes("pede-junto")
       ? "pede_junto"
       : location.hash.includes("reclamacoes")
         ? "feedback"
-        : location.hash.includes("operacao-clientes")
+        : location.hash.includes("operacao-relacionamento")
           ? "crm"
         : location.hash.includes("pedidos")
           ? "requests"
@@ -2632,19 +3087,70 @@ function OperationHome({ session }: { session: Session }) {
   );
   const [contentTab, setContentTab] =
     useState<OperationContentTab>("catalog");
+  const [contentAvailabilityFilter, setContentAvailabilityFilter] = useState<"all" | "low">("all");
   const [movements, setMovements] = useState<Movement[]>([]);
+  const [customerMovements, setCustomerMovements] = useState<CustomerMovement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
+  const [currentStaffBadge, setCurrentStaffBadge] = useState<{ name: string; avatarUrl: string } | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scannerStarting, setScannerStarting] = useState(false);
   const [manualQr, setManualQr] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [moreNavOpen, setMoreNavOpen] = useState(() =>
+    /historico|arquivados|equipe|conteudo|seguranca|configuracoes|plano-diretor|reclamacoes/.test(location.hash),
+  );
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const customerResultsRef = useRef<HTMLDivElement | null>(null);
+  const customerListDetailsRef = useRef<HTMLDetailsElement | null>(null);
+  const operationWorkRef = useRef<HTMLElement | null>(null);
+  const operationNavigationHistoryRef = useRef<OperationNavigationLocation[]>([]);
+  const scrollOperationToTop = useCallback(() => {
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      if (operationWorkRef.current) operationWorkRef.current.scrollTop = 0;
+    };
+    resetScroll();
+    window.requestAnimationFrame(() => {
+      resetScroll();
+      window.requestAnimationFrame(resetScroll);
+    });
+  }, []);
+  useLayoutEffect(() => {
+    scrollOperationToTop();
+  }, [view, commercialTab, contentTab, selected?.profile_id, scrollOperationToTop]);
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const { data } = await requireSupabase().from("staff_private_profiles").select("full_name,nickname,avatar_path").eq("user_id", session.user.id).maybeSingle();
+      if (!active || !data) return;
+      let avatarUrl = "";
+      if (data.avatar_path) {
+        const signed = await requireSupabase().storage.from("staff-profile-media").createSignedUrl(data.avatar_path, 3600);
+        avatarUrl = signed.data?.signedUrl || "";
+      }
+      if (active) setCurrentStaffBadge({ name: data.nickname || data.full_name, avatarUrl });
+    })();
+    return () => { active = false; };
+  }, [session.user.id]);
+  useEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    const resetOnPageShow = () => scrollOperationToTop();
+    window.addEventListener("pageshow", resetOnPageShow);
+    return () => {
+      window.removeEventListener("pageshow", resetOnPageShow);
+      window.history.scrollRestoration = previousScrollRestoration;
+    };
+  }, [scrollOperationToTop]);
   const scannerControls = useRef<IScannerControls | null>(null);
   const scanHandled = useRef(false);
   const installApp = useInstallApp();
   const search = useCallback(
-    async (term = query) => {
+    async (term = query, statusFilter: MemberStatusFilter = memberStatusFilter) => {
       setBusy(true);
       setMessage("");
       setSelected(null);
@@ -2665,6 +3171,7 @@ function OperationHome({ session }: { session: Session }) {
             .from("profiles")
             .select("id,full_name,phone_e164,email,member_code,account_status,updated_at")
             .order("full_name", { ascending: true })
+            .order("id", { ascending: true })
             .range(from, from + 999);
           if (page.error) return { data: rows, error: page.error };
           rows.push(...((page.data || []) as typeof rows));
@@ -2682,7 +3189,7 @@ function OperationHome({ session }: { session: Session }) {
       }
       const staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
       const customers = [...(profiles || [])]
-        .filter((profile) => !staffIds.has(profile.id));
+        .filter((profile) => isCustomerProfile(profile, staffIds));
       setMemberCounts({
         total: customers.length,
         active: customers.filter((profile) => profile.account_status === "active").length,
@@ -2690,14 +3197,18 @@ function OperationHome({ session }: { session: Session }) {
         pending: customers.filter((profile) => profile.account_status === "pending_deletion").length,
       });
       const matched = customers
-        .filter((profile) => ["active", "pending_deletion"].includes(profile.account_status))
+        .filter((profile) => {
+          if (statusFilter === "active") return profile.account_status === "active";
+          if (statusFilter === "deactivated") return ["deactivated", "merged"].includes(profile.account_status);
+          if (statusFilter === "pending") return profile.account_status === "pending_deletion";
+          return true;
+        })
         .filter((profile) => matchesCustomerSearch(profile, term))
         .sort((a, b) =>
           a.full_name.localeCompare(b.full_name, "pt-BR", {
             sensitivity: "base",
           }),
-        )
-        .slice(0, 30);
+        );
       setResults(
         matched.map((profile) => ({
           profile_id: profile.id,
@@ -2710,12 +3221,13 @@ function OperationHome({ session }: { session: Session }) {
       );
       setBusy(false);
     },
-    [query],
+    [memberStatusFilter, query],
   );
   const openCustomer = useCallback(async (customer: CustomerSearchResult) => {
     setBusy(true);
     setMessage("");
     setGeneratedAccess(null);
+    setCustomerMovements([]);
     setCorrectionQty(1);
     setCorrectionReason("");
     setEditingCustomerName(false);
@@ -2773,6 +3285,26 @@ function OperationHome({ session }: { session: Session }) {
       setMessage(rewardsError.message);
       return;
     }
+    const historyRows: CustomerMovement[] = [];
+    if (track) {
+      for (let from = 0; ; from += 500) {
+        const historyPage = await supabase
+          .from("ledger_entries")
+          .select("id,reason,stamps_delta,created_at")
+          .eq("track_id", track.id)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + 499);
+        if (historyPage.error) {
+          setBusy(false);
+          setMessage(historyPage.error.message);
+          return;
+        }
+        historyRows.push(...((historyPage.data || []) as CustomerMovement[]));
+        if ((historyPage.data || []).length < 500) break;
+      }
+    }
+    setCustomerMovements(historyRows);
     setSelected({
       ...customer,
       member_code: memberProfile?.member_code || customer.member_code,
@@ -2785,6 +3317,71 @@ function OperationHome({ session }: { session: Session }) {
     setView("attend");
     setBusy(false);
   }, []);
+  const loadCounterWorkspace = useCallback(async (customers: CustomerSearchResult[]) => {
+    const supabase = requireSupabase();
+    const [{ data: memberships }, { data: tracks }, { data: rewardRows }, { data: lastBuys }] =
+      await Promise.all([
+        supabase
+          .from("account_memberships")
+          .select("profile_id,account_id")
+          .eq("active", true)
+          .eq("is_primary", true),
+        supabase
+          .from("loyalty_tracks")
+          .select("id,account_id,current_progress,completed_cards")
+          .eq("kind", "main"),
+        supabase.from("rewards").select("id,track_id").eq("status", "available"),
+        supabase
+          .from("ledger_entries")
+          .select("subject_profile_id,created_at")
+          .eq("reason", "purchase")
+          .order("created_at", { ascending: false })
+          .limit(160),
+      ]);
+    const accountByProfile = new Map(
+      (memberships || []).map((row) => [row.profile_id, row.account_id]),
+    );
+    const trackByAccount = new Map(
+      (tracks || []).map((row) => [row.account_id, row]),
+    );
+    const rewardsByTrack = new Map<string, string[]>();
+    for (const reward of rewardRows || []) {
+      const list = rewardsByTrack.get(reward.track_id) || [];
+      list.push(reward.id);
+      rewardsByTrack.set(reward.track_id, list);
+    }
+    const lastBuyByProfile = new Map<string, string>();
+    for (const row of lastBuys || []) {
+      if (row.subject_profile_id && !lastBuyByProfile.has(row.subject_profile_id)) {
+        lastBuyByProfile.set(row.subject_profile_id, row.created_at);
+      }
+    }
+    setCounterFichas(
+      customers
+        .filter((profile) => profile.account_status === "active")
+        .map((profile) => {
+          const accountId = accountByProfile.get(profile.profile_id) || "";
+          const track = accountId ? trackByAccount.get(accountId) : undefined;
+          const rewardIds = track ? rewardsByTrack.get(track.id) || [] : [];
+          const progress = Number(track?.current_progress || 0);
+          const completed = Number(track?.completed_cards || 0);
+          return {
+            id: profile.profile_id,
+            nome: profile.full_name,
+            telefone: profile.phone_e164 || "",
+            carimbos: completed * 14 + progress,
+            presentesGuardados: rewardIds.length,
+            ultimaCompra: lastBuyByProfile.get(profile.profile_id) || null,
+            accountId,
+            rewardId: rewardIds[0] || null,
+          };
+        }),
+    );
+  }, []);
+  useEffect(() => {
+    if (!authorized) return;
+    void loadCounterWorkspace(results);
+  }, [authorized, loadCounterWorkspace, results]);
   const issueAccessCode = useCallback(async () => {
     if (!selected) return;
     setBusy(true);
@@ -2816,25 +3413,17 @@ function OperationHome({ session }: { session: Session }) {
       setMessage("Não foi possível copiar. Selecione o código exibido.");
     }
   }, [generatedAccess]);
-  const changeCustomerAccount = useCallback(async () => {
+  const deleteCustomerAccount = useCallback(async () => {
     if (!selected) return;
-    const actionLabel: Record<CustomerAccountAction, string> = {
-      deactivate: "desativar este cadastro",
-      reactivate: "reativar este cadastro",
-      request_deletion: "registrar a solicitação de exclusão",
-      delete_account: "excluir definitivamente o acesso e os dados pessoais deste cadastro",
-      mark_duplicate: "marcar este cadastro como duplicado e desativá-lo",
-      cancel_deletion: "cancelar a exclusão e reativar o cadastro",
-    };
-    if (!window.confirm(`Confirmar: ${actionLabel[accountAction]}?\n\nO motivo e a ação ficarão registrados na auditoria.`)) return;
+    if (deleteCustomerConfirmation.trim().toUpperCase() !== "EXCLUIR") return;
     setBusy(true);
     setMessage("");
     try {
       const result = await applyCustomerAccountAction(session.access_token, {
         profileId: selected.profile_id,
-        action: accountAction,
-        reasonCode: accountReason,
-        reasonNote: accountReasonNote,
+        action: "delete_account",
+        reasonCode: "other",
+        reasonNote: "Exclusão confirmada pelo proprietário na operação.",
       });
       const successMessage = result.resultingStatus === "anonymized"
         ? "Cadastro excluído. O acesso e os dados pessoais foram removidos; o histórico operacional foi preservado."
@@ -2842,16 +3431,16 @@ function OperationHome({ session }: { session: Session }) {
           ? "Cadastro atualizado e cliente avisado por e-mail."
           : "Cadastro atualizado. A notificação ficou pendente para envio.";
       await search(query);
+      setSelected(null);
+      setDeleteCustomerOpen(false);
+      setDeleteCustomerConfirmation("");
       setMessage(successMessage);
     } catch (actionError) {
       setMessage(actionError instanceof Error ? actionError.message : "Não foi possível atualizar o cadastro.");
     } finally {
       setBusy(false);
     }
-  }, [accountAction, accountReason, accountReasonNote, query, search, selected, session.access_token]);
-  useEffect(() => {
-    if (selected?.account_status === "pending_deletion") setAccountAction("delete_account");
-  }, [selected?.account_status, selected?.profile_id]);
+  }, [deleteCustomerConfirmation, query, search, selected, session.access_token]);
   const saveCustomerName = useCallback(async () => {
     if (!selected) return;
     setBusy(true); setMessage("");
@@ -2955,15 +3544,8 @@ function OperationHome({ session }: { session: Session }) {
       setMessage("As duas senhas precisam ser iguais.");
       return;
     }
-    if (
-      newStaffPassword.length < 10 ||
-      !/[a-z]/.test(newStaffPassword) ||
-      !/[A-Z]/.test(newStaffPassword) ||
-      !/\d/.test(newStaffPassword)
-    ) {
-      setMessage(
-        "Use no mínimo 10 caracteres, com maiúscula, minúscula e número.",
-      );
+    if (newStaffPassword.length < 6) {
+      setMessage("Use no mínimo 6 caracteres.");
       return;
     }
     setBusy(true);
@@ -2984,9 +3566,10 @@ function OperationHome({ session }: { session: Session }) {
       setMessage("Senha atualizada. Seu acesso à operação está liberado.");
     } catch (passwordChangeError) {
       setMessage(
-        passwordChangeError instanceof Error
-          ? passwordChangeError.message
-          : "Não foi possível atualizar a senha.",
+        readableError(
+          passwordChangeError,
+          "Não foi possível atualizar a senha.",
+        ),
       );
     } finally {
       setBusy(false);
@@ -3050,35 +3633,102 @@ function OperationHome({ session }: { session: Session }) {
   const refreshSelected = async () => {
     if (selected) await openCustomer(selected);
   };
+  const showCustomersByStatus = async (statusFilter: MemberStatusFilter) => {
+    setMemberStatusFilter(statusFilter);
+    setQuery("");
+    if (customerListDetailsRef.current) customerListDetailsRef.current.open = true;
+    await search("", statusFilter);
+    window.requestAnimationFrame(() => {
+      customerResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+  const operationHash = useCallback((nextView: OperationView, nextCommercialTab: OperationCommercialTab) => {
+    if (nextView === "orders") {
+      const hashes: Record<OperationCommercialTab, string> = {
+        agenda: "#operacao-agenda",
+        sales: "#operacao-vendas",
+        requests: "#operacao-pedidos",
+        pede_junto: "#operacao-pede-junto",
+        catalog: "#operacao-catalogo-comercial",
+        crm: "#operacao-relacionamento",
+        feedback: "#operacao-reclamacoes",
+        finance: "#operacao-financeiro",
+        settings: "#operacao-configuracoes",
+      };
+      return hashes[nextCommercialTab];
+    }
+    const hashes: Record<Exclude<OperationView, "orders">, string> = {
+      dashboard: "#operacao",
+      attend: "#operacao-clientes",
+      movements: "#operacao-historico-clube",
+      catalog: "#operacao-catalogo",
+      archive: "#operacao-arquivados",
+      team: "#operacao-equipe",
+      content: "#operacao-conteudo",
+      "director-plan": "#operacao-plano-diretor",
+      security: "#operacao-seguranca",
+      "whatsapp-pilot": "#operacao-whatsapp-pilot",
+    };
+    return hashes[nextView];
+  }, []);
+  const rememberOperationLocation = useCallback((nextView: OperationView, nextCommercialTab = commercialTab) => {
+    if (view === nextView && commercialTab === nextCommercialTab) return;
+    const history = operationNavigationHistoryRef.current;
+    const current = { view, commercialTab };
+    const last = history.at(-1);
+    if (!last || last.view !== current.view || last.commercialTab !== current.commercialTab) {
+      history.push(current);
+      if (history.length > 30) history.shift();
+    }
+  }, [commercialTab, view]);
   const openView = async (next: OperationView) => {
+    rememberOperationLocation(next);
     setMobileNavOpen(false);
+    setProfileMenuOpen(false);
     setView(next);
-    window.history.replaceState(
-      null,
-      "",
-      next === "catalog"
-        ? "#operacao-catalogo"
-        : next === "archive"
-          ? "#operacao-historico"
-        : next === "director-plan"
-          ? "#operacao-plano-diretor"
-          : "#operacao",
-    );
+    const viewHashes: Record<OperationView, string> = {
+      dashboard: "#operacao",
+      attend: "#operacao-clientes",
+      movements: "#operacao-historico-clube",
+      orders: "#operacao-agenda",
+      catalog: "#operacao-catalogo",
+      archive: "#operacao-arquivados",
+      team: "#operacao-equipe",
+      content: "#operacao-conteudo",
+      "director-plan": "#operacao-plano-diretor",
+      security: "#operacao-seguranca",
+      "whatsapp-pilot": "#operacao-whatsapp-pilot",
+    };
+    window.history.replaceState(null, "", viewHashes[next]);
     setSelected(null);
     setMessage("");
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      const heading = operationWorkRef.current?.querySelector<HTMLElement>("h1");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    });
     if (next === "attend") await search("");
     if (next === "movements") {
       const supabase = requireSupabase();
-      const { data, error } = await supabase
-        .from("ledger_entries")
-        .select("id,reason,stamps_delta,created_at,subject_profile_id")
-        .order("created_at", { ascending: false })
-        .limit(50);
-      if (error) {
-        setMessage(error.message);
-        return;
+      const entries: Movement[] = [];
+      const pageSize = 500;
+      for (let from = 0; ; from += pageSize) {
+        const page = await supabase
+          .from("ledger_entries")
+          .select("id,reason,stamps_delta,created_at,subject_profile_id,actor_user_id")
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (page.error) {
+          setMessage(page.error.message);
+          return;
+        }
+        entries.push(...((page.data || []) as Movement[]));
+        if ((page.data || []).length < pageSize) break;
       }
-      const entries = (data || []) as Movement[];
       const profileIds = [
         ...new Set(
           entries
@@ -3102,12 +3752,27 @@ function OperationHome({ session }: { session: Session }) {
           profile.full_name?.trim().split(/\s+/)[0] || "Membro",
         ]),
       );
+      const actorIds = [...new Set(entries.map((item) => item.actor_user_id).filter((id): id is string => Boolean(id)))];
+      const { data: staffProfiles } = role === "owner" && actorIds.length
+        ? await supabase.from("staff_private_profiles").select("user_id,full_name,nickname,avatar_path").in("user_id", actorIds)
+        : { data: [] };
+      const actorBadges = new Map<string, { name: string; avatarUrl: string }>();
+      await Promise.all((staffProfiles || []).map(async (profile) => {
+        let avatarUrl = "";
+        if (profile.avatar_path) {
+          const signed = await supabase.storage.from("staff-profile-media").createSignedUrl(profile.avatar_path, 3600);
+          avatarUrl = signed.data?.signedUrl || "";
+        }
+        actorBadges.set(profile.user_id, { name: profile.nickname || profile.full_name, avatarUrl });
+      }));
       setMovements(
         entries.map((item) => ({
           ...item,
           customer_first_name:
             (item.subject_profile_id && names.get(item.subject_profile_id)) ||
             "Membro",
+          actor_name: item.actor_user_id ? actorBadges.get(item.actor_user_id)?.name || "Equipe Adoce" : "Sistema",
+          actor_avatar_url: item.actor_user_id ? actorBadges.get(item.actor_user_id)?.avatarUrl || "" : "",
         })),
       );
     }
@@ -3135,46 +3800,90 @@ function OperationHome({ session }: { session: Session }) {
       );
     }
   };
-  const openNotificationTarget = useCallback((actionUrl: string) => {
-    if (actionUrl.includes("vendas")) {
-      setCommercialTab("sales");
-      setView("orders");
-    } else if (actionUrl.includes("pede-junto")) {
-      setCommercialTab("pede_junto");
-      setView("orders");
-    } else if (actionUrl.includes("reclamacoes")) {
-      setCommercialTab("feedback");
-      setView("orders");
-    } else if (actionUrl.includes("pedidos")) {
-      setCommercialTab("requests");
-      setView("orders");
-    } else if (actionUrl.includes("membros")) {
-      setView("attend");
-      void search("");
-    }
-    window.history.replaceState(null, "", actionUrl || "#operacao");
-    setSelected(null);
-    setMessage("");
-  }, [search]);
+  const resetOperationViewport = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      const heading = operationWorkRef.current?.querySelector<HTMLElement>("h1");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    });
+  }, []);
   const openCommercial = useCallback((tab: OperationCommercialTab) => {
+    rememberOperationLocation("orders", tab);
     setMobileNavOpen(false);
+    setProfileMenuOpen(false);
     setCommercialTab(tab);
     setView("orders");
-    const hashes: Record<OperationCommercialTab, string> = {
-      agenda: "#operacao-agenda",
-      sales: "#operacao-vendas",
-      requests: "#operacao-pedidos",
-      pede_junto: "#operacao-pede-junto",
-      catalog: "#operacao-catalogo-comercial",
-      crm: "#operacao-clientes",
-      feedback: "#operacao-reclamacoes",
-      finance: "#operacao-financeiro",
-      settings: "#operacao-configuracoes",
-    };
-    window.history.replaceState(null, "", hashes[tab]);
+    window.history.replaceState(null, "", operationHash("orders", tab));
     setSelected(null);
     setMessage("");
-  }, []);
+    resetOperationViewport();
+  }, [operationHash, rememberOperationLocation, resetOperationViewport]);
+  const openNotificationTarget = (actionUrl: string) => {
+    if (actionUrl.includes("vendas")) {
+      openCommercial("sales");
+      return;
+    }
+    if (actionUrl.includes("pede-junto")) {
+      openCommercial("pede_junto");
+      return;
+    }
+    if (actionUrl.includes("reclamacoes")) {
+      openCommercial("feedback");
+      return;
+    }
+    if (actionUrl.includes("pedidos")) {
+      openCommercial("requests");
+      return;
+    }
+    if (actionUrl.includes("membros") || actionUrl.includes("operacao-clientes")) {
+      void openView("attend");
+      return;
+    }
+    void openView("dashboard");
+  };
+  const goBackInOperation = useCallback(() => {
+    setMobileNavOpen(false);
+    setProfileMenuOpen(false);
+
+    const openDialog = operationWorkRef.current?.querySelector<HTMLElement>('[role="dialog"]');
+    if (openDialog) {
+      const closeButton = openDialog.querySelector<HTMLButtonElement>(
+        '.drawer-close, .modal-close, button[aria-label^="Fechar"]',
+      );
+      if (closeButton) closeButton.click();
+      else window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      return;
+    }
+
+    if (selected) {
+      setSelected(null);
+      setGeneratedAccess(null);
+      setPasswordResetNotice(null);
+      setMessage("");
+      window.history.replaceState(null, "", operationHash("attend", commercialTab));
+      resetOperationViewport();
+      return;
+    }
+
+    const previous = operationNavigationHistoryRef.current.pop() || {
+      view: "dashboard" as const,
+      commercialTab: "agenda" as const,
+    };
+    setView(previous.view);
+    setCommercialTab(previous.commercialTab);
+    setSelected(null);
+    setMessage("");
+    window.history.replaceState(
+      null,
+      "",
+      operationHash(previous.view, previous.commercialTab),
+    );
+    if (previous.view === "attend") void search("");
+    resetOperationViewport();
+  }, [commercialTab, operationHash, resetOperationViewport, search, selected]);
   const purchase = async () => {
     if (!selected) return;
     const total = selected.current_progress + qty;
@@ -3246,20 +3955,113 @@ function OperationHome({ session }: { session: Session }) {
   const redeem = async () => {
     if (!selected?.available_reward_id) return;
     setBusy(true);
-    const { error } = await requireSupabase().rpc("staff_redeem_group_reward", {
-      reward_id: selected.available_reward_id,
-      participant_profile_id: selected.profile_id,
-      premium_upgrade: false,
-      price_difference: 0,
-      idempotency_key: crypto.randomUUID(),
-    });
-    setBusy(false);
-    if (error) setMessage(error.message);
-    else {
-      setMessage(
-        "Fatia grátis resgatada. O Cartão Clube Adoce continua acumulando normalmente.",
+    setMessage("");
+    try {
+      await abrirEntregaPresente(
+        selected.profile_id,
+        selected.available_reward_id,
+        selected.full_name,
       );
-      await refreshSelected();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível baixar a fatia-presente.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const fichaDoCliente = (cliente: Cliente) =>
+    counterFichas.find((ficha) => ficha.id === cliente.id);
+  const carimbarBalcao = async (cliente: Cliente, accountId?: string) => {
+    const ficha = fichaDoCliente(cliente);
+    const targetAccount = accountId || ficha?.accountId;
+    if (!targetAccount) throw new Error("Este cliente ainda não tem cartão ativo.");
+    const { error } = await requireSupabase().rpc("staff_record_purchase", {
+      account_id: targetAccount,
+      participant_profile_id: cliente.id,
+      quantity: 1,
+      idempotency_key: crypto.randomUUID(),
+      referral_code: null,
+    });
+    if (error) throw error;
+    await search(query);
+  };
+  const carregarSaboresPresente = async () => {
+    const supabase = requireSupabase();
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
+    const [{ data: flavors }, { data: availability }] = await Promise.all([
+      supabase.from("flavors").select("id,name").eq("active", true).order("name"),
+      supabase
+        .from("flavor_availability")
+        .select("flavor_id,status,quantity_available,quantity_reserved")
+        .eq("service_date", today),
+    ]);
+    return (flavors || [])
+      .map((flavor) => {
+        const stock = (availability || []).find((item) => item.flavor_id === flavor.id);
+        const remaining = stock?.quantity_available == null
+          ? 99
+          : Math.max(0, Number(stock.quantity_available) - Number(stock.quantity_reserved || 0));
+        return {
+          id: flavor.id,
+          name: flavor.name,
+          remaining: stock && ["available", "last_units"].includes(stock.status) ? remaining : 0,
+        };
+      })
+      .filter((flavor) => flavor.remaining > 0);
+  };
+  const confirmarEntregaPresente = async (flavorId: string, destino?: { profileId: string; rewardId: string }) => {
+    const alvo = destino || entregaPresente;
+    if (!alvo) return;
+    await redeemRewardSlice(session.access_token, {
+      rewardId: alvo.rewardId,
+      profileId: alvo.profileId,
+      flavorId,
+    });
+    setEntregaPresente(null);
+    setSaboresPresente([]);
+    setMessage("Fatia-presente entregue e baixada do estoque.");
+    await search(query);
+    if (selected?.profile_id === alvo.profileId) await refreshSelected();
+  };
+  const abrirEntregaPresente = async (profileId: string, rewardId: string, nome: string) => {
+    const sabores = await carregarSaboresPresente();
+    if (!sabores.length) throw new Error("Não há fatia disponível hoje para baixar este presente.");
+    if (sabores.length === 1) {
+      await confirmarEntregaPresente(sabores[0].id, { profileId, rewardId });
+      return;
+    }
+    setEntregaPresente({ profileId, rewardId, nome });
+    setSaboresPresente(sabores);
+  };
+  const entregarBalcao = async (cliente: Cliente) => {
+    const ficha = fichaDoCliente(cliente);
+    if (!ficha?.rewardId) throw new Error("Não há fatia-presente disponível para este cliente.");
+    await abrirEntregaPresente(cliente.id, ficha.rewardId, cliente.nome);
+  };
+  const salvarCadastroBalcao = async (dados: { nome: string; telefone: string }) => {
+    const created = await createStaffCustomer(session.access_token, dados.nome, dados.telefone);
+    setCadastrando(false);
+    if (created.temporaryPassword) {
+      setAcessoDoBalcao({
+        fullName: created.fullName,
+        temporaryPassword: created.temporaryPassword,
+        whatsappUrl: created.whatsappUrl,
+        accessMessage: created.accessMessage,
+      });
+    }
+    if (created.accountId) {
+      await carimbarBalcao(
+        {
+          id: created.profileId,
+          nome: created.fullName,
+          telefone: created.phone,
+          carimbos: 0,
+          presentesGuardados: 0,
+          ultimaCompra: null,
+        },
+        created.accountId,
+      );
+    } else {
+      await search(dados.telefone);
     }
   };
   if (authorized === null)
@@ -3315,11 +4117,11 @@ function OperationHome({ session }: { session: Session }) {
                 onChange={(event) => setNewStaffPassword(event.target.value)}
                 type="password"
                 autoComplete="new-password"
-                minLength={10}
+                minLength={6}
                 required
               />
               <small>
-                Mínimo de 10 caracteres, com maiúscula, minúscula e número.
+                Mínimo de 6 caracteres. Use como preferir.
               </small>
             </label>
             <label>
@@ -3331,7 +4133,7 @@ function OperationHome({ session }: { session: Session }) {
                 }
                 type="password"
                 autoComplete="new-password"
-                minLength={10}
+                minLength={6}
                 required
               />
             </label>
@@ -3349,25 +4151,44 @@ function OperationHome({ session }: { session: Session }) {
       </main>
     );
   const customerList = (
-    <div className="operation-results">
-      {results.map((customer) => (
-        <button
-          key={customer.profile_id}
-          onClick={() => void openCustomer(customer)}
-        >
-          <span className="avatar">{customer.full_name[0]}</span>
-          <span>
-            <strong>{customer.full_name}</strong>
-            <small>
-              {customer.phone_e164 || customer.email || "Contato não informado"}
-            </small>
-          </span>
-          <span>
-            <small>Abrir membro</small>
-          </span>
-          <ArrowRight />
-        </button>
-      ))}
+    <div ref={customerResultsRef} className="operation-customer-list">
+      <div className="operation-results-summary" role="status" aria-live="polite">
+        <strong>{results.length}</strong>
+        <span>
+          {query.trim()
+            ? "clientes encontrados"
+            : memberStatusFilter === "pending"
+              ? "cadastros aguardando análise"
+              : memberStatusFilter === "active"
+                ? "clientes ativos"
+                : memberStatusFilter === "deactivated"
+                  ? "clientes desativados"
+                  : "clientes exibidos na lista completa"}
+        </span>
+        {memberStatusFilter !== "all" && (
+          <button type="button" onClick={() => void showCustomersByStatus("all")}>Ver lista completa</button>
+        )}
+      </div>
+      <div className="operation-results">
+        {results.map((customer) => (
+          <button
+            key={customer.profile_id}
+            onClick={() => void openCustomer(customer)}
+          >
+            <span className="avatar">{customer.full_name[0]}</span>
+            <span>
+              <strong>{customer.full_name}</strong>
+              <small>
+                {customer.phone_e164 || customer.email || "Contato não informado"}
+              </small>
+            </span>
+            <span>
+              <small>Abrir membro</small>
+            </span>
+            <ArrowRight />
+          </button>
+        ))}
+      </div>
     </div>
   );
   return (
@@ -3382,6 +4203,7 @@ function OperationHome({ session }: { session: Session }) {
                 ? "Gerente"
                 : "Atendimento"}
           </span>
+          {currentStaffBadge ? <span className="operation-current-staff" title={`Atendimento por ${currentStaffBadge.name}`}>{currentStaffBadge.avatarUrl ? <img src={currentStaffBadge.avatarUrl} alt="" /> : <UserRound />}<small>{currentStaffBadge.name}</small></span> : null}
           <Suspense fallback={null}>
             <OperationNotificationCenter session={session} onNavigate={openNotificationTarget} />
           </Suspense>
@@ -3424,7 +4246,15 @@ function OperationHome({ session }: { session: Session }) {
               className={view === "orders" && commercialTab === "sales" ? "active" : ""}
               onClick={() => openCommercial("sales")}
             >
-              <ShoppingCart /> Caixa e pedidos de fatias
+              <ShoppingCart /> Caixa e pedidos
+            </button>
+          )}
+          {whatsappAuthPilotUiEnabled && (role === "owner" || role === "manager") && (
+            <button
+              className={view === "whatsapp-pilot" ? "active" : ""}
+              onClick={() => void openView("whatsapp-pilot")}
+            >
+              <ShieldCheck /> Piloto WhatsApp
             </button>
           )}
           {(role === "owner" || role === "manager") && (
@@ -3440,7 +4270,7 @@ function OperationHome({ session }: { session: Session }) {
               className={view === "orders" && commercialTab === "pede_junto" ? "active" : ""}
               onClick={() => openCommercial("pede_junto")}
             >
-              <Users /> Pede Junto Adoce
+              <Users /> Pede Junto
             </button>
           )}
           {(role === "owner" || role === "manager") && (
@@ -3465,6 +4295,7 @@ function OperationHome({ session }: { session: Session }) {
               className={view === "content" ? "active" : ""}
               onClick={() => {
                 setContentTab("today");
+                setContentAvailabilityFilter("all");
                 void openView("content");
               }}
             >
@@ -3510,11 +4341,27 @@ function OperationHome({ session }: { session: Session }) {
               <RotateCcw /> Restaurar produção
             </button>
           )}
+          <div className="operation-nav-account">
+            <button type="button" onClick={() => setInstallGuideOpen(true)}>
+              <Download /> Instalar aplicativo
+            </button>
+            <button type="button" onClick={() => void signOut()}>
+              <LogOut /> Sair da operação
+            </button>
+          </div>
         </aside>
         <section className="operation-work">
+          {(view !== "dashboard" || selected) && (
+            <nav className="operation-back-bar" aria-label="Retorno da tela atual">
+              <button type="button" className="operation-back-button" onClick={goBackInOperation}>
+                <ArrowLeft /> Voltar
+              </button>
+            </nav>
+          )}
           {view === "dashboard" && (
             <Suspense fallback={<p>Carregando visão da operação…</p>}>
               <OperationDashboard
+                operatorName={String(session.user.user_metadata?.full_name || session.user.user_metadata?.name || "Adoce").trim().split(/\s+/)[0]}
                 onNavigate={(destination) => {
                   if (destination === "customers") {
                     void openView("attend");
@@ -3524,8 +4371,9 @@ function OperationHome({ session }: { session: Session }) {
                     void openView("catalog");
                     return;
                   }
-                  if (destination === "content") {
-                    setContentTab("operation");
+                  if (destination === "availability" || destination === "low-stock") {
+                    setContentTab("today");
+                    setContentAvailabilityFilter(destination === "low-stock" ? "low" : "all");
                     void openView("content");
                     return;
                   }
@@ -3536,24 +4384,115 @@ function OperationHome({ session }: { session: Session }) {
           )}
           {view === "attend" && (
             <>
+              {entregaPresente ? (
+                <section className="cad-acesso" role="dialog" aria-label="Baixar fatia-presente">
+                  <p>
+                    Qual sabor foi a fatia-presente de <strong>{entregaPresente.nome.split(/\s+/)[0]}</strong>?
+                    A unidade sai do estoque de hoje.
+                  </p>
+                  <div className="cad-acesso-acoes">
+                    {saboresPresente.map((sabor) => (
+                      <button
+                        key={sabor.id}
+                        type="button"
+                        className="cad-salvar"
+                        disabled={busy}
+                        onClick={() => void confirmarEntregaPresente(sabor.id)}
+                      >
+                        {sabor.name}
+                        {sabor.remaining < 99 ? ` · ${sabor.remaining}` : ""}
+                      </button>
+                    ))}
+                    <button type="button" className="access-link" onClick={() => { setEntregaPresente(null); setSaboresPresente([]); }}>
+                      Cancelar
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+              {cadastrando && !selected ? (
+                <CadastroRapido
+                  clientesConhecidos={counterFichas.map((ficha) => ({
+                    id: ficha.id,
+                    nome: ficha.nome,
+                    telefone: ficha.telefone,
+                  }))}
+                  onSalvar={salvarCadastroBalcao}
+                  onVoltar={() => setCadastrando(false)}
+                  onAbrirExistente={(id) => {
+                    const found = results.find((item) => item.profile_id === id);
+                    setCadastrando(false);
+                    if (found) void openCustomer(found);
+                  }}
+                />
+              ) : null}
+              {!selected && !cadastrando && <>
               <div className="operation-title">
                 <div>
                   <span>Clientes e fidelidade</span>
                   <h1>Clientes & Clube Adoce</h1>
                   <p>
-                    Localize um cliente, leia o QR do cartão ou consulte a lista completa em um só lugar.
+                    Busque, carimbe e cadastre no balcão. Um toque por fatia.
                   </p>
                 </div>
-                <div className="operation-role">
-                  <Check /> Acesso verificado
-                </div>
+                <button
+                  className="operation-scan-button"
+                  onClick={() => void startScanner()}
+                >
+                  <Camera /> Ler QR do membro
+                </button>
               </div>
-              <div className="operation-member-counts" aria-label="Quantidade de clientes cadastrados">
-                <strong><b>{memberCounts.total}</b><span>clientes cadastrados</span></strong>
-                <span><b>{memberCounts.active}</b> ativos</span>
-                <span><b>{memberCounts.deactivated}</b> desativados</span>
-                <span><b>{memberCounts.pending}</b> aguardando análise</span>
+              <div className="operation-member-counts operation-member-counts-simple" aria-label="Quantidade de clientes ativos">
+                <button type="button" className={memberStatusFilter === "active" ? "active" : ""} aria-pressed={memberStatusFilter === "active"} onClick={() => void showCustomersByStatus("active")}>
+                  <b>{memberCounts.active}</b><span>ativos</span>
+                </button>
               </div>
+              {acessoDoBalcao ? (
+                <section className="cad-acesso" role="status">
+                  <p>
+                    <strong>{acessoDoBalcao.fullName.split(/\s+/)[0]}</strong> já está no Clube.
+                    Senha temporária: <code>{acessoDoBalcao.temporaryPassword}</code>
+                  </p>
+                  <p>Envie no WhatsApp para a pessoa ver os carimbos no celular. Ela entra em adocebrigaderia.com.br/#entrar com este número e essa senha.</p>
+                  <div className="cad-acesso-acoes">
+                    {acessoDoBalcao.whatsappUrl ? (
+                      <a className="cad-salvar" href={acessoDoBalcao.whatsappUrl} target="_blank" rel="noreferrer">
+                        <MessageCircle aria-hidden="true" /> Enviar acesso no WhatsApp
+                      </a>
+                    ) : null}
+                    {acessoDoBalcao.accessMessage ? (
+                      <button
+                        type="button"
+                        className="access-secondary"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(acessoDoBalcao.accessMessage || "");
+                          setMessage("Mensagem de acesso copiada.");
+                        }}
+                      >
+                        <Copy /> Copiar mensagem
+                      </button>
+                    ) : null}
+                    <button type="button" className="access-link" onClick={() => setAcessoDoBalcao(null)}>
+                      Fechar
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+              <BalcaoAtendimento
+                clientes={counterFichas}
+                onCarimbar={carimbarBalcao}
+                onEntregarPresente={entregarBalcao}
+                onAbrirCadastro={(cliente) => {
+                  const customer = results.find(
+                    (item) => item.profile_id === cliente.id,
+                  );
+                  if (customer) void openCustomer(customer);
+                  else setMessage("Não foi possível abrir este cadastro agora.");
+                }}
+                onCadastrar={() => setCadastrando(true)}
+                carregando={busy}
+              />
+              <details ref={customerListDetailsRef} className="operation-full-customer-list">
+                <summary>Lista completa, busca e ficha</summary>
               <div className="operation-search-row">
                 <form
                   className="operation-search"
@@ -3572,16 +4511,11 @@ function OperationHome({ session }: { session: Session }) {
                     {busy ? "Buscando..." : "Buscar"}
                   </button>
                 </form>
-                <button
-                  className="operation-scan-button"
-                  onClick={() => void startScanner()}
-                >
-                  <Camera /> Ler QR do membro
-                </button>
               </div>
-              {!selected ? (
-                customerList
-              ) : (
+              {customerList}
+              </details>
+              </>}
+              {selected ? (
                 <div className="operation-customer print-scope">
                   <button
                     className="back"
@@ -3634,20 +4568,19 @@ function OperationHome({ session }: { session: Session }) {
                     </span>
                   </div>
                   {role !== "viewer" && (
-                    <section
-                      className="customer-access-help"
-                      data-testid="customer-access-help"
-                    >
+                    <details className="customer-more-options" data-testid="customer-access-help">
+                      <summary>
+                        <span><MoreHorizontal /><strong>Mais opções</strong></span>
+                        <small>Acesso e senha</small>
+                        <ChevronDown />
+                      </summary>
+                      <div className="customer-more-options-body">
+                    <section className="customer-access-help">
                       <div className="customer-access-copy">
                         <KeyRound />
                         <span>
-                          <small>Ajuda para entrar no Clube</small>
-                          <strong>Gerar código de acesso temporário</strong>
-                          <p>
-                            Use quando o membro não conseguir receber o código
-                            por e-mail. O link abre o Clube já autenticado e a
-                            geração fica registrada na auditoria.
-                          </p>
+                          <strong>Gerar código de acesso</strong>
+                          <p>Use quando o cliente não conseguir entrar.</p>
                         </span>
                       </div>
                       {!generatedAccess ? (
@@ -3693,25 +4626,10 @@ function OperationHome({ session }: { session: Session }) {
                         </div>
                       )}
                     </section>
-                  )}
                   {["owner", "manager"].includes(role) && (
-                    <section className="customer-account-admin">
-                      <div>
-                        <ShieldCheck />
+                      <div className="customer-password-row">
                         <span>
-                          <small>Segurança e privacidade</small>
-                          <strong>Desativar, reativar ou excluir o cadastro</strong>
-                          <p>Excluir remove definitivamente o acesso e os dados pessoais, mas preserva carimbos, pedidos e auditoria sem identificação pessoal.</p>
-                        </span>
-                      </div>
-                      <div className="password-reset-row">
-                        <span>
-                          <small>Acesso do cliente</small>
-                          <strong>Redefinir senha pelo celular</strong>
-                          <p>
-                            Cria a senha temporária 123456@adoce e exige que o
-                            cliente escolha uma nova senha ao entrar.
-                          </p>
+                          <strong>Redefinir senha</strong>
                         </span>
                         <button
                           type="button"
@@ -3728,6 +4646,7 @@ function OperationHome({ session }: { session: Session }) {
                           <KeyRound /> Redefinir senha
                         </button>
                       </div>
+                  )}
                       {passwordResetNotice?.targetUserId ===
                         selected.profile_id && (
                         <div className="password-reset-result" role="status">
@@ -3743,29 +4662,14 @@ function OperationHome({ session }: { session: Session }) {
                           </button>
                         </div>
                       )}
-                      <label>
-                        Ação
-                        <select value={accountAction} onChange={(event) => setAccountAction(event.target.value as CustomerAccountAction)}>
-                          <option value="deactivate">Desativar acesso</option>
-                          <option value="delete_account">Excluir cadastro agora</option>
-                          <option value="request_deletion">Registrar pedido do cliente para decidir depois (não exclui agora)</option>
-                          <option value="mark_duplicate">Marcar como cadastro duplicado</option>
-                          <option value="reactivate">Reativar acesso</option>
-                          <option value="cancel_deletion">Cancelar exclusão e reativar</option>
-                        </select>
-                      </label>
-                      <label>
-                        Motivo
-                        <select value={accountReason} onChange={(event) => setAccountReason(event.target.value as CustomerAccountReason)}>
-                          {customerAccountReasons.map((reason) => <option key={reason.value} value={reason.value}>{reason.label}</option>)}
-                        </select>
-                      </label>
-                      <label>
-                        Observação interna
-                        <textarea value={accountReasonNote} onChange={(event) => setAccountReasonNote(event.target.value)} placeholder="Explique o necessário sem incluir dados sensíveis desnecessários." />
-                      </label>
-                      <button className="access-secondary" onClick={() => void changeCustomerAccount()} disabled={busy || (accountReason === "other" && accountReasonNote.trim().length < 5)}>
-                        <ShieldCheck /> Revisar e confirmar ação
+                      </div>
+                    </details>
+                  )}
+                  {["owner", "manager"].includes(role) && (
+                    <section className="customer-account-compact">
+                      <span><ShieldCheck /><strong>Cadastro do cliente</strong></span>
+                      <button type="button" className="customer-delete-action" onClick={() => { setDeleteCustomerConfirmation(""); setDeleteCustomerOpen(true); }}>
+                        <Trash2 /> Excluir cadastro
                       </button>
                     </section>
                   )}
@@ -3819,10 +4723,9 @@ function OperationHome({ session }: { session: Session }) {
                       </button>
                     </article>
                     {role === "owner" && (
-                      <article className="owner-correction">
-                        <RotateCcw />
-                        <small>Ferramenta do proprietário</small>
-                        <h3>Corrigir carimbos</h3>
+                      <details className="owner-correction customer-collapsible-action">
+                        <summary><span><RotateCcw /><strong>Corrigir carimbos</strong></span><ChevronDown /></summary>
+                        <div className="customer-collapsible-body">
                         <p>
                           Remova um lançamento incorreto sem apagar o histórico.
                         </p>
@@ -3889,11 +4792,68 @@ function OperationHome({ session }: { session: Session }) {
                         >
                           Remover {correctionQty} carimbo(s)
                         </button>
-                      </article>
+                        </div>
+                      </details>
                     )}
                   </div>
+                  <details className="customer-movement-history" aria-labelledby="customer-movement-history-title">
+                    <summary>
+                      <span><History /><strong id="customer-movement-history-title">Histórico de lançamentos</strong></span>
+                      <small>{customerMovements.length} registro(s)</small>
+                      <ChevronDown />
+                    </summary>
+                    <div className="operation-simple-list customer-movement-list">
+                      {customerMovements.length ? (
+                        customerMovements.map((item) => (
+                          <article key={item.id}>
+                            <History />
+                            <span>
+                              <strong>
+                                {{
+                                  purchase: "Compra registrada",
+                                  referral_referred: "Bônus para novo membro",
+                                  referral_referrer: "Bônus de indicação",
+                                  manual_adjustment: "Ajuste de carimbos",
+                                  reversal: "Correção de carimbos",
+                                  reward_redeemed: "Fatia grátis retirada",
+                                }[item.reason] || "Movimentação do cartão"}
+                              </strong>
+                              <small>{new Date(item.created_at).toLocaleString("pt-BR")}</small>
+                            </span>
+                            <b className={item.stamps_delta >= 0 ? "positive" : "negative"}>
+                              {item.reason === "reward_redeemed"
+                                ? "Fatia grátis entregue"
+                                : `${item.stamps_delta > 0 ? "+" : ""}${item.stamps_delta} ${Math.abs(item.stamps_delta) === 1 ? "carimbo" : "carimbos"}`}
+                            </b>
+                          </article>
+                        ))
+                      ) : (
+                        <p>Nenhum lançamento registrado para este cliente.</p>
+                      )}
+                    </div>
+                  </details>
+                  {deleteCustomerOpen && (
+                    <div className="customer-delete-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setDeleteCustomerOpen(false); }}>
+                      <section className="customer-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="customer-delete-title">
+                        <button type="button" className="customer-delete-close" aria-label="Fechar" onClick={() => setDeleteCustomerOpen(false)} disabled={busy}><X /></button>
+                        <Trash2 />
+                        <h2 id="customer-delete-title">Excluir {selected.full_name}?</h2>
+                        <p>O acesso e os dados pessoais serão removidos. O histórico da operação será preservado sem identificação pessoal.</p>
+                        <label>
+                          Digite <strong>EXCLUIR</strong> para confirmar
+                          <input autoFocus value={deleteCustomerConfirmation} onChange={(event) => setDeleteCustomerConfirmation(event.target.value)} autoComplete="off" />
+                        </label>
+                        <div className="customer-delete-dialog-actions">
+                          <button type="button" className="access-secondary" onClick={() => setDeleteCustomerOpen(false)} disabled={busy}>Cancelar</button>
+                          <button type="button" className="customer-delete-confirm" onClick={() => void deleteCustomerAccount()} disabled={busy || deleteCustomerConfirmation.trim().toUpperCase() !== "EXCLUIR"}>
+                            <Trash2 /> {busy ? "Excluindo..." : "Excluir cadastro"}
+                          </button>
+                        </div>
+                      </section>
+                    </div>
+                  )}
                 </div>
-              )}
+              ) : null}
             </>
           )}
           {view === "movements" && (
@@ -3909,7 +4869,7 @@ function OperationHome({ session }: { session: Session }) {
                 {movements.length ? (
                   movements.map((item) => (
                     <article key={item.id}>
-                      <History />
+                      {item.actor_avatar_url ? <img className="staff-history-avatar" src={item.actor_avatar_url} alt="" /> : <History />}
                       <span>
                         <strong>
                           {{
@@ -3922,6 +4882,7 @@ function OperationHome({ session }: { session: Session }) {
                           }[item.reason] || "Movimentação do cartão"}
                         </strong>
                         <em>{item.customer_first_name}</em>
+                        <small>Atendido por {item.actor_name}</small>
                         <small>
                           {new Date(item.created_at).toLocaleString("pt-BR")}
                         </small>
@@ -3943,7 +4904,12 @@ function OperationHome({ session }: { session: Session }) {
               </div>
             </>
           )}
-          {view === "team" && (
+          {view === "team" && role === "owner" && (
+            <Suspense fallback={<p>Carregando cadastro da equipe...</p>}>
+              <StaffProfileAdmin session={session} staff={team} />
+            </Suspense>
+          )}
+          {view === "team" && role !== "owner" && (
             <>
               <div className="operation-title">
                 <div>
@@ -4019,10 +4985,11 @@ function OperationHome({ session }: { session: Session }) {
           {view === "content" && (
             <Suspense fallback={<p>Carregando administração...</p>}>
               <OperationContentAdmin
-                key={contentTab}
+                key={`${contentTab}-${contentAvailabilityFilter}`}
                 session={session}
                 role={role}
                 initialTab={contentTab}
+                initialAvailabilityFilter={contentAvailabilityFilter}
               />
             </Suspense>
           )}
@@ -4032,7 +4999,7 @@ function OperationHome({ session }: { session: Session }) {
                 session={session}
                 role={role}
                 initialTab={commercialTab}
-                onTabChange={setCommercialTab}
+                onTabChange={openCommercial}
                 onOpenContent={() => void openView("content")}
               />
             </Suspense>
@@ -4054,6 +5021,11 @@ function OperationHome({ session }: { session: Session }) {
           )}
           {view === "security" && role === "owner" && (
             <ProductionRollbackPanel accessToken={session.access_token} />
+          )}
+          {view === "whatsapp-pilot" && whatsappAuthPilotUiEnabled && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando piloto WhatsApp…</p>}>
+              <WhatsAppAuthPilot accessToken={session.access_token} />
+            </Suspense>
           )}
           {view === "director-plan" && role === "owner" && (
             <Suspense fallback={<p>Carregando validação do projeto...</p>}>
@@ -4131,22 +5103,125 @@ function OperationHome({ session }: { session: Session }) {
           )}
         </section>
       </div>
+      <nav className="operation-mobile-tabbar" aria-label="Navegação principal da operação">
+        <button
+          type="button"
+          className={view === "dashboard" ? "active" : ""}
+          onClick={() => void openView("dashboard")}
+          aria-current={view === "dashboard" ? "page" : undefined}
+        >
+          <LayoutDashboard /><span>Início</span>
+        </button>
+        <button
+          type="button"
+          className={view === "orders" && commercialTab === "sales" ? "active" : ""}
+          onClick={() => openCommercial("sales")}
+          aria-current={view === "orders" && commercialTab === "sales" ? "page" : undefined}
+        >
+          <ShoppingCart /><span>Vendas</span>
+        </button>
+        <button
+          type="button"
+          className={view === "orders" && (commercialTab === "agenda" || commercialTab === "requests") ? "active" : ""}
+          onClick={() => openCommercial("agenda")}
+          aria-current={view === "orders" && (commercialTab === "agenda" || commercialTab === "requests") ? "page" : undefined}
+        >
+          <CalendarDays /><span>Agenda</span>
+        </button>
+        <button
+          type="button"
+          className={view === "attend" ? "active" : ""}
+          onClick={() => void openView("attend")}
+          aria-current={view === "attend" ? "page" : undefined}
+        >
+          <Users /><span>Clientes</span>
+        </button>
+        <button
+          type="button"
+          className={mobileNavOpen ? "active" : ""}
+          onClick={() => setMobileNavOpen((open) => !open)}
+          aria-expanded={mobileNavOpen}
+        >
+          <MoreHorizontal /><span>Mais</span>
+        </button>
+      </nav>
     </main>
   );
 }
 
 export default function AccessApp({ surface }: { surface: Surface }) {
+  const homologationFakeEnabled =
+    import.meta.env.VITE_HOMOLOGATION_FAKE_AUTH === "true";
+  const homologationStorageKey = `adoce-homologation-fake-${surface}`;
+  const [homologationSession, setHomologationSession] = useState(() =>
+    homologationFakeEnabled &&
+    (window.localStorage.getItem(homologationStorageKey) === "true" ||
+      window.sessionStorage.getItem(homologationStorageKey) === "true"),
+  );
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const identityDecision = decidirPorta({
+    sessao: Boolean(session),
+    tokenDoCartao: tokenDoCartaoNaRota(window.location.hash),
+    membro: null,
+    tokenNaUrl: tokenDoMagicLink(window.location.hash),
+  });
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [surface]);
+  useEffect(() => {
+    if (homologationFakeEnabled) {
+      setSession(null);
+      return;
+    }
     const supabase = requireSupabase();
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => setSession(data.session));
+    const magicParams = new URLSearchParams(
+      window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash,
+    );
+    const accessToken = tokenDoMagicLink(window.location.hash);
+    const refreshToken = magicParams.get("refresh_token");
+    const linkType = tipoDoLinkDeAcesso(window.location.hash);
+    if (surface === "client" && identityDecision.porta === "abrindo" && accessToken && refreshToken) {
+      if (linkType === "recovery") {
+        sessionStorage.setItem(passwordRecoveryStorageKey, "true");
+      }
+      void supabase.auth
+        .setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data, error }) => {
+          if (error) throw error;
+          setSession(data.session);
+          const nextHash = linkType === "recovery" ? "#minha-conta" : rotaLimpaDepoisDoLogin;
+          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${nextHash}`);
+        })
+        .catch(() => setSession(null));
+    } else {
+      void supabase.auth
+        .getSession()
+        .then(({ data }) => setSession(data.session));
+    }
     const { data } = supabase.auth.onAuthStateChange((_event, next) =>
       setSession(next),
     );
     return () => data.subscription.unsubscribe();
-  }, []);
+  }, [homologationFakeEnabled, identityDecision.porta, surface]);
+  useEffect(() => {
+    if (!session) return;
+    const url = new URL(window.location.href);
+    const expectedReturn = surface === "operation" ? "operacao" : "clube";
+    if (url.searchParams.get("auth_return") !== expectedReturn) return;
+    url.searchParams.delete("auth_return");
+    url.searchParams.delete("code");
+    url.searchParams.delete("error");
+    url.searchParams.delete("error_code");
+    url.searchParams.delete("error_description");
+    url.hash = surface === "operation" ? "operacao" : "clube";
+    window.history.replaceState(
+      null,
+      "",
+      `${url.pathname}${url.search}${url.hash}`,
+    );
+  }, [session, surface]);
   const title = useMemo(
     () => (surface === "operation" ? "Adoce Operação" : "Clube Adoce"),
     [surface],
@@ -4180,6 +5255,8 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     if (appleIcon) appleIcon.href = appleIconHref;
     if (appleTitle) appleTitle.content = title;
   }, [surface, title]);
+  if (homologationSession)
+    return surface === "operation" ? <OperationDemo /> : <MemberDemo />;
   if (session === undefined)
     return (
       <main className="access-loading">
@@ -4187,7 +5264,19 @@ export default function AccessApp({ surface }: { surface: Surface }) {
         <p>Abrindo com segurança...</p>
       </main>
     );
-  if (!session) return <AuthScreen surface={surface} />;
+  if (!session)
+    return (
+      <AuthScreen
+        surface={surface}
+        onHomologationLogin={(remember) => {
+          window.localStorage.removeItem(homologationStorageKey);
+          window.sessionStorage.removeItem(homologationStorageKey);
+          const storage = remember ? window.localStorage : window.sessionStorage;
+          storage.setItem(homologationStorageKey, "true");
+          setHomologationSession(true);
+        }}
+      />
+    );
   return surface === "operation" ? (
     <OperationHome session={session} />
   ) : (

@@ -34,7 +34,7 @@
 .director-phase-context p { margin: 0; color: #765b51; font-size: .86rem; line-height: 1.5; }
 .director-filters { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: minmax(220px, 1fr) 155px 145px 135px auto; align-items: end; gap: 10px; margin: 16px 0 12px; padding: 13px; border: 1px solid #ead5ca; border-radius: 16px; background: rgba(255,248,242,.96); backdrop-filter: blur(12px); box-shadow: 0 9px 24px rgba(59,32,24,.06); }
 .director-filters label { display: grid; gap: 5px; color: #765b51; font-size: .72rem; font-weight: 700; }
-.director-filters input, .director-filters select { width: 100%; min-width: 0; height: 44px; border: 1px solid #e3cbc0; border-radius: 11px; background: white; color: #3b2018; padding: 0 12px; font: 600 .86rem 'DM Sans', sans-serif; }
+.director-filters input, .director-filters select { width: 100%; min-width: 0; height: 44px; border: 1px solid #e3cbc0; border-radius: 11px; background: white; color: #3b2018; padding: 0 12px; font: 600 .86rem 'Inter', sans-serif; }
 .director-search { position: relative; }
 .director-search svg { position: absolute; left: 12px; bottom: 13px; z-index: 1; width: 18px; color: #ce7075; }
 .director-search input { padding-left: 39px; }
@@ -71,7 +71,7 @@
 .director-recommendation small { color: #80685e; }
 .director-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
 .director-item label { display: grid; gap: 7px; color: #5f453b; font-size: .79rem; font-weight: 800; }
-.director-item select, .director-item textarea { width: 100%; border: 1px solid #e1c9be; border-radius: 11px; background: white; color: #3b2018; padding: 11px 12px; font: 500 .92rem/1.45 'DM Sans', sans-serif; }
+.director-item select, .director-item textarea { width: 100%; border: 1px solid #e1c9be; border-radius: 11px; background: white; color: #3b2018; padding: 11px 12px; font: 500 .92rem/1.45 'Inter', sans-serif; }
 .director-item select { height: 48px; }
 .director-item textarea { min-height: 88px; resize: vertical; }
 .director-final, .director-notes { margin-top: 13px; }

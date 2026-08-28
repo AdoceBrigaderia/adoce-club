@@ -1,0 +1,215 @@
+/* Finalizar a reserva. Dois campos, alvos grandes.
+   Cores só de adoce-tokens.css. */
+
+.reserva {
+  display: grid;
+  gap: 16px;
+  padding: 16px 16px 48px;
+  max-width: 520px;
+  margin: 0 auto;
+  color: var(--adoce-marrom);
+}
+
+.res-voltar {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--adoce-toque);
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--adoce-terra);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.res-voltar svg { width: 18px; height: 18px; }
+
+.res-titulo { margin: 0; font-size: 1.5rem; }
+
+/* ---- Resumo ---- */
+
+.res-resumo {
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff;
+}
+
+.res-resumo ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+
+.res-resumo li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.9375rem;
+}
+
+.res-qtd { font-weight: 700; color: var(--adoce-terra); }
+.res-sabor { flex: 1 1 auto; display: grid; }
+
+.res-sabor small {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}
+
+.res-presente {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: var(--adoce-terra);
+  font-weight: 600;
+}
+
+.res-presente svg { width: 14px; height: 14px; }
+
+.res-total {
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid color-mix(in srgb, var(--adoce-terra) 14%, transparent);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.res-presente-nota {
+  margin: 6px 0 0;
+  font-size: 0.8125rem;
+  color: var(--adoce-terra);
+}
+
+/* ---- Cliente já conhecido ---- */
+
+.res-conhecido {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--adoce-rosa) 42%, #fff);
+}
+
+.res-conhecido p { margin: 0; font-size: 1rem; }
+.res-telefone { color: color-mix(in srgb, var(--adoce-marrom) 66%, transparent); font-size: 0.875rem; }
+
+.res-conhecido button {
+  justify-self: start;
+  margin-top: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--adoce-terra);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--adoce-terra);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+/* ---- Campos ---- */
+
+.res-campo { display: grid; gap: 6px; }
+
+.res-campo > span {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--adoce-marrom) 74%, transparent);
+}
+
+.res-campo > span em {
+  font-style: normal;
+  font-weight: 400;
+  color: color-mix(in srgb, var(--adoce-marrom) 52%, transparent);
+}
+
+.res-campo input,
+.res-campo textarea {
+  min-height: 56px;
+  padding: 14px 16px;
+  border: 2px solid color-mix(in srgb, var(--adoce-terra) 30%, transparent);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--adoce-marrom);
+  font: inherit;
+  font-size: 1.0625rem;
+  resize: vertical;
+}
+
+.res-campo input:focus,
+.res-campo textarea:focus { outline: none; border-color: var(--adoce-terra); }
+
+.res-campo small[role="alert"] { font-size: 0.8125rem; font-weight: 600; color: var(--adoce-terra); }
+
+.res-ajuda {
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+}
+
+/* ---- Horários ---- */
+
+.res-horarios { margin: 0; padding: 0; border: none; display: grid; gap: 8px; }
+
+.res-horarios legend {
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--adoce-marrom) 74%, transparent);
+}
+
+.res-horas { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.res-horas button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--adoce-toque);
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--adoce-terra) 30%, transparent);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--adoce-marrom);
+  font: inherit;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+
+.res-horas svg { width: 15px; height: 15px; }
+
+.res-horas .escolhido {
+  border-color: var(--adoce-terra);
+  background: var(--adoce-terra);
+  color: #fff;
+  font-weight: 600;
+}
+
+.res-local {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-marrom) 60%, transparent);
+}
+
+/* ---- Confirmar ---- */
+
+.res-erro { margin: 0; font-size: 0.9375rem; font-weight: 600; color: var(--adoce-terra); }
+
+.res-confirmar {
+  min-height: 58px;
+  border: none;
+  border-radius: 999px;
+  background: var(--adoce-terra);
+  color: #fff;
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.res-confirmar:disabled { opacity: 0.6; cursor: default; }
+
+.res-nota {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--adoce-marrom) 62%, transparent);
+}

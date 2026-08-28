@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { CreditCard, Save, Settings2, Timer } from "lucide-react";
+import { CreditCard, MessageCircle, Save, Settings2, Timer } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import OperationVisualSettings from "./OperationVisualSettings";
 import "./operation-commerce-tools.css";
@@ -13,6 +13,7 @@ type CommerceSettings = {
   automatic_checkout_enabled: boolean;
   automatic_checkout_minimum: number;
   reservation_minutes: number;
+  order_whatsapp_number: string;
   payment_methods: PaymentMethod[];
 };
 
@@ -32,7 +33,7 @@ export default function OperationCommerceSettings({
     setBusy(true);
     const { data, error } = await requireSupabase().rpc("staff_get_commerce_settings");
     setBusy(false);
-    if (error) return setNotice(error.message);
+    if (error) { setBusy(false); return setNotice(error.message); }
     setSettings(data as CommerceSettings);
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -46,9 +47,13 @@ export default function OperationCommerceSettings({
       next_reservation_minutes: settings.reservation_minutes,
       next_payment_methods: settings.payment_methods,
     });
+    if (error) { setBusy(false); return setNotice(error.message); }
+    const whatsappResult = await requireSupabase().rpc("staff_update_order_whatsapp_number", {
+      next_order_whatsapp_number: settings.order_whatsapp_number,
+    });
     setBusy(false);
-    if (error) return setNotice(error.message);
-    setSettings(data as CommerceSettings);
+    if (whatsappResult.error) return setNotice(whatsappResult.error.message);
+    setSettings({ ...(data as CommerceSettings), order_whatsapp_number: whatsappResult.data as string });
     setNotice("Configurações salvas. Os próximos pedidos já seguirão estas regras.");
   };
 
@@ -62,6 +67,10 @@ export default function OperationCommerceSettings({
         <label className="commerce-check"><input type="checkbox" checked={settings.automatic_checkout_enabled} onChange={(event) => setSettings({ ...settings, automatic_checkout_enabled: event.target.checked })} /><span><strong>Reserva automática</strong><small>Reserva o estoque quando o pedido alcançar o mínimo definido.</small></span></label>
         <label>Quantidade mínima<input type="number" min="1" max="30" value={settings.automatic_checkout_minimum} onChange={(event) => setSettings({ ...settings, automatic_checkout_minimum: Number(event.target.value) })} /></label>
         <label>Prazo para pagamento, em minutos<input type="number" min="5" max="240" value={settings.reservation_minutes} onChange={(event) => setSettings({ ...settings, reservation_minutes: Number(event.target.value) })} /><small>Entre 5 minutos e 4 horas. Vale para os próximos pedidos.</small></label>
+      </section>
+      <section className="commerce-tool-card">
+        <header><MessageCircle /><div><small>Atendimento</small><h3>WhatsApp dos pedidos</h3></div></header>
+        <label>Número com DDD<input inputMode="tel" value={settings.order_whatsapp_number || ""} onChange={(event) => setSettings({ ...settings, order_whatsapp_number: event.target.value })} placeholder="(85) 99999-9999" /><small>O carrinho e as solicitações enviam o cliente para este número.</small></label>
       </section>
       <section className="commerce-tool-card">
         <header><CreditCard /><div><small>Recebimentos</small><h3>Meios de pagamento e taxas</h3></div></header>

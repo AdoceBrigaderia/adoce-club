@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, ExternalLink, Play, X } from "lucide-react";
 import { instagramEmbedUrl, mediaPoster, type CommercialMediaItem } from "./commercial-media";
+import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
 import "./commercial-media-carousel.css";
 
 export default function CommercialMediaCarousel({
@@ -24,12 +25,16 @@ export default function CommercialMediaCarousel({
   }] : [];
   const [index, setIndex] = useState(0);
   const [openedReel, setOpenedReel] = useState<string | null>(null);
+  const [viewedImage, setViewedImage] = useState<ProductImage | null>(null);
   const [touchX, setTouchX] = useState<number | null>(null);
   const itemKey = items.map((item) => item.id).join("|");
   useEffect(() => setIndex(0), [label, itemKey]);
   if (!slides.length) return null;
   const current = slides[Math.min(index, slides.length - 1)];
   const poster = mediaPoster(current as CommercialMediaItem, fallbackImage);
+  const viewerImages = slides
+    .map((slide) => ({ src: mediaPoster(slide as CommercialMediaItem, fallbackImage), alt: slide.alt_text || fallbackAlt }))
+    .filter((item): item is ProductImage => Boolean(item.src));
   const previous = () => setIndex((value) => (value - 1 + slides.length) % slides.length);
   const next = () => setIndex((value) => (value + 1) % slides.length);
 
@@ -47,7 +52,7 @@ export default function CommercialMediaCarousel({
       }}
     >
       <div className="commercial-media-stage">
-        {poster ? <img src={poster} alt={current.alt_text || fallbackAlt} loading="lazy" /> : <div className="commercial-media-reel-placeholder"><Play /></div>}
+        {poster ? <button className="commercial-media-image product-image-trigger" type="button" onClick={() => setViewedImage({ src: poster, alt: current.alt_text || fallbackAlt })} aria-label={`Ampliar foto de ${label}`}><img src={poster} alt={current.alt_text || fallbackAlt} loading="lazy" /></button> : <div className="commercial-media-reel-placeholder"><Play /></div>}
         {current.media_type === "instagram" && current.external_url ? (
           <button className="commercial-media-play" type="button" onClick={() => setOpenedReel(current.external_url)}>
             <Play /> Assistir ao Reel
@@ -59,7 +64,7 @@ export default function CommercialMediaCarousel({
         </> : null}
       </div>
       <figcaption>
-        <span>{current.caption || (current.media_type === "instagram" ? "Vídeo real Adoce no Instagram" : "Foto real Adoce")}</span>
+        {current.caption ? <span>{current.caption}</span> : current.media_type === "instagram" ? <span>Vídeo no Instagram</span> : null}
         {slides.length > 1 ? <div aria-label="Escolher mídia">{slides.map((slide, slideIndex) => <button key={slide.id} type="button" className={slideIndex === index ? "active" : ""} onClick={() => setIndex(slideIndex)} aria-label={`Ver mídia ${slideIndex + 1}`} />)}</div> : null}
       </figcaption>
       {openedReel ? <div className="commercial-reel-modal" role="dialog" aria-modal="true" aria-label="Reel da Adoce">
@@ -69,6 +74,7 @@ export default function CommercialMediaCarousel({
           <a href={openedReel} target="_blank" rel="noreferrer">Abrir no Instagram <ExternalLink /></a>
         </div>
       </div> : null}
+      <ProductImageViewer image={viewedImage} images={viewerImages} onClose={() => setViewedImage(null)} />
     </figure>
   );
 }

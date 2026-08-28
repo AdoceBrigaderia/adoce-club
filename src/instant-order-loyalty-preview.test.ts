@@ -36,7 +36,7 @@ describe("prévia segura do Clube no pedido de fatias", () => {
 
   it("permite ao próprio membro escolher sabor e calda sem resgatar antes do pagamento", () => {
     expect(panel).toContain("Quero receber minha fatia-presente neste pedido");
-    expect(panel).toContain('rpc("submit_instant_order_v5"');
+    expect(panel).toContain('rpc("submit_instant_order_v7"');
     expect(panel).toContain("requested_reward: wantsReward");
     expect(rewardMigration).toContain("created_order.profile_id is distinct from (select auth.uid())");
     expect(rewardMigration).toContain("status, is_reward");

@@ -45,7 +45,7 @@ body.schedule-dialog-open { overflow: hidden; }
 .weekly-schedule-heading > svg { color: #f3655e; margin-top: 7px; }
 .weekly-schedule-heading h2 {
   margin: 0;
-  font: 700 clamp(2rem, 4vw, 3.4rem)/1.02 Georgia, serif;
+  font: 700 clamp(2rem, 4vw, 3.4rem)/1.02 'Playfair Display',Georgia,serif;
   letter-spacing: -.04em;
 }
 .weekly-schedule-heading p { margin: 9px 0 0; color: #8c6253; font-size: 1.05rem; }
@@ -101,12 +101,12 @@ body.schedule-dialog-open { overflow: hidden; }
 .weekly-channel-head > div { display: flex; align-items: center; gap: 10px; }
 .weekly-channel-head > div > svg { flex: 0 0 auto; color: #f3655e; }
 .weekly-channel-card.online_orders .weekly-channel-head > div > svg { color: #3f8b6e; }
-.weekly-channel-head strong { display: block; font: 700 1.25rem Georgia, serif; }
+.weekly-channel-head strong { display: block; font: 700 1.25rem 'Playfair Display',Georgia,serif; }
 .weekly-channel-head small { display: block; margin-top: 3px; color: #8c6253; }
 .weekly-selected-date { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 16px; }
 .weekly-selected-date > div { display: flex; gap: 10px; align-items: center; }
 .weekly-selected-date svg { color: #f3655e; }
-.weekly-selected-date strong { display: block; text-transform: capitalize; font: 700 1.35rem Georgia, serif; }
+.weekly-selected-date strong { display: block; text-transform: capitalize; font: 700 1.35rem 'Playfair Display',Georgia,serif; }
 .weekly-selected-date small { color: #e36059; }
 .weekly-hour { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border-radius: 12px; background: #fff2ea; font-weight: 800; white-space: nowrap; }
 .weekly-hour svg { width: 18px; }
@@ -124,7 +124,7 @@ body.schedule-dialog-open { overflow: hidden; }
 .weekly-quantity svg { width: 16px; }
 .weekly-menu-pending { min-height: 210px; display: grid; place-items: center; align-content: center; text-align: center; padding: 20px; border: 1px dashed #edcfc0; border-radius: 16px; background: #fffaf6; }
 .weekly-menu-pending svg { color: #f3655e; }
-.weekly-menu-pending strong { margin-top: 8px; font: 700 1.25rem Georgia, serif; }
+.weekly-menu-pending strong { margin-top: 8px; font: 700 1.25rem 'Playfair Display',Georgia,serif; }
 .weekly-menu-pending p { max-width: 430px; margin: 7px auto 0; color: #8c6253; }
 .weekly-menu-pending a { display: inline-flex; align-items: center; gap: 7px; margin-top: 15px; color: #3b160e; font-weight: 850; text-underline-offset: 3px; }
 .weekly-menu-pending a svg { width: 18px; }

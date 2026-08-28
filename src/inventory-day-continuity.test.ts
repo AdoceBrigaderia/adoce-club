@@ -16,6 +16,6 @@ describe("continuidade do estoque entre dias", () => {
 
   it("explica na operação que o estoque não zera com a data", () => {
     expect(admin).toContain("O estoque continua de um dia para o outro");
-    expect(admin).toContain("<span>Estoque atual</span>");
+    expect(admin).toContain("<span>Lotes por horário</span>");
   });
 });

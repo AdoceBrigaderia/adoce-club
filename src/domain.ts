@@ -1,3 +1,5 @@
+import { createClientId } from "./lib/client-id";
+
 export const REWARD_THRESHOLD = 14;
 
 export type TransactionType = "EARN" | "REDEEM" | "ADJUSTMENT_CREDIT" | "ADJUSTMENT_DEBIT" | "REVERSAL" | "MIGRATION";
@@ -24,18 +26,18 @@ export function applyMovement(customer: Customer, type: TransactionType, delta: 
   const next = customer.balance + delta;
   if (next < 0) throw new Error("INSUFFICIENT_BALANCE");
   const transaction: LoyaltyTransaction = {
-    id: crypto.randomUUID(), type, pointsDelta: delta, previousBalance: customer.balance,
+    id: createClientId(), type, pointsDelta: delta, previousBalance: customer.balance,
     resultingBalance: next, createdAt: new Date().toISOString(), note, idempotencyKey,
   };
   return { ...customer, balance: next, transactions: [transaction, ...customer.transactions] };
 }
 
-export const earn = (customer: Customer, quantity: number, key: string = crypto.randomUUID()) => {
+export const earn = (customer: Customer, quantity: number, key: string = createClientId()) => {
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("INVALID_QUANTITY");
   return applyMovement(customer, "EARN", quantity, key);
 };
 
-export const redeem = (customer: Customer, key: string = crypto.randomUUID(), threshold = REWARD_THRESHOLD) => {
+export const redeem = (customer: Customer, key: string = createClientId(), threshold = REWARD_THRESHOLD) => {
   if (customer.balance < threshold) throw new Error("INSUFFICIENT_BALANCE");
   return applyMovement(customer, "REDEEM", -threshold, key);
 };

@@ -128,7 +128,7 @@
 
 .commercial-hero-compare h2 {
   margin: 0 0 18px;
-  font: 600 clamp(1.75rem, 2.6vw, 2.65rem) / 1 Georgia, serif;
+  font: 600 clamp(1.75rem, 2.6vw, 2.65rem) / 1 'Playfair Display',Georgia,serif;
   letter-spacing: -.03em;
 }
 
@@ -159,7 +159,7 @@
 }
 
 .commercial-hero-compare strong {
-  font: 600 1.05rem Georgia, serif;
+  font: 600 1.05rem 'Playfair Display',Georgia,serif;
 }
 
 .commercial-hero-compare small {
@@ -206,7 +206,7 @@
 .commercial-choice-flow h2 {
   max-width: 900px;
   margin: 12px 0 18px;
-  font: 600 clamp(2.2rem, 3.5vw, 3.7rem) / .96 Georgia, serif;
+  font: 600 clamp(2.2rem, 3.5vw, 3.7rem) / .96 'Playfair Display',Georgia,serif;
   letter-spacing: -.04em;
 }
 
@@ -324,7 +324,7 @@
 }
 
 .commercial-subcategories button span {
-  font: 600 1.35rem Georgia, serif;
+  font: 600 1.35rem 'Playfair Display',Georgia,serif;
   color: var(--c-chocolate);
 }
 
@@ -372,7 +372,7 @@
 }
 
 .commercial-segment-showcase figcaption strong {
-  font: 600 clamp(1.8rem, 3vw, 3rem) / 1 Georgia, serif;
+  font: 600 clamp(1.8rem, 3vw, 3rem) / 1 'Playfair Display',Georgia,serif;
 }
 
 .commercial-segment-showcase figcaption span {

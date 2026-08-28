@@ -30,7 +30,7 @@ O QR Code do cliente e a busca alternativa por nome já fazem parte da operaçã
 | Gerente      | Tudo do atendente, ajustes, reversões, conteúdo e análises operacionais |
 | Proprietário | Configurações, regras, usuários, auditoria, campanhas e governança      |
 
-Cada funcionário usa uma conta individual. A área interna nunca pode ser acessada apenas por conhecer uma URL.
+Cada funcionário usa uma conta individual. A área interna nunca pode ser acessada apenas por conhecer uma URL. Google e Facebook podem iniciar uma sessão para facilitar o acesso, mas a operação somente é liberada quando o identificador autenticado possui um vínculo ativo em `staff_members`. E-mail confirmado, nome ou outros metadados do provedor social nunca concedem função de equipe automaticamente.
 
 ## Atendimento
 

@@ -93,7 +93,12 @@ export default async (request: Request) => {
   });
   const { data: userData, error: userError } = await sessionClient.auth.getUser(accessToken);
   if (userError || !userData.user) return json({ error: "Sessão inválida ou expirada." }, 401);
-  const { data: staff } = await sessionClient.from("staff_members").select("role,active").eq("user_id", userData.user.id).maybeSingle();
+  // A identidade vem do JWT validado acima. A autorização administrativa é
+  // consultada com o cliente de serviço para não depender das políticas RLS do
+  // schema private dentro desta Function.
+  const adminClient = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: staff, error: staffError } = await adminClient.from("staff_members").select("role,active").eq("user_id", userData.user.id).maybeSingle();
+  if (staffError) return json({ error: "Não foi possível confirmar a permissão para excluir este cadastro." }, 500);
   if (!staff?.active || !["owner", "manager"].includes(staff.role)) {
     return json({ error: "Somente proprietários e gerentes podem alterar cadastros." }, 403);
   }
@@ -113,7 +118,6 @@ export default async (request: Request) => {
   }
   if (profileId === userData.user.id) return json({ error: "Você não pode alterar o próprio cadastro por esta tela." }, 409);
 
-  const adminClient = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: profile, error: profileError } = await adminClient
     .from("profiles")
     .select("id,full_name,email,phone_e164,birth_date,preferred_channel,postal_code,address_line,address_number,address_complement,neighborhood,city,state_code,flavor_preferences,whatsapp_verified_at,auth_upgraded_at,account_status,active,status_reason_code,status_reason_note,status_changed_at,status_changed_by,member_code")

@@ -40,3 +40,5 @@
     aspect-ratio: auto;
   }
 }
+
+.commercial-product-image{object-fit:contain!important;background:#fff8f4}

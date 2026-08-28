@@ -6,6 +6,43 @@ status: Produção em evolução
 
 # Status da publicação
 
+## Segunda prioridade emergencial — cadastro rápido no Clube Adoce
+
+O cadastro de um novo cliente foi reduzido para duas etapas: preencher nome, e-mail, WhatsApp e uma senha; depois, confirmar o código recebido por e-mail. Após a confirmação, o acesso definitivo é criado automaticamente e o cartão abre sem uma terceira tela de configuração.
+
+Termos e Política de Privacidade permanecem obrigatórios, reunidos em uma única confirmação clara. Preferências promocionais e confirmação adicional do WhatsApp deixam de interromper o cadastro e continuam disponíveis dentro da área do cliente. Clientes já cadastrados preservam o acesso atual por celular e senha.
+
+Estado atual: alteração implementada localmente e marcada para o próximo deploy emergencial. Antes da produção, é obrigatório validar com uma conta controlada o cadastro completo, o bloqueio de telefone duplicado, a chegada do código por e-mail, a abertura direta do cartão e o retorno posterior por celular e senha.
+
+## Correção emergencial prioritária — formas de pagamento do pedido online
+
+O próximo deploy emergencial deve restaurar, antes das demais entregas, a consulta pública das formas de pagamento do pedido de fatias. A configuração de produção possui Pix, cartão de crédito e cartão de débito ativos, mas a função `get_checkout_payment_methods()` perdeu a permissão do visitante público e deixou o campo obrigatório sem opções.
+
+Estado atual: causa confirmada em produção e hotfix preparado localmente na migração `20260815135747_restore_public_checkout_payment_methods.sql`. O formulário também passa a informar a falha e oferecer nova tentativa, em vez de bloquear o cliente silenciosamente. A correção ainda não foi aplicada em produção.
+
+No deploy emergencial, é obrigatório:
+
+1. aplicar isoladamente a migração do hotfix, sem levar junto a funcionalidade maior de disponibilidade por horário;
+2. confirmar que `anon` e `authenticated` possuem `EXECUTE`, mantendo `public` sem acesso herdado;
+3. abrir o site oficial como visitante e confirmar que Pix, cartão de crédito e cartão de débito aparecem;
+4. concluir um pedido controlado e validar sua entrada na fila da operação, sem registrar pagamento real;
+5. executar `npm run release:check` antes da publicação e conferir novamente o domínio oficial depois dela.
+
+## Prioridade da próxima publicação — disponibilidade de fatias por horário
+
+Esta entrega está marcada como **prioridade para o próximo deploy**. Ela permite manter, para o mesmo sabor e dia, lotes com quantidades disponíveis imediatamente e lotes liberados em horários como 8h, 9h, 12h, 17h e 20h. O carrinho considera todas as fatias escolhidas e informa o primeiro horário em que o pedido completo poderá ser retirado.
+
+Estado atual: código implementado, revisão da cadeia de pedido concluída, testes automáticos aprovados e interface validada localmente em computador e celular com dados simulados. Ainda não foi aplicada em produção.
+
+Antes de entrar no próximo deploy, é obrigatório:
+
+1. aplicar a migração `20260815110239_add_inventory_availability_batches.sql` em homologação;
+2. cadastrar lotes por horário usando uma conta real da equipe;
+3. concluir um pedido real contendo estoque imediato e futuro;
+4. validar reserva, pagamento, cancelamento e devolução do estoque;
+5. executar novamente `npm run release:check`;
+6. obter autorização explícita antes da publicação em produção.
+
 ### 22/07/2026 — pedidos imediatos em homologação
 
 Foi criada a fundação dos pedidos individuais de fatias para retirada. O cliente monta quantidades a partir do Adoce Hoje, recebe um número de pedido e continua o atendimento pelo WhatsApp. A operação ganhou uma fila própria de Vendas com confirmação, reserva transacional de estoque, pagamento manual, separação, retirada, cancelamento e histórico. O endereço de retirada fica registrado no pedido, evitando divergência quando houver mais de um local de atendimento.

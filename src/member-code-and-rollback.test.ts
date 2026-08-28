@@ -15,20 +15,18 @@ const clubExperience = readFileSync(new URL("./ClubExperience.tsx", import.meta.
 
 describe("terminologia do Clube Adoce", () => {
   it("mantém os textos principais exatamente como definidos", () => {
-    expect(landing).toContain("Feito pelas mãos da Beth.");
-    expect(clubExperience).toContain("Seu cartão agora é digital — <em>mas a tradição continua.</em>");
-    expect(clubExperience).toContain("A cada fatia, você ganha 1 carimbo. Complete 14 e ganhe uma fatia grátis.");
-    expect(memberArea).toContain("Área do Membro");
-    expect(memberArea).toContain("Cartão do Membro");
-    expect(memberArea).toContain("Código do Membro");
-    expect(memberArea).toContain("Meus Carimbos");
+    expect(landing).toContain("Cada fatia vale um carimbo.");
+    expect(clubExperience).toContain("Cada fatia vale um carimbo.");
+    expect(clubExperience).toContain("Junte 14 carimbos e ganhe uma fatia tradicional.");
+    expect(memberArea).toContain("Seu cartão");
+    expect(memberArea).toContain("Meus carimbos");
     expect(memberArea).toContain("Minha Fatia Grátis");
   });
 
   it("mantém 14 espaços visuais e o texto completo de Como funciona", () => {
     expect(memberArea).toContain("Array.from({ length: 14 }");
     expect(memberArea).toContain("A cada fatia comprada, você recebe um carimbo no seu Cartão Clube");
-    expect(memberArea).toContain("O cartão é pessoal e está vinculado ao cadastro do membro.");
+    expect(memberArea).toContain("Cada fatia tradicional ou premium vale 1 carimbo.");
   });
 });
 

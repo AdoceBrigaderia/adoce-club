@@ -1,0 +1,257 @@
+/* Operação em tablet 10.4".
+   Galaxy Tab A e semelhantes, em paisagem, costumam ter ~1280 CSS px
+   (1920 físicas com DPR 1.5). A folha v3 comprimia a navegação para
+   0.46–0.57rem — ilegível no balcão. Aqui o texto e o toque crescem. */
+
+@media (min-width: 621px) and (max-width: 1400px) {
+  .operation-home {
+    font-size: 18px;
+  }
+
+  .operation-home > header {
+    height: 84px;
+  }
+
+  .operation-home > header .access-brand strong {
+    font-size: 1.35rem;
+  }
+
+  .operation-home > header > div > button {
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 1rem;
+  }
+
+  .operation-shell {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  }
+
+  .operation-shell > aside {
+    padding: 18px 12px 28px;
+  }
+
+  .operation-shell > aside button {
+    min-height: 56px;
+    padding: 10px 12px;
+    display: flex;
+    grid-template-columns: unset;
+    justify-content: flex-start;
+    justify-items: stretch;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.02rem;
+    line-height: 1.25;
+    text-align: left;
+  }
+
+  .operation-shell > aside button svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+  }
+
+  .operation-nav-group {
+    margin: 16px 8px 8px;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-align: left;
+  }
+
+  .operation-work {
+    padding: 28px 22px 72px;
+  }
+
+  .operation-title h1,
+  .operation-dashboard-heading h1 {
+    font-size: clamp(2.2rem, 4vw, 3.1rem);
+  }
+
+  .operation-title p,
+  .operation-dashboard-heading p {
+    font-size: 1.05rem;
+  }
+
+  .operation-dashboard-metrics button,
+  .operation-dashboard-shortcuts button {
+    min-height: 128px;
+    font-size: 1.05rem;
+  }
+
+  .operation-dashboard-metrics strong {
+    font-size: 2.2rem;
+  }
+
+  .operation-dashboard-metrics small,
+  .operation-dashboard-shortcuts small {
+    font-size: 0.95rem;
+  }
+
+  .operation-search {
+    min-height: 64px;
+  }
+
+  .operation-search input,
+  .operation-home input,
+  .operation-home textarea,
+  .operation-home select {
+    min-height: 56px;
+    font-size: 1.1rem;
+  }
+
+  .operation-search > button,
+  .operation-scan-button,
+  .access-primary,
+  .access-secondary,
+  .operation-home .access-primary,
+  .operation-home .access-secondary {
+    min-height: 56px;
+    font-size: 1.05rem;
+  }
+
+  .operation-results > button,
+  .operation-customer-list button {
+    min-height: 72px;
+    font-size: 1.05rem;
+  }
+
+  .operation-actions article,
+  .customer-top,
+  .customer-balance {
+    font-size: 1.05rem;
+  }
+
+  .stepper button {
+    width: 52px;
+    height: 52px;
+    min-height: 52px;
+    font-size: 1.4rem;
+  }
+
+  .operation-mobile-tabbar {
+    display: grid;
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    min-height: 76px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid var(--op-line, #efd9ca);
+    background: rgba(255, 253, 249, 0.97);
+  }
+
+  .operation-mobile-tabbar button {
+    min-height: 60px;
+    font-size: 0.92rem;
+  }
+
+  .operation-mobile-tabbar button svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .operation-work {
+    padding-bottom: 110px;
+  }
+
+  .operation-commercial-tabs button {
+    min-height: 52px;
+    font-size: 1rem;
+  }
+
+  .instant-order-operation-list > button {
+    min-height: 84px;
+    font-size: 1.05rem;
+  }
+
+  .instant-order-operation-list em,
+  .instant-order-operation-list small,
+  .instant-order-operation-list > button > b {
+    font-size: 0.92rem;
+  }
+
+  .instant-order-operation-actions button {
+    min-height: 56px;
+    font-size: 1.05rem;
+  }
+
+  .commerce-tool-card td,
+  .commerce-tool-card th,
+  .operation-agenda-list strong,
+  .operation-agenda-list small {
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 621px) and (max-width: 1400px) {
+  .balcao {
+    max-width: none;
+    gap: 16px;
+    padding: 8px 0 48px;
+  }
+
+  .bal-busca {
+    min-height: 72px;
+    border-width: 2px;
+  }
+
+  .bal-busca input {
+    font-size: 1.25rem;
+  }
+
+  .bal-dica,
+  .bal-secao {
+    font-size: 0.95rem;
+  }
+
+  .bal-cliente {
+    min-height: 88px;
+    padding: 16px 18px;
+  }
+
+  .bal-nome {
+    font-size: 1.28rem;
+  }
+
+  .bal-legenda {
+    font-size: 1rem;
+  }
+
+  .bal-carimbar,
+  .bal-entregar {
+    min-height: 58px;
+    padding: 0 22px;
+    font-size: 1.1rem;
+  }
+
+  .bal-novo {
+    min-height: 72px;
+  }
+
+  .bal-novo strong {
+    font-size: 1.15rem;
+  }
+
+  .cadastro {
+    max-width: none;
+  }
+
+  .cad-titulo {
+    font-size: 2rem;
+  }
+
+  .cad-fala {
+    font-size: 1.15rem;
+  }
+
+  .cad-campo > span {
+    font-size: 1rem;
+  }
+
+  .cad-campo input,
+  .cad-salvar {
+    min-height: 64px;
+    font-size: 1.2rem;
+  }
+}

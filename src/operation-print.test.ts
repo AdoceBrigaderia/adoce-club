@@ -34,7 +34,7 @@ describe("impressão e PDF na operação", () => {
     expect(styles).toContain("@page operation-a4");
     expect(styles).toContain("@page receipt-58mm");
     expect(styles).toContain("size: 58mm 210mm");
-    expect(styles).toContain("width: 54mm");
+    expect(styles).toContain("width: 48mm");
     expect(styles).toContain('data-operation-print-format="thermal"');
   });
 });

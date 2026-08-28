@@ -9,12 +9,12 @@ const contentStyles = readFileSync(
 );
 
 describe("canais independentes do Adoce Hoje", () => {
-  it("não mistura o status da retirada com o da barraquinha", () => {
+  it("não mistura o status da retirada com o do Cantinho da Adoce", () => {
     expect(page).toContain("Retirada aberta agora");
     expect(page).toContain("Sem retirada neste momento");
-    expect(page).toContain("Barraquinha aberta agora");
-    expect(page).toContain("Barraquinha fechada hoje");
-    expect(page).toContain("A barraquinha está fechada, mas os pedidos para retirada funcionam separadamente.");
+    expect(page).toContain("Cantinho da Adoce aberto agora");
+    expect(page).toContain("Cantinho da Adoce fechado hoje");
+    expect(page).toContain("O Cantinho da Adoce está fechado, mas os pedidos para retirada funcionam separadamente.");
   });
 
   it("explica a retirada residencial sem prometer atendimento dentro do local", () => {
@@ -29,9 +29,9 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(existsSync("public/site/adoce-hoje-barraquinha-ilustracao.webp")).toBe(true);
   });
 
-  it("mantém os atalhos de sabores e atendimento dentro da rota Adoce Hoje", () => {
-    expect(page).toContain('scrollToTodaySection("sabores")');
-    expect(page).toContain('scrollToTodaySection("atendimento")');
+  it("mantém filtros e busca dentro da rota Adoce Hoje", () => {
+    expect(page).toContain('className="today-category-filters"');
+    expect(page).toContain('className="today-search"');
     expect(page).not.toContain('href="#sabores"');
     expect(page).not.toContain('href="#atendimento"');
   });
@@ -93,12 +93,12 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(after.message).toContain("encerrou o atendimento de hoje às 22:00");
   });
 
-  it("não oferece localização da barraquinha fechada no atalho móvel", () => {
+  it("não oferece localização do Cantinho da Adoce fechado no atalho móvel", () => {
     expect(page).toContain("Sabores da semana");
     expect(page).toContain('open ? (');
     expect(page).toContain('setScheduleOpen(true)');
-    expect(page).toContain('href={open ? maps : orderLink()}');
-    expect(page).toContain("Como chegar à barraquinha");
+    expect(page).toContain('href={maps}');
+    expect(page).toContain("Como chegar ao Cantinho da Adoce");
   });
 
   it("deixa os sabores da semana explícitos para o cliente", () => {
@@ -109,7 +109,7 @@ describe("canais independentes do Adoce Hoje", () => {
 
   it("mantém o texto de ação visível em botões e links dos produtos", () => {
     expect(page).toContain("<span>Adicionar ao pedido</span>");
-    expect(page).toContain("<span>Consultar este sabor</span>");
+    expect(page).toContain("<span>Avise quando voltar</span>");
     expect(contentStyles).toMatch(/\.today-weekly-link\s*\{/);
   });
 
@@ -126,7 +126,7 @@ describe("canais independentes do Adoce Hoje", () => {
     );
     expect(page).toContain("openInstantOrder(flavor.id)");
     expect(page).toContain("Adicionar ao pedido");
-    expect(page).toContain("Sabores disponíveis agora");
+    expect(page).toContain("Sabores disponíveis hoje");
   });
 
   it("preserva o desktop e prioriza os sabores somente no celular", () => {

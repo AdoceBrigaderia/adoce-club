@@ -18,6 +18,16 @@ status: Em validação
 
 Em computador ou aparelho incompatível, a experiência pode exibir um QR para continuar no celular e também permitir o acesso web.
 
+Na tela de entrada, clientes também podem escolher **Continuar com Google** ou **Continuar com Facebook**. Essas opções são adicionais: celular com senha e código por e-mail continuam disponíveis. O retorno da autorização abre diretamente a área do Clube no mesmo site.
+
+## Retorno do cliente conectado
+
+Depois do primeiro acesso, o cliente pode escolher **Manter conectado**. Quando essa opção estiver ativa, a sessão permanece no aparelho até a própria pessoa escolher **Sair**.
+
+Ao retornar ao endereço principal da Adoce, a página reconhece a sessão e mostra o cartão resumido com os carimbos atuais, sem exigir que o cliente passe novamente por “Entrar no Clube”. O acesso ao cartão completo, ao QR e às preferências parte da própria página inicial.
+
+Na área autenticada, o primeiro conteúdo é sempre **Meus carimbos**, com o progresso de 14 posições e a distância até a fatia grátis. QR, indicação e sabores vêm logo depois. Dados pessoais, comunicações, instalação, ajuda, cartão em grupo e saída ficam reunidos em **Preferências e configurações**.
+
 ## Wallet primeiro
 
 O passe Clube Adoce deve mostrar, de forma resumida:

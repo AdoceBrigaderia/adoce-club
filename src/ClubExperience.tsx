@@ -1,70 +1,53 @@
-import { ArrowLeft, ArrowRight, Heart, MessageCircle } from "lucide-react";
-import type { SyntheticEvent } from "react";
-import PublicHeader from "./PublicHeader";
+import { ArrowRight, Gift, Heart, QrCode, ShieldCheck } from "lucide-react";
+import { ConnectedHomeClubCard, useConnectedClubSummary } from "./ConnectedClubSummary";
+import { decidirPorta } from "./identidade-do-clube";
 import "./public-site.css";
-import "./public-commercial-polish.css";
-
-const useDirectClubImage = (event: SyntheticEvent<HTMLImageElement>, path: string) => {
-  const image = event.currentTarget;
-  image.parentElement?.querySelectorAll("source").forEach((source) => source.remove());
-  if (image.getAttribute("src") !== path) image.src = path;
-};
+import "./adoce-app-2026.css";
 
 export default function ClubExperience() {
+  const { summary } = useConnectedClubSummary();
+  const porta = decidirPorta({
+    sessao: Boolean(summary),
+    tokenDoCartao: null,
+    membro: summary ? { primeiroNome: summary.firstName, carimbos: summary.progress } : null,
+    tokenNaUrl: null,
+  });
   return (
-    <main className="public-site club-experience">
-      <PublicHeader dark={false} />
-      <section className="club-intro">
-        <a className="public-back" href="/#inicio"><ArrowLeft /> Voltar à Adoce</a>
-        <div>
-          <p className="public-kicker">O Clube Adoce</p>
-          <h1>Seu cartão agora é digital — <em>mas a tradição continua.</em></h1>
-          <p>A cada fatia, você ganha 1 carimbo. Complete 14 e ganhe uma fatia grátis.</p>
-          <div className="public-actions">
-            <a className="public-primary" href="/#cadastro">Quero fazer parte <ArrowRight /></a>
-            <a className="public-secondary" href="/#entrar">Entrar no Clube</a>
+    <main className="public-site adoce-app-club">
+      {summary ? (
+        <section className="club-member-first"><ConnectedHomeClubCard summary={summary} /></section>
+      ) : (
+        <section className="app-club-hero">
+          <div>
+            <span>Clube Adoce</span>
+            <h1>Cada fatia vale um carimbo.</h1>
+            <p>Junte 14 carimbos e ganhe uma fatia tradicional.</p>
           </div>
-        </div>
-        <img className="club-intro-product" src="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" onError={(event) => useDirectClubImage(event, "/site/clube-aprovado-mobile-claro.png")} alt="Exemplo do cartão digital, QR e recompensas do Clube Adoce" />
+          <img src="/site/clube-cartao-destaque-v2.webp" alt="Cartão digital do Clube Adoce" />
+        </section>
+      )}
+
+      {porta.porta === "convite" ? (
+        <section className="app-stamp-preview" aria-label="Exemplo de cartão com seis carimbos">
+          <header><span>Seu cartão</span><strong>6 <small>de 14</small></strong></header>
+          <div>{Array.from({ length: 14 }, (_, index) => <span className={index < 6 ? "filled" : ""} key={index}><Heart /></span>)}</div>
+          <p>Faltam 8 carimbos para ganhar uma fatia.</p>
+        </section>
+      ) : null}
+
+      <section className="app-club-benefits">
+        <article><Heart /><strong>Acumule</strong><span>1 fatia = 1 carimbo</span></article>
+        <article><Gift /><strong>Resgate</strong><span>14 carimbos = 1 fatia</span></article>
+        <article><QrCode /><strong>Apresente</strong><span>Seu QR no atendimento</span></article>
       </section>
 
-      <section className="approved-club-visual" aria-labelledby="club-inside-title">
-        <div className="approved-club-heading">
-          <p className="public-kicker">Experiência aprovada</p>
-          <h2 id="club-inside-title">Veja o Clube por dentro</h2>
-          <p>Cartão, QR, Adoce Hoje e Fatia Grátis reunidos na mesma experiência.</p>
-        </div>
-        <picture>
-          <source media="(max-width: 520px)" srcSet="/.netlify/images?url=/site/clube-aprovado-mobile-claro.png&w=900&fm=webp&q=78" />
-          <source media="(max-width: 900px)" srcSet="/.netlify/images?url=/site/clube-aprovado-mobile-escuro.png&w=1200&fm=webp&q=78" />
-          <img src="/.netlify/images?url=/site/clube-aprovado-desktop.png&w=1600&fm=webp&q=80" onError={(event) => useDirectClubImage(event, window.innerWidth <= 520 ? "/site/clube-aprovado-mobile-claro.png" : window.innerWidth <= 900 ? "/site/clube-aprovado-mobile-escuro.png" : "/site/clube-aprovado-desktop.png")} alt="Apresentação visual do Clube Adoce com cartão digital, QR Code, Adoce Hoje e fatia grátis" />
-        </picture>
-      </section>
-
-      <section className="club-share-call">
-        <div>
-          <p className="public-kicker">Compartilhe momentos, multiplique doçura</p>
-          <h2>Compartilhe <em>Doçura.</em></h2>
-          <p>Convide amigos para o Clube ou crie um Cartão em Grupo. Mais pessoas, mais carimbos e mais momentos juntos.</p>
-          <div className="public-actions">
-            <a className="public-primary" href="/#cadastro">Convidar alguém <ArrowRight /></a>
-            <a className="public-secondary on-dark" href="/#entrar"><MessageCircle /> Entrar e compartilhar</a>
-          </div>
-        </div>
-        <div className="group-progress-card">
-          <span>Nosso grupo</span>
-          <h3>Doçura em Boa Companhia</h3>
-          <div className="group-hearts">{Array.from({ length: 14 }, (_, index) => <Heart className={index < 8 ? "filled" : ""} key={index} />)}</div>
-          <strong>8 de 14 carimbos</strong>
-          <small>Faltam 6 carimbos para a próxima fatia grátis.</small>
-        </div>
-      </section>
-
-      <footer className="public-footer">
-        <a className="public-brand" href="/#inicio"><img src="/site/logo.webp" alt="" /><strong>Adoce Brigaderia</strong></a>
-        <p>Clube Adoce · A tradição continua no digital.</p>
-        <div><a href="/#termos">Termos</a><a href="/#privacidade">Privacidade</a></div>
-      </footer>
+      {porta.porta === "convite" ? (
+        <section className="app-club-access">
+          <a className="app-button primary" href="/#cadastro">Quero entrar no Clube <ArrowRight /></a>
+          <a className="app-button secondary" href="/#entrar">Já faço parte</a>
+          <small><ShieldCheck /> Seus dados ficam protegidos.</small>
+        </section>
+      ) : null}
     </main>
   );
 }

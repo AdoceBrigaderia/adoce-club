@@ -12,7 +12,7 @@ describe("galerias comerciais", () => {
   });
 
   it("não repete a foto da categoria em cada opção de eventos, escola e aluguel", () => {
-    expect(catalog).toContain('["events", "school", "rentals"]');
+    expect(catalog).toContain('["cakes", "events", "school", "rentals"]');
     expect(catalog).toContain("!categoryOnlyMediaSegments.has(segment)");
   });
 

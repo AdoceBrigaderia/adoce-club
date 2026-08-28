@@ -1,0 +1,51 @@
+.commercial-size-gallery-button {
+  min-height: 48px;
+  padding: 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  justify-self: start;
+  border: 1px solid var(--c-coral);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--c-coral);
+  font-weight: 850;
+  cursor: pointer;
+}
+.commercial-size-gallery-button svg { width: 19px; }
+.commercial-size-gallery-modal {
+  position: fixed;
+  top: var(--public-shell-top, 86px);
+  right: 0;
+  bottom: var(--public-shell-bottom, 82px);
+  left: 0;
+  z-index: 490;
+  padding: 16px;
+  display: grid;
+  place-items: center;
+  background: rgba(35, 16, 12, .72);
+  overflow: auto;
+}
+.commercial-size-gallery-modal > section {
+  width: min(100%, 960px);
+  max-height: calc(100dvh - var(--public-shell-top, 86px) - var(--public-shell-bottom, 82px) - 32px);
+  padding: 22px;
+  border-radius: 24px;
+  background: #fffaf7;
+  overflow: auto;
+}
+.commercial-size-gallery-modal header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.commercial-size-gallery-modal header span { color: var(--c-coral); text-transform: uppercase; letter-spacing: .18em; font-size: .62rem; font-weight: 850; }
+.commercial-size-gallery-modal h2 { margin: 7px 0 4px; font: 600 clamp(2rem, 7vw, 3.4rem)/1 'Playfair Display',Georgia,serif; }
+.commercial-size-gallery-modal header p { margin: 0; color: var(--c-muted); }
+.commercial-size-gallery-modal header button { width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 auto; border: 1px solid var(--c-line); border-radius: 50%; background: #fff; color: var(--c-chocolate); }
+.commercial-size-gallery-group { margin-top: 28px; }
+.commercial-size-gallery-group h3 { margin: 0 0 12px; font: 600 1.55rem 'Playfair Display',Georgia,serif; }
+.commercial-size-gallery-group > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.commercial-size-gallery-group .product-image-trigger{width:100%;border-radius:16px;overflow:hidden;background:#fff}.commercial-size-gallery-group img { width: 100%; aspect-ratio: 4 / 3; display: block; border-radius: 16px; background: #fff; object-fit: contain; }
+@media (min-width: 768px) {
+  .commercial-size-gallery-modal { padding: 36px; }
+  .commercial-size-gallery-modal > section { padding: 34px; }
+  .commercial-size-gallery-group > div { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

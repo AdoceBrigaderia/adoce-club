@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const operation = readFileSync(new URL("./OperationPedeJunto.tsx", import.meta.url), "utf8");
+const printHelper = readFileSync(
+  new URL("./lib/operation-print.ts", import.meta.url),
+  "utf8",
+);
 const migration = readFileSync(
   new URL("../supabase/migrations/20260722214817_harden_pede_junto_status_inventory_and_cancel.sql", import.meta.url),
   "utf8",
@@ -27,7 +31,10 @@ describe("integridade operacional do Pede Junto", () => {
 
   it("mostra data e hora e oferece impressão ou PDF", () => {
     expect(operation).toContain("Pedido criado em");
-    expect(operation).toContain("Imprimir ou salvar em PDF");
-    expect(operation).toContain("window.print()");
+    expect(operation).toContain("Imprimir cupom 58 mm");
+    expect(operation).toContain("A4 ou salvar em PDF");
+    expect(operation).toContain('printOperation("thermal")');
+    expect(operation).toContain('printOperation("a4")');
+    expect(printHelper).toContain("window.print()");
   });
 });

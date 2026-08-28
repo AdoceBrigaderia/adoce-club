@@ -35,6 +35,16 @@ export type CommercialProduct = {
   published: boolean;
   active: boolean;
   sort_order: number;
+  meta_retailer_id: string;
+  meta_product_id: string | null;
+  exibir_whatsapp: boolean;
+  meta_sync_status: "disabled" | "pending" | "syncing" | "submitted" | "synced" | "error";
+  meta_last_sync_at: string | null;
+  meta_last_error: string | null;
+  meta_last_error_temporary: boolean | null;
+  meta_sync_attempts: number;
+  meta_payload_hash: string | null;
+  meta_batch_handle: string | null;
   options?: CommercialProductOption[];
 };
 
@@ -79,6 +89,17 @@ export function money(value: number | null) {
   }).format(value);
 }
 
+const cakeStartingPriceSlugs = new Set(["torta-p", "torta-m", "torta-g"]);
+
+export function commercialProductPriceLabel(
+  product: Pick<CommercialProduct, "slug" | "base_price" | "price_suffix">,
+) {
+  const showsStartingPrice = cakeStartingPriceSlugs.has(product.slug)
+    || product.price_suffix.trim().toLocaleLowerCase("pt-BR") === "a partir de";
+
+  return `${showsStartingPrice ? "A partir de " : ""}${money(product.base_price)}`;
+}
+
 export function businessDateAfter(start: Date, days: number) {
   const result = new Date(start);
   result.setHours(12, 0, 0, 0);
@@ -117,13 +138,51 @@ export type CommercialRequestDraft = {
   privacy: boolean;
 };
 
+export type PreorderBusinessHour = {
+  channel_slug: string;
+  weekday: number;
+  opens_at: string;
+  closes_at: string;
+  active: boolean;
+};
+
+export type PreorderBusinessHourException = {
+  channel_slug: string;
+  service_date: string;
+  closed: boolean;
+  opens_at: string | null;
+  closes_at: string | null;
+};
+
+const minutesOf = (value: string) => {
+  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+export function validatePreorderWindow(date: string, time: string, hours: PreorderBusinessHour[], exceptions: PreorderBusinessHourException[]) {
+  if (!date || !time) return "";
+  if (!hours.length) return "Não foi possível confirmar o horário da loja. Atualize a página antes de reservar.";
+  const exception = exceptions.find((item) => item.channel_slug === "preorders" && item.service_date === date);
+  if (exception?.closed) return "A Adoce não recebe pré-encomendas nesta data.";
+  const windows = exception?.opens_at && exception.closes_at
+    ? [{ opens_at: exception.opens_at, closes_at: exception.closes_at }]
+    : hours.filter((item) => item.active && item.channel_slug === "preorders" && item.weekday === new Date(`${date}T12:00:00`).getDay());
+  const requested = minutesOf(time);
+  if (windows.some((item) => requested >= minutesOf(item.opens_at) && requested <= minutesOf(item.closes_at))) return "";
+  if (!windows.length) return "A Adoce não recebe pré-encomendas neste dia da semana.";
+  const ranges = windows.map((item) => `${item.opens_at.slice(0, 5)}–${item.closes_at.slice(0, 5)}`).join(" ou ");
+  return `Escolha um horário de pré-encomenda entre ${ranges}.`;
+}
+
 export function validateCommercialRequest(
   draft: CommercialRequestDraft,
   minimumQuantity: number,
   minimumDate: string,
   leadBusinessDays: number,
+  schedule?: { hours: PreorderBusinessHour[]; exceptions: PreorderBusinessHourException[] },
 ) {
   const errors: Partial<Record<CommercialRequestField, string>> = {};
+  if (draft.name.trim().split(/\s+/).filter((part) => part.length >= 2).length < 2) errors.name = "Informe nome e sobrenome separados por espaço.";
   if (draft.name.trim().length < 2) errors.name = "Conte como podemos chamar você.";
   const phone = normalizeBrazilianPhone(draft.phone);
   if (phone.length < 12 || phone.length > 13) errors.phone = "Informe um WhatsApp válido com DDD para falarmos sobre a encomenda.";
@@ -133,6 +192,10 @@ export function validateCommercialRequest(
   else if (draft.date < minimumDate) errors.date = leadTimeMessage(leadBusinessDays, minimumDate);
   if (!draft.time) errors.time = "Escolha o horário desejado.";
   if (!draft.privacy) errors.privacy = "Confirme a Política de Privacidade para enviarmos sua solicitação.";
+  if (schedule && draft.date && draft.time) {
+    const scheduleError = validatePreorderWindow(draft.date, draft.time, schedule.hours, schedule.exceptions);
+    if (scheduleError) errors.time = scheduleError;
+  }
   return errors;
 }
 

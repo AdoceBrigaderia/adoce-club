@@ -15,8 +15,9 @@ Este capítulo indica onde cada função pertence. O estado atual deve ser confi
 | Área | Responsabilidade |
 |---|---|
 | Início | Descoberta, desejo, produtos, história, benefícios e contato |
-| Adoce Hoje | Disponibilidade, sabores futuros, retirada, barraquinha e pedido imediato |
-| Tortas e docinhos | Catálogo, imagens, valores e pré-reserva |
+| Fatias | Disponibilidade, sabores futuros, retirada, Cantinho Adoce e pedido imediato |
+| Cardápio de Fatias | Sabores do dia e da semana, preços, horários e acesso à montagem do pedido |
+| Tortas e docinhos | Catálogo Adoce, galeria de Tortas por tamanho, valores e pré-reserva |
 | Eventos | Tabuleiro de doces e Mini Festas |
 | Adoce na Escola | Produtos destinados à escola |
 | Aluguel de decoração | Peças e propostas de locação |

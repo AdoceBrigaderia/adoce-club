@@ -1,0 +1,146 @@
+.public-mobile-nav { display: none; }
+
+@media (max-width: 760px) {
+  body:has(.public-mobile-nav) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  body:has(.public-mobile-nav) { overflow-x: hidden; background: #fffaf7; }
+  body:has(.public-mobile-nav) .today-mobile-bar { display: none !important; }
+  .public-mobile-nav {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 120;
+    min-height: 64px;
+    padding: 7px 6px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    border: 1px solid rgba(86, 43, 32, .13);
+    border-radius: 22px;
+    background: rgba(255, 252, 248, .96);
+    box-shadow: 0 16px 42px rgba(74, 32, 23, .18);
+    backdrop-filter: blur(18px);
+  }
+  .public-mobile-nav a {
+    min-width: 0;
+    min-height: 50px;
+    padding: 6px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: #765b53;
+    text-decoration: none;
+    border-radius: 15px;
+    font: 760 .61rem/1 system-ui, sans-serif;
+  }
+  .public-mobile-nav a.active { color: #ee446a; background: #fff0f4; }
+  .public-mobile-nav svg { width: 20px; height: 20px; stroke-width: 2; }
+  .public-mobile-nav a.active svg { fill: rgba(238, 68, 106, .12); }
+
+  /* Home: primeira decisão e produto dentro do primeiro enquadramento. */
+  .public-site .brand-hero,
+  .public-site .brand-hero-inner { min-height: 0; }
+  .public-site .brand-hero-inner { padding: 104px 18px 0; }
+  .public-site .brand-hero-copy h1 { font-size: clamp(2.75rem, 12.5vw, 3.7rem); line-height: .94; }
+  .public-site .brand-hero-lead { margin: 18px 0 20px; font-size: .9rem; line-height: 1.55; }
+  .public-site .home-proof-strip { display: none; }
+  .public-site .brand-hero-cake { min-height: 285px; margin: 12px -18px -42px; }
+  .public-site .brand-hero-cake img { width: 112%; right: -22%; bottom: 0; }
+  .public-site .intent-split { padding: 82px 16px 50px; }
+  .public-site .intent-split-head h2 { font-size: 2.65rem; line-height: .96; }
+  .public-site .intent-split-grid { gap: 14px; }
+  .public-site .intent-card { min-height: 300px; border-radius: 24px; }
+
+  /* Adoce Hoje: sabores antes das explicações de atendimento. */
+  .today-page { display: flex; flex-direction: column; background: #fffaf7; }
+  .today-page .today-header { order: 0; position: sticky; top: 0; z-index: 70; height: 66px; background: rgba(255,250,247,.96); }
+  .today-page .today-header nav > a:not(.today-order-small),
+  .today-page .today-header nav > button { display: none; }
+  .today-page .today-hero { display: contents; }
+  .today-page .today-hero-copy { order: 1; padding: 26px 18px 12px; }
+  .today-page .today-hero h1 { max-width: 330px; margin: 0; font-size: 2.55rem; line-height: .96; }
+  .today-page .today-hero-copy .today-kicker { margin: 0 0 8px; }
+  .today-page .today-service-experience { order: 4; padding: 28px 14px 52px; }
+  .today-page .today-flavors { order: 2; padding: 20px 12px 44px; }
+  .today-page .today-active-promotions { order: 3; }
+  .today-page .today-group-order { order: 5; }
+  .today-page .today-cakes,
+  .today-page .today-orders-bridge,
+  .today-page .today-policy-callout,
+  .today-page .today-event,
+  .today-page .today-footer { order: 6; }
+  .today-page .today-section-head { gap: 8px; }
+  .today-page .today-section-head h2 { font-size: 2.35rem; line-height: .96; }
+  .today-page .today-section-head > p { font-size: .82rem; line-height: 1.5; }
+  .today-page .today-filters { margin: 18px -12px 16px; padding: 0 12px 5px; display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .today-page .today-filters button { flex: 0 0 auto; min-height: 42px; border-radius: 999px; }
+  .today-page .today-card-grid { grid-template-columns: 1fr; gap: 12px; }
+  .today-page .today-flavor-card { display: grid; grid-template-columns: 112px minmax(0,1fr); gap: 0; border-radius: 20px; overflow: hidden; }
+  .today-page .today-card-image { grid-column: 1; grid-row: 1 / span 2; min-height: 154px; aspect-ratio: auto; }
+  .today-page .today-card-image img { height: 100%; }
+  .today-page .today-availability-seal { left: 7px; right: 7px; top: auto; bottom: 7px; padding: 6px 7px; font-size: .53rem; }
+  .today-page .today-premium,
+  .today-page .today-gallery-button,
+  .today-page .today-illustrative { display: none; }
+  .today-page .today-card-body { grid-column: 2; padding: 13px 13px 8px; }
+  .today-page .today-card-body h3 { margin: 6px 0 4px; font-size: 1.15rem; line-height: 1.05; }
+  .today-page .today-card-body p { display: none; }
+  .today-page .today-price { margin-top: 8px; }
+  .today-page .today-flavor-card > .today-order-flavor { grid-column: 2; min-height: 38px; margin: 0 12px 12px; font-size: .68rem; }
+  .today-page .today-gallery-link { display: none; }
+
+  /* Catálogos e reserva: eliminar capas altas e mostrar opções cedo. */
+  .commercial-page { background: #fffaf7; }
+  .commercial-page .commercial-header { height: 66px; position: sticky; top: 0; z-index: 70; background: rgba(255,250,247,.96); }
+  .commercial-page .commercial-header,
+  .commercial-page .commercial-header .commercial-brand strong,
+  .commercial-page .commercial-header > a:last-child { color: #2b130d; }
+  .commercial-page .commercial-header { border-bottom-color: rgba(73,35,26,.12); }
+  .commercial-page .commercial-hero,
+  .commercial-page .commercial-hero.without-media { min-height: 0; padding: 30px 16px 24px; gap: 20px; }
+  .commercial-page .commercial-hero-copy h1,
+  .commercial-page .commercial-hero.segment-events h1,
+  .commercial-page .commercial-hero.segment-school h1,
+  .commercial-page .commercial-hero.segment-rentals h1 { margin: 12px 0 16px; font-size: clamp(2.55rem, 11.5vw, 3.25rem); line-height: .94; }
+  .commercial-page .commercial-hero-copy > p { line-height: 1.5; }
+  .commercial-page .commercial-hero-copy > button { min-height: 48px; margin-top: 20px; }
+  .commercial-page .commercial-hero-media { min-height: 245px; border-radius: 22px; }
+  .commercial-page .commercial-hero-compare { padding: 18px 16px; border-radius: 20px; }
+  .commercial-page .commercial-hero-compare h2 { font-size: 1.45rem; }
+  .commercial-page .commercial-choice-flow { min-height: 0; }
+  .commercial-page .commercial-choice-flow > div,
+  .commercial-page .commercial-choice-flow > ol { padding: 30px 16px; }
+  .commercial-page .commercial-choice-flow h2 { font-size: 2.25rem; }
+  .commercial-page .commercial-proof-strip { padding-inline: 14px; }
+  .commercial-page .commercial-segments { position: sticky; top: 66px; z-index: 55; padding: 10px 12px; overflow-x: auto; background: rgba(255,250,247,.97); }
+  .commercial-page .commercial-segments button { flex: 0 0 auto; white-space: nowrap; }
+  .commercial-page .commercial-catalog { padding: 34px 12px 70px; }
+  .commercial-page .commercial-section-title h2 { font-size: 2.4rem; }
+  .commercial-page .commercial-product-list > article,
+  .commercial-page .commercial-product-list > article.with-image { grid-template-columns: 112px minmax(0,1fr); gap: 0; padding: 0; overflow: hidden; border-radius: 20px; }
+  .commercial-page .commercial-product-list .commercial-media-carousel { grid-column: 1; grid-row: 1 / span 3; min-height: 100%; border-radius: 0; }
+  .commercial-page .commercial-product-list .commercial-media-stage { min-height: 100%; height: 100%; }
+  .commercial-page .commercial-product-main { grid-column: 2; padding: 14px 14px 8px; }
+  .commercial-page .commercial-product-main h3 { font-size: 1.2rem; }
+  .commercial-page .commercial-product-description,
+  .commercial-page .commercial-product-details { display: none; }
+  .commercial-page .commercial-product-list > article > button,
+  .commercial-page .commercial-product-list > article.with-image > button { grid-column: 2; justify-self: stretch; min-height: 40px; margin: 0 12px 12px; }
+
+  /* Clube público e Pede Junto: mesma densidade do aplicativo. */
+  .club-experience .club-intro { min-height: 0; padding: 70px 16px 280px; }
+  .club-experience .club-intro h1 { font-size: 3.2rem; }
+  .club-experience .club-intro > img { width: 112%; right: -32%; bottom: -8%; }
+  .approved-club-heading h2 { font-size: 2.7rem; }
+  .group-order-page .group-order-hero { min-height: 0; padding: 70px 16px 20px; }
+  .group-order-page .group-order-hero h1 { font-size: 3.15rem; }
+  .group-order-page .group-order-hero > img { max-height: 330px; object-fit: contain; }
+  .pede-junto-page { padding-bottom: 78px; }
+}
+
+@media (max-width: 360px) {
+  .public-mobile-nav { left: 6px; right: 6px; }
+  .public-mobile-nav a { font-size: .56rem; }
+}

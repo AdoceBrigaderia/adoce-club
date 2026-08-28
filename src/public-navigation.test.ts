@@ -3,36 +3,33 @@ import { describe, expect, it } from "vitest";
 
 const header = readFileSync(new URL("./PublicHeader.tsx", import.meta.url), "utf8");
 const landing = readFileSync(new URL("./MarketingLanding.tsx", import.meta.url), "utf8");
+const mobileNav = readFileSync(new URL("./PublicMobileNav.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
 const orderPolicy = readFileSync(new URL("./OrderPolicyPage.tsx", import.meta.url), "utf8");
 const operationCss = readFileSync(new URL("./access-app.css", import.meta.url), "utf8");
 const accessFunction = readFileSync(new URL("../netlify/functions/staff-access-code.ts", import.meta.url), "utf8");
 
-const destinations = [
-  "#adoce-hoje",
-  "#encomendas",
-  "#eventos",
-  "#adoce-na-escola",
-  "#pede-junto",
-  "#clube",
-  "#entrar",
-];
-
-describe("navegação pública por operação", () => {
-  it("oferece destinos comerciais diferentes no cabeçalho e na home", () => {
-    for (const destination of destinations) {
-      expect(`${header}\n${landing}`).toContain(destination);
-      expect(app).toContain(`startsWith(\"${destination}\")`);
+describe("navegação pública Mobile First", () => {
+  it("mantém os quatro destinos aprovados no rodapé fixo", () => {
+    for (const label of ["Início", "Cardápio", "Pedidos", "Conta"]) {
+      expect(mobileNav).toContain(label);
     }
+    for (const destination of ["#inicio", "#adoce-hoje", "#carrinho", "#minha-conta"]) {
+      expect(mobileNav).toContain(destination);
+      if (destination !== "#inicio") expect(app).toContain(destination);
+    }
+    expect(mobileNav).toContain("public-shell-nav");
+    expect(app).toContain("<PublicHeader />");
   });
 
   it("identifica a marca geral como Adoce Brigaderia", () => {
     expect(header).toContain("Adoce Brigaderia");
     expect(header).not.toContain("<strong>Clube Adoce</strong>");
+    expect(header).toContain('firstName = member?.firstName || "Cliente"');
+    expect(header).toContain('progress = member?.progress || 0');
   });
 
-  it("publica a política de pedidos com regras legíveis e acesso pela home", () => {
-    expect(landing).toContain("/#politica-de-pedidos");
+  it("mantém a política de pedidos em uma página dedicada", () => {
     expect(app).toContain('startsWith("#politica-de-pedidos")');
     expect(orderPolicy).toContain("Segunda a quarta-feira");
     expect(orderPolicy).toContain("Quinta a sábado");
@@ -40,12 +37,12 @@ describe("navegação pública por operação", () => {
     expect(orderPolicy).toContain("/site/politica-de-pedidos.jpeg");
   });
 
-  it("mostra uma prévia real da página Adoce Hoje, identificada como ilustrativa", () => {
-    expect(landing).toContain("/site/adoce-hoje-exemplo-desktop.png");
-    expect(landing).toContain("/site/adoce-hoje-exemplo-mobile.png");
-    expect(landing).toContain("Imagem ilustrativa");
-    expect(landing).toContain("Captura real da página");
-    expect(landing).not.toContain("/adoce-hoje/sabores-hoje.webp");
+  it("leva os produtos reais e a ação principal para o início da experiência", () => {
+    expect(landing).toContain('className="home-reference-card slices" href="/#adoce-hoje"');
+    expect(landing).toContain('className="home-reference-card cakes" href="/#encomendas"');
+    expect(landing).toContain("/adoce-hoje/chocolatudo.webp");
+    expect(landing).toContain("Fazer meu pedido");
+    expect(landing).toContain("Ver fatias disponíveis");
   });
 });
 

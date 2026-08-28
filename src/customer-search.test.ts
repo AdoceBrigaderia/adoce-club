@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesCustomerSearch } from "./customer-search";
+import { countCustomerProfiles, isCustomerProfile, matchesCustomerSearch } from "./customer-search";
 
 const customer = {
   full_name: "João da Silva",
@@ -9,6 +9,25 @@ const customer = {
 };
 
 describe("pesquisa de clientes", () => {
+  it("usa a mesma regra da lista para separar clientes, equipe e anonimizados", () => {
+    const staffIds = new Set(["staff-1"]);
+    expect(isCustomerProfile({ id: "customer-1", account_status: "active" }, staffIds)).toBe(true);
+    expect(isCustomerProfile({ id: "staff-1", account_status: "active" }, staffIds)).toBe(false);
+    expect(isCustomerProfile({ id: "customer-2", account_status: "anonymized" }, staffIds)).toBe(false);
+  });
+
+  it("faz o contador do painel excluir equipe e cadastros anonimizados", () => {
+    const staffIds = new Set(["staff-1", "staff-2"]);
+    const profiles = [
+      { id: "customer-1", account_status: "active" },
+      { id: "customer-2", account_status: "pending_deletion" },
+      { id: "staff-1", account_status: "active" },
+      { id: "staff-2", account_status: "active" },
+      { id: "removed-1", account_status: "anonymized" },
+    ];
+
+    expect(countCustomerProfiles(profiles, staffIds)).toBe(2);
+  });
   it("encontra por parte do nome sem exigir acento", () => {
     expect(matchesCustomerSearch(customer, "joa")).toBe(true);
   });

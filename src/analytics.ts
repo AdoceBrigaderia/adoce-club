@@ -1,4 +1,5 @@
 import { supabase } from "./lib/supabase";
+import { createClientId } from "./lib/client-id";
 
 export type PublicAnalyticsEvent =
   | "page_view"
@@ -44,7 +45,7 @@ export function trackPublicEvent(eventName: PublicAnalyticsEvent, properties: An
   if (!publicAnalyticsEnabled()) return;
   const device = window.innerWidth < 700 ? "mobile" : window.innerWidth < 1100 ? "tablet" : "desktop";
   void supabase!.rpc("record_site_analytics_event", {
-    requested_event_id: crypto.randomUUID(),
+    requested_event_id: createClientId(),
     requested_event_name: eventName,
     requested_page_path: currentPublicPath(),
     requested_properties: { ...properties, device },

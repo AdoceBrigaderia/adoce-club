@@ -5,6 +5,7 @@ import {
   leadTimeMessage,
   normalizeBrazilianPhone,
   validateCommercialRequest,
+  validatePreorderWindow,
 } from "./commercial";
 
 describe("regras comerciais", () => {
@@ -52,5 +53,20 @@ describe("regras comerciais", () => {
     }, 15, "2026-07-28", 5);
 
     expect(Object.keys(errors)).toEqual(["name", "phone", "email", "quantity", "date", "time", "privacy"]);
+  });
+
+  it("impede pré-reserva fora do horário real da loja", () => {
+    const hours = [{ channel_slug: "preorders", weekday: 6, opens_at: "09:00:00", closes_at: "22:00:00", active: true }];
+    expect(validatePreorderWindow("2026-08-15", "01:30", hours, [])).toContain("09:00–22:00");
+    expect(validatePreorderWindow("2026-08-15", "10:30", hours, [])).toBe("");
+    expect(validatePreorderWindow("2026-08-15", "10:30", [], [])).toContain("confirmar o horário");
+  });
+
+  it("exige nome e sobrenome separados no formulário", () => {
+    const errors = validateCommercialRequest({
+      name: "JosefaMaria", phone: "(85) 99623-9271", email: "", quantity: 1,
+      date: "2026-08-15", time: "10:00", privacy: true,
+    }, 1, "2026-08-12", 1);
+    expect(errors.name).toContain("nome e sobrenome");
   });
 });

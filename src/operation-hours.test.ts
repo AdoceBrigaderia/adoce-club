@@ -5,7 +5,7 @@ import {
 } from "./OperationContentAdmin";
 
 describe("filtro da agenda recorrente", () => {
-  it("mostra somente o canal e o dia escolhidos", () => {
+  it("mostra todos os dias do canal escolhido em ordem", () => {
     const hours: BusinessHour[] = [
       {
         id: "online-tuesday",
@@ -36,9 +36,20 @@ describe("filtro da agenda recorrente", () => {
       },
     ];
 
-    expect(filterBusinessHours(hours, "online_orders", 2)).toEqual([
+    expect(filterBusinessHours(hours, "online_orders")).toEqual([
       hours[0],
+      hours[1],
     ]);
+  });
+
+  it("oferece edição e exclusão de cada horário", async () => {
+    const source = await import("node:fs/promises").then((fs) =>
+      fs.readFile(new URL("./OperationContentAdmin.tsx", import.meta.url), "utf8"),
+    );
+
+    expect(source).toContain("Editar horário de");
+    expect(source).toContain("Atualizar horário");
+    expect(source).toContain("removeHour(hour.id)");
   });
 
   it("mantém a identificação explícita do canal que controla a retirada", async () => {

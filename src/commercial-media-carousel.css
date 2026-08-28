@@ -1,6 +1,6 @@
 .commercial-media-carousel { margin: 0; min-width: 0; display: grid; gap: 10px; }
 .commercial-media-stage { position: relative; overflow: hidden; min-height: 280px; border-radius: 22px; background: #f2e4d9; }
-.commercial-media-stage > img { width: 100%; height: 100%; max-height: 560px; min-height: 280px; display: block; object-fit: contain; }
+.commercial-media-image{width:100%;height:100%;min-height:inherit}.commercial-media-image>img { width: 100%; height: 100%; max-height: 560px; min-height: 280px; display: block; object-fit: cover; }
 .commercial-media-arrow, .commercial-media-play { position: absolute; border: 0; color: white; background: rgba(50,20,13,.82); box-shadow: 0 8px 22px rgba(50,20,13,.2); }
 .commercial-media-arrow { top: 50%; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; transform: translateY(-50%); }
 .commercial-media-arrow.previous { left: 12px; }.commercial-media-arrow.next { right: 12px; }
@@ -18,4 +18,6 @@
 .commercial-reel-modal button { position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 50%; background: #f3e5da; }
 .commercial-reel-modal a { display: flex; justify-content: center; align-items: center; gap: 7px; color: #6a3024; font-weight: 800; }
 .commercial-reel-modal a svg { width: 15px; }
-@media (max-width: 620px) { .commercial-media-stage { min-height: 220px; }.commercial-media-stage > img { min-height: 220px; max-height: 72dvh; }.commercial-media-carousel > figcaption { align-items: flex-start; flex-direction: column; } }
+@media (max-width: 620px) { .commercial-media-stage { min-height: 220px; }.commercial-media-image>img { min-height: 220px; max-height: 72dvh; }.commercial-media-carousel > figcaption { align-items: flex-start; flex-direction: column; } }
+
+.commercial-media-image>img{object-fit:cover!important;background:#fff8f4}

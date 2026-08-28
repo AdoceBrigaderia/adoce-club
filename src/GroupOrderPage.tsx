@@ -21,7 +21,6 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
-import PublicHeader from "./PublicHeader";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 import {
   buildPedeJuntoWhatsAppMessage,
@@ -369,7 +368,6 @@ export default function GroupOrderPage() {
 
   return (
     <main className="public-site pede-junto-page">
-      <PublicHeader />
 
       <section className="pede-junto-hero" id="inicio-pede-junto">
         <div className="pede-junto-hero-copy">

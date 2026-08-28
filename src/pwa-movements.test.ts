@@ -33,6 +33,9 @@ describe("instalação e movimentações amigáveis", () => {
 
   it("busca somente os perfis relacionados e apresenta movimentos em português", () => {
     expect(accessApp).toContain('.from("ledger_entries")');
+    expect(accessApp).toContain("const pageSize = 500");
+    expect(accessApp).toContain(".range(from, from + pageSize - 1)");
+    expect(accessApp).not.toContain('.limit(50)');
     expect(accessApp).toContain('.from("profiles")');
     expect(accessApp).toContain("Compra registrada");
     expect(accessApp).toContain("Fatia grátis retirada");

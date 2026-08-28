@@ -1,10 +1,18 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import QRCode from "qrcode";
 import { ArrowLeft, Camera, Check, ChevronRight, Gift, Heart, History, LayoutDashboard, LogOut, Plus, Search, Settings, ShieldCheck, Smartphone, UserPlus, Users } from "lucide-react";
 import { Customer, cycleProgress, earn, formatPhone, maskPhone, redeem, remainingFor, rewardsFor } from "./domain";
 import { loadCustomers, saveCustomers } from "./store";
 import MarketingLanding from "./MarketingLanding";
+import AdoceHome from "./AdoceHome";
+const AdoceEntrar = lazy(() => import("./AdoceEntrar"));
+const AdoceClube = lazy(() => import("./AdoceClube"));
+import PublicHeader from "./PublicHeader";
+import PublicMobileNav, { type PublicMobileArea } from "./PublicMobileNav";
 import { installPublicAnalytics } from "./analytics";
+import { createClientId } from "./lib/client-id";
+import { tokenDoMagicLink } from "./identidade-do-clube";
+import "./public-mobile-fixes.css";
 
 const CommercialCatalog = lazy(() => import("./CommercialCatalog"));
 const ClubExperience = lazy(() => import("./ClubExperience"));
@@ -14,21 +22,19 @@ const OrderPolicyPage = lazy(() => import("./OrderPolicyPage"));
 const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
+const SliceMenuPage = lazy(() => import("./SliceMenuPage"));
+const FlavorCatalogRoute = lazy(() => import("./FlavorCatalogRoute"));
 const AccessApp = lazy(() => import("./AccessApp"));
-const MemberDemo = lazy(() =>
-  import("./AccessApp").then((module) => ({ default: module.MemberDemo })),
-);
-const OperationDemo = lazy(() =>
-  import("./AccessApp").then((module) => ({ default: module.OperationDemo })),
-);
-const OperationV2Demo = lazy(() => import("./operation-v2/OperationV2Demo"));
-const SocialCampaign = lazy(() => import("./SocialCampaign"));
-const LaunchCampaign = lazy(() => import("./LaunchCampaign"));
-const ProductionRollbackDemo = lazy(() =>
-  import("./ProductionRollbackPanel").then((module) => ({ default: module.ProductionRollbackDemo })),
-);
 
 const loading = <main className="access-loading"><p>Abrindo a experiência Adoce...</p></main>;
+
+function PublicSurface({ children, active }: { children: ReactNode; active?: PublicMobileArea }) {
+  return <div className="public-app-shell"><PublicHeader /><Suspense fallback={loading}>{children}</Suspense><p className="public-signature">Doce feito com afeto, para celebrar cada momento.</p><PublicMobileNav active={active} /></div>;
+}
+
+function CustomerSurface({ children }: { children: ReactNode }) {
+  return <div className="public-app-shell customer-app-shell"><PublicHeader /><Suspense fallback={loading}>{children}</Suspense><p className="public-signature">Doce feito com afeto, para celebrar cada momento.</p><PublicMobileNav active="club" /></div>;
+}
 
 type Page = "join" | "card" | "staff" | "admin";
 const moneyless = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -60,7 +66,7 @@ function Card({ customer, onBack }: { customer: Customer; onBack?:()=>void }) {
 
 function Join({ onCreated, goStaff }: { onCreated:(c:Customer)=>void; goStaff:()=>void }) {
   const [name,setName]=useState(""); const [phone,setPhone]=useState(""); const [email,setEmail]=useState(""); const [terms,setTerms]=useState(false); const [privacy,setPrivacy]=useState(false); const [marketing,setMarketing]=useState(false); const [error,setError]=useState("");
-  const submit=(e:React.FormEvent)=>{e.preventDefault(); if(!name.trim()||phone.length<10||!terms||!privacy){setError("Preencha nome e telefone e aceite os termos e a política de privacidade.");return;} const existing=loadCustomers().find(c=>c.phone===phone); if(existing){setError("Já existe um cartão para este telefone. Abrimos o cartão existente."); setTimeout(()=>onCreated(existing),900); return;} const c:Customer={id:crypto.randomUUID(),name:name.trim(),phone,email:email||undefined,balance:0,token:`adoce_${crypto.randomUUID().replaceAll("-","")}`,status:"ACTIVE",marketingConsent:marketing,transactions:[]}; const all=[c,...loadCustomers()];saveCustomers(all);onCreated(c)};
+  const submit=(e:React.FormEvent)=>{e.preventDefault(); if(!name.trim()||phone.length<10||!terms||!privacy){setError("Preencha nome e telefone e aceite os termos e a política de privacidade.");return;} const existing=loadCustomers().find(c=>c.phone===phone); if(existing){setError("Já existe um cartão para este telefone. Abrimos o cartão existente."); setTimeout(()=>onCreated(existing),900); return;} const c:Customer={id:createClientId(),name:name.trim(),phone,email:email||undefined,balance:0,token:`adoce_${createClientId().replaceAll("-","")}`,status:"ACTIVE",marketingConsent:marketing,transactions:[]}; const all=[c,...loadCustomers()];saveCustomers(all);onCreated(c)};
   return <main className="join-page"><nav><Brand/><button className="text-button" onClick={goStaff}>Área da equipe <ChevronRight/></button></nav><section className="join-hero"><div className="hero-copy"><h1>Seu carinho agora <em>também</em> vira conquista.</h1><p>Cada fatia comprada vale 1 carimbo. Complete 14 e guarde sua recompensa no celular, para usar quando quiser.</p><div className="mini-benefits"><span><Heart/> 1 fatia = 1 carimbo</span><span><Gift/> Prêmio no seu tempo</span><span><Smartphone/> Cartão digital</span></div></div><div className="hero-photo"><img src="/site/hero-cake.webp" alt="Fatia de chocolate com morango da Adoce"/></div></section><section className="join-form-wrap"><div><h2>Entre para o Clube</h2><p>Leva menos de um minuto.</p></div><form onSubmit={submit}><label>Seu nome<input value={name} onChange={e=>setName(e.target.value)} autoComplete="name" placeholder="Como podemos te chamar?"/></label><label>WhatsApp ou telefone<input value={phone} onChange={e=>setPhone(formatPhone(e.target.value))} inputMode="tel" autoComplete="tel" placeholder="DDD + número"/></label><label>E-mail <span>(opcional)</span><input value={email} onChange={e=>setEmail(e.target.value)} type="email" autoComplete="email" placeholder="voce@exemplo.com"/></label><label className="check"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)}/><span>Aceito os termos do programa.</span></label><label className="check"><input type="checkbox" checked={privacy} onChange={e=>setPrivacy(e.target.checked)}/><span>Li e aceito a política de privacidade.</span></label><label className="check optional"><input type="checkbox" checked={marketing} onChange={e=>setMarketing(e.target.checked)}/><span>Quero receber novidades e promoções. (opcional)</span></label>{error&&<div className="form-error" role="alert">{error}</div>}<button className="primary" type="submit">Criar meu Clube Adoce <ChevronRight/></button></form></section><footer><Brand compact/><p>Feito com amor em cada detalhe.</p></footer></main>;
 }
 
@@ -83,13 +89,17 @@ export default function App(){
       document.title = location.hash.startsWith("#operacao")
         ? "Adoce Operação"
           : location.hash.startsWith("#adoce-hoje")
-            ? "Adoce Hoje · Adoce Brigaderia"
+            ? "Fatias · Adoce Brigaderia"
+          : location.hash.startsWith("#cardapio-fatias")
+            ? "Cardápio de Fatias · Adoce Brigaderia"
           : location.hash.startsWith("#cadastro")
             ? "Cadastro · Clube Adoce"
           : location.hash.startsWith("#docinhos")
             ? "Docinhos · Adoce Brigaderia"
+          : location.hash.startsWith("#carrinho")
+            ? "Seu pedido · Adoce Brigaderia"
           : location.hash.startsWith("#encomendas")
-            ? "Encomendas · Adoce Brigaderia"
+            ? "Celebrações e produtos · Adoce Brigaderia"
             : location.hash.startsWith("#eventos")
               ? "Festas e eventos · Adoce Brigaderia"
               : location.hash.startsWith("#adoce-na-escola")
@@ -116,33 +126,38 @@ export default function App(){
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
   const host = location.hostname.toLowerCase();
-  if(location.hash.startsWith("#campanha-story"))return <Suspense fallback={loading}><SocialCampaign format="story"/></Suspense>;
-  if(location.hash.startsWith("#campanha-feed"))return <Suspense fallback={loading}><SocialCampaign format="feed"/></Suspense>;
-  if(location.hash.startsWith("#lancamento-story"))return <Suspense fallback={loading}><LaunchCampaign format="story"/></Suspense>;
-  if(location.hash.startsWith("#lancamento-facebook"))return <Suspense fallback={loading}><LaunchCampaign format="facebook"/></Suspense>;
-  if(location.hash.startsWith("#lancamento-carrossel-"))return <Suspense fallback={loading}><LaunchCampaign format="carousel" slide={Number(location.hash.split("-").at(-1)) || 1}/></Suspense>;
-  if(location.hash.startsWith("#lancamento-feed"))return <Suspense fallback={loading}><LaunchCampaign format="feed"/></Suspense>;
-  if(import.meta.env.DEV && location.hash.startsWith("#membro-demo"))return <Suspense fallback={loading}><MemberDemo/></Suspense>;
-  if(import.meta.env.DEV && location.hash.startsWith("#operacao-v2"))return <Suspense fallback={loading}><OperationV2Demo/></Suspense>;
-  if(import.meta.env.DEV && location.hash.startsWith("#operacao-demo"))return <Suspense fallback={loading}><OperationDemo/></Suspense>;
-  if(import.meta.env.DEV && location.hash.startsWith("#restauracao-demo"))return <Suspense fallback={loading}><ProductionRollbackDemo/></Suspense>;
-  if (host.startsWith("operacao.") || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation"/></Suspense>;
-  if (host.startsWith("clube.") || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto")) return <Suspense fallback={loading}><AccessApp surface="client"/></Suspense>;
-  if(location.hash.startsWith("#adoce-hoje"))return <Suspense fallback={loading}><AdoceHoje/></Suspense>;
-  if(location.hash.startsWith("#encomendas"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="cakes"/></Suspense>;
-  if(location.hash.startsWith("#docinhos"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="sweets"/></Suspense>;
-  if(location.hash.startsWith("#eventos"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="events"/></Suspense>;
-  if(location.hash.startsWith("#adoce-na-escola"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="school"/></Suspense>;
-  if(location.hash.startsWith("#aluguel-decoracao"))return <Suspense fallback={loading}><CommercialCatalog initialSegment="rentals"/></Suspense>;
-  if(location.hash.startsWith("#pede-junto") || location.hash.startsWith("#compra-em-grupo"))return <Suspense fallback={loading}><GroupOrderPage/></Suspense>;
-  if(location.hash.startsWith("#politica-de-pedidos"))return <Suspense fallback={loading}><OrderPolicyPage/></Suspense>;
-  if(location.hash.startsWith("#fale-com-a-adoce"))return <Suspense fallback={loading}><FeedbackPage/></Suspense>;
-  if(location.hash.startsWith("#clube"))return <Suspense fallback={loading}><ClubExperience/></Suspense>;
-  if(location.hash.startsWith("#termos"))return <Suspense fallback={loading}><LegalPage kind="terms"/></Suspense>;
-  if(location.hash.startsWith("#privacidade"))return <Suspense fallback={loading}><LegalPage kind="privacy"/></Suspense>;
+  const socialAuthReturn = new URLSearchParams(location.search).get("auth_return");
+  const retiredDemoRoutes = ["#prototipo", "#membro-demo", "#operacao-demo", "#operacao-v2", "#restauracao-demo", "#home-antiga"];
+  if (retiredDemoRoutes.includes(location.hash)) return <PublicSurface active="home"><AdoceHome /></PublicSurface>;
+  if (tokenDoMagicLink(location.hash)) return <CustomerSurface><AccessApp surface="client"/></CustomerSurface>;
+  if (location.hash === "#sabores") {
+    window.location.replace("/sabores/");
+    return <>{loading}</>;
+  }
+  if ((location.pathname.replace(/\/+$/, "") || "/") === "/sabores") return <PublicSurface active="today"><FlavorCatalogRoute /></PublicSurface>;
+  if(location.hash.startsWith("#campanha-") || location.hash.startsWith("#lancamento-")) return <PublicSurface active="home"><AdoceHome /></PublicSurface>;
+  if (host.startsWith("operacao.") || socialAuthReturn === "operacao" || location.hash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation"/></Suspense>;
+  // Login por WhatsApp: a tela existe mas o envio de codigo ainda nao esta
+  // ligado (falta a Cloud API da Meta). Ate la, #entrar continua no fluxo
+  // atual que funciona, e a tela nova fica visivel so em #entrar-novo.
+  if(location.hash.startsWith("#entrar-novo"))return <PublicSurface active="club"><AdoceEntrar/></PublicSurface>;
+  if(location.hash.startsWith("#clube") || location.hash.startsWith("#indicar"))return <PublicSurface active="club"><AdoceClube/></PublicSurface>;
+  if (host.startsWith("clube.") || socialAuthReturn === "clube" || location.hash.startsWith("#entrar") || location.hash.startsWith("#cadastro") || location.hash.startsWith("#minha-conta") || location.hash.startsWith("#acesso-direto") || location.hash.startsWith("#cartao/")) return <CustomerSurface><AccessApp surface="client"/></CustomerSurface>;
+  if(location.hash.startsWith("#adoce-hoje"))return <PublicSurface active="today"><AdoceHoje/></PublicSurface>;
+  if(location.hash.startsWith("#cardapio-fatias"))return <PublicSurface active="orders"><SliceMenuPage/></PublicSurface>;
+  if(location.hash.startsWith("#carrinho"))return <PublicSurface active="cart"><AdoceHoje openCartOnLoad/></PublicSurface>;
+  if(location.hash.startsWith("#encomendas"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="cakes"/></PublicSurface>;
+  if(location.hash.startsWith("#docinhos"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="sweets"/></PublicSurface>;
+  if(location.hash.startsWith("#eventos"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="events"/></PublicSurface>;
+  if(location.hash.startsWith("#adoce-na-escola"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="school"/></PublicSurface>;
+  if(location.hash.startsWith("#aluguel-decoracao"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="rentals"/></PublicSurface>;
+  if(location.hash.startsWith("#pede-junto") || location.hash.startsWith("#compra-em-grupo"))return <PublicSurface active="orders"><GroupOrderPage/></PublicSurface>;
+  if(location.hash.startsWith("#politica-de-pedidos"))return <PublicSurface active="orders"><OrderPolicyPage/></PublicSurface>;
+  if(location.hash.startsWith("#fale-com-a-adoce"))return <PublicSurface><FeedbackPage/></PublicSurface>;
+  if(location.hash.startsWith("#termos"))return <PublicSurface><LegalPage kind="terms"/></PublicSurface>;
+  if(location.hash.startsWith("#privacidade"))return <PublicSurface><LegalPage kind="privacy"/></PublicSurface>;
   const pilotToken=location.hash.match(/^#cartao\/([a-f0-9-]+)$/i)?.[1];
   if(pilotToken)return <Suspense fallback={loading}><PilotApp token={pilotToken}/></Suspense>;
   if(import.meta.env.DEV && location.hash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
-  if(import.meta.env.DEV && location.hash.startsWith("#prototipo"))return <LegacyApp/>;
-  return <MarketingLanding/>
+  return <PublicSurface active="home"><AdoceHome/></PublicSurface>
 }

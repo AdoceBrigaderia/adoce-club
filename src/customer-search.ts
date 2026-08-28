@@ -5,6 +5,25 @@ export type SearchableCustomer = {
   member_code: string | null;
 };
 
+export type CustomerProfileIdentity = {
+  id: string;
+  account_status: string | null;
+};
+
+export function isCustomerProfile(
+  profile: CustomerProfileIdentity,
+  staffIds: ReadonlySet<string>,
+): boolean {
+  return !staffIds.has(profile.id) && profile.account_status !== "anonymized";
+}
+
+export function countCustomerProfiles(
+  profiles: readonly CustomerProfileIdentity[],
+  staffIds: ReadonlySet<string>,
+): number {
+  return profiles.filter((profile) => isCustomerProfile(profile, staffIds)).length;
+}
+
 export function normalizeSearchValue(value: string): string {
   return value
     .normalize("NFD")

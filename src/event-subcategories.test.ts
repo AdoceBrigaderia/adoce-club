@@ -14,7 +14,10 @@ describe("subcategorias de eventos", () => {
   it("separa Tabuleiro e Mini Festas no catálogo público", () => {
     expect(catalog).toContain('aria-label="Tipos de eventos"');
     expect(catalog).toContain("eventSubcategoryLabels");
-    expect(catalog).toContain('product.subcategory === eventSubcategory');
+    expect(catalog).toContain('filter === "Tabuleiro"');
+    expect(catalog).toContain('product.subcategory === "trays"');
+    expect(catalog).toContain('filter === "Mini Festas"');
+    expect(catalog).toContain('product.subcategory === "mini_parties"');
     expect(catalog).toContain("Mini festa real Adoce");
   });
 

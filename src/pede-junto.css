@@ -157,7 +157,7 @@
 
 .pede-junto-invite-band h2 {
   margin: 0;
-  font: 500 clamp(3.2rem, 6vw, 6.2rem) / 0.94 Georgia, serif;
+  font: 500 clamp(3.2rem, 6vw, 6.2rem) / 0.94 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-invite-band em {
@@ -167,7 +167,7 @@
 .pede-junto-invite-band > div:last-child strong {
   display: block;
   max-width: 620px;
-  font: 500 clamp(2.1rem, 3.7vw, 4rem) / 1 Georgia, serif;
+  font: 500 clamp(2.1rem, 3.7vw, 4rem) / 1 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-invite-band > div:last-child p {
@@ -195,7 +195,7 @@
 
 .pede-junto-room-story > p {
   margin: 0 0 30px;
-  font: 500 clamp(2rem, 3vw, 3rem) / 1.06 Georgia, serif;
+  font: 500 clamp(2rem, 3vw, 3rem) / 1.06 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-room-story > svg,
@@ -226,7 +226,7 @@
 
 .pede-junto-room h2 {
   margin: 0.25rem 0;
-  font: 500 clamp(2.4rem, 4vw, 4rem) / 1 Georgia, serif;
+  font: 500 clamp(2.4rem, 4vw, 4rem) / 1 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-room header small,
@@ -359,7 +359,7 @@
   border-radius: 50%;
   color: white;
   background: var(--pj-ink);
-  font-family: Georgia, serif;
+  font-family: 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-participants strong,
@@ -500,7 +500,7 @@
 
 .pede-junto-room-preview h2 {
   margin: 0.6rem auto 1rem;
-  font: 500 clamp(3rem, 6vw, 6rem) / 0.98 Georgia, serif;
+  font: 500 clamp(3rem, 6vw, 6rem) / 0.98 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-room-preview p {
@@ -551,7 +551,7 @@
 
 .pede-junto-how h2 {
   margin: 0.4rem 0;
-  font: 500 clamp(2.8rem, 4vw, 4.2rem) / 1 Georgia, serif;
+  font: 500 clamp(2.8rem, 4vw, 4.2rem) / 1 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-how ol {
@@ -605,7 +605,7 @@
 
 .pede-junto-places h2 {
   margin: 0;
-  font: 500 clamp(2.6rem, 4.5vw, 5rem) / 1 Georgia, serif;
+  font: 500 clamp(2.6rem, 4.5vw, 5rem) / 1 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-places h2 span {
@@ -654,7 +654,7 @@
 
 .pede-junto-proof h2 {
   margin: 0.6rem 0 1rem;
-  font: 500 clamp(3rem, 5vw, 5.4rem) / 0.98 Georgia, serif;
+  font: 500 clamp(3rem, 5vw, 5.4rem) / 0.98 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-proof h2 em {
@@ -684,7 +684,7 @@
 
 .pede-junto-final h2 {
   margin: 0.3rem 0;
-  font: 500 clamp(3.2rem, 5.8vw, 6.5rem) / 0.95 Georgia, serif;
+  font: 500 clamp(3.2rem, 5.8vw, 6.5rem) / 0.95 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-final > strong {
@@ -750,7 +750,7 @@
 .pede-junto-dialog h2,
 .pede-junto-selection h2 {
   margin: 0.5rem 0;
-  font: 500 clamp(2.7rem, 5vw, 4.5rem) / 0.98 Georgia, serif;
+  font: 500 clamp(2.7rem, 5vw, 4.5rem) / 0.98 'Playfair Display',Georgia,serif;
 }
 
 .pede-junto-dialog form > p,

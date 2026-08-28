@@ -6,14 +6,15 @@ import {
 } from "./ImageEditor";
 
 describe("editor de imagens dos produtos", () => {
-  it("padroniza produtos e categorias em 4:3 sem esticar", () => {
+  it("padroniza produtos e categorias em 4:3 sem mudar o comportamento atual", () => {
     expect(PRODUCT_IMAGE_PRESET).toMatchObject({ aspectWidth: 4, aspectHeight: 3, outputWidth: 1200 });
     expect(CATEGORY_IMAGE_PRESET).toMatchObject({ aspectWidth: 4, aspectHeight: 3, outputWidth: 1400 });
   });
 
   it("oferece enquadramento, toque, comparação e ajustes da foto real", () => {
     const source = readFileSync(new URL("./ImageEditor.tsx", import.meta.url), "utf8");
-    expect(source).toContain('type FitMode = "cover" | "contain"');
+    expect(source).toContain("type ImageFitMode");
+    expect(source).toContain('resetPosition("stretch")');
     expect(source).toContain("onPointerMove");
     expect(source).toContain("pointers.current.size >= 2");
     expect(source).toContain("Melhorar automaticamente");
@@ -27,5 +28,18 @@ describe("editor de imagens dos produtos", () => {
     expect(commercial).toContain("CATEGORY_IMAGE_PRESET");
     expect(content).toContain("applyFlavorImage");
     expect(content).toContain("original_image_path");
+  });
+
+  it("mostra a moldura final e confirma se a foto preenche todo o espaço", () => {
+    const editor = readFileSync(new URL("./ImageEditor.tsx", import.meta.url), "utf8");
+    const visualSettings = readFileSync(new URL("./OperationVisualSettings.tsx", import.meta.url), "utf8");
+    expect(editor).toContain("Formato final {preset.aspectWidth}:{preset.aspectHeight}");
+    expect(editor).toContain("fitAnalysis?.title");
+    expect(editor).toContain("Imagem enviada:");
+    expect(editor).toContain("saída exata em");
+    expect(editor).toContain("Salvar neste formato");
+    expect(visualSettings).toContain('aspectRatio: `${definition.aspectWidth} / ${definition.aspectHeight}`');
+    expect(visualSettings).toContain("Tamanho esperado:");
+    expect(visualSettings).toContain("se a proporção for diferente, a foto será distorcida");
   });
 });

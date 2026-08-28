@@ -81,11 +81,16 @@ Central Adoce
 ## Correções de arquitetura aplicadas
 
 - **“Atender membro” e “Membros” deixam de competir:** pesquisa, QR, lista, contagem e perfil passam a pertencer à mesma área **Clientes & Clube Adoce**.
+- **A lista de clientes não pode ter corte silencioso:** todos os perfis ativos, desativados, unificados ou aguardando decisão ficam acessíveis, com busca e quantidade exibida. Cadastros já anonimizados após exclusão deixam de ser tratados como clientes cadastrados. A leitura do banco é paginada para não depender do limite padrão da API.
+- **As contagens levam à ação correspondente:** os totais de clientes cadastrados, ativos, desativados e aguardando análise funcionam como filtros. Ao selecionar uma contagem, a operação vai diretamente à lista correspondente e oferece retorno à lista completa.
+- **Painel e lista usam a mesma contagem:** perfis da equipe e cadastros anonimizados não entram no total de clientes em nenhuma das duas telas.
+- **O perfil prioriza o atendimento:** depois do resumo do cartão aparecem **Registrar compra**, **Resgatar fatia grátis** e, para o proprietário, **Corrigir carimbos**. Em seguida vem o histórico completo daquele cartão; ajuda de acesso, segurança e privacidade ficam por último.
 - **“Pedidos” deixa de significar tudo:** venda imediata de fatias, encomenda agendada e Pede Junto são fluxos separados.
 - **Financeiro deixa de ficar escondido entre telas de atendimento:** passa a ser um destino próprio em Vendas.
 - **Configurações deixam de se misturar ao trabalho diário:** regras que alteram toda a operação ficam em Administração.
 - **Registros encerrados deixam as filas ativas:** cancelados, expirados e excluídos ficam em Histórico e arquivados, preservando auditoria sem poluir o trabalho atual.
 - **A operação ganha uma porta de entrada:** o painel inicial apresenta urgências, números do dia e atalhos orientados por tarefa.
+- **Alertas de estoque chegam ao problema:** o cartão de estoque baixo da Central abre a disponibilidade do dia já filtrada para itens com até três unidades livres, permitindo ajustar o saldo no mesmo lugar. O retorno à lista completa permanece visível.
 
 ## Inventário das funções existentes e destino correto
 

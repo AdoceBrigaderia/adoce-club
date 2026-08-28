@@ -1,3 +1,5 @@
+.instant-order-layer { z-index: 1000; }
+
 .instant-order-sauces {
   display: grid;
   gap: 16px;
@@ -109,3 +111,33 @@
   .instant-order-club-invite > div { padding: 20px 19px 22px; }
   .instant-order-club-invite > div > div { grid-template-columns: 1fr; }
 }
+
+.instant-order-release-note {
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff2dc;
+  color: #74451f;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.instant-order-release-note span { display: grid; gap: 2px; }
+.instant-order-release-note strong { font-size: .7rem; }
+.instant-order-release-note small { font-size: .64rem; color: inherit; }
+
+.instant-order-release-note svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #b46a25;
+}
+.instant-order-pickup-choice{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0;padding:12px;border:1px solid #ead4c8;border-radius:14px}.instant-order-pickup-choice legend{padding:0 5px;font-weight:800}.instant-order-pickup-choice label{display:flex!important;align-items:center;gap:8px;margin:0!important}.instant-order-pickup-choice input{width:auto!important}

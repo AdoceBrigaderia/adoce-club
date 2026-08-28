@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Adoce — Brand Board Mestre</title>
+  <link rel="stylesheet" href="../../src/styles.css">
+  <link rel="stylesheet" href="../../src/adoce-tokens.css">
+  <style>
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; color: var(--adoce-texto); background: var(--adoce-fundo); font-family: var(--adoce-fonte); }
+    img { display: block; max-width: 100%; }
+    a { color: inherit; }
+    .board { width: min(100%, 1480px); margin: 0 auto; }
+    .cover { min-height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; padding: var(--adoce-e5); color: var(--adoce-texto-claro); background: var(--adoce-marrom); }
+    .cover-top, .cover-bottom { display: flex; align-items: center; justify-content: space-between; gap: var(--adoce-e4); }
+    .cover-top img { width: 92px; height: 92px; object-fit: contain; padding: var(--adoce-e2); background: var(--adoce-rosa-claro); border-radius: var(--adoce-raio-pilula); }
+    .eyebrow { margin: 0 0 var(--adoce-e3); font-size: var(--adoce-t-menor); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .cover-copy { align-self: center; max-width: 980px; padding: var(--adoce-e6) 0; }
+    .cover h1 { margin: 0; font: 700 clamp(52px, 12vw, 148px)/.88 var(--adoce-fonte-voz); letter-spacing: -.055em; }
+    .cover h1 span { display: block; color: var(--adoce-rosa-escuro); }
+    .cover-lede { max-width: 760px; margin: var(--adoce-e5) 0 0; font: italic 500 clamp(21px, 3vw, 34px)/1.3 var(--adoce-fonte-voz); color: var(--adoce-rosa); }
+    .cover-bottom { padding-top: var(--adoce-e4); border-top: 1px solid var(--adoce-dourado); font-size: var(--adoce-t-pequeno); }
+    .section { padding: clamp(56px, 8vw, 112px) var(--adoce-e5); border-bottom: 1px solid var(--adoce-borda); }
+    .section-head { display: grid; gap: var(--adoce-e3); max-width: 880px; margin-bottom: var(--adoce-e6); }
+    .section h2 { margin: 0; font: 700 clamp(36px, 6vw, 72px)/.98 var(--adoce-fonte-voz); letter-spacing: -.035em; }
+    .section h3 { margin: 0; font: 700 clamp(22px, 3vw, 34px)/1.08 var(--adoce-fonte-voz); }
+    .section p { line-height: 1.65; }
+    .lede { margin: 0; color: var(--adoce-texto-suave); font-size: clamp(18px, 2.2vw, 24px); }
+    .grid { display: grid; gap: var(--adoce-e4); }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .card { padding: var(--adoce-e5); background: var(--adoce-superficie); border: 1px solid var(--adoce-borda); border-radius: var(--adoce-raio-grande); box-shadow: var(--adoce-sombra); }
+    .principle { min-height: 260px; display: flex; flex-direction: column; justify-content: space-between; }
+    .principle b { font: 700 clamp(28px, 4vw, 52px)/1 var(--adoce-fonte-voz); }
+    .principle span { color: var(--adoce-texto-suave); line-height: 1.5; }
+    .swatch { min-height: 280px; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--adoce-e2); padding: var(--adoce-e4); border: 1px solid color-mix(in srgb, var(--adoce-marrom) 12%, transparent); border-radius: var(--adoce-raio-grande); }
+    .swatch strong { font: 700 25px/1 var(--adoce-fonte-voz); }
+    .swatch small { font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .swatch-cream { background: var(--adoce-rosa); }
+    .swatch-pink { background: var(--adoce-rosa-escuro); }
+    .swatch-brown { color: var(--adoce-texto-claro); background: var(--adoce-marrom); }
+    .swatch-caramel { background: var(--adoce-dourado); }
+    .swatch-paper { background: var(--adoce-rosa-claro); }
+    .formula { display: grid; grid-template-columns: repeat(3, 1fr); overflow: hidden; border: 1px solid var(--adoce-borda); border-radius: var(--adoce-raio-grande); }
+    .formula > div { min-height: 220px; display: grid; place-items: center; padding: var(--adoce-e5); text-align: center; }
+    .formula strong { display: block; font: 700 clamp(29px, 4vw, 52px)/1 var(--adoce-fonte-voz); }
+    .formula p { margin: var(--adoce-e3) 0 0; }
+    .acts { color: var(--adoce-texto-claro); background: var(--adoce-marrom); }
+    .welcomes { background: var(--adoce-rosa); }
+    .points { background: var(--adoce-dourado); }
+    .type-stage { display: grid; gap: var(--adoce-e5); padding: clamp(28px, 5vw, 64px); background: var(--adoce-superficie); border: 1px solid var(--adoce-borda); border-radius: var(--adoce-raio-grande); }
+    .voice-type { margin: 0; font: 700 clamp(42px, 9vw, 110px)/.92 var(--adoce-fonte-voz); letter-spacing: -.05em; }
+    .support-type { margin: 0; max-width: 780px; font: 400 clamp(18px, 2vw, 26px)/1.6 var(--adoce-fonte); color: var(--adoce-texto-suave); }
+    .type-scale { display: grid; gap: var(--adoce-e3); }
+    .type-row { display: grid; grid-template-columns: 110px 1fr; align-items: baseline; gap: var(--adoce-e4); padding: var(--adoce-e3) 0; border-top: 1px solid var(--adoce-borda); }
+    .type-row code { color: var(--adoce-texto-suave); }
+    .photo-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: var(--adoce-e4); }
+    .photo, .photo-stack { overflow: hidden; border-radius: var(--adoce-raio-grande); background: var(--adoce-rosa); }
+    .photo img { width: 100%; height: 100%; min-height: 620px; object-fit: cover; }
+    .photo-stack { display: grid; grid-template-rows: 1fr 1fr; gap: var(--adoce-e2); background: transparent; }
+    .photo-stack figure { position: relative; overflow: hidden; min-height: 300px; margin: 0; border-radius: var(--adoce-raio-grande); background: var(--adoce-rosa); }
+    .photo-stack img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-stack figure:first-child img { object-fit: contain; padding: var(--adoce-e5); }
+    .caption { position: absolute; left: var(--adoce-e3); bottom: var(--adoce-e3); margin: 0; padding: var(--adoce-e2) var(--adoce-e3); border-radius: var(--adoce-raio-pilula); color: var(--adoce-texto-claro); background: var(--adoce-marrom); font-size: var(--adoce-t-menor); }
+    .logo-rules { display: grid; grid-template-columns: .8fr 1.2fr; gap: var(--adoce-e4); align-items: stretch; }
+    .logo-stage { display: grid; place-items: center; min-height: 420px; padding: var(--adoce-e6); background: var(--adoce-rosa-claro); border: 1px solid var(--adoce-borda); border-radius: var(--adoce-raio-grande); }
+    .logo-stage img { width: min(72%, 330px); }
+    .rule-list { display: grid; gap: var(--adoce-e3); }
+    .rule { padding: var(--adoce-e4); border-left: 4px solid var(--adoce-dourado); background: var(--adoce-superficie); border-radius: 0 var(--adoce-raio-card) var(--adoce-raio-card) 0; }
+    .rule strong { display: block; margin-bottom: var(--adoce-e1); }
+    .voice-grid blockquote { margin: 0; min-height: 210px; display: flex; flex-direction: column; justify-content: space-between; }
+    .voice-grid blockquote p { margin: 0; font: italic 500 24px/1.35 var(--adoce-fonte-voz); }
+    .voice-grid cite { margin-top: var(--adoce-e4); color: var(--adoce-texto-suave); font-style: normal; font-size: var(--adoce-t-pequeno); }
+    .components { background: var(--adoce-rosa); }
+    .component-lab { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--adoce-e4); }
+    .component-lab .card { grid-column: span 4; }
+    .component-lab .wide { grid-column: span 8; }
+    .button-demo { display: flex; flex-wrap: wrap; gap: var(--adoce-e3); align-items: center; }
+    .btn { min-height: var(--adoce-toque); display: inline-flex; align-items: center; justify-content: center; padding: var(--adoce-e3) var(--adoce-e5); border: 1px solid transparent; border-radius: var(--adoce-raio-card); font-weight: 700; text-decoration: none; }
+    .btn-primary { color: var(--adoce-texto-claro); background: var(--adoce-marrom); }
+    .btn-secondary { background: var(--adoce-superficie); border-color: var(--adoce-marrom); }
+    .btn-point { background: var(--adoce-dourado); }
+    .notice { padding: var(--adoce-e4); border-left: 4px solid var(--adoce-dourado); border-radius: var(--adoce-raio-card); background: var(--adoce-atencao-fundo); }
+    .reward { padding: var(--adoce-e5); color: var(--adoce-marrom); background: var(--adoce-dourado); border-radius: var(--adoce-raio-grande); }
+    .reward strong { font: 700 42px/1 var(--adoce-fonte-voz); }
+    .stamp-grid { display: grid; grid-template-columns: repeat(5, 52px); gap: var(--adoce-e2); }
+    .stamp { width: 52px; aspect-ratio: 1; display: grid; place-items: center; border: 1px dashed var(--adoce-dourado); border-radius: var(--adoce-raio-pilula); font-weight: 700; }
+    .stamp.done { border-style: solid; background: var(--adoce-rosa-escuro); }
+    .stamp.gift { background: var(--adoce-dourado); }
+    .surface-map { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--adoce-e3); }
+    .surface { min-height: 250px; padding: var(--adoce-e4); border-radius: var(--adoce-raio-grande); border: 1px solid var(--adoce-borda); }
+    .surface strong { display: block; margin-bottom: var(--adoce-e3); font: 700 27px/1 var(--adoce-fonte-voz); }
+    .surface ul { margin: 0; padding-left: var(--adoce-e4); color: var(--adoce-texto-suave); line-height: 1.7; }
+    .surface-public { background: var(--adoce-rosa-claro); }
+    .surface-club { background: var(--adoce-rosa); }
+    .surface-today { background: var(--adoce-superficie); }
+    .surface-operation { color: var(--adoce-texto-claro); background: var(--adoce-marrom); }
+    .do-dont { display: grid; grid-template-columns: 1fr 1fr; gap: var(--adoce-e4); }
+    .do, .dont { padding: var(--adoce-e5); border-radius: var(--adoce-raio-grande); }
+    .do { background: var(--adoce-ok-fundo); }
+    .dont { background: var(--adoce-erro-fundo); }
+    .do h3 { color: var(--adoce-ok-texto); }
+    .dont h3 { color: var(--adoce-erro-texto); }
+    .do ul, .dont ul { padding-left: var(--adoce-e4); line-height: 1.8; }
+    .footer { padding: clamp(56px, 8vw, 100px) var(--adoce-e5); text-align: center; color: var(--adoce-texto-claro); background: var(--adoce-marrom); }
+    .footer p { max-width: 760px; margin: 0 auto; font: italic 500 clamp(24px, 4vw, 42px)/1.3 var(--adoce-fonte-voz); }
+    .meta { margin-top: var(--adoce-e5); color: var(--adoce-texto-claro); font-size: var(--adoce-t-pequeno); }
+    @media (max-width: 980px) {
+      .grid-5 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3, .surface-map { grid-template-columns: repeat(2, 1fr); }
+      .photo-grid, .logo-rules { grid-template-columns: 1fr; }
+      .component-lab .card, .component-lab .wide { grid-column: span 6; }
+    }
+    @media (max-width: 660px) {
+      .cover, .section { padding-left: var(--adoce-e4); padding-right: var(--adoce-e4); }
+      .cover-top { align-items: flex-start; }
+      .cover-top img { width: 72px; height: 72px; }
+      .cover-bottom { align-items: flex-start; flex-direction: column; }
+      .grid-2, .grid-3, .grid-5, .surface-map, .do-dont { grid-template-columns: 1fr; }
+      .formula { grid-template-columns: 1fr; }
+      .photo img { min-height: 440px; }
+      .component-lab { display: grid; grid-template-columns: 1fr; }
+      .component-lab .card, .component-lab .wide { grid-column: auto; }
+      .stamp-grid { grid-template-columns: repeat(5, minmax(0, 52px)); }
+      .stamp { width: 100%; }
+      .type-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="board">
+    <section class="cover">
+      <header class="cover-top">
+        <p class="eyebrow">Sistema de marca e experiência · 12/08/2026</p>
+        <img src="../../public/site/logo.webp" alt="Logo oficial da Adoce Brigaderia">
+      </header>
+      <div class="cover-copy">
+        <h1>Adoce <span>Brand Board</span></h1>
+        <p class="cover-lede">Doce feito com afeto, para celebrar cada momento.</p>
+      </div>
+      <footer class="cover-bottom">
+        <span>Adoce Brigaderia · Fortaleza</span>
+        <span>Marca, produto, operação e relacionamento falando a mesma língua.</span>
+      </footer>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">01 · Essência</p>
+        <h2>Próxima como a Beth. Precisa como uma boa operação.</h2>
+        <p class="lede">A Adoce não é uma plataforma genérica com uma camada rosa. É uma confeitaria artesanal cuja tecnologia deve preservar afeto, reduzir esforço e cumprir o que promete.</p>
+      </header>
+      <div class="grid grid-3">
+        <article class="card principle"><b>Afeto percebido</b><span>O cuidado aparece na foto real, no texto humano, no presente e na forma de explicar limites — nunca em adjetivos vazios.</span></article>
+        <article class="card principle"><b>Desejo concreto</b><span>Produto, sabor, preço, disponibilidade e ação aparecem cedo. A vitrine existe para fazer alguém querer e conseguir comprar.</span></article>
+        <article class="card principle"><b>Confiança operacional</b><span>Estoque, promessa, reserva, carimbo, pagamento e histórico precisam concordar. Beleza sem verdade vira frustração.</span></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">02 · Princípio cromático</p>
+        <h2>Cinco cores. Uma lógica.</h2>
+        <p class="lede">As cinco cores são literais do manual. Nenhuma tela, campanha ou componente novo cria um hex próprio.</p>
+      </header>
+      <div class="grid grid-5">
+        <article class="swatch swatch-cream"><small>Rosa creme</small><strong>#FBE3DD</strong><span>Campos, acolhimento e avisos suaves.</span></article>
+        <article class="swatch swatch-pink"><small>Rosa cupcake</small><strong>#E89A91</strong><span>Marca, molduras e destaque afetivo.</span></article>
+        <article class="swatch swatch-brown"><small>Chocolate</small><strong>#3B1F12</strong><span>Texto, superfície escura e ação principal.</span></article>
+        <article class="swatch swatch-caramel"><small>Caramelo</small><strong>#E8AD67</strong><span>Urgência, presente e o que aponta.</span></article>
+        <article class="swatch swatch-paper"><small>Branco quente</small><strong>#FFF9F6</strong><span>Papel, respiro e fundo principal.</span></article>
+      </div>
+      <div class="formula" style="margin-top: var(--adoce-e5)">
+        <div class="acts"><div><strong>Chocolate age.</strong><p>CTA, confirmação, decisão e foco.</p></div></div>
+        <div class="welcomes"><div><strong>Rosa acolhe.</strong><p>Marca, campo, vínculo e proximidade.</p></div></div>
+        <div class="points"><div><strong>Caramelo aponta.</strong><p>Urgência, presente, atenção e próximo passo.</p></div></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">03 · Tipografia</p>
+        <h2>Playfair fala. Inter trabalha.</h2>
+      </header>
+      <div class="type-stage">
+        <p class="voice-type">A 15ª fatia é por nossa conta.</p>
+        <p class="support-type">Playfair Display Bold é a voz da marca: títulos, sabores, números grandes e momentos de celebração. Inter sustenta leitura, formulários, navegação e operação.</p>
+        <div class="type-scale">
+          <div class="type-row"><code>Capa</code><span style="font: 700 var(--adoce-t-capa)/1 var(--adoce-fonte-voz)">Feito pelas mãos da Beth.</span></div>
+          <div class="type-row"><code>Título 30</code><span style="font: 700 var(--adoce-t-titulo)/1.1 var(--adoce-fonte-voz)">Fatias de hoje</span></div>
+          <div class="type-row"><code>Destaque 22</code><span style="font: 700 var(--adoce-t-grande)/1.2 var(--adoce-fonte-voz)">Trufado de Ninho</span></div>
+          <div class="type-row"><code>Base 16</code><span style="font: 400 var(--adoce-t-base)/1.6 var(--adoce-fonte)">Você paga na retirada. Nada é cobrado agora.</span></div>
+          <div class="type-row"><code>Micro 11</code><span style="font: 700 var(--adoce-t-micro)/1.4 var(--adoce-fonte); letter-spacing:.12em; text-transform:uppercase">Última atualização · 19h42</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">04 · Fotografia</p>
+        <h2>O produto é real. A imagem também.</h2>
+        <p class="lede">Fotos devem mostrar o doce que a pessoa encontrará, a mão que faz e a ocasião em que ele circula. Ajustar luz e corte é permitido; inventar produto não é.</p>
+      </header>
+      <div class="photo-grid">
+        <figure class="photo"><img src="../../public/site/beth-fundadora.png" alt="Beth segurando uma torta da Adoce"></figure>
+        <div class="photo-stack">
+          <figure><img src="../../public/site/hero-slice-real.webp" alt="Fatia real da Adoce"><figcaption class="caption">Produto completo · fundo limpo</figcaption></figure>
+          <figure><img src="../../public/adoce-hoje/festas-eventos.webp" alt="Experiência da Adoce em festas e eventos"><figcaption class="caption">Contexto real · gente e ocasião</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">05 · Logo</p>
+        <h2>Respiro antes de efeito.</h2>
+      </header>
+      <div class="logo-rules">
+        <div class="logo-stage"><img src="../../public/site/logo.webp" alt="Logo oficial da Adoce Brigaderia em área de respiro"></div>
+        <div class="rule-list">
+          <div class="rule"><strong>Use o arquivo oficial.</strong><span>Sem redesenhar, trocar tipografia, inclinar, recortar o selo ou reconstruir a ilustração.</span></div>
+          <div class="rule"><strong>Fundo liso.</strong><span>A logo nunca fica sobre foto, textura poluída ou área com contraste imprevisível.</span></div>
+          <div class="rule"><strong>Área de respiro.</strong><span>Reserve ao redor pelo menos a altura visual da palavra “Adoce” dentro do selo.</span></div>
+          <div class="rule"><strong>Tamanho com dignidade.</strong><span>Se o texto interno do selo não puder ser lido, use a assinatura tipográfica ao lado — não esmague a marca.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">06 · Voz</p>
+        <h2>Português de gente.</h2>
+        <p class="lede">A frase ideal diz o que aconteceu, preserva a confiança e oferece uma saída.</p>
+      </header>
+      <div class="grid grid-3 voice-grid">
+        <blockquote class="card"><p>“As fatias de hoje já acabaram. Amanhã tem mais, feito na hora.”</p><cite>Limite sem culpa e sem promessa falsa.</cite></blockquote>
+        <blockquote class="card"><p>“Primeira vez? A gente cria seu cartão na hora. Já é de casa? Ele aparece do jeito que estava.”</p><cite>Identidade sem linguagem de sistema.</cite></blockquote>
+        <blockquote class="card"><p>“Essa página não existe. Mas doce a gente tem.”</p><cite>Erro com personalidade e saída.</cite></blockquote>
+        <blockquote class="card"><p>“É por nossa conta.”</p><cite>Presente é presente — nunca desconto.</cite></blockquote>
+        <blockquote class="card"><p>“Você paga na retirada. Nada é cobrado agora.”</p><cite>Ansiedade removida antes da ação.</cite></blockquote>
+        <blockquote class="card"><p>“Carimbou errado? Dá para desfazer nos próximos 10 minutos.”</p><cite>Operação segura para quem está de pé e com pressa.</cite></blockquote>
+      </div>
+    </section>
+
+    <section class="section components">
+      <header class="section-head">
+        <p class="eyebrow">07 · Componentes</p>
+        <h2>Uma linguagem, quatro superfícies.</h2>
+      </header>
+      <div class="component-lab">
+        <article class="card wide">
+          <h3>Ações</h3>
+          <p>Rótulos dizem o resultado, não o nome técnico da operação.</p>
+          <div class="button-demo">
+            <span class="btn btn-primary">Reservar minhas fatias</span>
+            <span class="btn btn-secondary">Ver o cardápio</span>
+            <span class="btn btn-point">Separei tudo · liberar pagamento</span>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Aviso acionável</h3>
+          <div class="notice"><strong>3 pedidos esperando você</strong><br><span>O mais antigo chegou às 18h47.</span></div>
+        </article>
+        <article class="card">
+          <h3>Presente</h3>
+          <div class="reward"><strong>Presente liberado</strong><p>Escolha uma fatia tradicional. É por nossa conta.</p></div>
+        </article>
+        <article class="card wide">
+          <h3>Cartão do Clube</h3>
+          <p>Grade de cinco colunas: legível no celular e reconhecível nos dois lados do balcão.</p>
+          <div class="stamp-grid" aria-label="Exemplo de progresso com oito carimbos em quatorze">
+            <span class="stamp done">1</span><span class="stamp done">2</span><span class="stamp done">3</span><span class="stamp done">4</span><span class="stamp done">5</span>
+            <span class="stamp done">6</span><span class="stamp done">7</span><span class="stamp done">8</span><span class="stamp">9</span><span class="stamp">10</span>
+            <span class="stamp">11</span><span class="stamp">12</span><span class="stamp">13</span><span class="stamp gift">14</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">08 · Superfícies</p>
+        <h2>Coerentes, mas nunca misturadas.</h2>
+      </header>
+      <div class="surface-map">
+        <article class="surface surface-public"><strong>Site público</strong><ul><li>Desejo e compra</li><li>Produto cedo</li><li>WhatsApp como continuidade</li><li>Nenhuma linguagem interna</li></ul></article>
+        <article class="surface surface-club"><strong>Clube Adoce</strong><ul><li>Pertencimento</li><li>Progresso e presente</li><li>Reconhecimento sem novo cadastro</li><li>Carteira primeiro</li></ul></article>
+        <article class="surface surface-today"><strong>Adoce Hoje</strong><ul><li>Disponibilidade verdadeira</li><li>Reserva simples</li><li>Calda por fatia</li><li>Retirada sem surpresa</li></ul></article>
+        <article class="surface surface-operation"><strong>Adoce Operação</strong><ul><li>Urgência primeiro</li><li>Busca sempre visível</li><li>Ações grandes</li><li>Auditoria e prevenção de erro</li></ul></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">09 · Mobile first</p>
+        <h2>Desenhado para o dedo, não reduzido para caber.</h2>
+      </header>
+      <div class="grid grid-3">
+        <article class="card"><h3>44 px mínimos</h3><p>Botões, ícones, filtros, steppers e alvos interativos precisam funcionar com uma mão, em movimento.</p></article>
+        <article class="card"><h3>16 px nos campos</h3><p>Evita zoom automático no iPhone e mantém a leitura estável durante compra e atendimento.</p></article>
+        <article class="card"><h3>320 → 1280 px</h3><p>Validar 320, 360, 375, 390, 412, 430, 768, 1024 e 1280 sem rolagem horizontal.</p></article>
+        <article class="card"><h3>100dvh</h3><p>Telas inteiras acompanham as barras móveis do navegador. Rodapés fixos respeitam a área segura.</p></article>
+        <article class="card"><h3>Sem carrossel</h3><p>Conteúdo que vende fica visível e empilhado. O celular não esconde opções atrás de gesto implícito.</p></article>
+        <article class="card"><h3>Saída sempre visível</h3><p>Toda tela responde “como volto?” e “qual é o próximo passo?” sem depender do botão do navegador.</p></article>
+      </div>
+    </section>
+
+    <section class="section">
+      <header class="section-head">
+        <p class="eyebrow">10 · Guardrails</p>
+        <h2>O que mantém a Adoce reconhecível e confiável.</h2>
+      </header>
+      <div class="do-dont">
+        <article class="do"><h3>Sempre</h3><ul><li>Usar tokens oficiais.</li><li>Mostrar foto real e disponibilidade real.</li><li>Explicar motivo, alternativa e próximo passo.</li><li>Tratar carimbo e presente como vínculo, não moeda.</li><li>Separar cliente, Clube, Adoce Hoje e Operação.</li><li>Testar celular primeiro e tablet na operação.</li></ul></article>
+        <article class="dont"><h3>Nunca</h3><ul><li>Declarar novo hex fora dos tokens.</li><li>Colocar a logo sobre fundo poluído.</li><li>Usar carrossel.</li><li>Construir montador sem custo apurado.</li><li>Gerar pagamento antes da separação.</li><li>Expor métricas, dados ou rotinas internas ao cliente.</li><li>Prometer o que o estoque ou a operação não confirmaram.</li></ul></article>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p>“Doce feito com afeto, para celebrar cada momento.”</p>
+      <div class="meta">Brand Board Mestre · Adoce Brigaderia · 12 de agosto de 2026</div>
+    </footer>
+  </main>
+</body>
+</html>

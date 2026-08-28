@@ -24,6 +24,7 @@ export type WeeklyMenuItem = {
   released_by?: string | null;
   status: "published" | "sold_out" | "hidden";
   note: string | null;
+  source_rule_id?: string | null;
 };
 
 type ScheduleFlavor = {
@@ -224,7 +225,7 @@ export default function WeeklyScheduleDialog({
     .filter((item) => (quantities[item.id] || 0) > 0)
     .map(
       (item) =>
-        `${quantities[item.id]}x ${item.flavor?.name} (${item.channel_slug === "in_person" ? "barraquinha" : "retirada"})`,
+        `${quantities[item.id]}x ${item.flavor?.name} (${item.channel_slug === "in_person" ? "Cantinho da Adoce" : "retirada"})`,
     )
     .join(", ");
   const reservationLink =
@@ -328,19 +329,19 @@ export default function WeeklyScheduleDialog({
       inactiveText: "Sem retirada programada neste dia",
       emptyTitle: "Os sabores para retirada ainda não foram publicados.",
       emptyText:
-        "Não precisa esperar a barraquinha. Chame a Adoce para consultar o que estará disponível.",
+        "Não precisa esperar o Cantinho da Adoce. Chame a Adoce para consultar o que estará disponível.",
     },
     {
       slug: "in_person" as const,
       icon: Store,
-      title: "Barraquinha de rua",
+      title: "Cantinho da Adoce",
       active: selectedDay.hasStall,
       windows: selectedDay.stall,
-      activeText: "A barraquinha estará por perto",
-      inactiveText: "Neste dia, a barraquinha descansa",
-      emptyTitle: "O cardápio da barraquinha ainda está ganhando forma.",
+      activeText: "O Cantinho da Adoce estará aberto",
+      inactiveText: "Neste dia, o Cantinho da Adoce descansa",
+      emptyTitle: "O cardápio do Cantinho da Adoce ainda está ganhando forma.",
       emptyText:
-        "Chame a gente e conte qual sabor você gostaria de encontrar na barraquinha.",
+        "Chame a gente e conte qual sabor você gostaria de encontrar no Cantinho da Adoce.",
     },
   ];
 
@@ -367,7 +368,7 @@ export default function WeeklyScheduleDialog({
           <div>
             <h2 id="weekly-schedule-title">Sabores e atendimentos da semana</h2>
             <p>
-              Veja o que estará disponível para retirada e na barraquinha, sem
+              Veja o que estará disponível para retirada e no Cantinho da Adoce, sem
               misturar as duas modalidades.
             </p>
           </div>
@@ -388,9 +389,9 @@ export default function WeeklyScheduleDialog({
               <span>{dayShort(day.date)}</span>
               <small>
                 {day.hasStall && day.hasPickup
-                  ? "Retirada + barraquinha"
+                  ? "Retirada + Cantinho da Adoce"
                   : day.hasStall
-                    ? "Barraquinha"
+                    ? "Cantinho da Adoce"
                     : day.hasPickup
                       ? "Retirada"
                       : "Sem atendimento"}
@@ -427,7 +428,7 @@ export default function WeeklyScheduleDialog({
               const emptyTitle = isPickupOnlyDay
                 ? "Neste dia, o atendimento é somente por retirada."
                 : isNoServiceDay
-                  ? "Neste dia, a barraquinha descansa."
+                  ? "Neste dia, o Cantinho da Adoce descansa."
                   : channel.emptyTitle;
               const emptyText = isPickupOnlyDay
                 ? "Escolha suas fatias na opção de retirada acima e combine com a Adoce o melhor horário para buscar."

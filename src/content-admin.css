@@ -73,7 +73,7 @@
 .admin-product-grid h3,
 .channel-grid h3,
 .gallery-modal h2 {
-  font-family: Georgia, serif;
+  font-family: 'Playfair Display',Georgia,serif;
   color: #35130c;
   margin: 0.2rem 0;
   font-size: clamp(1.5rem, 3vw, 2.2rem);
@@ -216,6 +216,9 @@
   padding: 0.9rem 0;
   border-bottom: 1px solid #f0ddd1;
 }
+.availability-list article {
+  grid-template-columns: auto minmax(150px, 1fr) minmax(140px, 160px) minmax(360px, 1.7fr);
+}
 .availability-list article:last-child,
 .hour-list article:last-child {
   border-bottom: 0;
@@ -239,6 +242,15 @@
   font-weight: 800;
   color: #6a382d;
 }
+.availability-release {
+  display: grid;
+  gap: 0.28rem;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #6a382d;
+}
+.availability-release select { width: 100%; }
 .availability-quantity input {
   width: 100%;
   border: 1px solid #e7cdbd;
@@ -252,6 +264,16 @@
   font-size: 0.68rem;
   font-weight: 600;
 }
+.availability-batches { display: grid; gap: .55rem; min-width: 0; }
+.availability-batches > span { color: #6a382d; font-size: .72rem; font-weight: 850; }
+.availability-batch-row { display: grid; grid-template-columns: minmax(112px,1fr) minmax(88px,.7fr) auto 34px 34px; gap: .45rem; align-items: end; }
+.availability-batch-row label { display: grid; gap: .2rem; min-width: 0; color: #6a382d; font-size: .62rem; font-weight: 750; }
+.availability-batch-row input { width: 100%; min-height: 38px; border: 1px solid #e7cdbd; border-radius: 9px; background: #fffaf5; padding: .5rem .58rem; color: #35130d; font: inherit; }
+.availability-batch-row > button { min-height: 34px; border: 1px solid #e7cdbd; border-radius: 9px; background: #fffaf5; color: #6a382d; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; font-weight: 800; }
+.availability-batch-row > button svg { width: 15px; }
+.availability-batch-row > button:disabled { opacity: .45; }
+.availability-batch-row.is-new { grid-template-columns: minmax(112px,1fr) minmax(88px,.7fr) minmax(135px,auto); padding-top: .5rem; border-top: 1px dashed #e7cdbd; }
+.availability-batch-total { font-size: .68rem; font-weight: 700; }
 .availability-dot {
   width: 13px;
   height: 13px;
@@ -585,6 +607,15 @@
   .availability-quantity {
     grid-column: 2;
   }
+  .availability-release {
+    grid-column: 2;
+  }
+  .availability-batches { grid-column: 2; }
+  .availability-batch-row,
+  .availability-batch-row.is-new { grid-template-columns: 1fr 1fr; }
+  .availability-batch-row > small { grid-column: 1 / -1; }
+  .availability-batch-row > button { min-height: 42px; }
+  .availability-batch-row.is-new > button { grid-column: 1 / -1; }
   .hour-form {
     grid-template-columns: 1fr 1fr;
   }
@@ -611,3 +642,15 @@
     padding: 0.7rem 0.82rem;
   }
 }
+@media (min-width: 641px) and (max-width: 1100px) {
+  .availability-list article {
+    grid-template-columns: auto minmax(0, 1fr) minmax(150px, 190px);
+  }
+  .availability-quantity,
+  .availability-release {
+    grid-column: 2 / -1;
+  }
+  .availability-batches { grid-column: 2 / -1; }
+}
+/* Filtro acionável usado pelos alertas de estoque da Central da operação. */
+.availability-filter{display:flex;gap:8px;overflow-x:auto;margin:18px 0 8px}.availability-filter button{border:1px solid var(--access-line);border-radius:999px;background:#fffaf5;color:#76564c;padding:9px 13px;white-space:nowrap;font-size:.68rem;font-weight:850;cursor:pointer}.availability-filter button.active{border-color:var(--access-chocolate);background:var(--access-chocolate);color:white}.availability-filter button.active.warning{border-color:#a75c31;background:#a75c31}.availability-filter-notice{margin:0 0 12px;padding:10px 12px;border-left:3px solid #a75c31;background:#fff4e8;color:#81523e;font-size:.68rem}.availability-filter-empty{min-height:170px;display:grid;place-items:center;align-content:center;gap:7px;text-align:center;color:#557661}.availability-filter-empty svg{width:26px}.availability-filter-empty small{color:#86675e}

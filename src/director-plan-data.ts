@@ -19,7 +19,7 @@ export const DIRECTOR_PHASE_CONTEXT: Record<string, { title: string; purpose: st
   },
   "Fase 2": {
     title: "Produção e movimentação de estoque",
-    purpose: "Organiza a entrada da produção, a transferência para a barraca e os alertas de disponibilidade.",
+    purpose: "Organiza a entrada da produção, a transferência para o Cantinho da Adoce e os alertas de disponibilidade.",
   },
   "Fase 3": {
     title: "Pedido online e reserva",
@@ -85,10 +85,10 @@ const ALL_DIRECTOR_DECISIONS: DirectorDecision[] = [
   ["D07", "Catálogo", "Cada sabor terá preço próprio ou preço por categoria?", "Permitir preço por sabor, com atalho para atualizar toda a categoria.", "Rubens e Beth", "Alta", "Fase 1"],
   ["D08", "Catálogo", "O cliente verá o número exato de unidades?", "Mostrar quantidade exata e destacar as últimas 3 unidades.", "Rubens e Beth", "Alta", "Fase 2"],
   ["D09", "Catálogo", "Produtos esgotados continuarão visíveis?", "Sim, com selo Esgotado hoje e sugestão de sabores semelhantes.", "Rubens e Beth", "Média", "Fase 3"],
-  ["D10", "Estoque", "Quais locais de estoque precisam existir?", "Fábrica/casa, barraca, reservado para retirada e reservado para delivery.", "Beth", "Crítica", "Fase 1"],
+  ["D10", "Estoque", "Quais locais de estoque precisam existir?", "Fábrica/casa, Cantinho da Adoce, reservado para retirada e reservado para delivery.", "Beth", "Crítica", "Fase 1"],
   ["D11", "Estoque", "Quem fará a contagem de abertura?", "Definir responsável principal e substituto.", "Rubens e Beth", "Crítica", "Fase 0"],
   ["D12", "Estoque", "Como a produção será lançada?", "Tela rápida com sabor e botões +1, +5, +10 e quantidade personalizada.", "Beth", "Alta", "Fase 2"],
-  ["D13", "Estoque", "Como os produtos serão transferidos para a barraca?", "Uma transferência em lote antes do festival, com conferência final.", "Beth", "Alta", "Fase 2"],
+  ["D13", "Estoque", "Como os produtos serão transferidos para o Cantinho da Adoce?", "Uma transferência em lote antes do festival, com conferência final.", "Beth", "Alta", "Fase 2"],
   ["D14", "Estoque", "Qual quantidade define estoque baixo?", "Padrão de 3 unidades, editável por produto.", "Beth", "Média", "Fase 2"],
   ["D15", "Estoque", "Quais motivos de ajuste serão obrigatórios?", "Venda não lançada, perda, avaria, brinde, consumo interno, contagem incorreta e outro.", "Rubens e Beth", "Crítica", "Fase 1"],
   ["D16", "Estoque", "Brindes e consumo interno baixam estoque?", "Sim, em movimentos próprios e sem entrar como faturamento.", "Rubens", "Alta", "Fase 1"],
@@ -168,7 +168,7 @@ const CURRENT_DECISION_COPY: Record<string, Pick<DirectorDecision, "question" | 
     recommendation: "Beth confirma a produção; Rubens atua como substituto. Ajustem os nomes se a rotina real for diferente.",
   },
   D13: {
-    question: "Como será feita a conferência das fatias levadas da produção para a barraquinha?",
+    question: "Como será feita a conferência das fatias levadas da produção para o Cantinho da Adoce?",
     recommendation: "Usar transferência em lote, com quantidade por sabor e confirmação de quem enviou e de quem recebeu.",
   },
   D19: {

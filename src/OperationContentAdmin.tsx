@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   Bell,
@@ -26,6 +26,8 @@ import {
 import ImageEditor, { PRODUCT_IMAGE_PRESET } from "./ImageEditor";
 import ClipboardImageInput from "./ClipboardImageInput";
 import WeeklyMenuAdmin from "./WeeklyMenuAdmin";
+import OperationSliceAlerts from "./OperationSliceAlerts";
+import { currentLocalTime, normalizeTime, type AvailabilityBatch } from "./availability-batches";
 import "./content-admin.css";
 
 export type AdminTab =
@@ -71,6 +73,10 @@ export type Availability = {
   note: string | null;
   quantity_available: number | null;
   quantity_reserved: number;
+};
+type AdminAvailabilityBatch = AvailabilityBatch & {
+  service_date: string;
+  active: boolean;
 };
 type Channel = {
   slug: string;
@@ -139,7 +145,7 @@ const week = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const scheduleChannelHints: Record<string, string> = {
   online_orders: "Pedidos de fatias feitos on-line para retirada na Adoce.",
-  in_person: "Atendimento presencial na barraquinha de rua.",
+  in_person: "Atendimento presencial no Cantinho da Adoce.",
   preorders: "Encomendas de tortas, docinhos, escola e eventos.",
   store: "Canal antigo, sem atendimento ao público no endereço de produção.",
 };
@@ -174,7 +180,7 @@ export function sortFlavorsByAvailability(
 
 const scheduleChannelLabels: Record<string, string> = {
   online_orders: "Pedidos online — retirada na Adoce",
-  in_person: "Barraquinha de rua",
+  in_person: "Cantinho da Adoce",
   preorders: "Encomendas futuras — não controla a retirada",
   store: "Canal antigo — não utilizar",
 };
@@ -182,12 +188,14 @@ const scheduleChannelLabels: Record<string, string> = {
 export function filterBusinessHours(
   hours: BusinessHour[],
   channelSlug: string,
-  weekday: number,
 ) {
-  return hours.filter(
-    (hour) =>
-      hour.channel_slug === channelSlug && hour.weekday === weekday,
-  );
+  return hours
+    .filter((hour) => hour.channel_slug === channelSlug)
+    .slice()
+    .sort(
+      (a, b) =>
+        a.weekday - b.weekday || a.opens_at.localeCompare(b.opens_at),
+    );
 }
 
 function todayInFortaleza() {
@@ -202,19 +210,34 @@ function todayInFortaleza() {
 export default function OperationContentAdmin({
   session,
   initialTab = "catalog",
+  initialAvailabilityFilter = "all",
 }: {
   session: Session;
   role: string;
   initialTab?: AdminTab;
+  initialAvailabilityFilter?: "all" | "low";
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "low">(initialAvailabilityFilter);
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [availabilityBatches, setAvailabilityBatches] = useState<AdminAvailabilityBatch[]>([]);
+  const [batchDrafts, setBatchDrafts] = useState<Record<string, { time: string; quantity: string }>>({});
   const sortedAvailabilityFlavors = useMemo(
     () => sortFlavorsByAvailability(flavors, availability),
     [flavors, availability],
   );
+  const lowStockFlavorIds = useMemo(
+    () => new Set(availability.filter((item) => {
+      const remaining = Number(item.quantity_available || 0) - Number(item.quantity_reserved || 0);
+      return item.status !== "unavailable" && item.quantity_available != null && remaining >= 0 && remaining <= 3;
+    }).map((item) => item.flavor_id)),
+    [availability],
+  );
+  const visibleAvailabilityFlavors = availabilityFilter === "low"
+    ? sortedAvailabilityFlavors.filter((flavor) => lowStockFlavorIds.has(flavor.id))
+    : sortedAvailabilityFlavors;
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
@@ -233,6 +256,7 @@ export default function OperationContentAdmin({
     closes_at: "18:00",
     note: "",
   });
+  const [editingHourId, setEditingHourId] = useState<string | null>(null);
   const [exceptionDraft, setExceptionDraft] = useState({
     channel_slug: "store",
     service_date: todayInFortaleza(),
@@ -264,6 +288,7 @@ export default function OperationContentAdmin({
       flavorResult,
       imageResult,
       availabilityResult,
+      batchResult,
       channelResult,
       hourResult,
       exceptionResult,
@@ -287,6 +312,12 @@ export default function OperationContentAdmin({
         .from("flavor_availability")
         .select("id,flavor_id,status,note,quantity_available,quantity_reserved")
         .eq("service_date", today),
+      supabase
+        .from("flavor_availability_batches")
+        .select("id,flavor_id,service_date,available_from,quantity_available,quantity_reserved,active")
+        .eq("service_date", today)
+        .eq("active", true)
+        .order("available_from"),
       supabase
         .from("store_channels")
         .select("slug,label,status,message,next_change_at")
@@ -319,6 +350,7 @@ export default function OperationContentAdmin({
       flavorResult.error ||
       imageResult.error ||
       availabilityResult.error ||
+      batchResult.error ||
       channelResult.error ||
       hourResult.error ||
       exceptionResult.error ||
@@ -333,6 +365,7 @@ export default function OperationContentAdmin({
     );
     setImages((imageResult.data || []) as FlavorImage[]);
     setAvailability((availabilityResult.data || []) as Availability[]);
+    setAvailabilityBatches((batchResult.data || []) as AdminAvailabilityBatch[]);
     setChannels((channelResult.data || []) as Channel[]);
     setHours((hourResult.data || []) as BusinessHour[]);
     setExceptions((exceptionResult.data || []) as BusinessHourException[]);
@@ -427,35 +460,49 @@ export default function OperationContentAdmin({
         edited,
       );
       if (isWholeCake) {
-        const { error: wholeCakeError } = await supabase
-          .from("flavors")
-          .update({
-            whole_cake_image_path: uploaded.imageUrl,
-            whole_cake_original_image_path: uploaded.originalImageUrl,
-          })
-          .eq("id", flavor.id);
+        const { error: wholeCakeError } = await supabase.rpc(
+          "manager_save_dynamic_image_asset",
+          {
+            requested_asset_kind: "whole-cake",
+            requested_owner_id: flavor.id,
+            requested_image_url: uploaded.imageUrl,
+            requested_original_image_url: uploaded.originalImageUrl,
+            requested_alt_text: `Torta inteira G ${flavor.name}`,
+          },
+        );
         if (wholeCakeError) throw wholeCakeError;
         setPendingImage(null);
         setNotice("Foto da torta inteira G adicionada ao produto.");
         await load();
         return;
       }
-      const { error: imageError } = await supabase
-        .from("flavor_images")
-        .insert({
-          flavor_id: flavor.id,
-          image_path: uploaded.imageUrl,
-          original_image_path: uploaded.originalImageUrl,
-          alt_text: `${flavor.name} — foto ${role === "cover" ? "principal" : "da galeria"}`,
-          image_role: role,
-          sort_order: current.length,
-        });
+      const altText = `${flavor.name} — foto ${role === "cover" ? "principal" : "da galeria"}`;
+      const { error: imageError } = await supabase.rpc(
+        "manager_save_gallery_media_asset",
+        {
+          requested_owner_kind: "flavor-gallery",
+          requested_owner_id: flavor.id,
+          requested_image_url: uploaded.imageUrl,
+          requested_original_image_url: uploaded.originalImageUrl,
+          requested_media_id: null,
+          requested_alt_text: altText,
+          requested_caption: "",
+          requested_role: role,
+          requested_sort_order: null,
+        },
+      );
       if (imageError) throw imageError;
       if (role === "cover") {
-        const { error: coverError } = await supabase
-          .from("flavors")
-          .update({ image_path: uploaded.imageUrl })
-          .eq("id", flavor.id);
+        const { error: coverError } = await supabase.rpc(
+          "manager_save_dynamic_image_asset",
+          {
+            requested_asset_kind: "flavor-cover",
+            requested_owner_id: flavor.id,
+            requested_image_url: uploaded.imageUrl,
+            requested_original_image_url: uploaded.originalImageUrl,
+            requested_alt_text: altText,
+          },
+        );
         if (coverError) throw coverError;
       }
       setPendingImage(null);
@@ -473,10 +520,14 @@ export default function OperationContentAdmin({
   const removeImage = async (image: FlavorImage) => {
     if (!window.confirm("Remover esta foto da apresentação do produto?"))
       return;
-    const { error } = await requireSupabase()
-      .from("flavor_images")
-      .update({ active: false })
-      .eq("id", image.id);
+    const { error } = await requireSupabase().rpc(
+      "manager_disable_gallery_media",
+      {
+        requested_owner_kind: "flavor-gallery",
+        requested_owner_id: image.flavor_id,
+        requested_media_id: image.id,
+      },
+    );
     if (error) return setNotice(error.message);
     setNotice("Foto removida da apresentação.");
     await load();
@@ -502,36 +553,56 @@ export default function OperationContentAdmin({
     await load();
   };
 
-  const setTodayQuantity = async (flavor: Flavor, rawValue: string) => {
-    const current = availability.find((item) => item.flavor_id === flavor.id);
-    const quantity = rawValue.trim() === "" ? null : Math.max(0, Number(rawValue));
-    if (quantity !== null && (!Number.isInteger(quantity) || quantity > 9999)) {
-      setNotice("Informe uma quantidade inteira entre 0 e 9.999.");
-      return;
+  const saveAvailabilityBatch = async (
+    flavor: Flavor,
+    batch: AdminAvailabilityBatch | null,
+    event: FormEvent<HTMLFormElement>,
+  ) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const availableFrom = String(form.get("available_from") || "");
+    const quantity = Number(form.get("quantity_available"));
+    if (!/^\d{2}:\d{2}$/.test(availableFrom)) {
+      return setNotice("Informe o horário em que o lote ficará pronto.");
+    }
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9999) {
+      return setNotice("Informe uma quantidade inteira entre 1 e 9.999 fatias.");
     }
     setBusy(true);
-    const reserved = Math.min(current?.quantity_reserved || 0, quantity ?? 9999);
-    const { error } = await requireSupabase()
-      .from("flavor_availability")
-      .upsert(
-        {
-          flavor_id: flavor.id,
-          service_date: todayInFortaleza(),
-          status: current?.status || (quantity && quantity > 0 ? "available" : "unavailable"),
-          quantity_available: quantity,
-          quantity_reserved: quantity === null ? current?.quantity_reserved || 0 : reserved,
-          updated_by: session.user.id,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "flavor_id,service_date" },
-      );
+    const { error } = await requireSupabase().rpc(
+      "staff_upsert_flavor_availability_batch",
+      {
+        target_batch_id: batch?.id || null,
+        target_flavor_id: flavor.id,
+        target_service_date: todayInFortaleza(),
+        target_available_from: availableFrom,
+        target_quantity_available: quantity,
+      },
+    );
     setBusy(false);
     if (error) return setNotice(error.message);
+    setBatchDrafts((current) => ({
+      ...current,
+      [flavor.id]: { time: currentLocalTime(), quantity: "" },
+    }));
     setNotice(
-      quantity === null
-        ? `${flavor.name}: controle numérico desativado.`
-        : `${flavor.name}: ${quantity} fatia(s) cadastrada(s).`,
+      `${flavor.name}: ${quantity} ${quantity === 1 ? "fatia" : "fatias"} a partir das ${availableFrom.replace(":00", "h")}.`,
     );
+    await load();
+  };
+
+  const deleteAvailabilityBatch = async (
+    flavor: Flavor,
+    batch: AdminAvailabilityBatch,
+  ) => {
+    setBusy(true);
+    const { error } = await requireSupabase().rpc(
+      "staff_delete_flavor_availability_batch",
+      { target_batch_id: batch.id },
+    );
+    setBusy(false);
+    if (error) return setNotice(error.message);
+    setNotice(`${flavor.name}: lote das ${normalizeTime(batch.available_from)} removido.`);
     await load();
   };
 
@@ -551,21 +622,54 @@ export default function OperationContentAdmin({
     await load();
   };
 
-  const addHour = async () => {
+  const saveHour = async () => {
     if (hourDraft.opens_at >= hourDraft.closes_at) {
       return setNotice("O horário de encerramento precisa ser depois do horário de início.");
     }
-    const { error } = await requireSupabase()
-      .from("business_hours")
-      .upsert(
-        { ...hourDraft, note: hourDraft.note.trim() || null, active: true },
-        { onConflict: "channel_slug,weekday,opens_at" },
-      );
+    const payload = {
+      ...hourDraft,
+      note: hourDraft.note.trim() || null,
+      active: true,
+    };
+    const query = editingHourId
+      ? requireSupabase()
+          .from("business_hours")
+          .update(payload)
+          .eq("id", editingHourId)
+      : requireSupabase()
+          .from("business_hours")
+          .upsert(payload, {
+            onConflict: "channel_slug,weekday,opens_at",
+          });
+    const { error } = await query;
     if (error) return setNotice(error.message);
     setNotice(
-      `${channels.find((channel) => channel.slug === hourDraft.channel_slug)?.label || hourDraft.channel_slug}: horário de ${week[hourDraft.weekday]} salvo.`,
+      `${channels.find((channel) => channel.slug === hourDraft.channel_slug)?.label || hourDraft.channel_slug}: horário de ${week[hourDraft.weekday]} ${editingHourId ? "atualizado" : "salvo"}.`,
     );
+    setEditingHourId(null);
     await load();
+  };
+
+  const editHour = (hour: BusinessHour) => {
+    setEditingHourId(hour.id);
+    setHourDraft({
+      channel_slug: hour.channel_slug,
+      weekday: hour.weekday,
+      opens_at: hour.opens_at.slice(0, 5),
+      closes_at: hour.closes_at.slice(0, 5),
+      note: hour.note || "",
+    });
+  };
+
+  const cancelHourEdit = () => {
+    setEditingHourId(null);
+    setHourDraft((current) => ({
+      ...current,
+      weekday: 1,
+      opens_at: "09:00",
+      closes_at: "18:00",
+      note: "",
+    }));
   };
 
   const removeHour = async (id: string) => {
@@ -950,8 +1054,14 @@ export default function OperationContentAdmin({
               </p>
             </div>
           </div>
+          <OperationSliceAlerts />
+          <div className="availability-filter" role="group" aria-label="Filtrar itens por situação do estoque">
+            <button type="button" className={availabilityFilter === "all" ? "active" : ""} onClick={() => setAvailabilityFilter("all")}>Todos os itens</button>
+            <button type="button" className={availabilityFilter === "low" ? "active warning" : ""} onClick={() => setAvailabilityFilter("low")}>{lowStockFlavorIds.size} com estoque baixo</button>
+          </div>
+          {availabilityFilter === "low" ? <p className="availability-filter-notice" role="status">Exibindo somente itens disponíveis com até 3 unidades livres.</p> : null}
           <div className="availability-list">
-            {sortedAvailabilityFlavors.map((flavor) => {
+            {visibleAvailabilityFlavors.map((flavor) => {
                 const current =
                   availability.find((item) => item.flavor_id === flavor.id)
                     ?.status || "unavailable";
@@ -983,36 +1093,86 @@ export default function OperationContentAdmin({
                         ),
                       )}
                     </select>
-                    <label className="availability-quantity">
-                      <span>Estoque atual</span>
-                      <input
-                        type="number"
-                        min="0"
-                        max="9999"
-                        step="1"
-                        defaultValue={inventory?.quantity_available ?? ""}
-                        placeholder="Sem controle"
-                        onBlur={(event) =>
-                          void setTodayQuantity(flavor, event.currentTarget.value)
-                        }
-                        disabled={busy}
-                        aria-label={`Quantidade disponível de ${flavor.name}`}
-                      />
-                      {inventory?.quantity_available !== null &&
-                      inventory?.quantity_available !== undefined ? (
-                        <small>
-                          {Math.max(
-                            inventory.quantity_available -
-                              (inventory.quantity_reserved || 0),
-                            0,
-                          )}{" "}
-                          livre(s) · {inventory.quantity_reserved || 0} reservada(s)
+                    <div className="availability-batches">
+                      <span>Lotes por horário</span>
+                      {availabilityBatches
+                        .filter((batch) => batch.flavor_id === flavor.id)
+                        .map((batch) => (
+                          <form
+                            className="availability-batch-row"
+                            key={batch.id}
+                            onSubmit={(event) => void saveAvailabilityBatch(flavor, batch, event)}
+                          >
+                            <label>
+                              <span>Disponível a partir</span>
+                              <input
+                                name="available_from"
+                                type="time"
+                                defaultValue={normalizeTime(batch.available_from)}
+                                disabled={busy}
+                                required
+                              />
+                            </label>
+                            <label>
+                              <span>Quantidade</span>
+                              <input
+                                name="quantity_available"
+                                type="number"
+                                min="1"
+                                max="9999"
+                                step="1"
+                                defaultValue={batch.quantity_available}
+                                disabled={busy}
+                                required
+                              />
+                            </label>
+                            <small>{batch.quantity_reserved || 0} reservada(s)</small>
+                            <button type="submit" disabled={busy} aria-label={`Salvar lote de ${flavor.name}`}><Save /></button>
+                            <button type="button" disabled={busy || Boolean(batch.quantity_reserved)} onClick={() => void deleteAvailabilityBatch(flavor, batch)} aria-label={`Excluir lote de ${flavor.name}`}><Trash2 /></button>
+                          </form>
+                        ))}
+                      <form
+                        className="availability-batch-row is-new"
+                        onSubmit={(event) => void saveAvailabilityBatch(flavor, null, event)}
+                      >
+                        <label>
+                          <span>Novo horário</span>
+                          <input
+                            name="available_from"
+                            type="time"
+                            value={batchDrafts[flavor.id]?.time || currentLocalTime()}
+                            onChange={(event) => setBatchDrafts((current) => ({ ...current, [flavor.id]: { time: event.target.value, quantity: current[flavor.id]?.quantity || "" } }))}
+                            disabled={busy}
+                            required
+                          />
+                        </label>
+                        <label>
+                          <span>Quantidade</span>
+                          <input
+                            name="quantity_available"
+                            type="number"
+                            min="1"
+                            max="9999"
+                            step="1"
+                            value={batchDrafts[flavor.id]?.quantity || ""}
+                            onChange={(event) => setBatchDrafts((current) => ({ ...current, [flavor.id]: { time: current[flavor.id]?.time || currentLocalTime(), quantity: event.target.value } }))}
+                            placeholder="Ex.: 8"
+                            disabled={busy}
+                            required
+                          />
+                        </label>
+                        <button type="submit" disabled={busy}><Plus /> Adicionar lote</button>
+                      </form>
+                      {inventory?.quantity_available !== null && inventory?.quantity_available !== undefined ? (
+                        <small className="availability-batch-total">
+                          Total: {Math.max(inventory.quantity_available - (inventory.quantity_reserved || 0), 0)} livre(s) · {inventory.quantity_reserved || 0} reservada(s)
                         </small>
                       ) : null}
-                    </label>
+                    </div>
                   </article>
                 );
               })}
+            {availabilityFilter === "low" && !visibleAvailabilityFlavors.length ? <div className="availability-filter-empty"><Check /><strong>Nenhum item com estoque baixo.</strong><small>Todos os itens controlados têm mais de 3 unidades livres.</small></div> : null}
           </div>
         </section>
       )}
@@ -1084,17 +1244,18 @@ export default function OperationContentAdmin({
                 <small>Agenda automática</small>
                 <h2>Horários recorrentes</h2>
                 <p>
-                  Escolha o tipo de atendimento e o dia. A lista mostrará somente
-                  os horários dessa seleção.
+                  Escolha o tipo de atendimento para ver todos os dias e horários
+                  cadastrados. Edite ou exclua cada faixa quando precisar.
                 </p>
               </div>
             </div>
             <div className="hour-form">
               <select
                 value={hourDraft.channel_slug}
-                onChange={(e) =>
-                  setHourDraft({ ...hourDraft, channel_slug: e.target.value })
-                }
+                onChange={(e) => {
+                  setEditingHourId(null);
+                  setHourDraft({ ...hourDraft, channel_slug: e.target.value });
+                }}
               >
                 {channels.filter((channel) => channel.slug !== "store").map((c) => (
                   <option key={c.slug} value={c.slug}>
@@ -1131,24 +1292,26 @@ export default function OperationContentAdmin({
                   setHourDraft({ ...hourDraft, closes_at: e.target.value })
                 }
               />
-              <button className="admin-primary" onClick={() => void addHour()}>
-                <Plus /> Salvar horário
+              <button className="admin-primary" onClick={() => void saveHour()}>
+                {editingHourId ? <Save /> : <Plus />}{" "}
+                {editingHourId ? "Atualizar horário" : "Adicionar horário"}
               </button>
+              {editingHourId ? (
+                <button type="button" onClick={cancelHourEdit}>
+                  Cancelar edição
+                </button>
+              ) : null}
             </div>
             <div className="hour-scope-summary" aria-live="polite">
               <strong>
                 {scheduleChannelLabels[hourDraft.channel_slug] ||
                   channels.find((channel) => channel.slug === hourDraft.channel_slug)
-                    ?.label || hourDraft.channel_slug} · {week[hourDraft.weekday]}
+                    ?.label || hourDraft.channel_slug}
               </strong>
               <small>{scheduleChannelHints[hourDraft.channel_slug]}</small>
             </div>
             <div className="hour-list">
-              {filterBusinessHours(
-                hours,
-                hourDraft.channel_slug,
-                hourDraft.weekday,
-              )
+              {filterBusinessHours(hours, hourDraft.channel_slug)
                 .map((hour) => (
                 <article key={hour.id}>
                   <Clock3 />
@@ -1164,6 +1327,14 @@ export default function OperationContentAdmin({
                     </small>
                   </span>
                   <button
+                    className="icon-button"
+                    type="button"
+                    onClick={() => editHour(hour)}
+                    aria-label={`Editar horário de ${week[hour.weekday]}`}
+                  >
+                    <Pencil />
+                  </button>
+                  <button
                     className="icon-button danger"
                     onClick={() => void removeHour(hour.id)}
                   >
@@ -1171,14 +1342,10 @@ export default function OperationContentAdmin({
                   </button>
                 </article>
                 ))}
-              {filterBusinessHours(
-                hours,
-                hourDraft.channel_slug,
-                hourDraft.weekday,
-              ).length === 0 ? (
+              {filterBusinessHours(hours, hourDraft.channel_slug).length === 0 ? (
                 <p className="hour-empty-state">
-                  Nenhum horário cadastrado para esta combinação. Nesse dia, esse
-                  atendimento aparecerá como fechado.
+                  Nenhum dia ou horário cadastrado para este atendimento. Ele
+                  aparecerá como fechado até que uma faixa seja adicionada.
                 </p>
               ) : null}
             </div>

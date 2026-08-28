@@ -36,11 +36,7 @@ const normalizePhone = (value: string) => {
     : null;
 };
 
-const strongPassword = (password: string) =>
-  password.length >= 10 &&
-  /[a-z]/.test(password) &&
-  /[A-Z]/.test(password) &&
-  /\d/.test(password);
+const validPassword = (password: string) => password.length >= 6;
 
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -73,8 +69,8 @@ export default async (request: Request) => {
   const phone = normalizePhone(body.phone || "");
   const password = body.password || "";
   if (!phone) return json({ error: "Informe um celular válido com DDD." }, 400);
-  if (!strongPassword(password)) {
-    return json({ error: "A senha deve ter pelo menos 10 caracteres, com maiúscula, minúscula e número." }, 400);
+  if (!validPassword(password)) {
+    return json({ error: "A senha deve ter pelo menos 6 caracteres." }, 400);
   }
 
   const adminClient = createClient(supabaseUrl, secretKey, {

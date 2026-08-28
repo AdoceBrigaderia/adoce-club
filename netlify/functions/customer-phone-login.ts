@@ -13,18 +13,31 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const allowedOrigin = (request: Request) => {
   const origin = request.headers.get("origin");
   if (!origin) return true;
+  const configured = env("SITE_URL")?.replace(/\/$/, "");
   return new Set([
+    configured,
     "https://www.adocebrigaderia.com.br",
     "https://clube.adocebrigaderia.com.br",
+    "https://operacao.adocebrigaderia.com.br",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-  ]).has(origin);
+    "http://localhost:4182",
+    "http://127.0.0.1:4182",
+  ].filter(Boolean)).has(origin);
 };
 
 const normalizePhone = (value: string) => {
   const digits = value.replace(/\D/g, "");
   const national = digits.startsWith("55") ? digits.slice(2) : digits;
   return national.length === 10 || national.length === 11 ? `+55${national}` : null;
+};
+
+const safelyMatches = (received: string, expected: string) => {
+  const size = Math.max(received.length, expected.length);
+  let difference = received.length ^ expected.length;
+  for (let index = 0; index < size; index += 1)
+    difference |= (received.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
+  return difference === 0;
 };
 
 export default async (request: Request) => {
@@ -35,6 +48,20 @@ export default async (request: Request) => {
   const phone = normalizePhone(body.phone || "");
   const password = body.password || "";
   if (!phone || !password) return json({ error: "Informe celular e senha." }, 400);
+
+  if (env("HOMOLOGATION_FAKE_LOGIN_ENABLED") === "true") {
+    const configuredPhone = normalizePhone(env("HOMOLOGATION_FAKE_USER") || "");
+    const configuredPassword = env("HOMOLOGATION_FAKE_PASSWORD") || "";
+    if (
+      configuredPhone &&
+      configuredPassword &&
+      safelyMatches(phone, configuredPhone) &&
+      safelyMatches(password, configuredPassword)
+    ) {
+      return json({ homologation_demo: true });
+    }
+    return json({ error: "Usuário ou senha incorretos." }, 401);
+  }
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey = env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
@@ -47,7 +74,7 @@ export default async (request: Request) => {
   });
   const { data: profile } = await admin
     .from("profiles")
-    .select("id,active,account_status,auth_upgraded_at")
+    .select("id,active,account_status,auth_upgraded_at,must_change_password")
     .eq("phone_e164", phone)
     .maybeSingle();
 
@@ -74,7 +101,10 @@ export default async (request: Request) => {
     return json({ error: "Celular ou senha incorretos." }, 401);
   }
 
-  return json(payload);
+  return json({
+    ...payload,
+    must_change_password: Boolean(profile.must_change_password),
+  });
 };
 
 export const config = { path: "/api/customer-phone-login" };

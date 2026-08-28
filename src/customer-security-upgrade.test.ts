@@ -19,4 +19,12 @@ describe("primeiro acesso seguro do cliente", () => {
     expect(endpoint).toContain("phone_e164: phone");
     expect(endpoint).toContain("Este celular já está ligado a outro cadastro");
   });
+
+  it("aceita qualquer senha com pelo menos 6 caracteres", () => {
+    expect(access).toContain("securityPassword.length < 6");
+    expect(access).toContain('minLength={6}');
+    expect(endpoint).toContain("password.length >= 6");
+    expect(endpoint).not.toContain("/[A-Z]/");
+    expect(endpoint).not.toContain("/[a-z]/");
+  });
 });

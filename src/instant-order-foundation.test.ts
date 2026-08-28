@@ -7,6 +7,8 @@ const migration = readFileSync(
 );
 const publicPanel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
 const operationQueue = readFileSync(new URL("./OperationInstantOrders.tsx", import.meta.url), "utf8");
+const manualEntry = readFileSync(new URL("./OperationManualSale.tsx", import.meta.url), "utf8");
+const todayPage = readFileSync(new URL("./AdoceHoje.tsx", import.meta.url), "utf8");
 const accessApp = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("./operation-instant-orders-enhancements.css", import.meta.url), "utf8");
 
@@ -41,5 +43,27 @@ describe("fundação segura dos pedidos imediatos", () => {
     expect(styles).toContain("overflow: visible");
     expect(operationQueue).toContain("Marcar como entregue");
     expect(accessApp).toContain('location.hash.includes("vendas")');
+  });
+
+  it("registra pedidos recebidos no WhatsApp antes de tratá-los como venda concluída", () => {
+    expect(manualEntry).toContain("Registrar pedido recebido no WhatsApp");
+    expect(manualEntry).toContain('mode === "order"');
+    expect(manualEntry).toContain('rpc("staff_submit_instant_order_v5"');
+    expect(manualEntry).toContain("entrou na fila para conferência");
+    expect(manualEntry).toContain("Mensagens recebidas diretamente no WhatsApp não entram sozinhas na fila");
+  });
+
+  it("baixa venda manual pelo caixa ou pela fila de conciliacao, nunca pela funcao aposentada", () => {
+    expect(manualEntry).toContain('rpc("staff_create_manual_sale_in_cash_v2"');
+    expect(manualEntry).toContain('rpc("manager_create_manual_sale_for_reconciliation"');
+    expect(manualEntry).toContain('rpc("staff_open_cash_session"');
+    expect(manualEntry).not.toContain('rpc("staff_create_manual_sale",');
+    expect(manualEntry).toContain("Baixar venda e enviar para conciliação");
+  });
+
+  it("faz os botões de pedido do Adoce Hoje registrarem a solicitação antes do WhatsApp", () => {
+    expect(todayPage).toContain("Montar pedido para retirada");
+    expect(todayPage).toContain('onClick={() => openInstantOrder()}');
+    expect(todayPage).toContain("Pedir para retirar");
   });
 });

@@ -1,8 +1,9 @@
 import { Customer } from "./domain";
+import { createClientId } from "./lib/client-id";
 
 const makeCustomer = (balance: number, suffix: string): Customer => ({
-  id: crypto.randomUUID(), name: "Rubens", phone: `11999990${suffix}`, email: "rubens@exemplo.local",
-  balance, token: `adoce_${crypto.randomUUID().replaceAll("-", "")}`, status: "ACTIVE", marketingConsent: false, transactions: []
+  id: createClientId(), name: "Rubens", phone: `11999990${suffix}`, email: "rubens@exemplo.local",
+  balance, token: `adoce_${createClientId().replaceAll("-", "")}`, status: "ACTIVE", marketingConsent: false, transactions: []
 });
 
 const initial = [makeCustomer(0,"00"), makeCustomer(8,"08"), makeCustomer(13,"13"), makeCustomer(14,"14")];

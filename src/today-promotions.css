@@ -7,7 +7,7 @@
   color: #fff8ef;
   background: #35130d;
 }
-.today-group-order h2 { max-width: 760px; margin: .45rem 0 1rem; font: 500 clamp(2.2rem, 5vw, 4.8rem)/.95 Georgia, serif; }
+.today-group-order h2 { max-width: 760px; margin: .45rem 0 1rem; font: 500 clamp(2.2rem, 5vw, 4.8rem)/.95 'Playfair Display',Georgia,serif; }
 .today-group-order p:not(.today-kicker) { max-width: 700px; color: #efd8ca; font-size: 1.08rem; line-height: 1.7; }
 .today-group-order ul { display: grid; gap: .7rem; padding: 0; margin: 1.5rem 0 2rem; list-style: none; }
 .today-group-order li { display: flex; align-items: center; gap: .65rem; color: #ffe3d1; }
@@ -24,10 +24,21 @@
 .today-availability-seal.upcoming { color: #fff; background: #d85e66; }
 .today-availability-seal.available svg { fill: currentColor; }
 .today-availability-seal.unavailable { color: #6e5145; background: #f2e7de; }
-.today-flavor-card.unavailable .today-card-image img { filter: grayscale(.45); opacity: .52; }
-.today-flavor-card.unavailable { background: #f6efe9; }
+.today-flavor-card.unavailable .today-card-image img { filter: none; opacity: 1; }
+.today-flavor-card.unavailable { position: relative; background: #fffaf7; }
+.today-flavor-card.unavailable .today-availability-seal { display: none; }
+.today-unavailable-prompt { position: absolute; left: 10px; right: calc(50% + 10px); bottom: 10px; z-index: 5; padding: 9px 10px; display: grid; gap: 2px; border: 1px solid rgba(255,255,255,.82); border-radius: 11px; color: #35130d; background: rgba(255,250,247,.94); box-shadow: 0 8px 22px rgba(52,19,13,.18); text-align: left; opacity: 0; transform: translateY(5px); transition: .18s ease; cursor: pointer; }
+.today-unavailable-prompt strong { font-size: .66rem; line-height: 1.1; }
+.today-unavailable-prompt span { font-size: .56rem; line-height: 1.2; }
+.today-flavor-card.unavailable:hover .today-unavailable-prompt,
+.today-flavor-card.unavailable:focus-within .today-unavailable-prompt { opacity: 1; transform: none; }
+.today-alert-flavor { border: 1px solid #f33d68!important; color: #f33d68!important; background: #fff!important; }
 @media (max-width: 820px) {
   .today-group-order { grid-template-columns: 1fr; }
   .today-group-visual, .today-group-visual img { min-height: 340px; }
   .today-availability-seal { width: 92px; }
+}
+@media (hover:none), (max-width:620px) {
+  .today-unavailable-prompt { pointer-events: none; }
+  .today-flavor-card.unavailable:focus-within .today-unavailable-prompt { pointer-events: auto; }
 }

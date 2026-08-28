@@ -6,6 +6,21 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[functions."request-email-code"]
+  timeout = 26
+
+[functions."verify-email-code"]
+  timeout = 26
+
+[functions."auth-whatsapp-start"]
+  timeout = 26
+
+[functions."auth-whatsapp-verify"]
+  timeout = 26
+
+[functions."supabase-send-sms-hook"]
+  timeout = 20
+
 [[redirects]]
   from = "/documentacao"
   to = "/documentacao.html"
@@ -17,9 +32,14 @@
   status = 200
 
 [[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
   from = "/*"
-  to = "/404.html"
-  status = 404
+  to = "/index.html"
+  status = 200
 
 [[headers]]
   for = "/*"

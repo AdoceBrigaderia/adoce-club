@@ -16,7 +16,7 @@
   color: var(--access-coral-dark); text-transform: uppercase; letter-spacing: .15em;
   font-size: .58rem; font-weight: 850;
 }
-.operation-product-options > h2 { font: 600 1.8rem Georgia, serif; margin: 6px 0; }
+.operation-product-options > h2 { font: 600 1.8rem 'Playfair Display',Georgia,serif; margin: 6px 0; }
 .operation-product-options > p { color: #826157; font-size: .68rem; line-height: 1.5; }
 .operation-option-list { display: grid; margin: 15px 0; border-top: 1px solid var(--access-line); }
 .operation-option-list article {

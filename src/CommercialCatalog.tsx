@@ -1,25 +1,27 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   CakeSlice,
   Check,
   Clock3,
   Heart,
-  MapPin,
+  Images,
   MessageCircle,
   PackageCheck,
   ShieldCheck,
-  Sparkles,
+  X,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import {
   businessDateAfter,
+  commercialProductPriceLabel,
   commercialWhatsAppMessage,
   CommercialRequestField,
   CommercialEventSubcategory,
   CommercialProduct,
   CommercialProductOption,
+  PreorderBusinessHour,
+  PreorderBusinessHourException,
   CommercialSegment,
   eventSubcategoryLabels,
   formatCommercialDate,
@@ -36,9 +38,22 @@ import "./commercial-catalog.css";
 import "./commercial-product-options.css";
 import "./commercial-editorial.css";
 import "./commercial-validation.css";
+import "./commercial-gallery.css";
+import "./commercial-reference-2026.css";
 import { trackPublicEvent } from "./analytics";
+import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
+import PublicCatalogNav from "./PublicCatalogNav";
+import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
+import ExperienciaAdoce from "./ExperienciaAdoce";
+import type { Experiencia } from "./experiencias-adoce";
+import type { Produto } from "./catalogo-de-encomendas";
+import {
+  ajustarParaMultiplo,
+  descreverComposicao,
+  ehQuantidadeValida,
+  MULTIPLO,
+} from "./pacotes-de-docinhos";
 
-const segments = Object.keys(segmentLabels) as CommercialSegment[];
 type SegmentMedia = {
   segment: CommercialSegment;
   image_url: string;
@@ -55,7 +70,8 @@ const segmentFallbackMedia: Record<CommercialSegment, SegmentMedia> = {
 
 // A galeria principal já apresenta a mídia da categoria sem repeti-la abaixo.
 const singleImageSegments = new Set<CommercialSegment>();
-const categoryOnlyMediaSegments = new Set<CommercialSegment>(["events", "school", "rentals"]);
+const categoryOnlyMediaSegments = new Set<CommercialSegment>(["cakes", "events", "school", "rentals"]);
+const categoryGallerySegments = new Set<CommercialSegment>(["events", "rentals"]);
 
 const groupOptions = (options: CommercialProductOption[]) => options.reduce<Record<string, CommercialProductOption[]>>(
   (groups, option) => ({ ...groups, [option.group_key]: [...(groups[option.group_key] || []), option] }),
@@ -68,22 +84,10 @@ const catalogProductImage = (product: CommercialProduct) => {
   return null;
 };
 
-function Brand({ subtitle = "Encomendas & eventos" }: { subtitle?: string }) {
-  return (
-    <a className="commercial-brand" href="/#inicio">
-      <img src="/site/logo.webp" alt="Adoce Brigaderia" />
-      <span>
-        <strong>Adoce Brigaderia</strong>
-        <small>{subtitle}</small>
-      </span>
-    </a>
-  );
-}
-
 function ProductDetails({ product }: { product: CommercialProduct }) {
   return (
     <div className="commercial-product-details">
-      {product.details.packages?.length ? (
+      {product.segment !== "sweets" && product.details.packages?.length ? (
         <div className="commercial-package-prices">
           {product.details.packages.map((item) => (
             <span key={item.quantity}>
@@ -137,104 +141,88 @@ function ProductDetails({ product }: { product: CommercialProduct }) {
 type ExperienceCopy = {
   label: string;
   title: string;
-  text: string;
   cta: string;
   compareTitle: string;
-  proofTitle: string;
-  proofText: string;
-  steps: [string, string, string];
 };
+
+const catalogPresentation: Record<CommercialSegment, {
+  title: string;
+  link?: string;
+  search: string;
+  action: string;
+  filters: string[];
+}> = {
+  cakes: { title: "Tortas", search: "Buscar torta...", action: "Encomendar", filters: ["Tradicionais", "Premium", "Kits festa"] },
+  sweets: { title: "Docinhos", search: "Buscar docinho...", action: "Encomendar", filters: ["Brigadeiros", "Caixas", "Kits festa"] },
+  events: { title: "Eventos", search: "Buscar evento...", action: "Solicitar orçamento", filters: ["Todos", "Tabuleiro", "Mini Festas"] },
+  school: { title: "Adoce na Escola", link: "Opções para lanche e comemorações", search: "Buscar opção...", action: "Encomendar", filters: ["Lanche", "Comemoração", "Lembrancinhas"] },
+  rentals: { title: "Aluguel de decoração", search: "Buscar decoração...", action: "Reservar", filters: ["Temas", "Mobiliário", "Kits completos"] },
+};
+
+function matchesCatalogFilter(product: CommercialProduct, filter: string) {
+  const haystack = `${product.name} ${product.short_description} ${product.description}`.toLocaleLowerCase("pt-BR");
+  if (["Tradicionais", "Brigadeiros", "Todos", "Temas", "Lanche"].includes(filter)) return true;
+  if (filter === "Premium") return /premium|especial|gourmet/.test(haystack);
+  if (filter === "Caixas") return /caixa|presente/.test(haystack);
+  if (filter === "Kits festa" || filter === "Kits completos") return /kit|completo/.test(haystack);
+  if (filter === "Tabuleiro") return product.subcategory === "trays" || /tabuleiro/.test(haystack);
+  if (filter === "Mini Festas") return product.subcategory === "mini_parties" || /mini festa/.test(haystack);
+  if (filter === "Mobiliário") return /mobili|mesa|painel|peça/.test(haystack);
+  if (filter === "Comemoração") return /anivers|comemora|festa/.test(haystack);
+  if (filter === "Lembrancinhas") return /lembran|mimo|presente/.test(haystack);
+  return true;
+}
 
 const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
   cakes: {
     label: "Tortas artesanais por encomenda",
     title: "A torta certa começa pelo tamanho do seu momento.",
-    text: "Escolha quantas pessoas vão celebrar. Depois, combine massa e recheios com a Adoce.",
     cta: "Ver qual tamanho combina",
     compareTitle: "Encontre o tamanho do seu momento",
-    proofTitle: "Você escolhe. A gente faz do zero.",
-    proofText: "Cada torta é preparada artesanalmente para a data combinada, com acabamento alinhado antes da produção.",
-    steps: ["Escolha o tamanho", "Combine massa e recheios", "Confirme a data e o acabamento"],
   },
   sweets: {
     label: "Docinhos feitos um a um",
     title: "Feitos um a um. Escolhidos mais de uma vez.",
-    text: "Veja os docinhos por inteiro, escolha entre tradicionais e especiais e monte a quantidade da sua comemoração.",
     cta: "Comparar docinhos",
     compareTitle: "Compare as opções",
-    proofTitle: "Pequenos no tamanho. Enormes no cuidado.",
-    proofText: "Produção artesanal, sabores escolhidos por você e docinhos apresentados por inteiro para facilitar a sua escolha.",
-    steps: ["Escolha a linha", "Defina quantidade e sabores", "Confirme a data da encomenda"],
   },
   events: {
     label: "Festas e eventos",
     title: "O doce vai até os convidados. A experiência fica na festa.",
-    text: "No Tabuleiro, a Adoce circula e serve durante o evento. Nas Mini Festas, você escolhe uma celebração compacta e cheia de carinho.",
     cta: "Escolher a experiência",
     compareTitle: "Escolha a experiência",
-    proofTitle: "Veja como cada experiência funciona.",
-    proofText: "Quantidade, duração, deslocamento e tudo o que está incluído aparecem antes de você solicitar.",
-    steps: ["Escolha Tabuleiro ou Mini Festa", "Compare formato e valor", "Conte a data e o local"],
   },
   school: {
     label: "Adoce na Escola",
     title: "Cabe no recreio. Fica na memória.",
-    text: "Escolha o formato da comemoração e leve para a escola uma experiência gostosa, bonita e organizada para as crianças.",
     cta: "Ver pacotes para a escola",
     compareTitle: "Escolha como celebrar",
-    proofTitle: "Pensado para a rotina da escola.",
-    proofText: "Você encontra o que cada pacote inclui, a quantidade de crianças e a antecedência necessária.",
-    steps: ["Escolha o pacote", "Informe turma e quantidade", "Alinhe data e personalização"],
   },
   rentals: {
     label: "Aluguel de decoração",
     title: "Sua festa bonita sem precisar comprar tudo.",
-    text: "Escolha peças e kits da Adoce, retire no período combinado e monte uma comemoração com a sua cara.",
     cta: "Conhecer os kits",
     compareTitle: "Encontre o kit certo",
-    proofTitle: "Veja cada peça antes de escolher.",
-    proofText: "As fotos apresentam as montagens, e a gente confirma peças, período, retirada, devolução e disponibilidade antes do sinal.",
-    steps: ["Escolha o kit", "Confira peças e período", "Confirme retirada e devolução"],
   },
-};
-
-const catalogIntroCopy: Record<CommercialSegment, string> = {
-  cakes: "Escolha o tamanho e descubra tudo o que pode deixar sua torta com a cara da celebração.",
-  sweets: "Veja os docinhos por inteiro, compare os pacotes e escolha os sabores que vão completar a mesa.",
-  events: "Escolha entre o Tabuleiro de Doces servido durante o evento e as Mini Festas compactas, personalizadas e prontas para celebrar.",
-  school: "A foto mostra uma comemoração real. Compare os pacotes e escolha o nível de experiência para a turma.",
-  rentals: "A foto mostra uma montagem real. Compare os kits e veja quais peças fazem sentido para a sua festa.",
-};
-
-const eventSubcategoryCopy: Record<CommercialEventSubcategory, string> = {
-  trays: "Uma experiência conduzida pela Adoce durante a festa. Escolha a quantidade de colheres que combina com o número de convidados.",
-  mini_parties: "Soluções compactas para celebrar com beleza e praticidade, reunindo doces, bolo e decoração em uma proposta completa.",
 };
 
 const miniPartyExperience: ExperienceCopy = {
   ...experienceCopy.events,
   label: "Mini Festas Adoce",
   title: "Uma festa inteira, no tamanho certo para o seu momento.",
-  text: "Bolo, doces e decoração reunidos em formatos compactos para celebrar com beleza, carinho e praticidade.",
   cta: "Escolher uma Mini Festa",
   compareTitle: "Escolha sua Mini Festa",
-  proofTitle: "Compacta no formato. Completa na intenção.",
-  proofText: "Você confere o que está incluído, o valor inicial e as possibilidades de personalização antes de solicitar.",
-  steps: ["Escolha o formato", "Confira o que está incluído", "Alinhe tema, data e local"],
-};
-
-const segmentRoutes: Record<CommercialSegment, string> = {
-  cakes: "#encomendas",
-  sweets: "#docinhos",
-  events: "#eventos",
-  school: "#adoce-na-escola",
-  rentals: "#aluguel-decoracao",
 };
 
 export default function CommercialCatalog({ initialSegment = "cakes" }: { initialSegment?: CommercialSegment }) {
+  const orderWhatsAppNumber = useOrderWhatsAppNumber();
   const [products, setProducts] = useState<CommercialProduct[]>([]);
+  const [viewedImage, setViewedImage] = useState<ProductImage | null>(null);
   const [segmentMedia, setSegmentMedia] = useState<SegmentMedia[]>([]);
   const [galleryMedia, setGalleryMedia] = useState<CommercialMediaItem[]>([]);
+  const [preorderHours, setPreorderHours] = useState<PreorderBusinessHour[]>([]);
+  const [preorderExceptions, setPreorderExceptions] = useState<PreorderBusinessHourException[]>([]);
+  const [sizeGalleryOpen, setSizeGalleryOpen] = useState(false);
   const [segment, setSegment] = useState<CommercialSegment>(initialSegment);
   const [eventSubcategory, setEventSubcategory] = useState<CommercialEventSubcategory>("trays");
   const [selected, setSelected] = useState<CommercialProduct | null>(null);
@@ -267,11 +255,13 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     void (async () => {
       setLoading(true);
       setCatalogError("");
-      const [productResult, optionResult, mediaResult, galleryResult] = await Promise.all([
+      const [productResult, optionResult, mediaResult, galleryResult, hoursResult, exceptionsResult] = await Promise.all([
         requireSupabase().from("commercial_products").select("*").eq("active", true).eq("published", true).order("sort_order"),
         requireSupabase().from("commercial_product_options").select("*").eq("active", true).order("sort_order"),
         requireSupabase().from("commercial_segment_media").select("segment,image_url,alt_text"),
         requireSupabase().from("commercial_media_items").select("*").eq("active", true).order("sort_order"),
+        requireSupabase().from("business_hours").select("channel_slug,weekday,opens_at,closes_at,active").eq("channel_slug", "preorders"),
+        requireSupabase().from("business_hour_exceptions").select("channel_slug,service_date,closed,opens_at,closes_at").eq("channel_slug", "preorders").gte("service_date", new Date().toISOString().slice(0, 10)),
       ]);
       if (productResult.error || optionResult.error) setCatalogError("Não conseguimos abrir as opções agora. Sua comemoração continua importante para a gente — tente novamente ou fale com a Adoce pelo WhatsApp.");
       else {
@@ -282,19 +272,27 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
         })));
         if (!mediaResult.error) setSegmentMedia((mediaResult.data || []) as SegmentMedia[]);
         if (!galleryResult.error) setGalleryMedia((galleryResult.data || []) as CommercialMediaItem[]);
+        if (!hoursResult.error) setPreorderHours((hoursResult.data || []) as PreorderBusinessHour[]);
+        if (!exceptionsResult.error) setPreorderExceptions((exceptionsResult.data || []) as PreorderBusinessHourException[]);
       }
       setLoading(false);
     })();
   }, [catalogReload]);
 
-  useEffect(() => setSegment(initialSegment), [initialSegment]);
+  useEffect(() => {
+    setSegment(initialSegment);
+    setViewedImage(null);
+    setSizeGalleryOpen(false);
+    setSelected(null);
+    setNotice("");
+    setResult(null);
+  }, [initialSegment]);
 
   const visibleProducts = useMemo(
-    () => products.filter((product) =>
-      product.segment === segment
-      && (segment !== "events" || product.subcategory === eventSubcategory)),
-    [eventSubcategory, products, segment],
+    () => products.filter((product) => product.segment === segment),
+    [products, segment],
   );
+  const displayedProducts = visibleProducts;
   const activeEventProduct = segment === "events" && eventSubcategory === "mini_parties"
     ? products.find((product) => product.segment === "events" && product.subcategory === "mini_parties")
     : null;
@@ -313,7 +311,25 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     ? galleryMedia.filter((item) => item.product_id === activeEventProduct.id)
     : galleryMedia.filter((item) => item.segment === segment);
   const productGallery = (productId: string) => galleryMedia.filter((item) => item.product_id === productId);
-
+  const sweetPackages = useMemo(() => products
+    .filter((product) => product.segment === "sweets")
+    .flatMap((product) => product.details.packages || [])
+    .filter((item, index, all) => all.findIndex((candidate) => candidate.quantity === item.quantity) === index)
+    .sort((a, b) => a.quantity - b.quantity), [products]);
+  const cakeGalleryGroups = useMemo(() => visibleProducts
+    .filter((product) => product.segment === "cakes")
+    .map((product) => {
+      const media = productGallery(product.id)
+        .map((item) => ({ src: item.image_url || item.original_image_url, alt: item.alt_text || product.name }))
+        .filter((item): item is { src: string; alt: string } => Boolean(item.src));
+      const fallback = catalogProductImage(product);
+      return {
+        id: product.id,
+        name: product.name,
+        media: media.length ? media : fallback ? [{ src: fallback, alt: product.name }] : [],
+      };
+    })
+    .filter((group) => group.media.length), [visibleProducts, galleryMedia]);
   const openRequest = (product: CommercialProduct) => {
     trackPublicEvent("product_view", { product_id: product.id, product_slug: product.slug, segment: product.segment });
     trackPublicEvent("prebook_start", { product_id: product.id, product_slug: product.slug, segment: product.segment });
@@ -323,7 +339,9 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     setFieldErrors({});
     setForm((current) => ({
       ...current,
-      quantity: product.minimum_quantity,
+      quantity: product.segment === "sweets"
+        ? ajustarParaMultiplo(Math.max(MULTIPLO, product.minimum_quantity))
+        : product.minimum_quantity,
       date: businessDateAfter(new Date(), product.lead_business_days),
       preferences: "",
       notes: "",
@@ -331,16 +349,6 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     requestAnimationFrame(() =>
       document.getElementById("solicitar-encomenda")?.scrollIntoView({ behavior: "smooth" }),
     );
-  };
-
-  const changeSegment = (nextSegment: CommercialSegment) => {
-    setSegment(nextSegment);
-    setSelected(null);
-    setResult(null);
-    setNotice("");
-    setFieldErrors({});
-    const nextHash = segmentRoutes[nextSegment];
-    if (window.location.hash !== nextHash) window.location.hash = nextHash;
   };
 
   const changeEventSubcategory = (nextSubcategory: CommercialEventSubcategory) => {
@@ -359,7 +367,11 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
       selected.minimum_quantity,
       minimumDate,
       selected.lead_business_days,
+      { hours: preorderHours, exceptions: preorderExceptions },
     );
+    if (selected.segment === "sweets" && !ehQuantidadeValida(form.quantity)) {
+      errors.quantity = "Docinhos são vendidos somente em múltiplos de 25 unidades.";
+    }
     const firstInvalidField = (Object.keys(errors) as CommercialRequestField[])[0];
     if (firstInvalidField) {
       trackPublicEvent("prebook_error", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment, result: "validation" });
@@ -414,25 +426,159 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
   };
 
   const whatsappUrl = selected
-    ? `https://wa.me/5585981994370?text=${encodeURIComponent(
-        commercialWhatsAppMessage(selected, result?.request_number),
-      )}`
+    ? orderWhatsAppUrl(orderWhatsAppNumber, commercialWhatsAppMessage(selected, result?.request_number))
     : "";
+  const presentation = catalogPresentation[segment];
+  const viewerImages = displayedProducts.flatMap((product) => {
+    const media = productGallery(product.id)
+      .map((item) => ({ src: item.image_url || item.original_image_url, alt: item.alt_text || product.name }))
+      .filter((item): item is ProductImage => Boolean(item.src));
+    const fallback = catalogProductImage(product);
+    return media.length ? media : fallback ? [{ src: fallback, alt: product.name }] : [];
+  });
+  const categoryGalleryEnabled = categoryGallerySegments.has(segment);
+  const categoryProductIds = new Set(visibleProducts.map((product) => product.id));
+  const categoryProductImages = visibleProducts.flatMap((product) => {
+    const media = galleryMedia
+      .filter((item) => item.product_id === product.id)
+      .map((item) => ({ src: item.image_url || item.original_image_url, alt: item.alt_text || product.name }))
+      .filter((item): item is ProductImage => Boolean(item.src));
+    const fallback = catalogProductImage(product);
+    return media.length ? media : fallback ? [{ src: fallback, alt: product.name }] : [];
+  });
+  const categoryGalleryImages = categoryGalleryEnabled
+    ? Array.from(new Map([
+      ...galleryMedia
+        .filter((item) => item.segment === segment || (item.product_id ? categoryProductIds.has(item.product_id) : false))
+        .map((item) => ({
+          src: item.image_url || item.original_image_url,
+          alt: item.alt_text || presentation.title,
+        }))
+        .filter((item): item is ProductImage => Boolean(item.src)),
+      ...categoryProductImages,
+      { src: activeMedia.image_url, alt: activeMedia.alt_text },
+    ].map((item) => [item.src, item])).values())
+    : [];
+  const categoryCarouselItems: CommercialMediaItem[] = categoryGalleryImages.map((item, index) => ({
+    id: `category-${segment}-${index}`,
+    segment,
+    product_id: null,
+    media_type: "image",
+    image_url: item.src,
+    original_image_url: item.src,
+    external_url: null,
+    alt_text: item.alt,
+    caption: "",
+    sort_order: index,
+    active: true,
+  }));
+
+  const experienceSegment: Experiencia | null =
+    segment === "events" || segment === "school" || segment === "rentals" ? segment : null;
+  if (!loading && experienceSegment && !catalogError) {
+    const experienceProducts: Produto[] = visibleProducts.map((product) => ({
+      id: product.id,
+      segmento: product.segment,
+      nome: product.name,
+      resumo: product.short_description || product.description,
+      preco: Number(product.base_price || 0),
+      sufixo: product.price_suffix || "",
+      minimo: product.minimum_quantity,
+      prazoDiasUteis: product.lead_business_days,
+      fotoUrl: catalogProductImage(product),
+      publicado: product.published && product.active,
+      ordem: product.sort_order,
+    }));
+    const experiencePhotos = categoryGalleryImages.map((item) => item.src);
+    if (!experiencePhotos.includes(activeMedia.image_url)) experiencePhotos.unshift(activeMedia.image_url);
+    return (
+      <>
+        <PublicCatalogNav active={segment} />
+        <ExperienciaAdoce
+          qual={experienceSegment}
+          produtos={experienceProducts}
+          fotos={experiencePhotos}
+          whatsapp={orderWhatsAppNumber}
+        />
+      </>
+    );
+  }
 
   return (
     <main className="commercial-page">
-      <header className="commercial-header">
-        <Brand subtitle={activeExperience.label} />
-        <a href="/#inicio">
-          <ArrowLeft /> Voltar ao site
-        </a>
-      </header>
 
-      <section className={`commercial-hero segment-${segment}${segment === "events" ? ` event-${eventSubcategory}` : ""}${segment === "sweets" ? " without-media" : ""}`}>
+      <PublicCatalogNav active={segment} />
+
+      <section className="commercial-reference" aria-live="polite">
+        <header className="commercial-reference-heading">
+          <span>CATÁLOGO ADOCE</span>
+          <h1>{presentation.title}</h1>
+          {presentation.link ? (
+            <button type="button" onClick={() => document.querySelector(".commercial-reference-grid")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+              <CakeSlice aria-hidden="true" /> {presentation.link}
+            </button>
+          ) : null}
+          {segment === "cakes" ? (
+            <button className="commercial-reference-gallery" type="button" onClick={() => setSizeGalleryOpen(true)}>
+              <Images aria-hidden="true" /> Galeria de imagens
+            </button>
+          ) : null}
+          {categoryGalleryEnabled && categoryGalleryImages.length ? (
+            <button className="commercial-reference-gallery" type="button" onClick={() => setViewedImage(categoryGalleryImages[0])}>
+              <Images aria-hidden="true" /> Galeria de imagens
+            </button>
+          ) : null}
+        </header>
+
+        {catalogError ? <div className="commercial-catalog-error" role="alert">
+          <Heart />
+          <div><strong>As opções não carregaram desta vez.</strong><p>{catalogError}</p></div>
+          <button type="button" onClick={() => setCatalogReload((value) => value + 1)}>Tentar novamente</button>
+        </div> : null}
+
+        {!loading && categoryGalleryEnabled ? (
+          <div className="commercial-reference-category-carousel">
+            <CommercialMediaCarousel
+              items={categoryCarouselItems}
+              fallbackImage={activeMedia.image_url}
+              fallbackAlt={activeMedia.alt_text}
+              label={presentation.title}
+            />
+          </div>
+        ) : null}
+
+        {loading ? <p>Carregando opções...</p> : displayedProducts.length ? (
+          <div className="commercial-reference-grid">
+            {displayedProducts.map((product) => {
+              const itemGallery = productGallery(product.id)
+                .map((item) => ({ src: item.image_url || item.original_image_url, alt: item.alt_text || product.name }))
+                .filter((item): item is ProductImage => Boolean(item.src));
+              const fallback = catalogProductImage(product);
+              const primaryImage = itemGallery[0] || (fallback ? { src: fallback, alt: product.name } : null);
+              return (
+                <article key={product.id} className={categoryGalleryEnabled ? "without-product-image" : undefined}>
+                  {!categoryGalleryEnabled && primaryImage ? (
+                    <button className="commercial-reference-image" type="button" onClick={() => setViewedImage(primaryImage)} aria-label={`Ampliar fotos de ${product.name}`}>
+                      <img src={primaryImage.src} alt={primaryImage.alt} loading="lazy" />
+                      <span aria-hidden="true"><Heart /></span>
+                    </button>
+                  ) : null}
+                  <div className="commercial-reference-card-copy">
+                    <h2>{product.name}</h2>
+                    <strong>{commercialProductPriceLabel(product)}</strong>
+                    <button type="button" onClick={() => openRequest(product)}><MessageCircle aria-hidden="true" /> {presentation.action}</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : <p>Nenhum produto publicado nesta categoria.</p>}
+      </section>
+
+      <section className={`commercial-legacy-section commercial-hero segment-${segment}${segment === "events" ? ` event-${eventSubcategory}` : ""}${segment === "sweets" ? " without-media" : ""}`}>
         <div className="commercial-hero-copy">
           <span>{activeExperience.label}</span>
           <h1>{activeExperience.title}</h1>
-          <p>{activeExperience.text}</p>
           <button type="button" onClick={() => document.getElementById("opcoes-comerciais")?.scrollIntoView({ behavior: "smooth" })}>
             {activeExperience.cta} <ArrowRight />
           </button>
@@ -446,50 +592,20 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
             <button type="button" key={product.id} onClick={() => openRequest(product)}>
               <span>
                 <strong>{product.name}</strong>
-                <small>{product.short_description}</small>
               </span>
-              <b>{money(product.base_price)}</b>
+              <b>{commercialProductPriceLabel(product)}</b>
             </button>
           ))}
           {!loading && visibleProducts.length === 0 ? <p>As opções desta categoria serão publicadas em breve.</p> : null}
         </aside>
       </section>
 
-      <section className="commercial-choice-flow" aria-label="Como escolher">
-        <div>
-          <span>O que você escolhe</span>
-          <h2>{activeExperience.proofTitle}</h2>
-          <p>{activeExperience.proofText}</p>
-        </div>
-        <ol>
-          {activeExperience.steps.map((step, index) => <li key={step}><b>{index + 1}</b><span>{step}</span></li>)}
-        </ol>
-      </section>
-
-      <div className="commercial-proof-strip" aria-label="Diferenciais da Adoce">
-        <span><Sparkles /> Feito artesanalmente</span>
-        <span><Heart /> Fotos dos produtos e serviços</span>
-        <span><MessageCircle /> Atendimento próximo pelo WhatsApp</span>
-      </div>
-
-      <nav className="commercial-segments" aria-label="Categorias de encomendas">
-        {segments.map((item) => (
-          <button
-            key={item}
-            className={segment === item ? "active" : ""}
-            onClick={() => changeSegment(item)}
-          >
-            {segmentLabels[item]}
-          </button>
-        ))}
-      </nav>
-
-      <section className="commercial-catalog" id="opcoes-comerciais" aria-live="polite">
+      <section className="commercial-legacy-section commercial-catalog" id="opcoes-comerciais" aria-live="polite">
         {catalogError ? <div className="commercial-catalog-error" role="alert">
           <Heart />
           <div><strong>As opções não carregaram desta vez.</strong><p>{catalogError}</p></div>
           <button type="button" onClick={() => setCatalogReload((value) => value + 1)}>Tentar novamente</button>
-          <a href="https://wa.me/5585981994370?text=Ol%C3%A1!%20N%C3%A3o%20consegui%20ver%20as%20op%C3%A7%C3%B5es%20no%20site%20e%20gostaria%20de%20atendimento." target="_blank" rel="noreferrer">Falar no WhatsApp</a>
+          <a href={orderWhatsAppUrl(orderWhatsAppNumber, "Olá! Não consegui ver as opções no site e gostaria de atendimento.")} target="_blank" rel="noreferrer">Falar no WhatsApp</a>
         </div> : null}
         {segment === "events" ? (
           <nav className="commercial-subcategories" aria-label="Tipos de eventos">
@@ -507,17 +623,22 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
           </nav>
         ) : null}
         <div className="commercial-section-title">
-          <span>{segmentLabels[segment]}</span>
+          <span>Catálogo Adoce</span>
           <h2>
             {segment === "cakes"
-              ? "Tortas inteiras"
+              ? "Tortas"
               : segment === "events"
                 ? eventSubcategoryLabels[eventSubcategory]
                 : segmentLabels[segment]}
           </h2>
-          <p>
-            {segment === "events" ? eventSubcategoryCopy[eventSubcategory] : catalogIntroCopy[segment]}
-          </p>
+          {segment === "cakes" ? (
+            <button className="commercial-size-gallery-button" type="button" onClick={() => setSizeGalleryOpen(true)}>
+              <Images /> Galeria de imagens
+            </button>
+          ) : null}
+          {segment === "sweets" && sweetPackages.length ? <div className="commercial-shared-packages" aria-label="Tamanhos dos pacotes">
+            {sweetPackages.map((item) => <span key={item.quantity}><strong>{item.quantity}</strong> unidades</span>)}
+          </div> : null}
         </div>
         {singleImageSegments.has(segment) ? (
           <figure className={`commercial-segment-showcase showcase-${segment}`}>
@@ -554,12 +675,11 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
                       : segmentLabels[product.segment]}
                   </span>
                   <h3>{product.name}</h3>
-                  <p>{product.short_description}</p>
-                  {product.description && product.description !== product.short_description ? <small className="commercial-product-description">{product.description}</small> : null}
                   <strong>
-                    {product.price_suffix === "a partir de" ? "A partir de " : ""}
-                    {money(product.base_price)}
-                    {product.price_suffix && product.price_suffix !== "a partir de" ? (
+                    {commercialProductPriceLabel(product)}
+                    {product.price_suffix
+                    && product.price_suffix.toLocaleLowerCase("pt-BR") !== "a partir de"
+                    && !["torta-p", "torta-m", "torta-g"].includes(product.slug) ? (
                       <small> · {product.price_suffix}</small>
                     ) : null}
                   </strong>
@@ -650,11 +770,19 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
                     id="commercial-quantity"
                     required
                     type="number"
-                    min={selected.minimum_quantity}
+                    min={selected.segment === "sweets" ? MULTIPLO : selected.minimum_quantity}
+                    step={selected.segment === "sweets" ? MULTIPLO : 1}
                     value={form.quantity}
                     aria-invalid={Boolean(fieldErrors.quantity)}
                     onChange={(event) => { setForm({ ...form, quantity: Number(event.target.value) }); clearFieldError("quantity"); }}
+                    onBlur={() => {
+                      if (selected.segment !== "sweets") return;
+                      setForm((current) => ({ ...current, quantity: ajustarParaMultiplo(current.quantity) }));
+                    }}
                   />
+                  {selected.segment === "sweets" && ehQuantidadeValida(form.quantity) ? (
+                    <small>Pacotes: {descreverComposicao(form.quantity)}.</small>
+                  ) : null}
                   {fieldErrors.quantity ? <small className="commercial-field-error" role="alert">{fieldErrors.quantity}</small> : null}
                 </label>
                 <label>
@@ -750,38 +878,32 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
         </section>
       ) : null}
 
-      <section className="commercial-policy">
-        <Sparkles />
-        <div>
-          <h2>Como a confirmação funciona</h2>
-          <p>
-            A pré-reserva dura 48 horas. Quando houver mais de um interesse no mesmo período,
-            a preferência será de quem confirmar primeiro com o sinal de 50%.
-          </p>
+      {sizeGalleryOpen ? (
+        <div className="commercial-size-gallery-modal" role="dialog" aria-modal="true" aria-label="Galeria de Tortas por tamanho" onClick={() => setSizeGalleryOpen(false)}>
+          <section onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div><span>Catálogo Adoce</span><h2>Galeria de Tortas</h2><p>Fotos organizadas pelo tamanho da torta.</p></div>
+              <button type="button" onClick={() => setSizeGalleryOpen(false)} aria-label="Fechar galeria"><X /></button>
+            </header>
+            {cakeGalleryGroups.length ? cakeGalleryGroups.map((group) => (
+              <div className="commercial-size-gallery-group" key={group.id}>
+                <h3>{group.name}</h3>
+                <div>{group.media.map((item, index) => <button className="product-image-trigger" type="button" key={`${group.id}-${index}`} onClick={() => setViewedImage(item)} aria-label={`Ampliar ${item.alt}`}><img src={item.src} alt={item.alt} loading="lazy" /></button>)}</div>
+              </div>
+            )) : <p>As fotos por tamanho serão adicionadas em breve.</p>}
+          </section>
         </div>
-        <MapPin />
-        <div>
-          <h2>Retirada e atendimento</h2>
-          <p>
-            Encomendas comuns são retiradas no Passaré. Serviços externos e condições de
-            deslocamento aparecem em cada opção e são confirmados no orçamento.
-          </p>
-        </div>
-        <Sparkles />
-        <div>
-          <h2>Cancelamentos</h2>
-          <p>
-            Com 7 dias úteis ou mais, devolução integral. De 3 a 6 dias úteis,
-            devolução de 50% ou crédito integral. Com menos de 3 dias úteis, não há
-            devolução, mas o valor fica como crédito integral.
-          </p>
-        </div>
-      </section>
+      ) : null}
+      <ProductImageViewer
+        image={viewedImage}
+        images={categoryGalleryEnabled && categoryGalleryImages.length
+          ? categoryGalleryImages
+          : viewerImages.length
+            ? viewerImages
+            : cakeGalleryGroups.flatMap((group) => group.media)}
+        onClose={() => setViewedImage(null)}
+      />
 
-      <footer>
-        <Brand subtitle={activeExperience.label} />
-        <p>Adoce Brigaderia · Fortaleza, Ceará</p>
-      </footer>
     </main>
   );
 }

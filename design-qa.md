@@ -1,83 +1,76 @@
-# Design QA — famílias comerciais da Adoce
+# Design QA — ajustes públicos Adoce
 
-- **Fonte visual aprovada:** `C:\Users\RubensBezerra\.codex\generated_images\019f7c41-149b-7a00-9682-6629a07a60d5\exec-8c66c9bb-0b61-42fc-9ced-ba87a981c4dc.png`
-- **Implementação principal:** `D:\Clube Adoce\outputs\opcao-3-tortas-desktop.png`
-- **Implementação no celular:** `D:\Clube Adoce\outputs\opcao-3-tortas-mobile.png`
-- **Clube corrigido no celular:** `D:\Clube Adoce\outputs\clube-mobile-corrigido.png`
-- **Telas adaptadas:** `opcao-3-docinhos-desktop.png`, `opcao-3-eventos-desktop.png`, `opcao-3-mini-festas-desktop.png`, `opcao-3-escola-desktop.png` e `opcao-3-decoracao-desktop.png`, todas em `D:\Clube Adoce\outputs`.
-- **Rota principal:** `http://127.0.0.1:5173/#encomendas`
-- **Viewports:** 1440 × 1024 e 390 × 844.
-- **Estado:** catálogo público carregado com valores reais do Supabase; formulário de pré-reserva aberto separadamente para teste.
+## Fontes visuais comparadas
 
-## Evidência da comparação completa
+- Hero comentado: `C:\Users\RUBENS~1\AppData\Local\Temp\codex-clipboard-e79e2723-b70f-40f2-b622-fec93d8c9ed9.png`.
+- Hierarquia de Fatias comentada: `C:\Users\RUBENS~1\AppData\Local\Temp\codex-clipboard-903b435c-9664-4f02-8b70-90fe3d111a6e.png`.
+- Barra do cliente conectado: `C:\Users\RUBENS~1\AppData\Local\Temp\codex-clipboard-879cea70-1d9b-4e17-991b-ea994226cd4f.png`.
+- Foto real do hero: `C:\Users\RubensBezerra\AppData\Local\Temp\codex-clipboard-0951d905-9ee6-4229-bd39-87010d22ab7a.png`.
 
-A referência aprovada e a captura renderizada foram abertas juntas, em resolução original, depois de cada passe. A implementação preserva o cabeçalho e hero em textura chocolate, a divisão em três áreas, o título editorial, a fotografia real central, a comparação em superfície creme e a continuação clara da próxima seção.
+## Comparação e correções confirmadas
 
-## Evidência focada
+- O hero móvel foi reorganizado em duas áreas: texto e ações alinhados à esquerda, fotografia real à direita.
+- Os textos auxiliares dos diferenciais e o cartão de retirada foram removidos.
+- O bloco de benefícios preserva apenas ícones e títulos, usando “Tortas incríveis”.
+- O convite do Clube ganhou logomarca, destaque de 14 carimbos, prévia gráfica do cartão e ação principal.
+- Em Fatias, o menu compacto com as seis categorias aparece antes de “Catálogo Adoce / Fatias”.
+- Abaixo do título ficam apenas os três filtros “Hoje”, “Tradicionais” e “Premium”, a busca e os produtos.
+- O banner grande e o segundo conjunto de filtros foram removidos.
+- A barra compacta do cliente conectado continua limitada a menu, saudação, logomarca, QR e progresso.
+- Não há ocorrência visível de “bolo” ou “bolos” no código público; a nomenclatura foi padronizada para torta.
 
-O hero foi comparado em detalhe porque concentra os elementos de maior fidelidade: logotipo, título, CTA, fotografia, nomes, faixas de público e valores. O bloco seguinte foi conferido no mesmo viewport para validar continuidade, ritmo e visibilidade das três escolhas. No celular, foram conferidos título, CTA, fotografia, ausência de sobreposição e largura da página. Uma comparação focada adicional foi feita no Clube Adoce para confirmar que texto, botões e imagem não se sobrepõem mais.
+## Validação executada
 
-## Superfícies obrigatórias
+- Testes responsivos nas larguras 320, 360, 375, 390, 412, 430, 768, 1024 e 1280 px.
+- Sem rolagem horizontal indevida nas páginas Início e Fatias.
+- Menu de catálogo com seis categorias e filtros com três opções presentes em todas as larguras.
+- Navegação, textos, imagens, carregamento e console verificados localmente.
+- `npm run release:check`: 136 arquivos e 522 testes aprovados, tipagem, compilação e documentação aprovadas.
 
-- **Fontes e tipografia:** Georgia preserva a personalidade editorial; corpo e controles usam a família já adotada pelo site. Hierarquia, pesos, line-height e quebras foram conferidos em desktop e celular.
-- **Espaçamento e ritmo:** o desktop usa três colunas e o celular empilha conteúdo, fotografia e comparação. Não existe overflow horizontal nem colisão entre controles.
-- **Cores e tokens:** chocolate, creme, coral e rosa seguem os tokens existentes. O cabeçalho passou a continuar o fundo escuro da referência.
-- **Qualidade e fidelidade das imagens:** todas as famílias usam fotografias reais cadastradas pela Adoce, sem esticar. A diferença do bolo conceitual da referência é intencional: a implementação honra a exigência de não inventar produto e mantém a foto substituível pelo cadastro administrativo.
-- **Conteúdo:** Tortas, Docinhos, Tabuleiro, Mini Festas, Adoce na Escola e Aluguel de Decoração têm promessa, CTA, comparação e prova próprios. Linguagem interna de operação/equipe foi removida da experiência pública.
-- **Ícones e controles:** ícones permanecem na biblioteca visual já usada; CTAs têm alvo confortável e estado de foco nativo preservado.
-- **Responsividade e acessibilidade:** 1440 × 1024 e 390 × 844 foram renderizados sem sobreposição. No Clube, ações terminam antes da imagem começar. Textos alternativos descrevem fotografias reais.
+## Resultado final
 
-## Histórico de comparação
+passed
 
-### Passe 1
+## Validacao adicional - catalogo e avisos de disponibilidade - 2026-08-04
 
-- **[P1] Cabeçalho claro quebrava a continuidade do hero aprovado.**
-  - Correção: cabeçalho passou a usar a mesma textura chocolate e contraste branco do hero.
-- **[P2] Bloco de escolhas se afastava da composição horizontal da referência.**
-  - Correção: conteúdo foi reorganizado em duas linhas, com três escolhas horizontais e fotografia lateral.
-- **[P2] CTA e título comparativo divergiam da cópia aprovada.**
-  - Correção: Tortas agora usa “Ver qual tamanho combina” e “Escolha com clareza”.
+- Fatias verificadas em 390 x 844 e 1280 x 800, sem rolagem horizontal indevida.
+- Catalogo comercial verificado em 390 x 844 e 768 x 1024, com o mesmo menu de seis categorias.
+- Tortas verificadas sem fotos nos cards e com galeria separada por tamanho.
+- Docinhos verificados com fotos nos cards e sem galeria separada.
+- Visualizador de imagens verificado no celular e no computador, preservando a proporcao sem corte ou distorcao.
+- Estado indisponivel verificado sem o circulo sobre a foto; acao para solicitar aviso abre o formulario de nome, sobrenome e WhatsApp.
+- Fila operacional de avisos e cancelamento confirmados no banco de homologacao.
+- Console das rotas publicas verificadas sem erros ou avisos.
 
-### Passe 2
+Resultado: passed
 
-- Cabeçalho, primeiro viewport, CTA, comparação e continuidade visual ficaram alinhados à direção aprovada.
-- Não restaram problemas P0, P1 ou P2.
+## Minha conta com prioridade para o Clube - 2026-08-15
 
-## Diferenças intencionais
+- Fonte visual: `C:\Users\RUBENS~1\AppData\Local\Temp\codex-clipboard-492d9758-0227-40c7-8b42-f316d9aae246.png` (312 x 222 px, recorte do cartão).
+- Implementação móvel: `C:\Users\RubensBezerra\.codex\visualizations\2026\08\15\01a00500-5444-7223-8a28-19363f425c65\minha-conta-mobile.png` (captura 375 x 812 px; viewport solicitado 390 x 844 CSS px; densidade 1).
+- Implementação desktop: `C:\Users\RubensBezerra\.codex\visualizations\2026\08\15\01a00500-5444-7223-8a28-19363f425c65\minha-conta-desktop.png` (captura 1265 x 889 px; viewport solicitado 1280 x 900 CSS px; densidade 1).
+- Estado comparado: cliente autenticado na tela Minha conta, com 8 de 14 carimbos, 1 fatia grátis disponível e preferências recolhidas.
+- Comparação completa: o cartão do Clube é o primeiro conteúdo, seguido por dois atalhos de largura equivalente e pelos quatro recursos secundários.
+- Comparação focada: cartão confrontado diretamente com o recorte de referência no mesmo passe visual; foram preservados tipografia serifada, rosa principal, grade 7 x 2, borda clara, cantos arredondados e botão preenchido.
+- Tipografia: Playfair Display no título e Inter nos controles, mantendo a hierarquia da referência.
+- Espaçamento: cartão, grade de carimbos e botão mantêm ritmo equivalente; os dois novos atalhos usam a mesma coluna, altura e área de toque.
+- Cores: tokens existentes de fundo creme, texto marrom e rosa foram preservados.
+- Imagens e ícones: logomarca oficial e ícones existentes da interface foram reutilizados; nenhuma aproximação foi criada.
+- Conteúdo: o bloco de nome, e-mail e telefone foi removido do início; os dados continuam em Preferências e configurações.
+- Recompensa: saldo real de prêmios maior que zero exibe a quantidade de fatias grátis disponíveis e orienta o resgate pelo QR Code; o estado sem prêmio não mostra um benefício indevido.
+- Interações: Gerar QR Code abriu o QR e exibiu Pronto para apresentar; Fazer pedido online abriu o Adoce Hoje com produtos e ação Adicionar ao pedido.
+- Console: sem erros ou avisos relevantes no celular e no computador.
+- Histórico de comparação P0/P1/P2: nenhuma divergência acionável encontrada na primeira comparação; não foi necessária nova iteração visual.
 
-- A fotografia de produto é real e editável no cadastro, em vez do bolo conceitual gerado na referência.
-- A seção seguinte acrescenta uma frase de prova específica por família, para atender ao objetivo de marketing honesto sem inventar depoimentos, prêmios ou promessas.
-- Os valores e descrições vêm dos produtos publicados, não ficam presos ao desenho estático.
+final result: passed
 
-## Verificação do navegador
+## Eventos e aluguel de decoracao - carrossel e galeria - 2026-08-05
 
-- Renderização feita no navegador integrado.
-- Console verificado sem erros.
-- Caminho principal testado: escolher Torta P no comparativo, abrir a solicitação e confirmar a presença do formulário “Solicitar pré-reserva”.
-- Abas testadas: Docinhos, Eventos, Tabuleiro, Mini Festas, Adoce na Escola e Aluguel de Decoração.
-- Diferença de cópia acima da dobra: somente adaptações aprovadas por família e uso de foto real; nenhum texto interno foi acrescentado.
+- Alteracao restrita as telas Eventos e Aluguel de decoracao.
+- Carrossel com as fotos reais da categoria posicionado antes dos cards de produtos.
+- Galeria completa acessivel pelo botao Galeria de imagens.
+- Cards de produtos mantidos somente com nome, valor e acao, sem fotografia.
+- Secoes antigas duplicadas ocultadas nessas telas e nas demais telas comerciais de referencia.
+- Tortas, Docinhos, Fatias e Adoce na Escola nao receberam esse novo formato de cards.
 
-## Resultado
-
-**final result: passed**
-
----
-
-# Design QA — Adoce Hoje no celular
-
-## Referência
-
-- Tela enviada pelo proprietário em 22/07/2026, com largura aproximada de 390 px.
-- Objetivo: colocar os sabores disponíveis imediatamente após a data e o título.
-
-## Alteração verificada
-
-- O selo “Informações atualizadas” deixou de ocupar o topo no celular.
-- O texto explicativo deixou de anteceder os produtos no celular.
-- Fotos e nomes dos sabores aparecem logo após o título.
-- Selo e texto explicativo aparecem depois das fotos.
-- O layout de desktop permanece com a composição anterior.
-
-## Resultado
-
-**final result: passed**
+Resultado: passed

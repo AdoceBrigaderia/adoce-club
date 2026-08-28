@@ -28,6 +28,11 @@ export function setRememberLogin(remember: boolean) {
   window.localStorage.setItem(rememberPreferenceKey, String(remember));
 }
 
+export function getRememberLoginPreference() {
+  if (typeof window === "undefined") return true;
+  return window.localStorage.getItem(rememberPreferenceKey) !== "false";
+}
+
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabasePublishableKey);
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured

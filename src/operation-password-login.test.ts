@@ -14,12 +14,20 @@ describe("acesso da operação com senha", () => {
     expect(app).toContain('placeholder="(85) 99999-9999"');
   });
 
+  it("permite mostrar e ocultar a senha digitada", () => {
+    const app = source("./AccessApp.tsx");
+    expect(app).toContain("const [showPassword, setShowPassword] = useState(false)");
+    expect(app).toContain('type={showPassword ? "text" : "password"}');
+    expect(app).toContain('aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}');
+  });
+
   it("autentica pelo endpoint protegido sem expor o e-mail interno", () => {
     const auth = source("./services/auth.ts");
     const endpoint = source("../netlify/functions/staff-phone-login.ts");
     expect(auth).toContain('fetch("/api/staff-phone-login"');
     expect(endpoint).toContain('.eq("phone_e164", phone)');
     expect(endpoint).toContain('.from("staff_members")');
+    expect(endpoint).toContain('const configured = env("SITE_URL")');
     expect(endpoint).toContain('"Celular ou senha incorretos."');
   });
 
@@ -31,5 +39,29 @@ describe("acesso da operação com senha", () => {
     expect(app).toContain("if (mustChangePassword)");
     expect(app).toContain('"complete_forced_password_change"');
     expect(migration).toContain("must_change_password boolean");
+  });
+
+  it("permite concluir a troca somente com uma sessão autenticada", () => {
+    const migration = source(
+      "../supabase/migrations/20260803095005_restore_forced_password_completion_grant.sql",
+    );
+
+    expect(migration).toContain(
+      "grant execute on function public.complete_forced_password_change()",
+    );
+    expect(migration).toContain("to authenticated");
+    expect(migration).toContain("from public, anon");
+  });
+
+  it("mantém as rotinas do Clube disponíveis apenas após o login", () => {
+    const migration = source(
+      "../supabase/migrations/20260803095152_restore_customer_club_rpc_grants.sql",
+    );
+
+    expect(migration).toContain("public.customer_referral_overview()");
+    expect(migration).toContain("public.customer_group_overview()");
+    expect(migration).toContain("public.create_group_invite(text)");
+    expect(migration).toContain("to authenticated");
+    expect(migration).toContain("from public, anon");
   });
 });

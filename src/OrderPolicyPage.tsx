@@ -4,19 +4,20 @@ import {
   CalendarCheck,
   CalendarX,
   CakeSlice,
+  Clock3,
+  MapPin,
   MessageCircle,
+  RefreshCcw,
 } from "lucide-react";
-import PublicHeader from "./PublicHeader";
+import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 import "./public-site.css";
 import "./order-policy.css";
 
-const whatsapp =
-  "https://wa.me/5585982156026?text=Ol%C3%A1%2C%20Adoce!%20Li%20a%20pol%C3%ADtica%20de%20pedidos%20e%20gostaria%20de%20consultar%20uma%20encomenda.";
-
 export default function OrderPolicyPage() {
+  const orderWhatsAppNumber = useOrderWhatsAppNumber();
+  const whatsapp = orderWhatsAppUrl(orderWhatsAppNumber, "Olá, Adoce! Li a política de pedidos e gostaria de consultar uma celebração ou produto.");
   return (
     <main className="public-site order-policy-page">
-      <PublicHeader dark={false} />
 
       <section className="order-policy-hero">
         <div className="order-policy-intro">
@@ -42,6 +43,18 @@ export default function OrderPolicyPage() {
           />
           <figcaption>Política oficial de pedidos da Adoce Brigaderia.</figcaption>
         </figure>
+      </section>
+
+      <section className="order-policy-process" aria-labelledby="order-policy-process-title">
+        <header>
+          <p className="public-kicker">Funcionamento completo</p>
+          <h2 id="order-policy-process-title">Reserva, confirmação, retirada e cancelamento.</h2>
+        </header>
+        <div>
+          <article><Clock3 /><span><strong>Pré-reserva por 48 horas</strong><p>A solicitação guarda sua preferência por até 48 horas. Quando houver concorrência no mesmo período, vale a primeira confirmação com sinal de 50%.</p></span></article>
+          <article><MapPin /><span><strong>Retirada e atendimento</strong><p>Encomendas comuns são retiradas no Passaré. Serviços externos, deslocamento e local são confirmados no orçamento.</p></span></article>
+          <article><RefreshCcw /><span><strong>Cancelamentos</strong><p>Com 7 dias úteis ou mais, devolução integral. De 3 a 6 dias úteis, devolução de 50% ou crédito integral. Com menos de 3 dias úteis, o valor permanece como crédito integral.</p></span></article>
+        </div>
       </section>
 
       <section className="order-policy-rules" aria-labelledby="order-policy-title">
