@@ -58,13 +58,11 @@ export default async (request: Request) => {
   const idempotencyKey = request.headers.get("idempotency-key") || crypto.randomUUID();
 
   const body = (await request.json().catch(() => ({}))) as {
-    email?: string;
     phone?: string;
   };
-  const emailInput = (body.email || "").trim().toLowerCase();
   const phoneInput = body.phone ? normalizeBrazilPhone(body.phone) : null;
-  if (!emailInput && !phoneInput) {
-    return json({ error: "Informe o WhatsApp ou o e-mail da conta." }, 400);
+  if (!phoneInput) {
+    return json({ error: "Informe o WhatsApp da conta." }, 400);
   }
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
@@ -80,29 +78,15 @@ export default async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const profileQuery = phoneInput
-    ? admin
-        .from("profiles")
-        .select("id,full_name,phone_e164,active,account_status")
-        .eq("phone_e164", phoneInput)
-        .maybeSingle()
-    : admin
-        .from("profiles")
-        .select("id,full_name,phone_e164,active,account_status")
-        .eq("email", emailInput)
-        .maybeSingle();
-  const { data: profile } = await profileQuery;
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("id,full_name,phone_e164,active,account_status")
+    .eq("phone_e164", phoneInput)
+    .maybeSingle();
   if (!profile?.active || profile.account_status !== "active" || !profile.phone_e164) {
-    return json(
-      {
-        error: phoneInput
-          ? "Não encontramos uma conta ativa com este WhatsApp."
-          : "Não encontramos um WhatsApp cadastrado para este e-mail. Fale com a loja para atualizar seu cadastro.",
-      },
-      404,
-    );
+    return json({ error: "Não encontramos uma conta ativa com este WhatsApp." }, 404);
   }
-  const phone = phoneInput || profile.phone_e164;
+  const phone = phoneInput;
   const fullName = (profile.full_name || "").trim() || "Cliente Adoce";
 
   try {
@@ -193,8 +177,11 @@ export default async (request: Request) => {
     });
     if (response.status === 429)
       return json({ error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." }, 429);
-    if (!response.ok)
+    if (!response.ok) {
+      const errorBody = await response.text().catch(() => "");
+      console.error("request-password-reset otp", response.status, errorBody);
       return json({ error: "Não foi possível enviar o código agora." }, 502);
+    }
 
     return json({
       sent: true,

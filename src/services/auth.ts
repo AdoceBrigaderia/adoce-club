@@ -134,22 +134,19 @@ export async function verifyWhatsAppAuthCode(
   return data;
 }
 
-export async function requestPasswordReset(input: { email?: string; phone?: string }) {
+export async function requestPasswordReset(input: { phone: string }) {
   const response = await fetch("/api/request-password-reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      email: input.email?.trim().toLowerCase() || undefined,
       phone: input.phone?.trim() || undefined,
     }),
   });
   const payload = (await response.json().catch(() => ({}))) as {
     sent?: boolean;
-    channel?: "whatsapp" | "email";
+    channel?: "whatsapp";
     request_id?: string;
     masked_phone?: string;
-    email?: string;
-    hint?: string;
     error?: string;
   };
   if (!response.ok || !payload.sent) {

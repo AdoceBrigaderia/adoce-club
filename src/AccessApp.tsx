@@ -1104,7 +1104,7 @@ function AuthScreen({
     setBusy(true);
     setMessage("");
     try {
-      const result = await requestPasswordReset({ email, phone });
+      const result = await requestPasswordReset({ phone });
       setResetChallengeId(result.request_id || "");
       sessionStorage.setItem(passwordRecoveryStorageKey, "true");
       setStage("code");
@@ -1319,7 +1319,7 @@ function AuthScreen({
               : registering
                 ? "Preencha uma vez. Depois, confirme o código do seu e-mail e seu cartão abrirá."
               : loginMode === "forgot"
-                ? "Informe o WhatsApp da conta (o e-mail ajuda a localizar seu cadastro, se preferir). Enviamos um código pelo WhatsApp para você criar a senha nova."
+                ? "Informe o WhatsApp da conta. Enviamos um código por lá para você criar a senha nova."
               : loginMode === "password" && !registering
                 ? surface === "operation"
                   ? "Use seu celular com DDD e a senha da operação."
@@ -1381,18 +1381,17 @@ function AuthScreen({
                   {busy ? "Entrando..." : surface === "operation" ? "Entrar na operação" : "Entrar no Clube"}
                   <ArrowRight />
                 </button>
+                <button
+                  className="access-link"
+                  type="button"
+                  onClick={() => {
+                    setLoginMode("forgot");
+                    setMessage("");
+                  }}
+                >
+                  Esqueci a senha
+                </button>
                 {surface === "client" && (
-                  <>
-                  <button
-                    className="access-link"
-                    type="button"
-                    onClick={() => {
-                      setLoginMode("forgot");
-                      setMessage("");
-                    }}
-                  >
-                    Esqueci a senha
-                  </button>
                   <button
                     className="access-link"
                     type="button"
@@ -1403,7 +1402,6 @@ function AuthScreen({
                   >
                     Primeiro acesso ou criar senha
                   </button>
-                  </>
                 )}
               </form>
             ) : !registering && loginMode === "forgot" ? (
@@ -1418,24 +1416,12 @@ function AuthScreen({
                     inputMode="tel"
                     autoComplete="tel"
                     placeholder="(85) 99999-9999"
-                  />
-                </div>
-              </label>
-              <label>
-                E-mail da conta <span>(se lembrar)</span>
-                <div className="input-icon">
-                  <Mail />
-                  <input
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    type="email"
-                    autoComplete="email"
-                    placeholder="voce@exemplo.com"
+                    required
                   />
                 </div>
               </label>
               <button className="access-primary" disabled={busy}>
-                {busy ? "Enviando..." : "Enviar acesso para redefinir senha"}
+                {busy ? "Enviando..." : "Enviar código pelo WhatsApp"}
                 <ArrowRight />
               </button>
             </form>
