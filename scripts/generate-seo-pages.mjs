@@ -170,7 +170,12 @@ const catalog = flavors.map((flavor) => {
 });
 
 const bakeryHours = openingHoursSpecification(hours || []);
-let homeHtml = baseHtml.replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/i, (whole, json) => {
+let homeHtml = pageHead(baseHtml, {
+  title: "Adoce Brigaderia · Fatias, tortas, festas e Clube Adoce",
+  description: "Conheça tudo o que você encontra na Adoce: fatias de hoje, tortas, docinhos, festas, experiências para escolas, decoração e Clube Adoce.",
+  canonical: `${ORIGIN}/`,
+  image: `${ORIGIN}/site/portal-entry-fatias.png`,
+}).replace(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/i, (whole, json) => {
   try {
     const data = JSON.parse(json);
     data["@type"] = "Bakery";
@@ -180,6 +185,8 @@ let homeHtml = baseHtml.replace(/<script type="application\/ld\+json">([\s\S]*?)
     return whole;
   }
 });
+const homeStaticContent = `<main class="seo-landing"><h1>Tudo o que você encontra na Adoce</h1><p>Fatias artesanais de hoje, tortas, docinhos, festas, Adoce na Escola, decoração e o Clube Adoce.</p><nav aria-label="Conheça a Adoce"><a href="/fatias">Fatias de hoje</a><a href="/tortas">Tortas</a><a href="/docinhos">Docinhos</a><a href="/festas">Festas e eventos</a><a href="/clube">Clube Adoce</a></nav></main>`;
+homeHtml = homeHtml.replace('<div id="root"></div>', `<div id="root">${homeStaticContent}</div>`);
 await fs.writeFile(path.join(DIST, "index.html"), homeHtml, "utf8");
 
 for (const flavor of catalog) {
@@ -220,23 +227,23 @@ for (const flavor of catalog) {
     : "Disponibilidade de hoje ainda não publicada";
   const menuText = flavor.nextMenu ? `Próxima saída prevista: ${flavor.nextMenu}.` : "Próxima saída ainda não publicada.";
   const content = `<main class="sabores sab-detalhe" data-seo-static-page>
-    <nav class="sab-barra" aria-label="Navegação"><a class="sab-voltar" href="/sabores/">← Nossos sabores</a><a class="sab-atalho" href="/#adoce-hoje">O que tem hoje</a></nav>
+    <nav class="sab-barra" aria-label="Navegação"><a class="sab-voltar" href="/sabores/">← Nossos sabores</a><a class="sab-atalho" href="/fatias">O que tem hoje</a></nav>
     <article class="sab-detalhe-card">
       <div class="sab-detalhe-foto"><img src="${escapeHtml(flavor.image)}" alt="Fatia de ${escapeHtml(flavor.name)}" /></div>
       <div class="sab-detalhe-corpo"><p class="sab-legenda">Fatia artesanal</p><h1>${escapeHtml(flavor.name)}</h1>
         <p class="sab-frase">${escapeHtml(flavor.resumo)}</p>
         <p class="sab-detalhe-preco"><strong>${escapeHtml(money(flavor.base_price))}</strong><span>a fatia</span></p>
         <p class="sab-detalhe-estado">${escapeHtml(availabilityText)}</p><p>${escapeHtml(menuText)}</p>
-        <a class="sab-principal" href="/#adoce-hoje">Ver as fatias de hoje</a>
+        <a class="sab-principal" href="/fatias">Ver as fatias de hoje</a>
       </div>
     </article>
-    <footer class="sab-rodape"><p class="sab-assinatura">Doce feito com afeto, para celebrar cada momento.</p><a class="sab-secundario" href="/#encomendas">Encomendar uma torta</a><a class="sab-secundario" href="/">Voltar ao início</a></footer>
+    <footer class="sab-rodape"><p class="sab-assinatura">Doce feito com afeto, para celebrar cada momento.</p><a class="sab-secundario" href="/tortas">Encomendar uma torta</a><a class="sab-secundario" href="/">Voltar ao início</a></footer>
   </main>`;
   html = html.replace('<div id="root"></div>', `<div id="root">${content}</div>`);
   await writePage(`/sabores/${flavor.slug}`, html);
 }
 
-const catalogContent = `<main class="sabores" data-seo-static-page><nav class="sab-barra"><a class="sab-voltar" href="/">← Início</a><a class="sab-atalho" href="/#adoce-hoje">O que tem hoje</a></nav><header class="sab-capa"><p class="sab-legenda">Nossos sabores</p><h1>${catalog.length} sabores,<em> feitos pelas mãos da Beth.</em></h1></header><ul class="sab-seo-lista">${catalog.map((flavor) => `<li><a href="/sabores/${escapeHtml(flavor.slug)}"><img src="${escapeHtml(flavor.image)}" alt="" loading="lazy"><span><strong>${escapeHtml(flavor.name)}</strong><small>${escapeHtml(money(flavor.base_price))} a fatia</small></span></a></li>`).join("")}</ul><footer class="sab-rodape"><p class="sab-assinatura">Doce feito com afeto, para celebrar cada momento.</p><a class="sab-secundario" href="/">Voltar ao início</a></footer></main>`;
+const catalogContent = `<main class="sabores" data-seo-static-page><nav class="sab-barra"><a class="sab-voltar" href="/">← Início</a><a class="sab-atalho" href="/fatias">O que tem hoje</a></nav><header class="sab-capa"><p class="sab-legenda">Nossos sabores</p><h1>${catalog.length} sabores,<em> feitos pelas mãos da Beth.</em></h1></header><ul class="sab-seo-lista">${catalog.map((flavor) => `<li><a href="/sabores/${escapeHtml(flavor.slug)}"><img src="${escapeHtml(flavor.image)}" alt="" loading="lazy"><span><strong>${escapeHtml(flavor.name)}</strong><small>${escapeHtml(money(flavor.base_price))} a fatia</small></span></a></li>`).join("")}</ul><footer class="sab-rodape"><p class="sab-assinatura">Doce feito com afeto, para celebrar cada momento.</p><a class="sab-secundario" href="/">Voltar ao início</a></footer></main>`;
 let catalogHtml = pageHead(baseHtml, {
   title: "Nossos sabores · Adoce Brigaderia — Fortaleza",
   description: `Conheça os ${catalog.length} sabores de fatias artesanais da Adoce Brigaderia em Fortaleza.`,
@@ -246,17 +253,28 @@ let catalogHtml = pageHead(baseHtml, {
 catalogHtml = catalogHtml.replace('<div id="root"></div>', `<div id="root">${catalogContent}</div>`);
 await writePage("/sabores", catalogHtml);
 
-for (const landing of [
-  { route: "/encomendas", hash: "#encomendas", title: "Encomendas · Adoce Brigaderia — Fortaleza", description: "Tortas e produtos Adoce para encomendar em Fortaleza." },
-  { route: "/festas", hash: "#eventos", title: "Festas · Adoce Brigaderia — Fortaleza", description: "Doces, tortas e experiências Adoce para festas em Fortaleza." },
-  { route: "/clube", hash: "#clube", title: "Clube Adoce · Adoce Brigaderia", description: "Conheça o Clube Adoce e sua fatia-presente." },
-]) {
+const publicLandings = [
+  { route: "/fatias", title: "Fatias de hoje · Adoce Brigaderia — Fortaleza", description: "Veja as fatias artesanais disponíveis hoje e reserve para retirada em Fortaleza." },
+  { route: "/cardapio-de-fatias", title: "Cardápio de fatias · Adoce Brigaderia", description: "Conheça o cardápio de fatias artesanais da Adoce Brigaderia." },
+  { route: "/tortas", title: "Tortas por encomenda · Adoce Brigaderia — Fortaleza", description: "Tortas artesanais Adoce para encomendar em Fortaleza." },
+  { route: "/docinhos", title: "Docinhos · Adoce Brigaderia — Fortaleza", description: "Docinhos artesanais para festas, presentes e celebrações em Fortaleza." },
+  { route: "/festas", title: "Festas e eventos · Adoce Brigaderia — Fortaleza", description: "Doces, tortas e experiências Adoce para festas e eventos em Fortaleza." },
+  { route: "/adoce-na-escola", title: "Adoce na Escola · Adoce Brigaderia", description: "Soluções Adoce para comemorações e momentos especiais na escola." },
+  { route: "/aluguel-decoracao", title: "Aluguel de decoração · Adoce Brigaderia", description: "Itens de decoração para completar sua celebração com a Adoce." },
+  { route: "/politica-de-pedidos", title: "Política de pedidos · Adoce Brigaderia", description: "Prazos, retiradas e condições dos pedidos da Adoce Brigaderia." },
+  { route: "/clube", title: "Clube Adoce · Adoce Brigaderia", description: "Conheça o Clube Adoce, acumule carimbos e ganhe sua fatia-presente." },
+  { route: "/fale-com-a-adoce", title: "Fale com a Adoce · Adoce Brigaderia", description: "Envie uma dúvida, sugestão ou relato para a equipe Adoce." },
+  { route: "/termos", title: "Termos do Clube Adoce", description: "Consulte os termos de participação do Clube Adoce." },
+  { route: "/privacidade", title: "Política de Privacidade · Adoce Brigaderia", description: "Saiba como a Adoce trata e protege seus dados pessoais." },
+];
+
+for (const landing of publicLandings) {
   let html = pageHead(baseHtml, { ...landing, canonical: `${ORIGIN}${landing.route}`, image: `${ORIGIN}/site/logo.webp` });
   html = html.replace('<div id="root"></div>', `<div id="root"><main class="seo-landing"><h1>${escapeHtml(landing.title.split(" · ")[0])}</h1><p>${escapeHtml(landing.description)}</p></main></div>`);
   await writePage(landing.route, html);
 }
 
-const sitemapUrls = [ORIGIN + "/", ...catalog.map((flavor) => `${ORIGIN}/sabores/${flavor.slug}`), `${ORIGIN}/encomendas`, `${ORIGIN}/festas`, `${ORIGIN}/clube`];
+const sitemapUrls = [ORIGIN + "/", `${ORIGIN}/sabores/`, ...catalog.map((flavor) => `${ORIGIN}/sabores/${flavor.slug}`), ...publicLandings.map((landing) => `${ORIGIN}${landing.route}`)];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${sitemapUrls.map((url, index) => `  <url><loc>${url}</loc><changefreq>${index === 0 ? "weekly" : "monthly"}</changefreq><priority>${index === 0 ? "1.0" : "0.8"}</priority></url>`).join("\n")}\n</urlset>\n`;
 await fs.writeFile(path.join(DIST, "sitemap.xml"), sitemap, "utf8");
 await fs.writeFile(path.join(ROOT, "public/sitemap.xml"), sitemap, "utf8");

@@ -32,14 +32,6 @@ const normalizePhone = (value: string) => {
   return national.length === 10 || national.length === 11 ? `+55${national}` : null;
 };
 
-const safelyMatches = (received: string, expected: string) => {
-  const size = Math.max(received.length, expected.length);
-  let difference = received.length ^ expected.length;
-  for (let index = 0; index < size; index += 1)
-    difference |= (received.charCodeAt(index) || 0) ^ (expected.charCodeAt(index) || 0);
-  return difference === 0;
-};
-
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
   if (!allowedOrigin(request)) return json({ error: "Origem não autorizada." }, 403);
@@ -48,20 +40,6 @@ export default async (request: Request) => {
   const phone = normalizePhone(body.phone || "");
   const password = body.password || "";
   if (!phone || !password) return json({ error: "Informe celular e senha." }, 400);
-
-  if (env("HOMOLOGATION_FAKE_LOGIN_ENABLED") === "true") {
-    const configuredPhone = normalizePhone(env("HOMOLOGATION_FAKE_USER") || "");
-    const configuredPassword = env("HOMOLOGATION_FAKE_PASSWORD") || "";
-    if (
-      configuredPhone &&
-      configuredPassword &&
-      safelyMatches(phone, configuredPhone) &&
-      safelyMatches(password, configuredPassword)
-    ) {
-      return json({ homologation_demo: true });
-    }
-    return json({ error: "Usuário ou senha incorretos." }, 401);
-  }
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey = env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");

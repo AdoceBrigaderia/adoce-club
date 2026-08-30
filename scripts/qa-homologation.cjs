@@ -8,10 +8,10 @@ const output = path.resolve("artifacts/homologation-qa");
 fs.mkdirSync(output, { recursive: true });
 
 const routes = [
-  ["inicio", "#inicio"],
-  ["fatias", "#adoce-hoje"],
-  ["cardapio-fatias", "#cardapio-fatias"],
-  ["tortas", "#encomendas"],
+  ["inicio", ""],
+  ["fatias", "fatias"],
+  ["cardapio-fatias", "cardapio-de-fatias"],
+  ["tortas", "tortas"],
 ];
 const viewports = [
   ["celular-360", { width: 360, height: 800 }],
@@ -26,14 +26,14 @@ const viewports = [
   try {
     for (const [viewportName, viewport] of viewports) {
       const context = await browser.newContext({ viewport });
-      for (const [routeName, hash] of routes) {
+      for (const [routeName, route] of routes) {
         const page = await context.newPage();
         const errors = [];
         const failedResources = [];
         page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
         page.on("pageerror", error => errors.push(error.message));
         page.on("response", response => { if (response.status() >= 400) failedResources.push(`${response.status()} ${response.url()}`); });
-        await page.goto(`${base}/${hash}`, { waitUntil: "networkidle", timeout: 30000 });
+        await page.goto(`${base}/${route}`, { waitUntil: "networkidle", timeout: 30000 });
         await page.waitForTimeout(500);
         const dimensions = await page.evaluate(() => ({
           clientWidth: document.documentElement.clientWidth,

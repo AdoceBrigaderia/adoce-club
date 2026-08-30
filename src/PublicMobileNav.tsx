@@ -5,16 +5,16 @@ export type PublicMobileArea = "home" | "today" | "orders" | "cart" | "club" | "
 
 export default function PublicMobileNav({ active = "none" }: { active?: PublicMobileArea }) {
   const items = [
-    { key: "home", href: "/#inicio", label: "Início", icon: House, selected: active === "home" },
+    { key: "home", href: "/", label: "Início", icon: House, selected: active === "home" },
     {
       key: "catalog",
-      href: "/#adoce-hoje",
+      href: "/fatias",
       label: "Cardápio",
       icon: LayoutGrid,
       selected: active === "today" || active === "orders",
     },
-    { key: "orders", href: "/#carrinho", label: "Pedidos", icon: ClipboardCheck, selected: active === "cart" },
-    { key: "account", href: "/#minha-conta", label: "Conta", icon: UserRound, selected: active === "club" },
+    { key: "orders", href: "/pedido", label: "Pedidos", icon: ClipboardCheck, selected: active === "cart" },
+    { key: "account", href: "/clube", label: "Conta", icon: UserRound, selected: active === "club" },
   ] as const;
 
   return (

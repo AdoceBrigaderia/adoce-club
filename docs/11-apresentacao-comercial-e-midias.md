@@ -26,7 +26,7 @@ O mesmo serviço não pode aparecer em duas categorias diferentes. A Festa na Me
 
 Eventos, Adoce na Escola e aluguel de decoração apresentam uma fotografia principal apenas uma vez. As opções e valores aparecem abaixo dela sem repetir a mesma imagem a cada produto.
 
-Docinhos podem apresentar uma fotografia própria por linha de produto, desde que a imagem seja exibida por inteiro e respeite a proporção original. Pede Junto Adoce usa a fotografia real dos pedidos identificados e imagens de contexto coerentes com trabalho, condomínio, faculdade e clínica. Clube Adoce usa a arte aprovada do cartão, e a demonstração do Adoce Hoje informa claramente quando a tela é ilustrativa.
+Docinhos podem apresentar uma fotografia própria por linha de produto, desde que a imagem seja exibida por inteiro e respeite a proporção original. Clube Adoce usa a arte aprovada do cartão, e a demonstração do Adoce Hoje informa claramente quando a tela é ilustrativa.
 
 ## Edição pela operação
 

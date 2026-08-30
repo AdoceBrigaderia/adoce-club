@@ -7,7 +7,7 @@ import requestEmailCodeEndpoint, {
 const source = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
-describe("código de acesso por e-mail", () => {
+describe("códigos de acesso por e-mail e recuperação por WhatsApp", () => {
   it("envia e valida o código por rotas do próprio site", () => {
     const auth = source("./services/auth.ts");
     expect(auth).toContain('fetch("/api/request-email-code"');
@@ -23,14 +23,17 @@ describe("código de acesso por e-mail", () => {
       "../netlify/functions/verify-email-code.ts",
     );
     expect(requestEndpoint).toContain('create_user: Boolean(body.createUser)');
-    expect(requestEndpoint).toContain("redirect_to: `${siteUrl}/#entrar`");
+    expect(requestEndpoint).toContain("redirect_to: `${siteUrl}/clube/entrar`");
     expect(requestEndpoint).toContain("OTP_TIMEOUT_MS = 20000");
     expect(requestEndpoint).toContain("for (let attempt = 1; attempt <= 2; attempt += 1)");
     expect(requestEndpoint).not.toContain("generateLink");
     expect(requestEndpoint).not.toContain("sendWithAdminLink");
     expect(requestEndpoint).toContain("return await interpret(response)");
     const resetEndpoint = source("../netlify/functions/request-password-reset.ts");
-    expect(resetEndpoint).toContain('type: "recovery"');
+    expect(resetEndpoint).toContain('/auth/v1/otp');
+    expect(resetEndpoint).toContain('create_user: false');
+    expect(resetEndpoint).toContain('whatsappAuthEnabled()');
+    expect(resetEndpoint).not.toContain('type: "recovery"');
     expect(resetEndpoint).toContain("phone_e164");
     expect(requestEndpoint).toContain("timeout: 26");
     expect(verifyEndpoint).toContain('"email", "recovery", "magiclink"');

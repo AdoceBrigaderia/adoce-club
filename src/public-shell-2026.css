@@ -193,6 +193,15 @@ body:has(.public-app-shell) {
 .public-shell-nav.public-mobile-nav svg { width: 25px; height: 25px; stroke-width: 2; }
 .public-shell-nav.public-mobile-nav a.active svg { fill: rgba(237, 45, 99, .12); }
 
+.customer-app-shell .public-shell-nav.public-mobile-nav a.active {
+  color: var(--adoce-terra);
+  background: var(--adoce-rosa-claro);
+}
+
+.customer-app-shell .public-shell-nav.public-mobile-nav a.active svg {
+  fill: var(--adoce-rosa);
+}
+
 .customer-app-shell .access-shell,
 .customer-app-shell .access-page,
 .customer-app-shell .member-app { min-height: calc(100vh - var(--public-shell-top) - var(--public-shell-bottom)); }

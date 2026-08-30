@@ -11,19 +11,19 @@ describe("arquitetura da Adoce Operação", () => {
   it("reúne busca e lista na mesma área de clientes", () => {
     expect(access).toContain("Clientes & Clube");
     expect(access).not.toContain("<Users /> Membros\n          </button>\n          <button\n            className={view");
-    expect(access).toContain("clientes cadastrados");
+    expect(access).toContain("clientes exibidos na lista completa");
+    expect(access).toContain("Ver lista completa");
   });
 
-  it("separa os galhos principais da operação", () => {
-    expect(access).toContain("Visão geral");
-    expect(access).toContain("Clientes e fidelidade");
-    expect(access).toContain("Caixa e pedidos");
-    expect(access).toContain("Encomendas e agenda");
-    expect(access).toContain("Produtos e disponibilidade");
-    expect(access).toContain("Produtos e serviços");
-    expect(access).toContain("Disponibilidade, horários e site");
-    expect(access).toContain("Configurações globais");
-    expect(access).toContain("Histórico e arquivados");
+  it("mantém somente os cinco galhos principais da operação", () => {
+    expect(access).toContain('type OperationView = "dashboard" | "orders" | "products" | "attend" | "settings"');
+    expect(access).toContain("Hoje");
+    expect(access).toContain("Pedidos");
+    expect(access).toContain("Produtos");
+    expect(access).toContain("Clientes");
+    expect(access).toContain("Configurações");
+    expect(access).not.toContain("Agenda");
+    expect(access).not.toContain("Pede Junto");
   });
 
   it("abre pelo painel orientado a pendências e atalhos", () => {
@@ -36,11 +36,11 @@ describe("arquitetura da Adoce Operação", () => {
   it("oferece navegação persistente de aplicativo no celular", () => {
     expect(access).toContain('className="operation-mobile-tabbar"');
     expect(access).toContain('aria-label="Navega');
-    expect(access).toContain("Início");
-    expect(access).toContain("Vendas");
-    expect(access).toContain("Agenda");
+    expect(access).toContain("Hoje");
+    expect(access).toContain("Pedidos");
+    expect(access).toContain("Produtos");
     expect(access).toContain("Clientes");
-    expect(access).toContain("Mais");
+    expect(access).toContain("Config");
     expect(operationStyles).toContain("position: fixed");
     expect(operationStyles).toContain("grid-template-columns: repeat(5, minmax(0, 1fr))");
   });
@@ -52,16 +52,19 @@ describe("arquitetura da Adoce Operação", () => {
     expect(operationStyles).toContain(".operation-customer > .customer-account-admin { order: 7; }");
   });
 
-  it("mantém rotas distintas para Clube e relacionamento de encomendas", () => {
-    expect(access).toContain('attend: "#operacao-clientes"');
-    expect(access).toContain('crm: "#operacao-relacionamento"');
-    expect(access).toContain('location.hash.includes("operacao-relacionamento")');
+  it("mantém Clientes separado e integra o relacionamento aos Pedidos", () => {
+    expect(access).toContain('attend: "/operacao/clientes"');
+    expect(access).toContain('requests: "/operacao/pedidos?tipo=encomendas"');
+    expect(access).toContain('sales: "/operacao/pedidos?tipo=vendas"');
+    expect(access).toContain('new URLSearchParams(location.search).get("tipo")');
+    expect(access).not.toContain("operacao-relacionamento");
+    expect(commercial).toContain('aria-label="Histórico e lembretes do pedido"');
   });
 
   it("reinicia todas as telas da operação no topo", () => {
     expect(access).toContain("const scrollOperationToTop = useCallback(() =>");
     expect(access).toContain("useLayoutEffect(() =>");
-    expect(access).toContain("[view, commercialTab, contentTab, selected?.profile_id, scrollOperationToTop]");
+    expect(access).toContain("[view, commercialTab, contentTab, productArea, settingsTab, selected?.profile_id, scrollOperationToTop]");
     expect(access).toContain('window.history.scrollRestoration = "manual"');
     expect(access).toContain('window.addEventListener("pageshow", resetOnPageShow)');
   });
@@ -85,6 +88,8 @@ describe("arquitetura da Adoce Operação", () => {
     expect(commercial).toContain("tabPresentation");
     expect(commercial).toContain('title: "Caixa e pedidos"');
     expect(commercial).toContain('title: "Pedidos e pré-reservas"');
-    expect(commercial).toContain('title: "Vendas e recebimentos"');
+    expect(commercial).toContain('title: "Catálogo comercial"');
+    expect(access).toContain('allowedTabs={["sales", "requests"]}');
+    expect(access).toContain('allowedTabs={["catalog"]}');
   });
 });

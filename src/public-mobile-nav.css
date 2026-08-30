@@ -64,8 +64,6 @@
   .today-page .today-hero-copy .today-kicker { margin: 0 0 8px; }
   .today-page .today-service-experience { order: 4; padding: 28px 14px 52px; }
   .today-page .today-flavors { order: 2; padding: 20px 12px 44px; }
-  .today-page .today-active-promotions { order: 3; }
-  .today-page .today-group-order { order: 5; }
   .today-page .today-cakes,
   .today-page .today-orders-bridge,
   .today-page .today-policy-callout,
@@ -129,15 +127,11 @@
   .commercial-page .commercial-product-list > article > button,
   .commercial-page .commercial-product-list > article.with-image > button { grid-column: 2; justify-self: stretch; min-height: 40px; margin: 0 12px 12px; }
 
-  /* Clube público e Pede Junto: mesma densidade do aplicativo. */
+  /* Clube público: mesma densidade do aplicativo. */
   .club-experience .club-intro { min-height: 0; padding: 70px 16px 280px; }
   .club-experience .club-intro h1 { font-size: 3.2rem; }
   .club-experience .club-intro > img { width: 112%; right: -32%; bottom: -8%; }
   .approved-club-heading h2 { font-size: 2.7rem; }
-  .group-order-page .group-order-hero { min-height: 0; padding: 70px 16px 20px; }
-  .group-order-page .group-order-hero h1 { font-size: 3.15rem; }
-  .group-order-page .group-order-hero > img { max-height: 330px; object-fit: contain; }
-  .pede-junto-page { padding-bottom: 78px; }
 }
 
 @media (max-width: 360px) {

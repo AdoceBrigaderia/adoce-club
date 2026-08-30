@@ -37,7 +37,7 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
   it("abre o cartão do Clube depois do login, sem mandar cadastrar de novo", () => {
     const access = source("./AccessApp.tsx");
     const app = source("./App.tsx");
-    expect(access).toContain('location.hash = "clube"');
+    expect(access).toContain('window.location.assign("/clube")');
     expect(access).toContain("mascaraTelefone");
     expect(app).toContain("tokenDoMagicLink");
     expect(app).toContain('surface="client"');
@@ -71,14 +71,13 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
   it("envia senha temporária para o cliente cadastrado no balcão entrar no portal", () => {
     const endpoint = source("../netlify/functions/staff-create-customer.ts");
     const access = source("./AccessApp.tsx");
-    const clube = source("./AdoceClube.tsx");
     expect(endpoint).toContain("temporaryPassword");
     expect(endpoint).toContain("auth_upgraded_at");
     expect(endpoint).toContain("must_change_password: true");
     expect(access).toContain("acessoDoBalcao");
     expect(access).toContain("Enviar acesso no WhatsApp");
-    expect(clube).toContain('.eq("status", "available")');
-    expect(clube).not.toContain("Math.floor(principal / TOTAL_CLUBE)");
+    expect(access).toContain('.eq("status", "available")');
+    expect(access).not.toContain("Math.floor(principal / TOTAL_CLUBE)");
   });
 
   it("aumenta texto e toque da operação no tablet compacto", () => {

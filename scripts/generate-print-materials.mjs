@@ -150,7 +150,7 @@ async function saveJpeg(canvas, filename) {
 function a4() { return createCanvas(2480, 3508); }
 
 const siteUrl = "https://www.adocebrigaderia.com.br/";
-const clubUrl = "https://www.adocebrigaderia.com.br/#clube";
+const clubUrl = "https://www.adocebrigaderia.com.br/clube";
 const siteQr = await qrImage(siteUrl);
 const clubQr = await qrImage(clubUrl);
 
@@ -243,7 +243,7 @@ const clubQr = await qrImage(clubUrl);
   ctx.fillText("14 carimbos", 590, 2360);
   ctx.fillStyle = C.pink; ctx.font = "44px 'Adoce Sans Bold'"; ctx.fillText("= 1 FATIA GRÁTIS", 590, 2460);
   ctx.fillStyle = "#e9d5cb"; ctx.font = "31px 'Adoce Sans'"; ctx.fillText("Sua conquista fica guardada.", 590, 2540);
-  drawQrCard(ctx, clubQr, 1170, 2200, 720, "Entre para o Clube", "adocebrigaderia.com.br/#clube");
+  drawQrCard(ctx, clubQr, 1170, 2200, 720, "Entre para o Clube", "adocebrigaderia.com.br/clube");
   ctx.fillStyle = C.chocolate; ctx.font = "34px 'Adoce Sans Bold'"; ctx.textAlign = "center";
   ctx.fillText("É GRATUITO · LEVA MENOS DE UM MINUTO", 1240, 3385); ctx.textAlign = "left";
   await savePng(canvas, "a4-clube-opcao-a.png");
@@ -271,7 +271,7 @@ const clubQr = await qrImage(clubUrl);
     heart(ctx, x - 14, y - 15, 29, "#d4ad99");
   }
   contain(ctx, assets.cake, 1440, 1510, 850, 740);
-  drawQrCard(ctx, clubQr, 100, 2430, 700, "Aponte e faça parte", "adocebrigaderia.com.br/#clube", true);
+  drawQrCard(ctx, clubQr, 100, 2430, 700, "Aponte e faça parte", "adocebrigaderia.com.br/clube", true);
   ctx.fillStyle = C.paper; ctx.font = "66px 'Adoce Serif Bold'";
   wrap(ctx, "Seu próximo carimbo pode começar hoje.", 1170, 2650, 1100, 78, 3);
   ctx.fillStyle = C.pink; ctx.font = "37px 'Adoce Sans Bold'";

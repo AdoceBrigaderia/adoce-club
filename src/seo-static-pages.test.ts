@@ -21,6 +21,25 @@ describe("paginas publicas para busca", () => {
     expect(main).toContain('[data-seo-static-page]');
   });
 
+  it("gera uma pagina inicial explicativa e URLs indexaveis para cada area publica", () => {
+    const generator = read("../scripts/generate-seo-pages.mjs");
+    expect(generator).toContain("Tudo o que você encontra na Adoce");
+    for (const route of [
+      "/fatias",
+      "/cardapio-de-fatias",
+      "/tortas",
+      "/docinhos",
+      "/festas",
+      "/adoce-na-escola",
+      "/aluguel-decoracao",
+      "/clube",
+    ]) {
+      expect(generator).toContain(`route: "${route}"`);
+    }
+    expect(generator).toContain("...publicLandings.map");
+    expect(generator).not.toMatch(/<a href=["']#[^"']+/);
+  });
+
   it("guarda o slug no banco sem mudar por edicao posterior do nome", () => {
     const migration = read("../supabase/migrations/20260812043651_flavor_seo_slugs.sql");
     expect(migration).toContain("add column if not exists slug text");

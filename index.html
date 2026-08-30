@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#1A0C08" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Adoce" />
     <meta name="description" content="Adoce Brigaderia em Fortaleza: Festival de Fatias, Clube Adoce, tortas, docinhos, encomendas e experiências para eventos." />
@@ -27,7 +28,7 @@
     <link rel="apple-touch-icon" href="/pwa/clube/apple-touch-icon.png" />
     <script>
       (() => {
-        const operation = location.hash.startsWith("#operacao");
+        const operation = location.pathname.startsWith("/operacao");
         document.getElementById("app-manifest").href = operation
           ? "/manifest-operacao.webmanifest"
           : "/manifest-clube.webmanifest";

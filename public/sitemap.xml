@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://www.adocebrigaderia.com.br/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/sabores/</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/sabores/abacaxi-com-coco</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/sabores/black-velvet</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/sabores/black-velvet-trufado</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
@@ -31,7 +32,16 @@
   <url><loc>https://www.adocebrigaderia.com.br/sabores/surpresa-de-uva</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/sabores/torta-de-pudim</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/sabores/trufado-de-ninho-com-morangos</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://www.adocebrigaderia.com.br/encomendas</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/fatias</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/cardapio-de-fatias</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/tortas</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/docinhos</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/festas</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/adoce-na-escola</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/aluguel-decoracao</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/politica-de-pedidos</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://www.adocebrigaderia.com.br/clube</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/fale-com-a-adoce</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/termos</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.adocebrigaderia.com.br/privacidade</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
 </urlset>

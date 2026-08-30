@@ -77,5 +77,5 @@ export default function FlavorCatalogRoute() {
 
   if (error) return <main className="sabores"><p className="sab-resumo" role="alert">{error}</p></main>;
   if (!sabores.length) return <main className="sabores"><p className="sab-resumo">Abrindo os sabores…</p></main>;
-  return <CatalogoDeSabores sabores={sabores} onReservar={() => { location.hash = "adoce-hoje"; }} />;
+  return <CatalogoDeSabores sabores={sabores} onReservar={() => { window.location.assign("/fatias"); }} />;
 }

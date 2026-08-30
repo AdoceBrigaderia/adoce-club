@@ -39,18 +39,18 @@ export const SEGMENTOS: Array<{
   chamada: string;
   rota: string;
 }> = [
-  { chave: "cakes", titulo: "Tortas", chamada: "Inteiras, por encomenda", rota: "#encomendas/tortas" },
-  { chave: "sweets", titulo: "Docinhos", chamada: "Em pacotes de 25, 50 ou 100", rota: "#encomendas/docinhos" },
-  { chave: "events", titulo: "Festas e eventos", chamada: "Tabuleiros e kits", rota: "#encomendas/festas" },
-  { chave: "school", titulo: "Adoce na Escola", chamada: "Comemorar na sala", rota: "#encomendas/escola" },
-  { chave: "rentals", titulo: "Decoração", chamada: "Para alugar e montar", rota: "#encomendas/decoracao" },
+  { chave: "cakes", titulo: "Tortas", chamada: "Inteiras, por encomenda", rota: "/tortas" },
+  { chave: "sweets", titulo: "Docinhos", chamada: "Em pacotes de 25, 50 ou 100", rota: "/docinhos" },
+  { chave: "events", titulo: "Festas e eventos", chamada: "Tabuleiros e kits", rota: "/festas" },
+  { chave: "school", titulo: "Adoce na Escola", chamada: "Comemorar na sala", rota: "/adoce-na-escola" },
+  { chave: "rentals", titulo: "Decoração", chamada: "Para alugar e montar", rota: "/aluguel-decoracao" },
 ];
 
 export const tituloDoSegmento = (s: Segmento) =>
   SEGMENTOS.find((x) => x.chave === s)?.titulo || "Encomendas";
 
-export const segmentoDaRota = (hash: string): Segmento | null =>
-  SEGMENTOS.find((s) => hash.startsWith(s.rota))?.chave || null;
+export const segmentoDaRota = (path: string): Segmento | null =>
+  SEGMENTOS.find((s) => path.split(/[?&#]/)[0].replace(/\/$/, "") === s.rota)?.chave || null;
 
 export function dinheiro(valor: number) {
   return new Intl.NumberFormat("pt-BR", {

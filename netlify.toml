@@ -21,6 +21,9 @@
 [functions."supabase-send-sms-hook"]
   timeout = 20
 
+[functions."twilio-whatsapp-order"]
+  timeout = 20
+
 [[redirects]]
   from = "/documentacao"
   to = "/documentacao.html"
@@ -29,6 +32,29 @@
 [[redirects]]
   from = "/404"
   to = "/404.html"
+  status = 200
+
+[[redirects]]
+  from = "/encomendas"
+  to = "/tortas"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/eventos"
+  to = "/festas"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/clube/minha-conta"
+  to = "/clube"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
 [[redirects]]

@@ -177,10 +177,38 @@
   }
 
   .commerce-tool-card td,
-  .commerce-tool-card th,
-  .operation-agenda-list strong,
-  .operation-agenda-list small {
+  .commerce-tool-card th {
     font-size: 1rem;
+  }
+}
+
+@media (min-width: 901px) {
+  .operation-mobile-tabbar {
+    display: none;
+  }
+
+  .operation-work {
+    padding-bottom: 72px;
+  }
+}
+
+@media (min-width: 621px) and (max-width: 900px) {
+  .operation-home .operation-dashboard-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1180px) {
+  .operation-home .operation-dashboard-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 621px) and (max-width: 1400px) {
+  .operation-dashboard-metrics small {
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
   }
 }
 

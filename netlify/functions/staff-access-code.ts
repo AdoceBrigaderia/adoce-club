@@ -102,7 +102,7 @@ export default async (request: Request) => {
       type: "magiclink",
       email: profile.email,
       options: {
-        redirectTo: `${(env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "")}/#minha-conta`,
+        redirectTo: `${(env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "")}/clube`,
       },
     });
   const accessCode = linkData?.properties?.email_otp;
@@ -111,7 +111,7 @@ export default async (request: Request) => {
   }
   const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
   const directParams = new URLSearchParams({ email: profile.email, code: accessCode });
-  const loginUrl = `${siteUrl}/#acesso-direto?${directParams.toString()}`;
+  const loginUrl = `${siteUrl}/clube/acesso-direto?${directParams.toString()}`;
 
   const { error: auditError } = await adminClient.from("audit_events").insert({
     actor_user_id: userData.user.id,

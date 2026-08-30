@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import WeeklyScheduleDialog from "./WeeklyScheduleDialog";
 
-describe("agenda semanal renderizada", () => {
+describe("funcionamento semanal renderizado", () => {
   it("exibe um sabor antecipado de retirada dentro da modalidade correta", () => {
     const markup = renderToStaticMarkup(
       <WeeklyScheduleDialog

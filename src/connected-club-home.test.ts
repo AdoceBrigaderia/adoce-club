@@ -25,11 +25,21 @@ describe("Clube conectado na página inicial", () => {
     const summary = source("./ConnectedClubSummary.tsx");
     const header = source("./PublicHeader.tsx");
 
-    expect(summary).toContain('href="/#minha-conta"');
-    expect(summary).toContain('href="/#minha-conta?view=qr"');
-    expect(summary).toContain('href="/#minha-conta?view=profile"');
+    expect(summary).toContain('href="/clube?view=card"');
+    expect(summary).toContain('href="/clube?view=qr"');
+    expect(summary).toContain('href="/clube?view=profile"');
     expect(header).toContain("Abrir meu QR Code");
     expect(header).toContain("Abrir menu");
+  });
+
+  it("mantém uma única página canônica para o Clube", () => {
+    const app = source("./App.tsx");
+    const main = source("./main.tsx");
+
+    expect(app).toContain('path === "/clube" || path.startsWith("/clube/")');
+    expect(app).not.toContain("AdoceClube");
+    expect(main).toContain('normalizedPath === "/clube/minha-conta"');
+    expect(main).toContain('window.location.replace(`/clube');
   });
 
   it("explica claramente a opção de manter a sessão", () => {

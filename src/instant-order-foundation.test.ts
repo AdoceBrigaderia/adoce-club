@@ -42,7 +42,9 @@ describe("fundação segura dos pedidos imediatos", () => {
     expect(styles).toContain("grid-template-columns: repeat(5, minmax(0, 1fr))");
     expect(styles).toContain("overflow: visible");
     expect(operationQueue).toContain("Marcar como entregue");
-    expect(accessApp).toContain('location.hash.includes("vendas")');
+    expect(accessApp).toContain('sales: "/operacao/pedidos?tipo=vendas"');
+    expect(accessApp).toContain('new URLSearchParams(location.search).get("tipo")');
+    expect(accessApp).toContain('allowedTabs={["sales", "requests"]}');
   });
 
   it("registra pedidos recebidos no WhatsApp antes de tratá-los como venda concluída", () => {

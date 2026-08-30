@@ -43,8 +43,8 @@ export default function ClubExperience() {
 
       {porta.porta === "convite" ? (
         <section className="app-club-access">
-          <a className="app-button primary" href="/#cadastro">Quero entrar no Clube <ArrowRight /></a>
-          <a className="app-button secondary" href="/#entrar">Já faço parte</a>
+          <a className="app-button primary" href="/clube/cadastro">Quero entrar no Clube <ArrowRight /></a>
+          <a className="app-button secondary" href="/clube/entrar">Já faço parte</a>
           <small><ShieldCheck /> Seus dados ficam protegidos.</small>
         </section>
       ) : null}

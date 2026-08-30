@@ -10,12 +10,12 @@ export default function PublicContactDock() {
   const dockRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const handleHashChange = () => {
+    const handleRouteChange = () => {
       setOpen(false);
       refreshRoute((version) => version + 1);
     };
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handleRouteChange);
+    return () => window.removeEventListener("popstate", handleRouteChange);
   }, []);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function PublicContactDock() {
     };
   }, [open]);
 
-  if (!shouldShowPublicContactDock(window.location.hostname, window.location.hash)) return null;
+  if (!shouldShowPublicContactDock(window.location.hostname, window.location.pathname)) return null;
 
   return (
     <nav ref={dockRef} className="public-contact-dock" aria-label="Canais de contato da Adoce">

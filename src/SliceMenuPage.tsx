@@ -37,7 +37,7 @@ export default function SliceMenuPage() {
       <section className="slice-menu-order">
         <div><p>Como pedir</p><h2>Escolha, consulte e combine sua retirada.</h2></div>
         <ol><li><span>1</span>Escolha o sabor e o dia.</li><li><span>2</span>Monte o pedido pelo site.</li><li><span>3</span>Confirme a disponibilidade e a retirada.</li></ol>
-        <div className="slice-menu-channels"><a href="/#adoce-hoje"><ShoppingBag /> Montar pedido</a><span><Camera /> Instagram</span><span><MessageCircle /> App 99</span></div>
+        <div className="slice-menu-channels"><a href="/fatias"><ShoppingBag /> Montar pedido</a><span><Camera /> Instagram</span><span><MessageCircle /> App 99</span></div>
         <p className="slice-menu-note"><Clock3 /> Pedidos on-line: terça a sábado, das 9h às 16h.</p>
       </section>
       <ProductImageViewer image={viewedImage} images={viewerImages} onClose={() => setViewedImage(null)} />

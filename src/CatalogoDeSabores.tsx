@@ -55,10 +55,10 @@ export default function CatalogoDeSabores({
       {/* Toda tela precisa de saida. A primeira versao nao tinha nenhuma —
           o cliente entrava e ficava preso. */}
       <nav className="sab-barra" aria-label="Navegação">
-        <a className="sab-voltar" href="#inicio">
+        <a className="sab-voltar" href="/">
           <ArrowLeft aria-hidden="true" /> Início
         </a>
-        <a className="sab-atalho" href="#adoce-hoje">O que tem hoje</a>
+        <a className="sab-atalho" href="/fatias">O que tem hoje</a>
       </nav>
 
       <header className="sab-capa">
@@ -151,9 +151,9 @@ export default function CatalogoDeSabores({
         <p className="sab-assinatura">
           Doce feito com afeto, para celebrar cada momento.
         </p>
-        <a className="sab-principal" href="#adoce-hoje">Ver o que tem hoje</a>
-        <a className="sab-secundario" href="#encomendas">Encomendar uma torta</a>
-        <a className="sab-secundario" href="#inicio">Voltar ao início</a>
+        <a className="sab-principal" href="/fatias">Ver o que tem hoje</a>
+        <a className="sab-secundario" href="/tortas">Encomendar uma torta</a>
+        <a className="sab-secundario" href="/">Voltar ao início</a>
       </nav>
       <ProductImageViewer image={ampliada} onClose={() => setAmpliada(null)} />
     </main>

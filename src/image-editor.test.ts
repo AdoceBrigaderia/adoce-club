@@ -32,14 +32,10 @@ describe("editor de imagens dos produtos", () => {
 
   it("mostra a moldura final e confirma se a foto preenche todo o espaço", () => {
     const editor = readFileSync(new URL("./ImageEditor.tsx", import.meta.url), "utf8");
-    const visualSettings = readFileSync(new URL("./OperationVisualSettings.tsx", import.meta.url), "utf8");
     expect(editor).toContain("Formato final {preset.aspectWidth}:{preset.aspectHeight}");
     expect(editor).toContain("fitAnalysis?.title");
     expect(editor).toContain("Imagem enviada:");
     expect(editor).toContain("saída exata em");
     expect(editor).toContain("Salvar neste formato");
-    expect(visualSettings).toContain('aspectRatio: `${definition.aspectWidth} / ${definition.aspectHeight}`');
-    expect(visualSettings).toContain("Tamanho esperado:");
-    expect(visualSettings).toContain("se a proporção for diferente, a foto será distorcida");
   });
 });

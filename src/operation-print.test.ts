@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 const files = [
   "./OperationInstantOrders.tsx",
   "./OperationCommercialAdmin.tsx",
-  "./OperationPedeJunto.tsx",
   "./AccessApp.tsx",
 ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
 const styles = readFileSync(new URL("./operation-print.css", import.meta.url), "utf8");
@@ -21,8 +20,7 @@ describe("impressão e PDF na operação", () => {
   it("mantém A4/PDF e oferece cupom de 58 mm nos pedidos", () => {
     expect(files[0]).toContain('printOperation("thermal")');
     expect(files[1]).toContain('printOperation("thermal")');
-    expect(files[2]).toContain('printOperation("thermal")');
-    expect(files[3]).toContain('printOperation("a4")');
+    expect(files[2]).toContain('printOperation("a4")');
     expect(helper).toContain("dataset.operationPrintFormat = format");
     expect(helper).toContain("window.print()");
   });

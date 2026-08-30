@@ -15,7 +15,7 @@ describe("cadastro rápido do Clube Adoce", () => {
   it("cria o acesso definitivo e abre o cartão logo depois do código", () => {
     const verifyPosition = access.indexOf("const result = await verifyEmailCode(email, code)");
     const upgradePosition = access.indexOf("await upgradeCustomerSecurity(accessToken, phone, password)");
-    const cardPosition = access.indexOf('location.hash = "clube"', upgradePosition);
+    const cardPosition = access.indexOf('window.location.assign("/clube")', upgradePosition);
 
     expect(verifyPosition).toBeGreaterThan(-1);
     expect(upgradePosition).toBeGreaterThan(verifyPosition);
@@ -57,7 +57,7 @@ describe("cadastro rápido do Clube Adoce", () => {
   it("não obriga a confirmação do WhatsApp nem escolhas de marketing no cadastro", () => {
     const registrationCompletion = access.slice(
       access.indexOf("if (registering && result.user)"),
-      access.indexOf('location.hash = surface === "operation"'),
+      access.indexOf('window.location.assign(surface === "operation"'),
     );
     expect(registrationCompletion).not.toContain('setStage("whatsapp")');
     expect(access).not.toContain("Quero receber sabores e novidades. <em>Opcional</em>");

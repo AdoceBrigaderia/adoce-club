@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
 import { CreditCard, MessageCircle, Save, Settings2, Timer } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
-import OperationVisualSettings from "./OperationVisualSettings";
 import "./operation-commerce-tools.css";
 
 type PaymentMethod = {
@@ -17,15 +15,7 @@ type CommerceSettings = {
   payment_methods: PaymentMethod[];
 };
 
-export default function OperationCommerceSettings({
-  session,
-  onOpenFlavorImages,
-  onOpenProductImages,
-}: {
-  session: Session;
-  onOpenFlavorImages?: () => void;
-  onOpenProductImages?: () => void;
-}) {
+export default function OperationCommerceSettings() {
   const [settings, setSettings] = useState<CommerceSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -84,10 +74,5 @@ export default function OperationCommerceSettings({
       </section>
     </div>
     <button className="commerce-primary-action" type="button" onClick={() => void save()} disabled={busy}><Save /> Salvar configurações</button>
-    <OperationVisualSettings
-      session={session}
-      onOpenFlavorImages={onOpenFlavorImages}
-      onOpenProductImages={onOpenProductImages}
-    />
   </section>;
 }

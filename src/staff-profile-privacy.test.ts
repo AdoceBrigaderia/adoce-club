@@ -19,8 +19,9 @@ describe("ficha privada da equipe", () => {
   });
 
   it("só abre a ficha completa para o papel owner", () => {
-    expect(app).toContain('view === "team" && role === "owner"');
-    expect(app).toContain('view === "team" && role !== "owner"');
+    expect(app).toContain('settingsTab === "team" && role === "owner"');
+    expect(app).toContain('role === "owner" ? <button className={settingsTab === "team" ? "active" : ""}');
+    expect(app).not.toContain('view === "team"');
   });
 
   it("usa o editor existente em recorte quadrado e salva por seção", () => {

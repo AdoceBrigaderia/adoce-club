@@ -122,9 +122,9 @@ export function ConnectedHomeClubCard({ summary }: { summary: ConnectedClubSumma
           : `Faltam ${remaining} carimbo${remaining === 1 ? "" : "s"} para sua fatia grátis.`}
       </p>
       <div className="public-connected-club-actions">
-        <a href="/#minha-conta"><Heart /> Abrir meu cartão</a>
-        <a href="/#minha-conta?view=qr"><QrCode /> Meu QR</a>
-        <a href="/#minha-conta?view=profile"><Settings2 /> Preferências</a>
+        <a href="/clube?view=card"><Heart /> Abrir meu cartão</a>
+        <a href="/clube?view=qr"><QrCode /> Meu QR</a>
+        <a href="/clube?view=profile"><Settings2 /> Preferências</a>
       </div>
     </aside>
   );

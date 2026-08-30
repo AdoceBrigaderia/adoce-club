@@ -8,10 +8,6 @@ const migration = readFileSync(
   ),
   "utf8",
 );
-const webhook = readFileSync(
-  new URL("../netlify/functions/meta-whatsapp-webhook.ts", import.meta.url),
-  "utf8",
-);
 const access = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
 const admin = readFileSync(
   new URL("./OperationContentAdmin.tsx", import.meta.url),
@@ -19,14 +15,7 @@ const admin = readFileSync(
 );
 const today = readFileSync(new URL("./AdoceHoje.tsx", import.meta.url), "utf8");
 
-describe("confirmação antifraude pelo WhatsApp da Meta", () => {
-  it("mantém o segredo no servidor e valida a assinatura do webhook", () => {
-    expect(webhook).toContain('env("META_WHATSAPP_APP_SECRET")');
-    expect(webhook).toContain('request.headers.get("x-hub-signature-256")');
-    expect(webhook).toContain('env("SUPABASE_SECRET_KEY")');
-    expect(webhook).not.toContain("VITE_META_WHATSAPP_APP_SECRET");
-  });
-
+describe("proteções do Cartão Clube", () => {
   it("exige telefone único, código temporário e bloqueia indicação no mesmo grupo", () => {
     expect(migration).toContain("whatsapp_one_open_challenge");
     expect(migration).toContain("interval '15 minutes'");

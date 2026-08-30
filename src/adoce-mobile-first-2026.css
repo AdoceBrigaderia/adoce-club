@@ -1014,8 +1014,6 @@ body:has(.public-mobile-nav) {
 .today-page > .today-flavors { order: 1; }
 
 .today-page > .today-hero,
-.today-page > .today-group-order,
-.today-page > .today-active-promotions,
 .today-page > .today-cakes,
 .today-page > .today-orders-bridge,
 .today-page > .today-policy-callout,
@@ -1629,7 +1627,7 @@ body:has(.public-mobile-nav) {
 }
 
 .club-home .club-member-welcome span {
-  color: var(--adoce-pink);
+  color: var(--adoce-terra);
   font: 700 .95rem/1 system-ui, sans-serif;
 }
 
@@ -1642,10 +1640,10 @@ body:has(.public-mobile-nav) {
 .club-home .club-card-main {
   margin-top: 20px;
   padding: 20px 16px !important;
-  border: 1px solid rgba(242, 47, 99, .14) !important;
+  border: 1px solid var(--adoce-dourado) !important;
   border-radius: 24px !important;
-  background: rgba(255, 255, 255, .96) !important;
-  box-shadow: 0 14px 34px rgba(77, 33, 25, .09) !important;
+  background: var(--adoce-superficie-2) !important;
+  box-shadow: var(--adoce-sombra-alta) !important;
 }
 
 .club-home .club-stamp-title h1 {

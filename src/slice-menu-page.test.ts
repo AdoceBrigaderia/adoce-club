@@ -12,7 +12,7 @@ describe("cardápio público de fatias", () => {
   });
 
   it("é acessível pela rota pública exclusiva", () => {
-    expect(app).toContain("#cardapio-fatias");
-    expect(app).toContain("<SliceMenuPage/>");
+    expect(app).toContain('path === "/cardapio-de-fatias"');
+    expect(app).toContain("<SliceMenuPage />");
   });
 });

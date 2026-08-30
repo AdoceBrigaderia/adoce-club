@@ -20,7 +20,7 @@ describe("prioridade da Minha conta", () => {
     expect(profile).toContain("Gerar QR Code");
     expect(profile).toContain("Fazer pedido online");
     expect(profile).toContain('onClick={() => void openCustomerQr()}');
-    expect(profile).toContain('href="/#adoce-hoje"');
+    expect(profile).toContain('href="/fatias"');
     expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
   });
 

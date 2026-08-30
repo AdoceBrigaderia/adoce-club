@@ -21,7 +21,7 @@ export default function OrderPolicyPage() {
 
       <section className="order-policy-hero">
         <div className="order-policy-intro">
-          <a className="public-back" href="/#inicio">
+          <a className="public-back" href="/">
             <ArrowLeft /> Voltar à Adoce
           </a>
           <p className="public-kicker">Antes de fazer seu pedido</p>
@@ -111,14 +111,14 @@ export default function OrderPolicyPage() {
       </section>
 
       <footer className="public-footer">
-        <a className="public-brand" href="/#inicio">
+        <a className="public-brand" href="/">
           <img src="/site/logo.webp" alt="" />
           <strong>Adoce Brigaderia</strong>
         </a>
         <p>Transformando momentos especiais em doces memórias.</p>
         <div>
-          <a href="/#politica-de-pedidos">Política de pedidos</a>
-          <a href="/#privacidade">Privacidade</a>
+          <a href="/politica-de-pedidos">Política de pedidos</a>
+          <a href="/privacidade">Privacidade</a>
         </div>
       </footer>
     </main>

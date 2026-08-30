@@ -117,7 +117,7 @@ export default async function handler() {
       const corpo = JSON.stringify({
         title: alerta.title,
         body: alerta.message || "Abra a Operação Adoce para conferir.",
-        url: alerta.action_url || "#operacao",
+        url: alerta.action_url || "/operacao",
         tag: `adoce-${alerta.event_type}`,
         urgent: alerta.priority === "urgent",
       });

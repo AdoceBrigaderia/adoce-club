@@ -16,7 +16,8 @@ describe("central de imagens institucionais", () => {
       expect(["stretch", "cover", "contain"]).toContain(asset.fitMode);
       expect(SITE_VISUAL_PAGE_LINKS[asset.key]?.length).toBeGreaterThan(0);
       SITE_VISUAL_PAGE_LINKS[asset.key].forEach((destination) => {
-        expect(destination.url).toMatch(/^https:\/\/www\.adocebrigaderia\.com\.br\/(#[-a-z]+)?$/);
+        expect(destination.url).toMatch(/^https:\/\/www\.adocebrigaderia\.com\.br\/(?:[-a-z]+(?:\/[-a-z]+)*)?$/);
+        expect(destination.url).not.toContain("#");
       });
     });
   });
@@ -26,13 +27,6 @@ describe("central de imagens institucionais", () => {
     expect(hero).toMatchObject({ aspectWidth: 1, aspectHeight: 1, outputWidth: 1400, fitMode: "cover" });
   });
 
-  it("mostra na central a URL clicável de cada página que usa a imagem", () => {
-    const source = readFileSync(new URL("./OperationVisualSettings.tsx", import.meta.url), "utf8");
-    expect(source).toContain("SITE_VISUAL_PAGE_LINKS[definition.key].map");
-    expect(source).toContain("destination.url");
-    expect(source).toContain('target="_blank"');
-  });
-
   it("inclui os principais visuais fixos que não pertencem ao catálogo", () => {
     const keys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));
     [
@@ -40,7 +34,6 @@ describe("central de imagens institucionais", () => {
       "/site/trufado-de-ninho-home-20260803.png",
       "/site/beth-fundadora.png",
       "/site/clube-cartao-destaque-v2.webp",
-      "/site/pede-junto-pacotes.webp",
       "/site/adoce-hoje-retirada-ilustracao.webp",
       "/site/adoce-hoje-barraquinha-ilustracao.webp",
       "/site/politica-de-pedidos.jpeg",

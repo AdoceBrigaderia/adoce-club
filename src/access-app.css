@@ -2873,33 +2873,3 @@
   .customer-delete-dialog-actions { flex-direction: column-reverse; }
   .customer-delete-dialog-actions button { width: 100%; }
 }
-.whatsapp-auth-pilot {
-  max-width: 760px;
-}
-
-.whatsapp-auth-pilot-form {
-  display: grid;
-  gap: 1rem;
-  max-width: 560px;
-}
-
-.whatsapp-auth-pilot-form label {
-  display: grid;
-  gap: 0.4rem;
-  font-weight: 700;
-}
-
-.whatsapp-auth-pilot-form input {
-  min-height: 48px;
-  border: 1px solid var(--border, #e8d8d1);
-  border-radius: 14px;
-  padding: 0.8rem 1rem;
-  font: inherit;
-}
-
-.whatsapp-auth-pilot-message {
-  margin-top: 1rem;
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  background: #fff4f7;
-}

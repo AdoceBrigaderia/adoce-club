@@ -19,7 +19,7 @@ const sourceRenderedHeight = sourceHeight * scale;
 const offsetY = (height - sourceRenderedHeight) / 2;
 
 const siteUrl = 'https://www.adocebrigaderia.com.br/';
-const clubUrl = 'https://www.adocebrigaderia.com.br/#clube';
+const clubUrl = 'https://www.adocebrigaderia.com.br/clube';
 
 function sx(value) { return value * scale; }
 function sy(value) { return value * scale + offsetY; }

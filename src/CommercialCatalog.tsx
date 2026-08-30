@@ -864,7 +864,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
                   onChange={(event) => { setForm({ ...form, privacy: event.target.checked }); clearFieldError("privacy"); }}
                 />
                 <span>
-                  Li a <a href="/#privacidade">Política de Privacidade</a> e autorizo o contato
+                  Li a <a href="/privacidade">Política de Privacidade</a> e autorizo o contato
                   sobre esta solicitação.
                 </span>
               </label>

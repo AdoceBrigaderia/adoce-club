@@ -9,24 +9,15 @@ export const publicContactLinks = {
   whatsappSecondary: `https://wa.me/5585981994370?text=${whatsappMessage}`,
 } as const;
 
-export function shouldShowPublicContactDock(hostname: string, hash: string) {
+export function shouldShowPublicContactDock(hostname: string, path: string) {
   const host = hostname.toLowerCase();
-  const normalizedHash = hash.toLowerCase();
+  const normalizedPath = path.toLowerCase();
 
   if (host.startsWith("operacao.")) return false;
 
   return ![
-    "#operacao",
-    "#operacao-demo",
-    "#membro-demo",
-    "#restauracao-demo",
-    "#prototipo",
-    "#campanha-",
-    "#lancamento-",
-    "#entrar",
-    "#cadastro",
-    "#minha-conta",
-    "#acesso-direto",
-    "#fale-com-a-adoce",
-  ].some((prefix) => normalizedHash.startsWith(prefix));
+    "/operacao",
+    "/clube",
+    "/fale-com-a-adoce",
+  ].some((prefix) => normalizedPath.startsWith(prefix));
 }

@@ -28,7 +28,7 @@ describe("canal de reclamações e sugestões", () => {
     expect(migration).toContain("enable row level security");
     expect(migration).toContain("revoke all on table public.site_feedback from public, anon, authenticated");
     expect(migration).toContain("using (private.is_staff())");
-    expect(app).toContain('hash.startsWith("#fale-com-a-adoce")');
+    expect(app).toContain('path === "/fale-com-a-adoce"');
     expect(endpoint).toContain('.from("site_feedback").insert');
   });
 });

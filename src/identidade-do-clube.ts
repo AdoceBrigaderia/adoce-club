@@ -129,8 +129,8 @@ export function tipoDoLinkDeAcesso(hash = ""): string | null {
 }
 
 /** Token do cartao impresso: #cartao/<token>. */
-export function tokenDoCartaoNaRota(hash = ""): string | null {
-  const m = hash.match(/^#cartao\/([A-Za-z0-9._-]{8,})$/);
+export function tokenDoCartaoNaRota(route = ""): string | null {
+  const m = route.match(/^(?:#cartao\/|\/clube\/cartao\/)([A-Za-z0-9._-]{8,})$/);
   return m ? m[1] : null;
 }
 
@@ -139,4 +139,4 @@ export function tokenDoCartaoNaRota(hash = ""): string | null {
  * gravado no historico do navegador e na analise de uso. Ja aconteceu: havia
  * 7 registros com o token completo do cliente em site_analytics_events.
  */
-export const rotaLimpaDepoisDoLogin = "#clube";
+export const rotaLimpaDepoisDoLogin = "/clube";

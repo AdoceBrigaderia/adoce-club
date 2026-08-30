@@ -23,12 +23,12 @@ const checks = [
   {
     file: 'a4-clube-opcao-a.png',
     crop: [1300, 2275, 710, 710],
-    expected: 'https://www.adocebrigaderia.com.br/#clube',
+    expected: 'https://www.adocebrigaderia.com.br/clube',
   },
   {
     file: 'a4-clube-opcao-b.png',
     crop: [230, 2505, 690, 690],
-    expected: 'https://www.adocebrigaderia.com.br/#clube',
+    expected: 'https://www.adocebrigaderia.com.br/clube',
   },
 ];
 

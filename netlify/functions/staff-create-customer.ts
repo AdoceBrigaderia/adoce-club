@@ -166,7 +166,7 @@ export default async (request: Request) => {
   });
 
   const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-  const loginUrl = `${siteUrl}/#entrar`;
+  const loginUrl = `${siteUrl}/clube/entrar`;
   const firstName = fullName.split(/\s+/)[0] || "cliente";
   const accessMessage =
     `Olá, ${firstName}! Seu Clube Adoce já está pronto. Abra ${loginUrl} e entre com este WhatsApp e a senha temporária: ${temporaryPassword}\n\nNo primeiro acesso o site pede que você troque essa senha por uma só sua, com no mínimo 6 caracteres.`;

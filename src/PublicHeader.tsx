@@ -4,14 +4,14 @@ import type { ConnectedClubSummary } from "./ConnectedClubSummary";
 import { useConnectedClubSummary } from "./ConnectedClubSummary";
 
 const publicLinks = [
-  ["Início", "/#inicio"],
-  ["Fatias", "/#adoce-hoje"],
-  ["Cardápio de fatias", "/#cardapio-fatias"],
-  ["Tortas", "/#encomendas"],
-  ["Docinhos", "/#docinhos"],
-  ["Eventos", "/#eventos"],
-  ["Adoce na Escola", "/#adoce-na-escola"],
-  ["Aluguel de decoração", "/#aluguel-decoracao"],
+  ["Início", "/"],
+  ["Fatias", "/fatias"],
+  ["Cardápio de fatias", "/cardapio-de-fatias"],
+  ["Tortas", "/tortas"],
+  ["Docinhos", "/docinhos"],
+  ["Eventos", "/festas"],
+  ["Adoce na Escola", "/adoce-na-escola"],
+  ["Aluguel de decoração", "/aluguel-decoracao"],
 ] as const;
 
 export default function PublicHeader({
@@ -25,7 +25,7 @@ export default function PublicHeader({
   const member = clubSummary === undefined ? detectedClubSummary : clubSummary;
   const firstName = member?.firstName || "Cliente";
   const progress = member?.progress || 0;
-  const accountHref = member ? "/#minha-conta" : "/#entrar";
+  const accountHref = member ? "/clube" : "/clube/entrar";
 
   return (
     <header className="public-header public-shell-header">
@@ -33,7 +33,7 @@ export default function PublicHeader({
         <span>Olá,</span> <strong>{firstName}!</strong>
       </a>
 
-      <a className="public-brand" href="/#inicio" aria-label="Adoce Brigaderia — início">
+      <a className="public-brand" href="/" aria-label="Adoce Brigaderia — início">
         <img src="/site/logo.webp" alt="Adoce Brigaderia" />
       </a>
 

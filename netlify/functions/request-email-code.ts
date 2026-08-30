@@ -131,7 +131,7 @@ export default async (request: Request) => {
   const otpBody = {
     email,
     create_user: Boolean(body.createUser),
-    redirect_to: `${siteUrl}/#entrar`,
+    redirect_to: `${siteUrl}/clube/entrar`,
     data: body.fullName?.trim()
       ? { full_name: body.fullName.trim() }
       : undefined,

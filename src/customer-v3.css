@@ -6,16 +6,16 @@
  */
 
 :root {
-  --customer-pink: #ef5271;
-  --customer-pink-strong: #d9385d;
-  --customer-pink-soft: #fde7eb;
-  --customer-pink-pale: #fff3f4;
-  --customer-cream: #fffaf4;
-  --customer-paper: #fffdf9;
-  --customer-chocolate: #38150f;
-  --customer-muted: #76544c;
-  --customer-line: rgba(156, 87, 72, 0.2);
-  --customer-shadow: 0 18px 55px rgba(92, 40, 31, 0.1);
+  --customer-pink: var(--adoce-terra);
+  --customer-pink-strong: var(--adoce-terra-escuro);
+  --customer-pink-soft: var(--adoce-rosa);
+  --customer-pink-pale: var(--adoce-rosa-claro);
+  --customer-cream: var(--adoce-fundo);
+  --customer-paper: var(--adoce-superficie);
+  --customer-chocolate: var(--adoce-marrom);
+  --customer-muted: var(--adoce-texto-suave);
+  --customer-line: var(--adoce-borda);
+  --customer-shadow: var(--adoce-sombra-alta);
 }
 
 body.club-modal-open {
@@ -46,7 +46,7 @@ body.club-modal-open {
 .club-onboarding .access-brand img {
   width: 52px;
   height: 52px;
-  border: 2px solid rgba(239, 82, 113, 0.22);
+  border: 2px solid var(--adoce-borda-forte);
   box-shadow: 0 7px 20px rgba(92, 40, 31, 0.08);
 }
 
@@ -130,7 +130,7 @@ body.club-modal-open {
 .access-page.client .access-auth-card > img {
   width: 72px;
   height: 72px;
-  border: 2px solid rgba(239, 82, 113, 0.22);
+  border: 2px solid var(--adoce-borda-forte);
   box-shadow: 0 8px 24px rgba(92, 40, 31, 0.08);
 }
 
@@ -171,7 +171,7 @@ body.club-modal-open {
 .club-onboarding-form input:focus,
 .club-panel input:focus {
   border-color: var(--customer-pink);
-  box-shadow: 0 0 0 4px rgba(239, 82, 113, 0.12);
+  box-shadow: 0 0 0 4px var(--adoce-rosa);
 }
 
 .access-page.client .access-primary,
@@ -181,7 +181,7 @@ body.club-modal-open {
   border-radius: 14px;
   color: #fff;
   background: var(--customer-pink);
-  box-shadow: 0 11px 25px rgba(217, 56, 93, 0.2);
+  box-shadow: var(--adoce-sombra-alta);
 }
 
 .access-page.client .access-primary:hover,
@@ -200,7 +200,7 @@ body.club-modal-open {
   width: 100%;
   min-height: 46px;
   margin-top: 14px;
-  border: 1px solid rgba(239, 82, 113, 0.32);
+  border: 1px solid var(--adoce-borda-forte);
   border-radius: 14px;
   background: var(--customer-pink-pale);
   text-decoration: none;
@@ -1077,9 +1077,9 @@ body.club-modal-open {
 .club-member-start .club-card-main {
   min-height: 0;
   padding: clamp(22px, 4vw, 36px);
-  border-color: rgba(239,82,113,.5);
-  background: #fff7f7;
-  box-shadow: 0 22px 60px rgba(113,36,48,.14);
+  border-color: var(--adoce-dourado);
+  background: var(--adoce-superficie-2);
+  box-shadow: var(--adoce-sombra-alta);
 }
 
 .club-stamp-title {
@@ -1100,7 +1100,7 @@ body.club-modal-open {
   width: 30px;
   height: 30px;
   color: var(--customer-pink);
-  fill: rgba(239,82,113,.16);
+  fill: var(--adoce-rosa);
 }
 
 .club-stamp-title h1 {
@@ -1133,8 +1133,8 @@ body.club-modal-open {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
-  color: #885e56;
-  border: 2px solid #f4a7b6;
+  color: var(--adoce-marrom-claro);
+  border: 2px solid var(--adoce-dourado);
   border-radius: 50%;
   background: #fff;
 }
@@ -1143,7 +1143,7 @@ body.club-modal-open {
   color: #fff;
   border-color: var(--customer-pink);
   background: var(--customer-pink);
-  box-shadow: 0 7px 16px rgba(217,56,93,.2);
+  box-shadow: var(--adoce-sombra);
 }
 
 .club-member-start .club-stamps svg {
@@ -1203,7 +1203,7 @@ body.club-modal-open {
   text-decoration: none;
   border-radius: 17px;
   background: var(--customer-pink);
-  box-shadow: 0 15px 30px rgba(217,56,93,.22);
+  box-shadow: var(--adoce-sombra-alta);
   font-weight: 850;
 }
 

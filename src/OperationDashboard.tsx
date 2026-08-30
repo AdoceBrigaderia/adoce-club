@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
-  CalendarDays,
-  CircleDollarSign,
   PackageCheck,
   RefreshCw,
   ShoppingCart,
@@ -16,9 +14,7 @@ import "./operation-dashboard.css";
 export type DashboardDestination =
   | "customers"
   | "sales"
-  | "agenda"
   | "requests"
-  | "finance"
   | "catalog"
   | "availability"
   | "low-stock";
@@ -212,7 +208,7 @@ export default function OperationDashboard({
           <AlertTriangle />
           <span><small>Precisa de atenção</small><strong>{priority}</strong></span>
         </div>
-        <p>{priority ? "Confira pagamentos, retiradas e itens com poucas unidades." : "Nada urgente neste momento."}</p>
+        <p>{priority ? "Confira pedidos, retiradas e itens com poucas unidades." : "Nada urgente neste momento."}</p>
       </div>
 
       <div className="operation-dashboard-metrics">
@@ -233,9 +229,9 @@ export default function OperationDashboard({
           <ArrowRight />
         </button>
         <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span><strong>{data.activeSales}</strong><small>vendas em andamento</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("sales")}><CircleDollarSign /><span><strong>{data.awaitingPayment}</strong><small>aguardando pagamento</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span><strong>{data.awaitingPayment}</strong><small>aguardando pagamento</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("sales")}><PackageCheck /><span><strong>{data.ready}</strong><small>prontas para retirada</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("requests")}><CalendarDays /><span><strong>{data.activeRequests}</strong><small>encomendas ativas</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>{data.activeRequests}</strong><small>solicitações em aberto</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("customers")}><Users /><span><strong>{data.members}</strong><small>clientes cadastrados</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("low-stock")} className={data.lowStock ? "is-warning" : ""}><AlertTriangle /><span><strong>{data.lowStock}</strong><small>itens com estoque baixo</small></span><ArrowRight /></button>
       </div>
@@ -243,7 +239,7 @@ export default function OperationDashboard({
       <div className="operation-dashboard-shortcuts">
         <div><small>Acesso rápido</small><h2>O que você quer fazer agora?</h2></div>
         <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span>Venda rápida<small>Lançar ou acompanhar</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("agenda")}><CalendarDays /><span>Agenda<small>Compromissos de hoje</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span>Pedidos futuros<small>Solicitações e retiradas</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("customers")}><Users /><span>Clientes<small>Buscar e gerenciar Clube</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span>Produtos<small>Disponibilidade e produção</small></span><ArrowRight /></button>
       </div>

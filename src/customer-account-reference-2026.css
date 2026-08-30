@@ -12,17 +12,17 @@
 .club-account-reference {
   display: grid;
   gap: 20px;
-  color: #2b130d;
+  color: var(--adoce-texto);
 }
 
 .club-account-identity,
 .club-account-loyalty,
 .club-account-order-empty,
 .club-account-reference .club-preferences-panel {
-  border: 1px solid rgba(240, 106, 95, 0.22);
+  border: 1px solid var(--adoce-borda);
   border-radius: 24px;
-  background: rgba(255, 250, 244, 0.94);
-  box-shadow: 0 14px 34px rgba(83, 37, 28, 0.07);
+  background: var(--adoce-superficie-2);
+  box-shadow: var(--adoce-sombra);
 }
 
 .club-account-identity {
@@ -38,12 +38,12 @@
   place-items: center;
   width: 72px;
   aspect-ratio: 1;
-  border: 5px solid #fff;
+  border: 5px solid var(--adoce-branco);
   border-radius: 50%;
-  background: #f06a5f;
-  color: #fff;
+  background: var(--adoce-rosa-escuro);
+  color: var(--adoce-marrom);
   font: 800 1.4rem/1 Inter, "Segoe UI", sans-serif;
-  box-shadow: 0 8px 18px rgba(240, 106, 95, 0.22);
+  box-shadow: var(--adoce-sombra);
 }
 
 .club-account-identity-copy { min-width: 0; }
@@ -57,27 +57,27 @@
   align-items: center;
   min-width: 0;
   margin: 5px 0;
-  color: #78574d;
+  color: var(--adoce-texto-suave);
   font-size: .82rem;
   overflow-wrap: anywhere;
 }
-.club-account-identity-copy p svg { width: 18px; flex: 0 0 auto; color: #ef3f70; }
+.club-account-identity-copy p svg { width: 18px; flex: 0 0 auto; color: var(--adoce-terra); }
 
 .club-account-edit {
   display: grid;
   place-items: center;
   gap: 4px;
   width: 54px;
-  color: #ef3f70;
+  color: var(--adoce-terra);
   text-decoration: none;
   font-size: .72rem;
 }
-.club-account-edit svg { width: 44px; height: 44px; padding: 11px; border-radius: 50%; background: #fff; box-shadow: 0 7px 18px rgba(83, 37, 28, .08); }
+.club-account-edit svg { width: 44px; height: 44px; padding: 11px; border-radius: 50%; background: var(--adoce-superficie); box-shadow: var(--adoce-sombra); }
 
 .club-account-heading small {
   display: block;
   margin-bottom: 6px;
-  color: #ef3f70;
+  color: var(--adoce-terra);
   font: 800 .72rem/1 Inter, sans-serif;
   letter-spacing: .2em;
 }
@@ -85,7 +85,7 @@
   margin: 0;
   font: 700 clamp(2.35rem, 12vw, 4.4rem)/.95 'Playfair Display',Georgia,serif;
 }
-.club-account-heading em { color: #ef3f70; font-style: normal; }
+.club-account-heading em { color: var(--adoce-terra); font-style: normal; }
 
 .club-account-actions {
   display: grid;
@@ -100,51 +100,52 @@
   align-items: center;
   min-height: 116px;
   padding: 14px;
-  border: 1px solid rgba(240, 106, 95, .2);
+  border: 1px solid var(--adoce-borda);
   border-radius: 22px;
-  background: rgba(255, 250, 244, .94);
-  color: #2b130d;
+  background: var(--adoce-superficie-2);
+  color: var(--adoce-texto);
   text-decoration: none;
-  box-shadow: 0 12px 28px rgba(83, 37, 28, .06);
+  box-shadow: var(--adoce-sombra);
 }
-.club-account-actions a > span { grid-row: 1 / span 2; display: grid; place-items: center; width: 48px; aspect-ratio: 1; border-radius: 50%; background: #ef2861; color: #fff; }
+.club-account-actions a > span { grid-row: 1 / span 2; display: grid; place-items: center; width: 48px; aspect-ratio: 1; border-radius: 50%; background: var(--adoce-terra); color: var(--adoce-creme); }
 .club-account-actions a > span svg { width: 25px; }
 .club-account-actions a > strong { align-self: end; font-size: .98rem; }
-.club-account-actions a > small { align-self: start; color: #78574d; font-size: .72rem; line-height: 1.35; }
-.club-account-actions a > svg { grid-column: 3; grid-row: 1 / span 2; width: 18px; color: #ef3f70; }
+.club-account-actions a > small { align-self: start; color: var(--adoce-texto-suave); font-size: .72rem; line-height: 1.35; }
+.club-account-actions a > svg { grid-column: 3; grid-row: 1 / span 2; width: 18px; color: var(--adoce-terra); }
 
 .club-account-loyalty {
   display: grid;
   gap: 16px;
   padding: 20px;
+  border-color: var(--adoce-dourado);
 }
 .club-account-loyalty small { font: 700 1.35rem/1 'Playfair Display',Georgia,serif; }
-.club-account-loyalty h2 { margin: 7px 0 12px; font: 500 1rem/1.2 Inter, sans-serif; }
-.club-account-loyalty h2 strong { color: #ef2861; font-size: 1.8rem; }
+.club-account-loyalty h1 { margin: 7px 0 12px; font: 500 1rem/1.2 Inter, sans-serif; }
+.club-account-loyalty h1 strong { color: var(--adoce-terra); font-size: 1.8rem; }
 .club-account-stamps { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
-.club-account-stamps svg { width: 100%; height: auto; padding: 5px; border: 1px solid #ffafbf; border-radius: 50%; color: #c58b83; }
-.club-account-stamps svg.filled { fill: #ef2861; color: #ef2861; }
+.club-account-stamps svg { width: 100%; height: auto; padding: 5px; border: 1px solid var(--adoce-dourado); border-radius: 50%; color: var(--adoce-marrom-claro); }
+.club-account-stamps svg.filled { fill: var(--adoce-rosa-escuro); color: var(--adoce-rosa-escuro); }
 .club-account-reward-ready {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-top: 14px;
   padding: 11px 12px;
-  border: 1px solid #ef2861;
+  border: 1px solid var(--adoce-dourado);
   border-radius: 14px;
-  background: #fff0f4;
-  color: #6b1730;
+  background: var(--adoce-atencao-fundo);
+  color: var(--adoce-marrom);
 }
-.club-account-reward-ready > svg { flex: 0 0 auto; width: 24px; color: #ef2861; }
+.club-account-reward-ready > svg { flex: 0 0 auto; width: 24px; color: var(--adoce-terra); }
 .club-account-reward-ready > span { display: grid; gap: 2px; }
 .club-account-reward-ready strong { font-size: .88rem; line-height: 1.25; }
-.club-account-reward-ready small { color: #78574d; font: 600 .68rem/1.35 Inter, sans-serif; }
+.club-account-reward-ready small { color: var(--adoce-texto-suave); font: 600 .68rem/1.35 Inter, sans-serif; }
 .club-account-loyalty button {
   min-height: 48px;
   border: 0;
   border-radius: 14px;
-  background: #ef2861;
-  color: #fff;
+  background: var(--adoce-terra);
+  color: var(--adoce-creme);
   font-weight: 800;
 }
 
@@ -163,10 +164,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px solid #ef2861;
+  border: 1px solid var(--adoce-terra);
   border-radius: 18px;
-  background: #fffaf4;
-  color: #ef2861;
+  background: var(--adoce-superficie-2);
+  color: var(--adoce-terra);
   font: 800 .82rem/1.2 Inter, "Segoe UI", sans-serif;
   text-align: center;
   text-decoration: none;
@@ -180,8 +181,8 @@
 .club-account-primary-actions > a:hover,
 .club-account-primary-actions > button:focus-visible,
 .club-account-primary-actions > a:focus-visible {
-  background: #ef2861;
-  color: #fff;
+  background: var(--adoce-terra);
+  color: var(--adoce-creme);
 }
 
 .club-account-primary-actions svg {
@@ -196,9 +197,9 @@
   gap: 14px;
   padding: 18px;
 }
-.club-account-order-empty > span { display: grid; place-items: center; width: 54px; aspect-ratio: 1; border-radius: 50%; background: #ffe7ea; color: #ef2861; }
+.club-account-order-empty > span { display: grid; place-items: center; width: 54px; aspect-ratio: 1; border-radius: 50%; background: var(--adoce-rosa); color: var(--adoce-terra); }
 .club-account-order-empty div { display: grid; gap: 4px; }
-.club-account-order-empty small { color: #78574d; }
+.club-account-order-empty small { color: var(--adoce-texto-suave); }
 
 .club-account-reference .club-preferences-panel { padding: 0; overflow: hidden; }
 .club-account-reference .club-preferences-panel > summary {
@@ -225,10 +226,10 @@
   gap: 10px;
   min-height: 58px;
   padding: 0 18px;
-  border: 1px solid #ef2861;
+  border: 1px solid var(--adoce-terra);
   border-radius: 18px;
   background: transparent;
-  color: #ef2861;
+  color: var(--adoce-terra);
   font-weight: 800;
 }
 .club-account-signout svg:last-child { margin-left: auto; }

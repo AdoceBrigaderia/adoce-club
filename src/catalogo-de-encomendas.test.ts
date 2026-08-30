@@ -49,13 +49,14 @@ describe("os cinco segmentos têm o mesmo peso", () => {
   it("cada segmento tem rota própria, para trocar sem voltar à home", () => {
     // "a página de tortas deve ter acesso direto aos docinhos"
     for (const s of SEGMENTOS) {
-      expect(s.rota.startsWith("#encomendas/")).toBe(true);
+      expect(s.rota.startsWith("/")).toBe(true);
+      expect(s.rota).not.toContain("#");
       expect(segmentoDaRota(s.rota)).toBe(s.chave);
     }
   });
 
   it("rota desconhecida não escolhe segmento por engano", () => {
-    expect(segmentoDaRota("#clube")).toBeNull();
+    expect(segmentoDaRota("/clube")).toBeNull();
   });
 
   it("os nomes são os que o cliente entende", () => {

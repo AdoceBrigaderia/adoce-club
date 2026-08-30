@@ -11,13 +11,13 @@ describe("contatos públicos da Adoce", () => {
   });
 
   it("exibe os contatos nas páginas públicas e nunca na operação", () => {
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#eventos")).toBe(true);
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#pede-junto")).toBe(true);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/festas")).toBe(true);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/tortas")).toBe(true);
     expect(shouldShowPublicContactDock("operacao.adocebrigaderia.com.br", "")).toBe(false);
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#operacao")).toBe(false);
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#campanha-feed")).toBe(false);
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#entrar")).toBe(false);
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#cadastro")).toBe(false);
-    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "#fale-com-a-adoce")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/operacao")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/clube/entrar")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/clube/cadastro")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/clube")).toBe(false);
+    expect(shouldShowPublicContactDock("www.adocebrigaderia.com.br", "/fale-com-a-adoce")).toBe(false);
   });
 });

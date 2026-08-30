@@ -13,7 +13,6 @@ export type PublicAnalyticsEvent =
   | "instant_order_open"
   | "instant_order_start"
   | "instant_order_success"
-  | "pede_junto_start"
   | "club_join_start";
 
 type AnalyticsProperties = Partial<Record<
@@ -30,15 +29,14 @@ const productionHosts = new Set([
 export function publicAnalyticsEnabled() {
   if (typeof window === "undefined" || !supabase) return false;
   if (!productionHosts.has(window.location.hostname.toLowerCase())) return false;
-  if (window.location.hash.startsWith("#operacao")) return false;
+  if (window.location.pathname.startsWith("/operacao")) return false;
   if (window.localStorage.getItem("adoce-analytics") === "denied") return false;
   return window.navigator.doNotTrack !== "1";
 }
 
 export function currentPublicPath() {
   if (typeof window === "undefined") return "/";
-  const hash = window.location.hash.split("?")[0].slice(0, 140);
-  return `${window.location.pathname}${hash}`.slice(0, 160) || "/";
+  return window.location.pathname.slice(0, 160) || "/";
 }
 
 export function trackPublicEvent(eventName: PublicAnalyticsEvent, properties: AnalyticsProperties = {}) {
@@ -70,10 +68,10 @@ export function installPublicAnalytics() {
   };
 
   recordPage();
-  window.addEventListener("hashchange", recordPage);
+  window.addEventListener("popstate", recordPage);
   document.addEventListener("click", recordClick, { capture: true });
   return () => {
-    window.removeEventListener("hashchange", recordPage);
+    window.removeEventListener("popstate", recordPage);
     document.removeEventListener("click", recordClick, { capture: true });
   };
 }

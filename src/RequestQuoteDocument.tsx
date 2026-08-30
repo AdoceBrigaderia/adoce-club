@@ -172,7 +172,7 @@ export default function RequestQuoteDocument({ data }: { data: QuoteData }) {
       <footer className="quote-footer">
         <p>
           Situação atual: <strong>{data.statusLabel}</strong>. Este orçamento é válido
-          mediante confirmação da Adoce e reserva da data na agenda de produção.
+          mediante confirmação da Adoce e reserva da data na produção.
         </p>
         <p className="quote-thanks">Feito com carinho para adoçar o seu momento.</p>
       </footer>

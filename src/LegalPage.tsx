@@ -14,11 +14,11 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
   return (
     <main className="legal-page">
       <header>
-        <a className="legal-brand" href="/#inicio">
+        <a className="legal-brand" href="/">
           <img src="/site/logo.webp" alt="Adoce Brigaderia" />
           <strong>Adoce Brigaderia</strong>
         </a>
-        <a href="/#inicio"><ArrowLeft /> Voltar ao site</a>
+        <a href="/"><ArrowLeft /> Voltar ao site</a>
       </header>
       <article>
         <span>{privacy ? "Privacidade e dados pessoais" : "Clube Adoce"}</span>
@@ -45,7 +45,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <ul>
               <li>Criar e proteger seu acesso ao Clube Adoce.</li>
               <li>Registrar carimbos, recompensas, indicações e grupos autorizados.</li>
-              <li>Responder solicitações, preparar orçamentos e organizar a agenda.</li>
+              <li>Responder solicitações, preparar orçamentos e organizar os pedidos.</li>
               <li>Enviar novidades somente quando houver consentimento opcional válido.</li>
               <li>Prevenir fraudes, corrigir falhas e manter auditoria da operação.</li>
             </ul>

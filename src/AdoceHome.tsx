@@ -106,8 +106,8 @@ export default function AdoceHome() {
           <span>Adoce</span>
         </div>
         <div className="ah-acoes">
-          <a href="#cardapio-fatias" aria-label="Buscar sabores"><Search /></a>
-          <a href="#entrar" aria-label="Minha conta"><User /></a>
+          <a href="/cardapio-de-fatias" aria-label="Buscar sabores"><Search /></a>
+          <a href="/clube/entrar" aria-label="Minha conta"><User /></a>
         </div>
       </header>
 
@@ -133,7 +133,7 @@ export default function AdoceHome() {
           <div className="ah-esgotado">
             <p><strong>As fatias de hoje já acabaram</strong></p>
             <p>Amanhã tem mais, feito na hora.</p>
-            <a className="ah-secundario" href="#cardapio-fatias">Ver o cardápio da semana</a>
+            <a className="ah-secundario" href="/cardapio-de-fatias">Ver o cardápio da semana</a>
           </div>
         ) : (
           <>
@@ -153,12 +153,12 @@ export default function AdoceHome() {
                           : `${s.restam} fatias · ${money(s.preco)}`}
                     </p>
                   </div>
-                  <a className="ah-reservar" href={`#adoce-hoje?sabor=${s.id}`}>Reservar</a>
+                  <a className="ah-reservar" href={`/fatias?sabor=${s.id}`}>Reservar</a>
                 </li>
               ))}
             </ul>
             {sabores.length > visiveis.length && (
-              <a className="ah-ver-todos" href="#cardapio-fatias">
+              <a className="ah-ver-todos" href="/cardapio-de-fatias">
                 Ver os {sabores.length} sabores de hoje
               </a>
             )}
@@ -182,7 +182,7 @@ export default function AdoceHome() {
           </p>
           <div className="ah-barra"><span style={{ width: `${(progresso / 14) * 100}%` }} /></div>
         </div>
-        <a className="ah-clube-num" href="#clube">
+        <a className="ah-clube-num" href="/clube">
           <strong>{progresso}</strong><small>/14</small>
         </a>
       </section>
@@ -190,18 +190,18 @@ export default function AdoceHome() {
       <section className="ah-secao" aria-labelledby="ah-encomendas">
         <h2 id="ah-encomendas" className="ah-titulo-menor">Encomendar</h2>
         <div className="ah-cards">
-          <a className="ah-card" href="#encomendas">
+          <a className="ah-card" href="/tortas">
             <img src="/site/card-tortas.webp" alt="" aria-hidden="true" loading="lazy" />
             <p>Tortas</p>
             <small>Sob encomenda</small>
           </a>
-          <a className="ah-card" href="#docinhos">
+          <a className="ah-card" href="/docinhos">
             <img src="/site/card-docinhos.webp" alt="" aria-hidden="true" loading="lazy" />
             <p>Docinhos</p>
             <small>A partir de 50</small>
           </a>
         </div>
-        <a className="ah-outros" href="#eventos">
+        <a className="ah-outros" href="/festas">
           Festas, Adoce na Escola e decoração <ChevronRight />
         </a>
       </section>

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check,
   Bell,
   CalendarDays,
   Clock3,
@@ -9,7 +8,6 @@ import {
   MapPin,
   MessageCircle,
   Images,
-  Megaphone,
   Search,
   ShoppingBag,
   Sparkles,
@@ -17,7 +15,6 @@ import {
   X,
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
-import GroupOrderArtwork from "./GroupOrderArtwork";
 import { serviceStatusMessage } from "./service-status";
 import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
 import { trackPublicEvent } from "./analytics";
@@ -33,7 +30,7 @@ import {
 } from "./availability-batches";
 import "./adoce-hoje.css";
 import "./adoce-hoje-content.css";
-import "./today-promotions.css";
+import "./today-availability.css";
 import "./today-availability-compact.css";
 
 type Availability = "all" | "available" | "traditional" | "premium" | "fruited" | "other";
@@ -63,13 +60,6 @@ type FlavorPhoto = {
   alt_text: string;
   image_role: "cover" | "gallery";
   sort_order: number;
-};
-type Promotion = {
-  id: string;
-  title: string;
-  body: string;
-  starts_at: string;
-  ends_at: string | null;
 };
 type Channel = {
   slug: string;
@@ -460,7 +450,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
   const [hourExceptions, setHourExceptions] = useState<BusinessHourException[]>(
     [],
   );
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const openSchedule = () => {
@@ -493,7 +482,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
       const supabase = requireSupabase();
       const today = getFortalezaNow().date;
       const scheduleEnd = dateAfter(today, 6);
-      const now = new Date().toISOString();
       const [
         { data: catalog, error: catalogError },
         { data: availability },
@@ -502,7 +490,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
         { data: hoursData },
         { data: exceptionData },
         { data: imageData },
-        { data: promotionData },
         { data: weeklyMenuData },
       ] = await Promise.all([
         supabase
@@ -537,13 +524,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
           .select("id,flavor_id,image_path,alt_text,image_role,sort_order")
           .eq("active", true)
           .order("sort_order"),
-        supabase
-          .from("promotions")
-          .select("id,title,body,starts_at,ends_at")
-          .eq("active", true)
-          .lte("starts_at", now)
-          .or(`ends_at.is.null,ends_at.gte.${now}`)
-          .order("starts_at", { ascending: false }),
         supabase
           .from("weekly_service_menu")
           .select(
@@ -597,7 +577,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
       if (hoursData) setBusinessHours(hoursData as BusinessHour[]);
       if (exceptionData)
         setHourExceptions(exceptionData as BusinessHourException[]);
-      if (promotionData) setPromotions(promotionData as Promotion[]);
       if (weeklyMenuData) setWeeklyMenu(weeklyMenuData as WeeklyMenuItem[]);
       setUpdated(!catalogError);
     })();
@@ -692,7 +671,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
   useEffect(() => {
     if (!openCartOnLoad || cartAutoOpened.current) return;
     cartAutoOpened.current = true;
-    const requestedFlavorId = new URLSearchParams(location.hash.split("?")[1] || "").get("flavor");
+    const requestedFlavorId = new URLSearchParams(location.search).get("sabor") || new URLSearchParams(location.search).get("flavor");
     setInitialOrderFlavorId(requestedFlavorId);
     setInstantOrderOpen(true);
     trackPublicEvent("instant_order_open", { source: "cart" });
@@ -855,73 +834,12 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
 
         </div>
       </section>
-      <section className="today-group-order" aria-labelledby="pede-junto-adoce">
-        <GroupOrderArtwork />
-        <div>
-          <p className="today-kicker">Pede Junto Adoce</p>
-          <h2 id="pede-junto-adoce">
-            Cada um escolhe e paga a sua. Com 5, a entrega é grátis.
-          </h2>
-          <p>
-            No trabalho, condomínio, faculdade ou clínica: compartilhe a sala,
-            chegue a cinco fatias e continue adicionando quantas quiser.
-          </p>
-          <ul>
-            <li>
-              <Check /> Sabores identificados no pacote
-            </li>
-            <li>
-              <Check /> Cada pessoa recebe o próprio link de pagamento
-            </li>
-            <li>
-              <Check /> Entrega por motorista de aplicativo
-            </li>
-          </ul>
-          <a
-            className="today-primary"
-            href="/#pede-junto"
-          >
-            <MessageCircle /> Abrir meu Pede Junto
-          </a>
-        </div>
-      </section>
-      {promotions.length > 0 && (
-        <section
-          className="today-active-promotions"
-          aria-labelledby="promocoes-ativas"
-        >
-          <div className="today-section-head">
-            <div>
-              <p className="today-kicker">Novidades Adoce</p>
-              <h2 id="promocoes-ativas">Promoções em destaque</h2>
-            </div>
-            <p>
-              Informações atualizadas pela Adoce e válidas somente durante o
-              período indicado.
-            </p>
-          </div>
-          <div className="today-promotion-grid">
-            {promotions.map((promotion) => (
-              <article key={promotion.id}>
-                <Megaphone />
-                <div>
-                  <h3>{promotion.title}</h3>
-                  <p>{promotion.body}</p>
-                </div>
-                <a href={orderLink()} target="_blank" rel="noreferrer">
-                  Consultar
-                </a>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
       <section className="today-flavors" id="sabores">
         <PublicCatalogNav active="slices" />
         <div className="today-catalog-intro">
           <p className="today-kicker">Catálogo Adoce</p>
           <h1>Fatias</h1>
-          <a className="today-menu-link" href="/#cardapio-fatias"><CalendarDays /> Ver cardápio semanal</a>
+          <a className="today-menu-link" href="/cardapio-de-fatias"><CalendarDays /> Ver cardápio semanal</a>
         </div>
         <div className="today-category-filters" aria-label="Categorias do cardápio">
           <button className={filter === "all" || filter === "available" ? "active" : ""} onClick={() => setFilter("all")}>Hoje</button>
@@ -1071,7 +989,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
           <p className="today-kicker">Celebrações e produtos</p>
           <h2>Procurando tortas, docinhos ou uma experiência para seu evento?</h2>
         </div>
-        <a className="today-primary" href="/#encomendas">
+        <a className="today-primary" href="/tortas">
           Ver celebrações e produtos
         </a>
       </section>
@@ -1082,7 +1000,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
           <h2>Nossa produção artesanal segue uma política de pedidos.</h2>
           <p>Veja quais produtos podem ser encomendados em cada dia da semana.</p>
         </div>
-        <a className="today-secondary" href="/#politica-de-pedidos">
+        <a className="today-secondary" href="/politica-de-pedidos">
           Conferir política de pedidos
         </a>
       </section>

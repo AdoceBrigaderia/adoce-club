@@ -74,7 +74,7 @@ describe("Magic Link", () => {
 
   it("depois de usar, a rota volta limpa — o token não fica no histórico", () => {
     // Havia 7 registros com o token completo do cliente em site_analytics_events.
-    expect(rotaLimpaDepoisDoLogin).toBe("#clube");
+    expect(rotaLimpaDepoisDoLogin).toBe("/clube");
     expect(rotaLimpaDepoisDoLogin).not.toContain("access_token");
   });
 });
@@ -88,6 +88,7 @@ describe("QR impresso na sacola", () => {
   });
 
   it("lê o token da rota", () => {
+    expect(tokenDoCartaoNaRota("/clube/cartao/Zx9-abc_123")).toBe("Zx9-abc_123");
     expect(tokenDoCartaoNaRota("#cartao/Zx9-abc_123")).toBe("Zx9-abc_123");
   });
 

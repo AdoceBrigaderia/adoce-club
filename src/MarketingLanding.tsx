@@ -1,11 +1,15 @@
 import {
   ArrowRight,
   CakeSlice,
+  Candy,
   Gift,
   Heart,
   Leaf,
+  PartyPopper,
   ShoppingBag,
   QrCode,
+  School,
+  Sparkles,
 } from "lucide-react";
 import { useConnectedClubSummary } from "./ConnectedClubSummary";
 import "./public-site.css";
@@ -44,18 +48,24 @@ export default function MarketingLanding() {
       </section>
 
       <section className="home-reference-actions" aria-label="Ações principais">
-        <a className="home-reference-order" href="/#adoce-hoje">
+        <a className="home-reference-order" href="/fatias">
           <span><ShoppingBag /></span>
           <strong>Fazer meu pedido</strong>
           <ArrowRight />
         </a>
-        <a className="home-reference-flavors" href="/#adoce-hoje">
+        <a className="home-reference-flavors" href="/fatias">
           Ver fatias disponíveis <ArrowRight />
         </a>
       </section>
 
       <section className="home-reference-commercial" aria-label="Catálogo Adoce">
-        <a className="home-reference-card cakes" href="/#encomendas">
+        <header className="home-reference-catalog-intro">
+          <p>Explore a Adoce</p>
+          <h2>O que você encontra aqui</h2>
+          <span>Cada opção abre uma página própria, com informações e caminhos para pedir.</span>
+        </header>
+
+        <a className="home-reference-card cakes" href="/tortas">
           <span className="home-reference-card-icon"><CakeSlice /></span>
           <div>
             <h2>Tortas incríveis</h2>
@@ -64,13 +74,37 @@ export default function MarketingLanding() {
           <span className="home-reference-card-arrow"><ArrowRight /></span>
         </a>
 
-        <a className="home-reference-card slices" href="/#adoce-hoje">
+        <a className="home-reference-card slices" href="/fatias">
           <span className="home-reference-card-icon"><Gift /></span>
           <img src="/adoce-hoje/chocolatudo.webp" alt="Fatia generosa da Adoce" />
           <div>
             <h2>Fatias generosas</h2>
             <p>Perfeitas para<br />qualquer momento</p>
           </div>
+          <span className="home-reference-card-arrow"><ArrowRight /></span>
+        </a>
+
+        <a className="home-reference-card" href="/docinhos">
+          <span className="home-reference-card-icon"><Candy /></span>
+          <div><h2>Docinhos</h2><p>Opções para compartilhar e celebrar.</p></div>
+          <span className="home-reference-card-arrow"><ArrowRight /></span>
+        </a>
+
+        <a className="home-reference-card slices" href="/festas">
+          <span className="home-reference-card-icon"><PartyPopper /></span>
+          <div><h2>Festas e eventos</h2><p>Kits e escolhas para o seu momento.</p></div>
+          <span className="home-reference-card-arrow"><ArrowRight /></span>
+        </a>
+
+        <a className="home-reference-card" href="/adoce-na-escola">
+          <span className="home-reference-card-icon"><School /></span>
+          <div><h2>Adoce na Escola</h2><p>Uma comemoração pensada para a sala.</p></div>
+          <span className="home-reference-card-arrow"><ArrowRight /></span>
+        </a>
+
+        <a className="home-reference-card slices" href="/aluguel-decoracao">
+          <span className="home-reference-card-icon"><Sparkles /></span>
+          <div><h2>Decoração</h2><p>Peças para alugar, montar e celebrar.</p></div>
           <span className="home-reference-card-arrow"><ArrowRight /></span>
         </a>
       </section>
@@ -104,10 +138,10 @@ export default function MarketingLanding() {
         </div>
 
         <div className="home-reference-club-actions">
-          <a className="primary" href={summary ? "/#minha-conta" : "/#cadastro"}>
+          <a className="primary" href={summary ? "/clube" : "/clube/cadastro"}>
             {summary ? "Abrir meu Clube" : "Quero entrar no Clube"} <ArrowRight />
           </a>
-          {!summary && <a className="secondary" href="/#entrar">Já faço parte</a>}
+          {!summary && <a className="secondary" href="/clube/entrar">Já faço parte</a>}
         </div>
       </section>
     </main>

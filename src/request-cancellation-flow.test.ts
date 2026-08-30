@@ -34,13 +34,13 @@ describe("cancelamento de pedidos na operação", () => {
     expect(source).toContain('busy ? "Cancelando..." : "Confirmar cancelamento"');
   });
 
-  it("oferece o cancelamento também no painel de relacionamento do CRM", () => {
-    expect(source).toContain('className="operation-crm-cancellation"');
-    expect(source).toContain("Cancelar esta pré-reserva");
-    expect(source).toContain("Cancelar pré-reserva");
+  it("oferece histórico, lembretes e cancelamento dentro do próprio pedido", () => {
+    expect(source).toContain('aria-label="Histórico e lembretes do pedido"');
+    expect(source).toContain('className="drawer-cancellation"');
+    expect(source).toContain("Cancelar e retirar da fila");
     expect(source).toContain("onClick={() => void cancelRequest(selectedRequest)}");
-    expect(source).toContain("Ela sai dos pedidos ativos, libera a agenda");
     expect(source).toContain("const openRequest = (request: ServiceRequest)");
     expect(source).toContain("setShowCancellation(false)");
+    expect(source).not.toContain("Agenda");
   });
 });

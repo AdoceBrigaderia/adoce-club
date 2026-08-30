@@ -214,6 +214,29 @@
   gap: 10px;
 }
 
+.home-reference-catalog-intro {
+  grid-column: 1 / -1;
+  padding: 8px 4px 6px;
+}
+.home-reference-catalog-intro p {
+  margin: 0 0 7px;
+  color: var(--home-pink);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font: 800 .68rem/1 system-ui, sans-serif;
+}
+.home-reference-catalog-intro h2 {
+  margin: 0;
+  color: var(--home-chocolate);
+  font: 700 1.55rem/1.1 'Playfair Display', Georgia, serif;
+}
+.home-reference-catalog-intro span {
+  display: block;
+  margin-top: 8px;
+  color: var(--home-muted);
+  font: 500 .82rem/1.45 system-ui, sans-serif;
+}
+
 .home-reference-card {
   position: relative;
   min-height: 190px;
@@ -414,6 +437,8 @@
   .home-reference-actions { padding: 26px 54px 34px; }
   .home-reference-order { width: min(100%, 620px); justify-self: center; }
   .home-reference-commercial { padding: 0 54px 34px; gap: 18px; }
+  .home-reference-catalog-intro h2 { font-size: 2rem; }
+  .home-reference-catalog-intro span { font-size: .95rem; }
   .home-reference-card { min-height: 240px; padding: 28px; }
   .home-reference-card h2 { font-size: 1.55rem; }
   .home-reference-card p { font-size: .95rem; }

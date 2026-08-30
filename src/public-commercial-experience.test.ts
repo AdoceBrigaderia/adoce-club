@@ -9,8 +9,8 @@ describe("experiência comercial pública", () => {
   it("usa a foto real e apresenta os caminhos comerciais no início da jornada", () => {
     expect(home).toContain('/site/portal-entry-fatias.png');
     expect(home).toContain('/adoce-hoje/chocolatudo.webp');
-    expect(home).toContain('href="/#encomendas"');
-    expect(home).toContain('href="/#adoce-hoje"');
+    expect(home).toContain('href="/tortas"');
+    expect(home).toContain('href="/fatias"');
   });
 
   it("segue a nova entrada comercial Mobile First", () => {
@@ -24,7 +24,7 @@ describe("experiência comercial pública", () => {
   });
 
   it("leva a ação principal para a montagem do pedido sem expor dados internos", () => {
-    expect(home).toContain('className="home-reference-order" href="/#adoce-hoje"');
+    expect(home).toContain('className="home-reference-order" href="/fatias"');
     expect(home).not.toContain("faturamento");
   });
 

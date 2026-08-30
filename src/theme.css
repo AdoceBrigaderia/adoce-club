@@ -49,7 +49,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible{outline-color:rgb
 .stamps .filled{background:var(--pink);border-color:var(--pink)}
 .card-message{color:var(--pink)}.card-message.reward{background:var(--pink);color:white;border-radius:999px}
 .identity-panel,.how{background:var(--paper)}.identity-panel{box-shadow:0 16px 50px rgba(36,17,11,.08)}
-.wallet-button.google{background:var(--paper)}
+
 
 .staff-page,.admin-page{background:#f6f0e8}
 .staff-header{height:80px;background-color:var(--chocolate);background-image:linear-gradient(90deg,rgba(26,12,8,.96),rgba(36,17,11,.9)),url('/site/chocolate-texture.webp');background-size:auto,cover;color:var(--cream);border-bottom:1px solid rgba(212,170,84,.32)}

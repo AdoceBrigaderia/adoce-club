@@ -4,12 +4,12 @@ import "./public-catalog-nav.css";
 export type PublicCatalogArea = "slices" | CommercialSegment;
 
 const catalogItems: Array<{ area: PublicCatalogArea; href: string; label: string }> = [
-  { area: "slices", href: "/#adoce-hoje", label: "Fatias" },
-  { area: "cakes", href: "/#encomendas", label: "Tortas" },
-  { area: "sweets", href: "/#docinhos", label: "Docinhos" },
-  { area: "events", href: "/#eventos", label: "Eventos" },
-  { area: "school", href: "/#adoce-na-escola", label: "Adoce na Escola" },
-  { area: "rentals", href: "/#aluguel-decoracao", label: "Aluguel de decoração" },
+  { area: "slices", href: "/fatias", label: "Fatias" },
+  { area: "cakes", href: "/tortas", label: "Tortas" },
+  { area: "sweets", href: "/docinhos", label: "Docinhos" },
+  { area: "events", href: "/festas", label: "Eventos" },
+  { area: "school", href: "/adoce-na-escola", label: "Adoce na Escola" },
+  { area: "rentals", href: "/aluguel-decoracao", label: "Aluguel de decoração" },
 ];
 
 export default function PublicCatalogNav({ active }: { active: PublicCatalogArea }) {
