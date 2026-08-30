@@ -30,8 +30,11 @@ describe("código de acesso por e-mail", () => {
     expect(requestEndpoint).not.toContain("sendWithAdminLink");
     expect(requestEndpoint).toContain("return await interpret(response)");
     const resetEndpoint = source("../netlify/functions/request-password-reset.ts");
-    expect(resetEndpoint).toContain('type: "recovery"');
     expect(resetEndpoint).toContain("phone_e164");
+    expect(resetEndpoint).toContain("must_change_password");
+    expect(resetEndpoint).toContain("/auth/v1/otp");
+    expect(resetEndpoint).not.toContain("generateLink");
+    expect(resetEndpoint).not.toContain('type: "recovery"');
     expect(requestEndpoint).toContain("timeout: 26");
     expect(verifyEndpoint).toContain('"email", "recovery", "magiclink"');
     expect(verifyEndpoint).toContain("signal: AbortSignal.timeout(20000)");

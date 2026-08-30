@@ -143,8 +143,10 @@ describe("fundação do login por WhatsApp", () => {
     expect(envExample).toContain("VITE_WHATSAPP_AUTH_PILOT_ENABLED=false");
     expect(start).toContain("whatsappAuthEnabled");
     expect(hook).toContain("verifyStandardWebhook");
-    expect(hook).toContain("META_WHATSAPP_ACCESS_TOKEN");
-    expect(envExample).not.toContain("VITE_META_WHATSAPP_ACCESS_TOKEN");
+    expect(hook).toContain("TWILIO_AUTH_TOKEN");
+    expect(hook).toContain("TWILIO_CONTENT_SID");
+    expect(hook).not.toContain("META_WHATSAPP_ACCESS_TOKEN");
+    expect(envExample).not.toContain("VITE_TWILIO_AUTH_TOKEN");
   });
 
   it("cria somente telemetria privada e nunca persiste OTP", () => {

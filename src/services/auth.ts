@@ -145,6 +145,9 @@ export async function requestPasswordReset(input: { email?: string; phone?: stri
   });
   const payload = (await response.json().catch(() => ({}))) as {
     sent?: boolean;
+    channel?: "whatsapp" | "email";
+    request_id?: string;
+    masked_phone?: string;
     email?: string;
     hint?: string;
     error?: string;

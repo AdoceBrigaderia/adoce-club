@@ -80,6 +80,7 @@ import {
   signOut,
   upgradeCustomerSecurity,
   verifyEmailCode,
+  verifyWhatsAppAuthCode,
   whatsappVerificationLink,
   type WhatsAppChallenge,
 } from "./services/auth";
@@ -958,6 +959,7 @@ function AuthScreen({
   const [code, setCode] = useState(directParams?.code || "");
   const [whatsAppChallenge, setWhatsAppChallenge] =
     useState<WhatsAppChallenge | null>(null);
+  const [resetChallengeId, setResetChallengeId] = useState("");
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const marketing = false;
@@ -1103,11 +1105,11 @@ function AuthScreen({
     setMessage("");
     try {
       const result = await requestPasswordReset({ email, phone });
-      if (result.email) setEmail(result.email);
+      setResetChallengeId(result.request_id || "");
       sessionStorage.setItem(passwordRecoveryStorageKey, "true");
       setStage("code");
       setMessage(
-        `Enviamos o acesso para ${result.hint || "seu e-mail"}. Se a mensagem tiver um código de 6 números, digite abaixo. Se tiver um botão, toque nele — o site abre para você criar a senha nova.`,
+        `Enviamos um código pelo WhatsApp para ${result.masked_phone || "seu número cadastrado"}. Toque em "Copiar código" na mensagem e cole abaixo.`,
       );
     } catch (error) {
       setMessage(
@@ -1126,6 +1128,23 @@ function AuthScreen({
     }
     setBusy(true);
     setMessage("");
+    if (resetChallengeId) {
+      try {
+        await verifyWhatsAppAuthCode(resetChallengeId, phone, code);
+        setResetChallengeId("");
+        if (surface === "client") {
+          sessionStorage.setItem(passwordRecoveryStorageKey, "true");
+        }
+        location.hash = surface === "operation" ? "operacao" : "minha-conta";
+      } catch (error) {
+        setMessage(
+          error instanceof Error ? error.message : "Código inválido ou expirado.",
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     try {
       const result = await verifyEmailCode(email, code);
       if (registering && result.user) {
@@ -1269,7 +1288,11 @@ function AuthScreen({
           <img src="/site/logo.webp" alt="" />
           <h2>
             {stage === "code"
-              ? directParams ? "Acesso direto ao Clube" : "Confira seu e-mail"
+              ? directParams
+                ? "Acesso direto ao Clube"
+                : resetChallengeId
+                  ? "Confira seu WhatsApp"
+                  : "Confira seu e-mail"
               : stage === "whatsapp"
                 ? "Confirme seu WhatsApp"
               : invited
@@ -1288,13 +1311,15 @@ function AuthScreen({
             {stage === "code"
               ? directParams
                 ? `Estamos validando o código seguro gerado para ${email}.`
-                : "Se o e-mail tiver um código de 6 números, digite abaixo. Se tiver um botão ou link, toque nele — o site abre sozinho."
+                : resetChallengeId
+                  ? "Toque em \"Copiar código\" na mensagem do WhatsApp e cole o código de 6 números abaixo."
+                  : "Se o e-mail tiver um código de 6 números, digite abaixo. Se tiver um botão ou link, toque nele — o site abre sozinho."
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : registering
                 ? "Preencha uma vez. Depois, confirme o código do seu e-mail e seu cartão abrirá."
               : loginMode === "forgot"
-                ? "Informe o WhatsApp ou o e-mail da conta. Enviamos um e-mail com código ou um botão para criar a senha nova."
+                ? "Informe o WhatsApp da conta (o e-mail ajuda a localizar seu cadastro, se preferir). Enviamos um código pelo WhatsApp para você criar a senha nova."
               : loginMode === "password" && !registering
                 ? surface === "operation"
                   ? "Use seu celular com DDD e a senha da operação."
@@ -1541,10 +1566,11 @@ function AuthScreen({
                 onClick={() => {
                   setStage("identify");
                   setCode("");
+                  setResetChallengeId("");
                   setMessage("");
                 }}
               >
-                Usar outro e-mail
+                {resetChallengeId ? "Usar outro WhatsApp" : "Usar outro e-mail"}
               </button>
             </form>
           ) : (

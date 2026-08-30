@@ -15,6 +15,9 @@ type SendSmsHookPayload = {
 
 const MAX_HOOK_BYTES = 32768;
 
+const asWhatsAppAddress = (value: string) =>
+  value.startsWith("whatsapp:") ? value : `whatsapp:${value}`;
+
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
   if (!whatsappAuthEnabled()) return json({ error: "Integração desativada." }, 503);
@@ -39,19 +42,12 @@ export default async (request: Request) => {
   const otp = (payload.sms?.otp || "").replace(/\D/g, "");
   if (!phone || otp.length !== 6) return json({ error: "Evento inválido." }, 400);
 
-  const phoneNumberId = env("META_WHATSAPP_PHONE_NUMBER_ID") || "";
-  const accessToken = env("META_WHATSAPP_ACCESS_TOKEN") || "";
-  const graphVersion = env("META_WHATSAPP_GRAPH_VERSION") || "";
-  const templateName = env("META_WHATSAPP_AUTH_TEMPLATE") || "";
-  const templateLanguage = env("META_WHATSAPP_AUTH_TEMPLATE_LANGUAGE") || "pt_BR";
+  const accountSid = env("TWILIO_ACCOUNT_SID") || "";
+  const authToken = env("TWILIO_AUTH_TOKEN") || "";
+  const whatsappFrom = env("TWILIO_WHATSAPP_FROM") || "";
+  const contentSid = env("TWILIO_CONTENT_SID") || "";
   const hmacSecret = env("AUTH_RATE_LIMIT_HMAC_SECRET") || "";
-  if (
-    !phoneNumberId ||
-    !accessToken ||
-    !/^v\d+\.\d+$/.test(graphVersion) ||
-    !templateName ||
-    !hmacSecret
-  )
+  if (!accountSid || !authToken || !whatsappFrom || !contentSid || !hmacSecret)
     return json({ error: "Provedor não configurado." }, 503);
 
   const admin = serviceClient();
@@ -66,61 +62,46 @@ export default async (request: Request) => {
 
   const startedAt = Date.now();
   try {
+    const form = new URLSearchParams({
+      To: asWhatsAppAddress(phone),
+      From: asWhatsAppAddress(whatsappFrom),
+      ContentSid: contentSid,
+      ContentVariables: JSON.stringify({ "1": otp }),
+    });
     const response = await fetch(
-      `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`,
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "individual",
-          to: phone.replace(/\D/g, ""),
-          type: "template",
-          template: {
-            name: templateName,
-            language: { code: templateLanguage },
-            components: [
-              {
-                type: "body",
-                parameters: [{ type: "text", text: otp }],
-              },
-              {
-                type: "button",
-                sub_type: "url",
-                index: "0",
-                parameters: [{ type: "text", text: otp }],
-              },
-            ],
-          },
-        }),
+        body: form.toString(),
         signal: AbortSignal.timeout(15000),
       },
     );
-    const metaPayload = (await response.json().catch(() => ({}))) as {
-      messages?: Array<{ id?: string }>;
-      error?: { code?: number; error_subcode?: number };
+    const twilioPayload = (await response.json().catch(() => ({}))) as {
+      sid?: string;
+      status?: string;
+      code?: number;
+      message?: string;
     };
-    const providerMessageId = metaPayload.messages?.[0]?.id || null;
+    const providerMessageId = twilioPayload.sid || null;
+    const delivered = response.ok && Boolean(providerMessageId) && twilioPayload.status !== "failed";
     if (admin) {
       const { error } = await admin.rpc("server_record_whatsapp_auth_delivery", {
         requested_request_id: request.headers.get("webhook-id") || crypto.randomUUID(),
         requested_phone_hmac: phoneHash,
         requested_phone_last4: phone.slice(-4),
         requested_provider_message_id: providerMessageId || "",
-        requested_template_name: templateName,
-        requested_status: response.ok && providerMessageId ? "accepted" : "failed",
-        requested_error_code: response.ok
-          ? ""
-          : String(metaPayload.error?.error_subcode || metaPayload.error?.code || "meta_error"),
+        requested_template_name: contentSid,
+        requested_status: delivered ? "accepted" : "failed",
+        requested_error_code: delivered ? "" : String(twilioPayload.code || "twilio_error"),
         requested_latency_ms: Date.now() - startedAt,
       });
       if (error) console.error("whatsapp auth delivery audit failed", error.code);
     }
-    if (!response.ok || !providerMessageId)
-      return json({ error: "O WhatsApp recusou a mensagem." }, 502);
+    if (!delivered) return json({ error: "O WhatsApp recusou a mensagem." }, 502);
     return new Response(null, { status: 200, headers: { "Cache-Control": "no-store" } });
   } catch {
     return json({ error: "O WhatsApp demorou a responder." }, 504);
