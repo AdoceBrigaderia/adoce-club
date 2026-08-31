@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.util.Base64;
+import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
@@ -63,6 +64,7 @@ public class AdoceOrderService extends Service {
     private static final String PREFS = "adoce_native_operation";
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
+    private static final String TAG = "AdocePrinter";
     private static final UUID PRINTER_SERVICE = UUID.fromString("000018f0-0000-1000-8000-00805f9b34fb");
     private static final UUID PRINTER_WRITE = UUID.fromString("00002af1-0000-1000-8000-00805f9b34fb");
     private final OkHttpClient http = new OkHttpClient.Builder().retryOnConnectionFailure(true).build();
@@ -72,7 +74,9 @@ public class AdoceOrderService extends Service {
     private WebSocket socket;
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic writer;
+    private int writerWriteType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
     private boolean testPending;
+    private boolean discoveringPrinter;
     private String state = "iniciando";
 
     public static void saveSession(Context context, String url, String key, String access, String refresh) {
@@ -105,10 +109,29 @@ public class AdoceOrderService extends Service {
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_DISCOVER.equals(action)) discoverPrinter();
-        else if (ACTION_TEST.equals(action)) { testPending = true; ensurePrinter(); }
+        else if (ACTION_TEST.equals(action)) printTest();
         connectRealtime();
         ensurePrinter();
         return START_STICKY;
+    }
+
+    private void printTest() {
+        if (writer == null) {
+            testPending = true;
+            ensurePrinter();
+            return;
+        }
+        printerExecutor.execute(() -> {
+            try {
+                writeReceipt(testReceipt());
+                setState("teste impresso");
+                Log.i(TAG, "Ficha de teste enviada com sucesso");
+            } catch (Exception error) {
+                writer = null;
+                setState("falha ao imprimir teste");
+                Log.e(TAG, "Falha ao imprimir ficha de teste", error);
+            }
+        });
     }
 
     @Nullable @Override public IBinder onBind(Intent intent) { return null; }
@@ -249,10 +272,14 @@ public class AdoceOrderService extends Service {
         BluetoothAdapter adapter = ((BluetoothManager)getSystemService(BLUETOOTH_SERVICE)).getAdapter();
         if (adapter == null || !adapter.isEnabled()) { setState("ligue o Bluetooth"); return; }
         setState("procurando impressora");
+        discoveringPrinter = true;
         adapter.getBluetoothLeScanner().startScan(scanCallback);
         handler.postDelayed(() -> {
             if (hasScanPermission()) adapter.getBluetoothLeScanner().stopScan(scanCallback);
-            if (writer == null) setState("KNUP nao encontrada");
+            if (discoveringPrinter) {
+                discoveringPrinter = false;
+                if (writer == null) setState("KNUP nao encontrada");
+            }
         }, 12_000);
     }
 
@@ -266,6 +293,7 @@ public class AdoceOrderService extends Service {
             if (serviceFound || n.contains("KP-1025") || n.contains("KNUP")) {
                 BluetoothAdapter adapter = ((BluetoothManager)getSystemService(BLUETOOTH_SERVICE)).getAdapter();
                 if (hasScanPermission()) adapter.getBluetoothLeScanner().stopScan(this);
+                discoveringPrinter = false;
                 prefs.edit().putString("printer_address", device.getAddress()).putString("printer_name", name == null ? "KNUP KP-1025" : name).apply();
                 connectPrinter(device);
             }
@@ -297,13 +325,37 @@ public class AdoceOrderService extends Service {
         @Override public void onServicesDiscovered(BluetoothGatt bluetoothGatt, int status) {
             BluetoothGattService service = bluetoothGatt.getService(PRINTER_SERVICE);
             writer = service == null ? null : service.getCharacteristic(PRINTER_WRITE);
+            if (writer == null || !canWrite(writer)) writer = findWritableCharacteristic(bluetoothGatt);
             if (writer == null) { setState("protocolo da KNUP nao encontrado"); return; }
-            writer.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            writerWriteType = (writer.getProperties() & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0
+                ? BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                : BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT;
+            writer.setWriteType(writerWriteType);
+            Log.i(TAG, "Canal de impressao: " + writer.getService().getUuid() + "/" + writer.getUuid());
             setState("impressora pronta");
             if (testPending) { testPending = false; printerExecutor.execute(() -> { try { writeReceipt(testReceipt()); } catch (Exception ignored) {} }); }
             drainQueue();
         }
     };
+
+    private boolean canWrite(BluetoothGattCharacteristic characteristic) {
+        int properties = characteristic.getProperties();
+        return (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0 ||
+            (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
+    }
+
+    private BluetoothGattCharacteristic findWritableCharacteristic(BluetoothGatt bluetoothGatt) {
+        BluetoothGattCharacteristic withResponse = null;
+        for (BluetoothGattService candidateService : bluetoothGatt.getServices()) {
+            for (BluetoothGattCharacteristic characteristic : candidateService.getCharacteristics()) {
+                int properties = characteristic.getProperties();
+                Log.d(TAG, "Canal anunciado: " + candidateService.getUuid() + "/" + characteristic.getUuid() + " props=" + properties);
+                if ((properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) return characteristic;
+                if (withResponse == null && (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) withResponse = characteristic;
+            }
+        }
+        return withResponse;
+    }
 
     private void writeReceipt(byte[] bytes) throws Exception {
         if (writer == null || gatt == null || !hasConnectPermission()) throw new IllegalStateException("sem impressora");
@@ -311,7 +363,7 @@ public class AdoceOrderService extends Service {
             int size = Math.min(180, bytes.length - start);
             byte[] chunk = new byte[size]; System.arraycopy(bytes, start, chunk, 0, size);
             int result;
-            if (Build.VERSION.SDK_INT >= 33) result = gatt.writeCharacteristic(writer, chunk, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            if (Build.VERSION.SDK_INT >= 33) result = gatt.writeCharacteristic(writer, chunk, writerWriteType);
             else { writer.setValue(chunk); result = gatt.writeCharacteristic(writer) ? 0 : -1; }
             if (result != 0) throw new IllegalStateException("falha Bluetooth " + result);
             Thread.sleep(24);
