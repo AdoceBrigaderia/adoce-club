@@ -19,6 +19,8 @@
     "launch:verify": "node scripts/verify-launch-v3.cjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@napi-rs/canvas": "latest",
     "@supabase/supabase-js": "2.110.6",
     "@vitejs/plugin-react": "latest",
@@ -33,6 +35,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@types/node": "latest",
     "@types/qrcode": "latest",
     "@types/react": "latest",

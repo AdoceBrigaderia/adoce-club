@@ -10,7 +10,7 @@ const thermalPrinter = readFileSync("src/lib/thermal-printer.ts", "utf8");
 const migration = readFileSync(
   "supabase/migrations/20260815110239_add_inventory_availability_batches.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("cadeia completa dos lotes de fatias", () => {
   it("permite vários lotes por sabor na operação", () => {

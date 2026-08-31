@@ -6,7 +6,7 @@ const operation = readFileSync(new URL("./OperationInstantOrders.tsx", import.me
 const migration = readFileSync(
   new URL("../supabase/migrations/20260821200524_secure_instant_order_editing.sql", import.meta.url),
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 const rollback = readFileSync(
   new URL("../supabase/rollbacks/20260821200524_secure_instant_order_editing.rollback.sql", import.meta.url),
   "utf8",
