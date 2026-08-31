@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Capacitor } from "@capacitor/core";
 import App from "./App";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
@@ -17,6 +18,9 @@ import "./catalogo-de-sabores.css";
 // antigas para que a paleta correta da logo alcance as 68 folhas.
 import "./adoce-tokens.css";
 
+if (Capacitor.isNativePlatform() && window.location.pathname === "/") {
+  window.history.replaceState(null, "", "/operacao");
+}
 const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
 const legacyHashRoutes: Record<string, string> = {
   inicio: "/",

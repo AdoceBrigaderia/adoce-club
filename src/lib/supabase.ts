@@ -54,3 +54,7 @@ export function requireSupabase(): SupabaseClient {
 
   return supabase;
 }
+
+export function getSupabasePublicConfig() {
+  return { url: supabaseUrl || "", publishableKey: supabasePublishableKey || "" };
+}

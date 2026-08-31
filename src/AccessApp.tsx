@@ -107,6 +107,8 @@ import { mascaraTelefone } from "./cadastro-rapido";
 import { createStaffCustomer } from "./staff-create-customer";
 import { redeemRewardSlice } from "./staff-redeem-reward-slice";
 import type { Cliente } from "./balcao-atendimento";
+import NativePrinterSettings from "./NativePrinterSettings";
+import { syncNativeOperationSession } from "./lib/native-operation";
 import "./access-app.css";
 import "./operation-dashboard.css";
 import "./operation-v3.css";
@@ -4387,9 +4389,12 @@ function OperationHome({ session }: { session: Session }) {
                 {role === "owner" ? <button className={settingsTab === "team" ? "active" : ""} onClick={() => setSettingsTab("team")}><ShieldCheck /> Equipe</button> : null}
               </nav>
               {settingsTab === "store" ? (
-                <Suspense fallback={<p>Carregando configurações...</p>}>
-                  <OperationCommerceSettings />
-                </Suspense>
+                <>
+                  <NativePrinterSettings />
+                  <Suspense fallback={<p>Carregando configurações...</p>}>
+                    <OperationCommerceSettings />
+                  </Suspense>
+                </>
               ) : null}
               {settingsTab === "hours" ? (
                 <Suspense fallback={<p>Carregando funcionamento...</p>}>
@@ -4564,6 +4569,10 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     );
     return () => data.subscription.unsubscribe();
   }, [identityDecision.porta, surface]);
+  useEffect(() => {
+    if (surface !== "operation") return;
+    void syncNativeOperationSession(session || null);
+  }, [session, surface]);
   useEffect(() => {
     if (!session) return;
     const url = new URL(window.location.href);
