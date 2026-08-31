@@ -21,6 +21,27 @@ describe("acesso da operação com senha", () => {
     expect(app).toContain('aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}');
   });
 
+  it("recupera a senha da equipe somente pelo WhatsApp", () => {
+    const app = source("./AccessApp.tsx");
+    const passwordForm = app.slice(
+      app.indexOf('!registering && loginMode === "password"'),
+      app.indexOf('!registering && loginMode === "forgot"'),
+    );
+    expect(passwordForm).toContain('setLoginMode("forgot")');
+    expect(passwordForm).toContain("Esqueci a senha");
+    expect(app).toContain("await requestPasswordReset({ phone })");
+    expect(app).toContain("Enviar código pelo WhatsApp");
+    expect(app).not.toContain("Entrar com código enviado por e-mail");
+  });
+
+  it("oferece uma saída explícita nas configurações da operação", () => {
+    const app = source("./AccessApp.tsx");
+    expect(app).toContain('id="operation-session-title"');
+    expect(app).toContain("Sessão neste aparelho");
+    expect(app).toContain("Sair da operação");
+    expect(app).toContain("o aplicativo deixa de ouvir e imprimir novos pedidos");
+  });
+
   it("autentica pelo endpoint protegido sem expor o e-mail interno", () => {
     const auth = source("./services/auth.ts");
     const endpoint = source("../netlify/functions/staff-phone-login.ts");

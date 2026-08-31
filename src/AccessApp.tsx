@@ -1070,18 +1070,17 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   {busy ? "Entrando..." : surface === "operation" ? "Entrar na operação" : "Entrar no Clube"}
                   <ArrowRight />
                 </button>
+                <button
+                  className="access-link"
+                  type="button"
+                  onClick={() => {
+                    setLoginMode("forgot");
+                    setMessage("");
+                  }}
+                >
+                  Esqueci a senha
+                </button>
                 {surface === "client" && (
-                  <>
-                  <button
-                    className="access-link"
-                    type="button"
-                    onClick={() => {
-                      setLoginMode("forgot");
-                      setMessage("");
-                    }}
-                  >
-                    Esqueci a senha
-                  </button>
                   <button
                     className="access-link"
                     type="button"
@@ -1092,7 +1091,6 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   >
                     Primeiro acesso ou criar senha
                   </button>
-                  </>
                 )}
               </form>
             ) : !registering && loginMode === "forgot" ? (
@@ -1288,14 +1286,12 @@ function AuthScreen({ surface }: { surface: Surface }) {
               {message}
             </div>
           )}
-          {stage === "identify" && (
+          {stage === "identify" && surface === "client" && (
             <button
               className="access-switch"
               type="button"
               onClick={() => {
-                if (surface === "operation") {
-                  setLoginMode(loginMode === "password" ? "email" : "password");
-                } else if (!registering && (loginMode === "email" || loginMode === "forgot")) {
+                if (!registering && (loginMode === "email" || loginMode === "forgot")) {
                   setLoginMode("password");
                 } else {
                   setRegistering(!registering);
@@ -1307,11 +1303,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 setMessage("");
               }}
             >
-              {surface === "operation"
-                ? loginMode === "email"
-                  ? "Entrar com e-mail e senha"
-                  : "Entrar com código enviado por e-mail"
-                : registering
+              {registering
                 ? "Entrar no Clube"
                 : loginMode === "email" || loginMode === "forgot"
                   ? "Entrar com celular e senha"
@@ -4406,6 +4398,18 @@ function OperationHome({ session }: { session: Session }) {
                   <StaffProfileAdmin session={session} staff={team} />
                 </Suspense>
               ) : null}
+              <section className="operation-session-settings" aria-labelledby="operation-session-title">
+                <div>
+                  <LogOut />
+                  <span>
+                    <strong id="operation-session-title">Sessão neste aparelho</strong>
+                    <small>Ao sair, o aplicativo deixa de ouvir e imprimir novos pedidos até o próximo login.</small>
+                  </span>
+                </div>
+                <button type="button" onClick={() => void signOut()}>
+                  <LogOut /> Sair da operação
+                </button>
+              </section>
             </div>
           )}
           {scannerOpen && (
