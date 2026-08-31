@@ -21,6 +21,9 @@
 [functions."supabase-send-sms-hook"]
   timeout = 20
 
+[functions."twilio-whatsapp-order"]
+  timeout = 20
+
 [[redirects]]
   from = "/documentacao"
   to = "/documentacao.html"

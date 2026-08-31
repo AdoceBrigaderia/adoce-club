@@ -101,8 +101,15 @@ export default async (request: Request) => {
       });
       if (error) console.error("whatsapp auth delivery audit failed", error.code);
     }
-    if (!delivered) return json({ error: "O WhatsApp recusou a mensagem." }, 502);
-    return new Response(null, { status: 200, headers: { "Cache-Control": "no-store" } });
+    if (!delivered) {
+      console.error(
+        "supabase-send-sms-hook twilio",
+        response.status,
+        JSON.stringify(twilioPayload),
+      );
+      return json({ error: "O WhatsApp recusou a mensagem." }, 502);
+    }
+    return json({}, 200);
   } catch {
     return json({ error: "O WhatsApp demorou a responder." }, 504);
   }

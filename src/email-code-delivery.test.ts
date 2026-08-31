@@ -35,6 +35,8 @@ describe("código de acesso por e-mail", () => {
     expect(resetEndpoint).toContain("/auth/v1/otp");
     expect(resetEndpoint).not.toContain("generateLink");
     expect(resetEndpoint).not.toContain('type: "recovery"');
+    const sendSmsHook = source("../netlify/functions/supabase-send-sms-hook.ts");
+    expect(sendSmsHook).toContain("return json({}, 200)");
     expect(requestEndpoint).toContain("timeout: 26");
     expect(verifyEndpoint).toContain('"email", "recovery", "magiclink"');
     expect(verifyEndpoint).toContain("signal: AbortSignal.timeout(20000)");
