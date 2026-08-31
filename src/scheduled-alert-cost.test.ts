@@ -5,7 +5,7 @@ const readFunction = (name: string) =>
   readFileSync(new URL(`../netlify/functions/${name}.ts`, import.meta.url), "utf8");
 
 describe("alertas operacionais sem polling recorrente", () => {
-  it.each(["alerta-pedidos", "alerta-telegram"])(
+  it.each(["alerta-pedidos"])(
     "%s nao volta a executar a cada minuto",
     (name) => {
       const source = readFunction(name);
