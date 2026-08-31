@@ -5,6 +5,7 @@ import App from "./App";
 import PublicContactDock from "./PublicContactDock";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import { tokenDoMagicLink } from "./identidade-do-clube";
+import { installNativeApiFetch } from "./lib/native-api";
 import "./styles.css";
 import "./theme.css";
 import "./public-visual-2026.css";
@@ -17,6 +18,8 @@ import "./catalogo-de-sabores.css";
 // (--pink, --access-coral, --m-coral...) precisam vencer as declaracoes
 // antigas para que a paleta correta da logo alcance as 68 folhas.
 import "./adoce-tokens.css";
+
+installNativeApiFetch();
 
 if (Capacitor.isNativePlatform() && window.location.pathname === "/") {
   window.history.replaceState(null, "", "/operacao");
