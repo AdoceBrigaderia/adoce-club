@@ -24,6 +24,15 @@
 [functions."twilio-whatsapp-order"]
   timeout = 20
 
+[functions."whatsapp-support"]
+  timeout = 20
+
+[functions."order-notification-webhook"]
+  timeout = 20
+
+[functions."order-notification-status"]
+  timeout = 10
+
 [[redirects]]
   from = "/documentacao"
   to = "/documentacao.html"

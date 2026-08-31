@@ -2,6 +2,7 @@ import twilio from "twilio";
 import { env, hmacHex, normalizeBrazilPhone, serviceClient } from "./_shared/whatsapp-auth";
 import {
   catalogMessage,
+  emptyFestivalMenuMessage,
   isFullName,
   mainMenuMessage,
   normalizeCommand,
@@ -39,8 +40,13 @@ type OrderState = {
   pickupTime?: string;
   pickupOptions?: string[];
   menuMode?: boolean;
+  emptyCatalog?: boolean;
+  department?: SupportDepartment;
+  supportThreadId?: string;
   pendingFlavorId?: string;
 };
+type SupportDepartment = "festival" | "quote";
+type FunctionContext = { waitUntil?: (promise: Promise<unknown>) => void };
 
 const MAX_WEBHOOK_BYTES = 32768;
 const CONVERSATION_TTL_HOURS = 24;
@@ -94,7 +100,7 @@ const cleanProviderError = (message: string) => {
   return "Não consegui registrar o pedido agora. Escolha 1 para tentar novamente, 2 para mudar o horário ou 3 para cancelar.";
 };
 
-export default async (request: Request) => {
+export default async (request: Request, context?: FunctionContext) => {
   if (request.method !== "POST") return responseXml(twiml("Método não permitido."), 405);
   if (env("WHATSAPP_ORDER_BOT_ENABLED") !== "true")
     return responseXml(twiml("O pedido automático está temporariamente indisponível. A equipe da Adoce continuará o atendimento por aqui."), 503);
@@ -130,39 +136,39 @@ export default async (request: Request) => {
   if (!admin) return responseXml(twiml(), 503);
   const phoneHash = await hmacHex(hmacSecret, `phone:${phone}`);
 
-  const { data: claim, error: claimError } = await admin.rpc("server_begin_whatsapp_order_message", {
+  const { data: prepared, error: prepareError } = await admin.rpc("server_prepare_whatsapp_order_message", {
     requested_message_sid: messageSid,
     requested_phone_hmac: phoneHash,
   });
-  if (claimError) return responseXml(twiml(), 503);
-  if (claim?.process === false) return responseXml(String(claim.response_xml || twiml()));
+  if (prepareError) return responseXml(twiml(), 503);
+  if (prepared?.process === false) return responseXml(String(prepared.response_xml || twiml()));
 
+  let nextConversation: { step: string; state: OrderState } | null = null;
+  let clearBeforeFinish = false;
   const finish = async (message: string, status = 200) => {
     const xml = twiml(message);
-    const { error } = await admin.rpc("server_complete_whatsapp_order_message", {
+    const expires = nextConversation
+      ? new Date(Date.now() + CONVERSATION_TTL_HOURS * 60 * 60 * 1000).toISOString()
+      : null;
+    const { error } = await admin.rpc("server_finish_whatsapp_order_message", {
       requested_message_sid: messageSid,
       requested_phone_hmac: phoneHash,
+      requested_phone_last4: phone.slice(-4),
       requested_response_xml: xml,
+      requested_step: nextConversation?.step || null,
+      requested_state: nextConversation?.state || null,
+      requested_expires_at: expires,
+      requested_clear: clearBeforeFinish,
     });
     if (error) console.error("whatsapp order completion failed", error.code);
     return responseXml(xml, status);
   };
   const save = async (step: string, state: OrderState) => {
-    const expires = new Date(Date.now() + CONVERSATION_TTL_HOURS * 60 * 60 * 1000).toISOString();
-    const { error } = await admin.rpc("server_save_whatsapp_order_conversation", {
-      requested_phone_hmac: phoneHash,
-      requested_phone_last4: phone.slice(-4),
-      requested_step: step,
-      requested_state: state,
-      requested_expires_at: expires,
-    });
-    if (error) throw new Error(`conversation:${error.code || "save"}`);
+    nextConversation = { step, state };
   };
   const clear = async () => {
-    const { error } = await admin.rpc("server_clear_whatsapp_order_conversation", {
-      requested_phone_hmac: phoneHash,
-    });
-    if (error) throw new Error(`conversation:${error.code || "clear"}`);
+    clearBeforeFinish = true;
+    nextConversation = null;
   };
   const loadCatalog = async () => {
     const { data, error } = await admin.rpc("server_get_whatsapp_order_catalog");
@@ -170,70 +176,109 @@ export default async (request: Request) => {
     return data as Catalog;
   };
 
+  const notifySupport = async (department: SupportDepartment, threadId: string) => {
+    const accountSid = env("TWILIO_ACCOUNT_SID") || "";
+    const contentSid = env("TWILIO_SUPPORT_NOTIFICATION_CONTENT_SID") || "";
+    const operator = department === "festival"
+      ? env("TWILIO_FESTIVAL_STAFF_TO") || ""
+      : env("TWILIO_QUOTE_STAFF_TO") || "";
+    if (!accountSid || !contentSid || !operator) return;
+    const destination = operator.startsWith("whatsapp:") ? operator : `whatsapp:${operator}`;
+    const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
+    try {
+      await twilio(accountSid, authToken).messages.create({
+        from: normalizedExpected,
+        to: destination,
+        contentSid,
+        contentVariables: JSON.stringify({
+          "1": department === "festival" ? "Festival de Fatias" : "Orçamento",
+          "2": phone.slice(-4),
+          "3": `${siteUrl}/operacao?whatsapp=${encodeURIComponent(threadId)}`,
+        }),
+      });
+    } catch (error) {
+      console.error("whatsapp support notification failed", error instanceof Error ? error.name : "unknown");
+    }
+  };
+
   try {
-    const { data: limit, error: limitError } = await admin.rpc("consume_public_endpoint_rate_limit_bff", {
-      requested_bucket: "whatsapp-order:inbound",
-      requested_subject_hash: phoneHash,
-      requested_window_seconds: 3600,
-      requested_max_requests: 80,
-    });
-    if (limitError) return await finish("O atendimento automático está indisponível. A equipe da Adoce continuará por aqui.", 503);
-    if (limit?.allowed !== true)
+    if (prepared?.allowed !== true)
       return await finish("Recebemos muitas mensagens em pouco tempo. Aguarde alguns minutos e tente novamente.");
 
     const showMainMenu = async () => {
       await save("choose_items", { menuMode: true });
       return await finish(mainMenuMessage());
     };
-    const handoff = async () => {
-      await save("handoff", {});
-      return await finish([
-        "Certo. A automação foi pausada e a equipe da Adoce continuará por aqui assim que estiver disponível.",
-        "",
-        "1. Voltar ao atendimento automático",
-      ].join("\n"));
+    const handoff = async (department: SupportDepartment) => {
+      const { data: threadId, error } = await admin.rpc("server_open_whatsapp_support_thread", {
+        requested_phone_hmac: phoneHash,
+        requested_phone_last4: phone.slice(-4),
+        requested_department: department,
+        requested_message_sid: messageSid,
+        requested_body: body,
+      });
+      if (error || !threadId) throw new Error(`support:${error?.code || "open"}`);
+      await save("handoff", { department, supportThreadId: String(threadId) });
+      const notification = notifySupport(department, String(threadId));
+      if (context?.waitUntil) context.waitUntil(notification);
+      else void notification;
+      return await finish(department === "festival"
+        ? "Certo. Encaminhei sua conversa para a equipe do Festival de Fatias. Pode escrever sua dúvida por aqui."
+        : "Certo. Encaminhei sua conversa para a equipe de orçamentos. Pode contar por aqui o que você deseja.");
     };
     const startOrder = async () => {
       const catalog = await loadCatalog();
       const flavors = catalog.flavors.slice(0, 20);
       if (!flavors.length) {
-        await save("handoff", {});
-        return await finish("Não há fatias disponíveis para pedido automático agora. A equipe da Adoce continuará o atendimento por aqui.");
+        await save("choose_items", { emptyCatalog: true });
+        return await finish(emptyFestivalMenuMessage());
       }
       await save("choose_items", { flavors, selections: [] });
       return await finish(catalogMessage(flavors));
     };
 
     const command = normalizeCommand(body);
+    const conversation = (prepared?.conversation || null) as Conversation;
+    if (conversation?.step === "handoff") {
+      const { error } = await admin.rpc("server_append_whatsapp_support_message", {
+        requested_phone_hmac: phoneHash,
+        requested_message_sid: messageSid,
+        requested_body: body,
+      });
+      if (error) throw new Error(`support:${error.code || "append"}`);
+      return await finish("");
+    }
     if (command === "cancelar" || command === "sair") {
       await clear();
       return await showMainMenu();
     }
-    if (command === "atendente" || command === "humano") return await handoff();
+    if (command === "atendente" || command === "humano") return await handoff("festival");
     if (["menu", "pedido", "pedir", "comprar"].includes(command)) {
       await clear();
       return await startOrder();
     }
 
-    const { data: loaded, error: conversationError } = await admin.rpc(
-      "server_get_whatsapp_order_conversation",
-      { requested_phone_hmac: phoneHash },
-    );
-    if (conversationError) throw new Error(`conversation:${conversationError.code}`);
-    const conversation = (loaded || null) as Conversation;
     if (!conversation) return await showMainMenu();
-    if (conversation.step === "handoff")
-      return command === "1" ? await startOrder() : await finish("A automação está pausada. Responda *1* para voltar ao atendimento automático.");
     if (conversation.step === "completed") {
       if (command === "1") return await startOrder();
-      if (command === "2") return await handoff();
-      return await finish("1. Fazer outro pedido\n2. Falar com a equipe da Adoce\n\nResponda somente com o número da opção.");
+      if (command === "2") return await handoff("festival");
+      if (command === "3") return await handoff("quote");
+      return await finish("1. Fazer outro pedido\n2. Falar com a equipe sobre o Festival de Fatias\n3. Realizar orçamento\n\nResponda com o número da opção desejada.");
     }
 
     const state = conversation.state || {};
+    if (conversation.step === "choose_items" && state.emptyCatalog) {
+      if (command === "1") return await handoff("festival");
+      if (command === "2") {
+        await clear();
+        return await showMainMenu();
+      }
+      return await finish(emptyFestivalMenuMessage());
+    }
     if (conversation.step === "choose_items" && state.menuMode) {
       if (command === "1") return await startOrder();
-      if (command === "2") return await handoff();
+      if (command === "2") return await handoff("festival");
+      if (command === "3") return await handoff("quote");
       return await finish(mainMenuMessage());
     }
 
@@ -289,7 +334,7 @@ export default async (request: Request) => {
         await clear();
         return await showMainMenu();
       }
-      if (choice === flavors.length + 3) return await handoff();
+      if (choice === flavors.length + 3) return await handoff("festival");
       return await finish(catalogMessage(flavors, selections));
     }
 
@@ -302,7 +347,7 @@ export default async (request: Request) => {
         await save("sauce", next);
         return await finish(optionsMessage("Escolha uma calda para todas as fatias:", sauces));
       }
-      if (!catalog.payment_methods.length) return await handoff();
+      if (!catalog.payment_methods.length) return await handoff("festival");
       await save("payment", { ...next, sauce: { code: "", label: "Sem calda" } });
       return await finish(optionsMessage("Como deseja pagar?", catalog.payment_methods));
     }
@@ -311,7 +356,7 @@ export default async (request: Request) => {
       const sauce = parseOption(body, state.sauces || []);
       if (!sauce) return await finish(optionsMessage("Escolha uma calda para todas as fatias:", state.sauces || []));
       const payments = state.payments || [];
-      if (!payments.length) return await handoff();
+      if (!payments.length) return await handoff("festival");
       await save("payment", { ...state, sauce });
       return await finish(optionsMessage("Como deseja pagar?", payments));
     }
@@ -335,7 +380,7 @@ export default async (request: Request) => {
       const catalog = await loadCatalog();
       const minimum = earliestPickup(state.selections || [], catalog);
       const pickupOptions = minimum ? pickupTimeOptions(minimum) : [];
-      if (!pickupOptions.length) return await handoff();
+      if (!pickupOptions.length) return await handoff("festival");
       await save("pickup_time", {
         ...state,
         pickupMethod: command === "2" ? "driver" : "customer",
@@ -365,7 +410,7 @@ export default async (request: Request) => {
         const catalog = await loadCatalog();
         const minimum = earliestPickup(state.selections || [], catalog);
         const pickupOptions = minimum ? pickupTimeOptions(minimum) : [];
-        if (!pickupOptions.length) return await handoff();
+        if (!pickupOptions.length) return await handoff("festival");
         await save("pickup_time", { ...state, pickupOptions });
         return await finish(pickupTimesMessage(pickupOptions));
       }

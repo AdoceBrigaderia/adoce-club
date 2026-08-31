@@ -78,12 +78,22 @@ export function pickupTimeOptions(minimum: string, limit = 10) {
 }
 
 export const mainMenuMessage = () => [
-  "Olá! Eu sou o atendimento automático da Adoce. 🍰",
+  "Olá! Eu sou o atendimento automático da Adoce.",
   "",
-  "Para abrir o cardápio, responda somente com o número da opção:",
+  "Escolha uma das opções abaixo e responda com o número da opção desejada:",
   "",
-  "1. Ver cardápio e fazer pedido",
-  "2. Falar com a equipe da Adoce",
+  "1. Ver o cardápio do Festival de Fatias e fazer pedido",
+  "2. Falar com a equipe sobre o Festival de Fatias",
+  "3. Realizar orçamento",
+].join("\n");
+
+export const emptyFestivalMenuMessage = () => [
+  "Não há fatias disponíveis para pedido automático agora.",
+  "",
+  "1. Falar com a equipe sobre o Festival de Fatias",
+  "2. Voltar ao menu principal",
+  "",
+  "Responda com o número da opção desejada.",
 ].join("\n");
 
 export const catalogMessage = (flavors: BotFlavor[], selections: BotSelection[] = []) => {
