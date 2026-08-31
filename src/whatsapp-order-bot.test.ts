@@ -141,6 +141,8 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(endpoint).toContain("twilio.validateRequest");
     expect(endpoint).toContain("server_prepare_whatsapp_order_message");
     expect(endpoint).toContain("server_finish_whatsapp_order_message");
+    expect(endpoint).toContain("data: supportThreadId");
+    expect(endpoint).toMatch(/if \(!supportThreadId\) \{[\s\S]*?return await showMainMenu\(\);/);
     expect(endpoint).not.toContain("server_begin_whatsapp_order_message");
     expect(endpoint).toContain("server_submit_whatsapp_order");
     expect(endpoint).not.toContain("console.log(body");

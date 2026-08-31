@@ -240,12 +240,16 @@ export default async (request: Request, context?: FunctionContext) => {
     const command = normalizeCommand(body);
     const conversation = (prepared?.conversation || null) as Conversation;
     if (conversation?.step === "handoff") {
-      const { error } = await admin.rpc("server_append_whatsapp_support_message", {
+      const { data: supportThreadId, error } = await admin.rpc("server_append_whatsapp_support_message", {
         requested_phone_hmac: phoneHash,
         requested_message_sid: messageSid,
         requested_body: body,
       });
       if (error) throw new Error(`support:${error.code || "append"}`);
+      if (!supportThreadId) {
+        await clear();
+        return await showMainMenu();
+      }
       return await finish("");
     }
     if (command === "cancelar" || command === "sair") {
