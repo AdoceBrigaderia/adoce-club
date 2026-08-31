@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { countCustomerProfiles } from "./customer-search";
+import WhatsAppSupportInbox from "./WhatsAppSupportInbox";
 import "./operation-dashboard.css";
 
 export type DashboardDestination =
@@ -183,6 +184,8 @@ export default function OperationDashboard({
       </header>
 
       {notice ? <p className="operation-dashboard-notice">{notice}</p> : null}
+
+      <WhatsAppSupportInbox />
 
       <div className="operation-dashboard-heroes">
         <button type="button" className="operation-hero-sale" onClick={() => onNavigate("sales")}>

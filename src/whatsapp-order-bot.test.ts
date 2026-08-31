@@ -34,9 +34,10 @@ describe("pedido automatizado pelo WhatsApp", () => {
 
   it("saúda com cardápio e atendimento escolhidos somente por número", () => {
     const greeting = mainMenuMessage();
-    expect(greeting).toContain("1. Ver cardápio e fazer pedido");
-    expect(greeting).toContain("2. Falar com a equipe");
-    expect(greeting).toContain("responda somente com o número");
+    expect(greeting).toContain("1. Ver o cardápio do Festival de Fatias e fazer pedido");
+    expect(greeting).toContain("2. Falar com a equipe sobre o Festival de Fatias");
+    expect(greeting).toContain("3. Realizar orçamento");
+    expect(greeting).toContain("responda com o número da opção desejada");
     expect(greeting).not.toMatch(/digite\s+menu/i);
   });
 
@@ -138,7 +139,9 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(migration).toContain("server_submit_whatsapp_order");
     expect(migration).toMatch(/revoke all[\s\S]*from public, anon, authenticated/);
     expect(endpoint).toContain("twilio.validateRequest");
-    expect(endpoint).toContain("server_begin_whatsapp_order_message");
+    expect(endpoint).toContain("server_prepare_whatsapp_order_message");
+    expect(endpoint).toContain("server_finish_whatsapp_order_message");
+    expect(endpoint).not.toContain("server_begin_whatsapp_order_message");
     expect(endpoint).toContain("server_submit_whatsapp_order");
     expect(endpoint).not.toContain("console.log(body");
     expect(endpoint).not.toContain("console.log(phone");
