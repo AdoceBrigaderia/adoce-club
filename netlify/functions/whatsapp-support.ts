@@ -1,6 +1,6 @@
 import twilio from "twilio";
 import {
-  authorizeWhatsAppRequest,
+  authorizeStaffRequest,
   env,
   json,
   serviceClient,
@@ -49,7 +49,7 @@ export default async (request: Request) => {
 
   const admin = serviceClient();
   if (!admin) return json({ error: "Atendimento não configurado no servidor." }, 503);
-  const authorization = await authorizeWhatsAppRequest(request, admin);
+  const authorization = await authorizeStaffRequest(request, admin);
   if (authorization.errorResponse) return authorization.errorResponse;
   if (!authorization.actorUserId) return json({ error: "Operador inválido." }, 403);
 

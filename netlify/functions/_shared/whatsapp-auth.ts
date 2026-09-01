@@ -171,6 +171,57 @@ export async function authorizeWhatsAppRequest(
   };
 }
 
+export async function authorizeStaffRequest(
+  request: Request,
+  admin: SupabaseClient,
+): Promise<WhatsAppRequestAuthorization> {
+  const authorization = request.headers.get("authorization") || "";
+  const accessToken = authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
+  if (!accessToken) {
+    return {
+      pilot: false,
+      actorUserId: null,
+      errorResponse: json({ error: "Sessão operacional obrigatória." }, 401),
+    };
+  }
+
+  const { data: userData, error: userError } = await admin.auth.getUser(accessToken);
+  if (userError || !userData.user) {
+    return {
+      pilot: false,
+      actorUserId: null,
+      errorResponse: json({ error: "Sessão inválida ou expirada." }, 401),
+    };
+  }
+
+  const { data: staff, error: staffError } = await admin
+    .from("staff_members")
+    .select("role,active")
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+  if (staffError) {
+    return {
+      pilot: false,
+      actorUserId: null,
+      errorResponse: json({ error: "Não foi possível validar a permissão." }, 503),
+    };
+  }
+  if (!staff?.active || !["owner", "manager"].includes(staff.role)) {
+    return {
+      pilot: false,
+      actorUserId: null,
+      errorResponse: json({ error: "Atendimento restrito a proprietários e gerentes." }, 403),
+    };
+  }
+  return {
+    pilot: false,
+    actorUserId: userData.user.id,
+    errorResponse: null,
+  };
+}
+
 export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
