@@ -9,8 +9,10 @@ describe("conversa humana do WhatsApp", () => {
     expect(component).toContain("messageListRef");
     expect(component).toContain("messageList.scrollTop = messageList.scrollHeight");
     expect(component).toContain("thread?.messages?.length");
-    expect(component).toContain("loadThread(selectedId).catch(() => undefined)");
-    expect(component).toContain("}, 4_000);");
+    expect(component).toContain('channel("whatsapp-support-realtime")');
+    expect(component).toContain('table: "operation_notifications"');
+    expect(component).toContain('event_type=eq.whatsapp.support.message');
+    expect(component).not.toContain("setInterval");
   });
 
   it("mantem texto digitado e baloes legiveis no WebView Android", () => {

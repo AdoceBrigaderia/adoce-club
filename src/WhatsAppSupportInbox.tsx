@@ -90,21 +90,31 @@ export default function WhatsAppSupportInbox() {
   }, [load]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load(true);
-    }, 15_000);
-    return () => window.clearInterval(timer);
-  }, [load]);
-
-  useEffect(() => {
     if (!selectedId) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void loadThread(selectedId).catch(() => undefined);
-      }
-    }, 4_000);
-    return () => window.clearInterval(timer);
-  }, [loadThread, selectedId]);
+    const supabase = requireSupabase();
+    const channel = supabase
+      .channel("whatsapp-support-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "operation_notifications",
+          filter: "event_type=eq.whatsapp.support.message",
+        },
+        (change) => {
+          const entityId = String((change.new as { entity_id?: string }).entity_id || "");
+          if (entityId === selectedId) void loadThread(entityId).catch(() => undefined);
+          else void load(true);
+        },
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setNotice("Tempo real indisponível. Toque em Atualizar para conferir as mensagens.");
+        }
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [load, loadThread, selectedId]);
 
   useEffect(() => {
     const messageList = messageListRef.current;

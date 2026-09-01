@@ -41,7 +41,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/web-push": "^3.6.4",
-    "supabase": "2.109.1",
+    "supabase": "^2.109.1",
     "typescript": "latest",
     "vitest": "latest"
   }
