@@ -97,6 +97,16 @@ export default function WhatsAppSupportInbox() {
   }, [load]);
 
   useEffect(() => {
+    if (!selectedId) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadThread(selectedId).catch(() => undefined);
+      }
+    }, 4_000);
+    return () => window.clearInterval(timer);
+  }, [loadThread, selectedId]);
+
+  useEffect(() => {
     const messageList = messageListRef.current;
     if (!messageList || !thread) return;
     const frame = window.requestAnimationFrame(() => {
