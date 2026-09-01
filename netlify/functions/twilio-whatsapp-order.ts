@@ -1,5 +1,6 @@
 import twilio from "twilio";
 import { env, hmacHex, normalizeBrazilPhone, serviceClient } from "./_shared/whatsapp-auth";
+import { downloadAndStoreTwilioMedia } from "./_shared/whatsapp-media";
 import {
   catalogMessage,
   emptyFestivalMenuMessage,
@@ -127,6 +128,9 @@ export default async (request: Request, context?: FunctionContext) => {
   const to = form.get("To") || "";
   const messageSid = form.get("MessageSid") || form.get("SmsMessageSid") || "";
   const body = (form.get("Body") || "").slice(0, 4000);
+  const mediaUrl = form.get("MediaUrl0") || "";
+  const mediaContentType = form.get("MediaContentType0") || "";
+  const hasMedia = Number(form.get("NumMedia") || "0") > 0 && Boolean(mediaUrl);
   const phone = normalizeBrazilPhone(from.replace(/^whatsapp:/, ""));
   const normalizedExpected = expectedTo.startsWith("whatsapp:") ? expectedTo : `whatsapp:${expectedTo}`;
   if (!phone || to !== normalizedExpected || !/^[A-Za-z0-9]{8,80}$/.test(messageSid))
@@ -135,6 +139,30 @@ export default async (request: Request, context?: FunctionContext) => {
   const admin = serviceClient();
   if (!admin) return responseXml(twiml(), 503);
   const phoneHash = await hmacHex(hmacSecret, `phone:${phone}`);
+  const storeInboundMedia = async (threadId: string) => {
+    if (!hasMedia) return;
+    const stored = await downloadAndStoreTwilioMedia(
+      admin,
+      mediaUrl,
+      mediaContentType,
+      env("TWILIO_ACCOUNT_SID") || "",
+      authToken,
+      `inbound/${threadId}`,
+      `${messageSid}.${mediaContentType.split("/").at(-1) || "bin"}`,
+    );
+    const { error } = await admin.schema("private").from("whatsapp_support_messages").insert({
+      thread_id: threadId,
+      message_sid: `${messageSid}-media`,
+      direction: "inbound",
+      body: body || `Mídia recebida (${stored.kind})`,
+      media_kind: stored.kind,
+      media_storage_path: stored.storagePath,
+      media_content_type: stored.contentType,
+      media_filename: stored.filename,
+      media_size_bytes: stored.sizeBytes,
+    });
+    if (error) throw new Error(`media_store:${error.code}`);
+  };
 
   const { data: prepared, error: prepareError } = await admin.rpc("server_prepare_whatsapp_order_message", {
     requested_message_sid: messageSid,
@@ -218,6 +246,7 @@ export default async (request: Request, context?: FunctionContext) => {
         requested_body: body,
       });
       if (error || !threadId) throw new Error(`support:${error?.code || "open"}`);
+      await storeInboundMedia(String(threadId));
       await save("handoff", { department, supportThreadId: String(threadId) });
       const notification = notifySupport(department, String(threadId));
       if (context?.waitUntil) context.waitUntil(notification);
@@ -250,6 +279,7 @@ export default async (request: Request, context?: FunctionContext) => {
         await clear();
         return await showMainMenu();
       }
+      await storeInboundMedia(String(supportThreadId));
       return await finish("");
     }
     if (command === "cancelar" || command === "sair") {
@@ -262,6 +292,7 @@ export default async (request: Request, context?: FunctionContext) => {
       return await startOrder();
     }
 
+    if (hasMedia && !conversation) return await handoff("festival");
     if (!conversation) return await showMainMenu();
     if (conversation.step === "completed") {
       if (command === "1") return await startOrder();
