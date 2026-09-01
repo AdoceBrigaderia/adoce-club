@@ -1,4 +1,4 @@
-const CACHE = "clube-adoce-v4";
+const CACHE = "clube-adoce-v5";
 const SHELL = [
   "/site/logo.webp",
   "/manifest-clube.webmanifest",
@@ -24,7 +24,12 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   if (new URL(event.request.url).origin !== self.location.origin) return;
-  if (event.request.mode === "navigate" || new URL(event.request.url).pathname.startsWith("/assets/")) return;
+  const pathname = new URL(event.request.url).pathname;
+  if (
+    event.request.mode === "navigate" ||
+    pathname.startsWith("/assets/") ||
+    pathname.startsWith("/api/")
+  ) return;
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
     if (response.ok) {
       const copy = response.clone();

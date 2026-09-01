@@ -16,6 +16,8 @@ describe("recuperação segura depois de uma nova publicação", () => {
     expect(worker).not.toContain('  "/",');
     expect(worker).toContain('event.request.mode === "navigate"');
     expect(worker).toContain('pathname.startsWith("/assets/")');
+    expect(worker).toContain('pathname.startsWith("/api/")');
+    expect(worker).toContain('clube-adoce-v5');
   });
 
   it("obriga o navegador a conferir uma versão nova do HTML", () => {
