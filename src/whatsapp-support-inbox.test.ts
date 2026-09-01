@@ -1,0 +1,19 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const component = readFileSync(new URL("./WhatsAppSupportInbox.tsx", import.meta.url), "utf8");
+const styles = readFileSync(new URL("./whatsapp-support-inbox.css", import.meta.url), "utf8");
+
+describe("conversa humana do WhatsApp", () => {
+  it("acompanha automaticamente a mensagem mais recente", () => {
+    expect(component).toContain("messageListRef");
+    expect(component).toContain("messageList.scrollTop = messageList.scrollHeight");
+    expect(component).toContain("thread?.messages?.length");
+  });
+
+  it("mantem texto digitado e baloes legiveis no WebView Android", () => {
+    expect(styles).toContain("-webkit-text-fill-color: #3b160f");
+    expect(styles).toContain("caret-color: #3b160f");
+    expect(styles).toContain("article p { margin: 0; color: #3b160f");
+  });
+});

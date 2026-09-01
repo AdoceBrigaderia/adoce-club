@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, MessageCircle, RefreshCw, Send } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import "./whatsapp-support-inbox.css";
@@ -45,6 +45,7 @@ async function supportRequest(path = "", init?: RequestInit) {
 }
 
 export default function WhatsAppSupportInbox() {
+  const messageListRef = useRef<HTMLDivElement | null>(null);
   const [threads, setThreads] = useState<SupportThreadSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [thread, setThread] = useState<SupportThread | null>(null);
@@ -94,6 +95,15 @@ export default function WhatsAppSupportInbox() {
     }, 15_000);
     return () => window.clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    const messageList = messageListRef.current;
+    if (!messageList || !thread) return;
+    const frame = window.requestAnimationFrame(() => {
+      messageList.scrollTop = messageList.scrollHeight;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [thread?.id, thread?.messages?.length]);
 
   const selectThread = async (threadId: string) => {
     setSelectedId(threadId);
@@ -210,7 +220,7 @@ export default function WhatsAppSupportInbox() {
                   <CheckCircle2 /> Encerrar
                 </button>
               </header>
-              <div className="whatsapp-support-messages" aria-live="polite">
+              <div ref={messageListRef} className="whatsapp-support-messages" aria-live="polite">
                 {(thread.messages || []).map((message) => (
                   <article key={message.id} className={`is-${message.direction}`}>
                     <p>{message.body}</p>

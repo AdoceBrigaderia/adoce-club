@@ -63,7 +63,7 @@
 .whatsapp-support-placeholder svg { width: 2.5rem; height: 2.5rem; }
 .whatsapp-support-messages { min-height: 15rem; max-height: 28rem; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .65rem; background: #f8eee7; }
 .whatsapp-support-messages article { max-width: 82%; padding: .7rem .85rem; border-radius: 1rem; box-shadow: 0 1px 1px rgba(60, 20, 13, .08); }
-.whatsapp-support-messages article p { margin: 0; white-space: pre-wrap; }
+.whatsapp-support-messages article p { margin: 0; color: #3b160f; white-space: pre-wrap; }
 .whatsapp-support-messages article time { display: block; margin-top: .3rem; color: #896b62; font-size: .68rem; text-align: right; }
 .whatsapp-support-messages article.is-inbound { align-self: flex-start; background: #fff; }
 .whatsapp-support-messages article.is-outbound { align-self: flex-end; background: #fbd8ce; }
@@ -71,7 +71,7 @@
 .whatsapp-support-conversation form { padding: .85rem; display: grid; gap: .45rem; border-top: 1px solid #f0ddd3; }
 .whatsapp-support-conversation form label { color: #6d4036; font-size: .78rem; font-weight: 800; }
 .whatsapp-support-conversation form > div { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: stretch; }
-.whatsapp-support-conversation textarea { width: 100%; resize: vertical; border: 1px solid #dcbcaf; border-radius: .85rem; padding: .75rem; color: #3b160f; font: inherit; }
+.whatsapp-support-conversation textarea { width: 100%; resize: vertical; border: 1px solid #dcbcaf; border-radius: .85rem; padding: .75rem; background: #fffdf9; color: #3b160f; caret-color: #3b160f; -webkit-text-fill-color: #3b160f; opacity: 1; font: inherit; }
 .whatsapp-support-conversation form button { min-width: 7rem; border: 0; border-radius: .85rem; background: #3b1f12; color: white; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; font-weight: 800; }
 .whatsapp-support-conversation form button svg { width: 1rem; }
 @media (max-width: 760px) {
