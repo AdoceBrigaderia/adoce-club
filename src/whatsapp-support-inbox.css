@@ -75,6 +75,14 @@
 .whatsapp-support-conversation form { padding: .85rem; display: grid; gap: .45rem; border-top: 1px solid #f0ddd3; }
 .whatsapp-support-conversation form label { color: #6d4036; font-size: .78rem; font-weight: 800; }
 .whatsapp-support-conversation form > div { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: stretch; }
+.whatsapp-support-conversation form > div { grid-template-columns: auto minmax(0, 1fr) auto; }
+.whatsapp-support-icon-button { min-width: 2.8rem !important; padding: 0 .65rem; border: 1px solid #dcbcaf !important; background: #fffdf9 !important; color: #7c2638 !important; }
+.whatsapp-support-icon-button svg { width: 1.1rem; }
+.whatsapp-support-attachment { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem .7rem; border: 1px solid #ead6cb; border-radius: .7rem; background: #fff8f2; color: #6d4036; font-size: .78rem; }
+.whatsapp-support-attachment button { min-width: 2rem !important; min-height: 2rem; border: 0; background: transparent; color: #7c2638; }
+.whatsapp-support-attachment svg { width: 1rem; }
+.whatsapp-support-record-button { justify-self: start; min-height: 2.5rem; padding: 0 .8rem; border: 1px solid #dcbcaf !important; border-radius: .75rem; background: #fffdf9 !important; color: #7c2638 !important; }
+.whatsapp-support-record-button.is-recording { background: #fff0e9 !important; color: #a43d38 !important; }
 .whatsapp-support-conversation textarea { width: 100%; resize: vertical; border: 1px solid #dcbcaf; border-radius: .85rem; padding: .75rem; background: #fffdf9; color: #3b160f; caret-color: #3b160f; -webkit-text-fill-color: #3b160f; opacity: 1; font: inherit; }
 .whatsapp-support-conversation form button { min-width: 7rem; border: 0; border-radius: .85rem; background: #3b1f12; color: white; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; font-weight: 800; }
 .whatsapp-support-conversation form button svg { width: 1rem; }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, MessageCircle, RefreshCw, Send } from "lucide-react";
+import { CheckCircle2, MessageCircle, RefreshCw, Send, Paperclip, Mic, Square, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import "./whatsapp-support-inbox.css";
 
@@ -38,7 +38,7 @@ async function supportRequest(path = "", init?: RequestInit) {
   const response = await fetch(`/api/whatsapp/support${path}`, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       Authorization: `Bearer ${accessToken}`,
       ...init?.headers,
     },
@@ -56,6 +56,11 @@ export default function WhatsAppSupportInbox() {
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
   const [pendingReply, setPendingReply] = useState<SupportMessage | null>(null);
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [recording, setRecording] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderChunksRef = useRef<Blob[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [orderHealth, setOrderHealth] = useState<OrderNotificationHealth | null>(null);
@@ -144,7 +149,7 @@ export default function WhatsAppSupportInbox() {
   };
 
   const act = async (action: "reply" | "close") => {
-    if (!selectedId || (action === "reply" && !reply.trim())) return;
+    if (!selectedId || (action === "reply" && !reply.trim() && !attachment)) return;
     const replyBody = reply.trim();
     setBusy(true);
     if (action === "reply") {
@@ -152,9 +157,19 @@ export default function WhatsAppSupportInbox() {
       setPendingReply({ id: -Date.now(), direction: "outbound", body: replyBody, created_at: new Date().toISOString() });
     }
     try {
+      const requestBody = attachment
+        ? (() => {
+          const form = new FormData();
+          form.set("action", action);
+          form.set("threadId", selectedId);
+          form.set("body", replyBody);
+          form.set("file", attachment);
+          return form;
+        })()
+        : JSON.stringify({ action, threadId: selectedId, body: replyBody });
       await supportRequest("", {
         method: "POST",
-        body: JSON.stringify({ action, threadId: selectedId, body: replyBody }),
+        body: requestBody,
       });
       if (action === "close") {
         setSelectedId("");
@@ -165,6 +180,7 @@ export default function WhatsAppSupportInbox() {
       } else {
         await loadThread(selectedId);
         setPendingReply(null);
+        setAttachment(null);
       }
       setNotice(action === "close" ? "Atendimento encerrado e automação liberada." : "Resposta enviada pelo número oficial.");
     } catch (error) {
@@ -177,6 +193,31 @@ export default function WhatsAppSupportInbox() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setNotice("Seu navegador não permite gravar áudio. Anexe um arquivo de áudio.");
+      return;
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    recorderChunksRef.current = [];
+    recorder.ondataavailable = (event) => { if (event.data.size) recorderChunksRef.current.push(event.data); };
+    recorder.onstop = () => {
+      stream.getTracks().forEach((track) => track.stop());
+      const blob = new Blob(recorderChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+      setAttachment(new File([blob], `audio-${Date.now()}.webm`, { type: blob.type }));
+      setRecording(false);
+    };
+    recorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+  };
+
+  const stopRecording = () => {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
   };
 
   const waitingCount = useMemo(
@@ -245,7 +286,10 @@ export default function WhatsAppSupportInbox() {
           ) : (
             <>
               <header>
+                {attachment ? <div className="whatsapp-support-attachment"><span>{attachment.name}</span><button type="button" onClick={() => setAttachment(null)} aria-label="Remover anexo"><X /></button></div> : null}
                 <div>
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,application/pdf" hidden onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
+                  <button type="button" className="whatsapp-support-icon-button" onClick={() => fileInputRef.current?.click()} aria-label="Anexar foto, vídeo ou documento"><Paperclip /></button>
                   <strong>{departmentLabel(thread.department)}</strong>
                   <small>Cliente final {thread.phone_last4} · responde pelo número oficial</small>
                 </div>
@@ -282,10 +326,13 @@ export default function WhatsAppSupportInbox() {
                     }}
                     onChange={(event) => setReply(event.target.value)}
                   />
-                  <button type="submit" disabled={busy || !reply.trim()}>
+                  <button type="submit" disabled={busy || (!reply.trim() && !attachment)}>
                     <Send /> {busy ? "Enviando…" : "Enviar"}
                   </button>
                 </div>
+                <button type="button" className={`whatsapp-support-record-button${recording ? " is-recording" : ""}`} onClick={() => recording ? stopRecording() : void startRecording()} disabled={busy}>
+                  {recording ? <Square /> : <Mic />} {recording ? "Parar gravação" : "Gravar áudio"}
+                </button>
               </form>
             </>
           )}

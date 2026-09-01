@@ -20,15 +20,30 @@ type SupportThread = {
     body: string;
     staff_user_id?: string | null;
     created_at: string;
+    media_kind?: "audio" | "image" | "video" | "document" | null;
+    media_storage_path?: string | null;
+    media_content_type?: string | null;
+    media_filename?: string | null;
+    media_size_bytes?: number | null;
+    media_duration_seconds?: number | null;
   }>;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const publicThread = (thread: SupportThread | null) => {
+const publicThread = async (admin: ReturnType<typeof serviceClient>, thread: SupportThread | null) => {
   if (!thread) return null;
   const { source_message_sid: _privateSource, ...safe } = thread;
-  return safe;
+  if (!admin || !safe.messages?.length) return safe;
+  const messages = await Promise.all(safe.messages.map(async (message) => {
+    if (!message.media_storage_path) return message;
+    const { data } = await admin.storage
+      .from("whatsapp-support-media")
+      .createSignedUrl(message.media_storage_path, 3600);
+    const { media_storage_path: _privatePath, ...publicMessage } = message;
+    return { ...publicMessage, media_url: data?.signedUrl || null };
+  }));
+  return { ...safe, messages };
 };
 
 const twilioAddress = async (client: ReturnType<typeof twilio>, thread: SupportThread) => {
@@ -69,21 +84,40 @@ export default async (request: Request) => {
     });
     if (error) return json({ error: "Não foi possível carregar a conversa." }, 503);
     if (!data) return json({ error: "Conversa não encontrada." }, 404);
-    return json({ thread: publicThread(data as SupportThread) });
+    return json({ thread: await publicThread(admin, data as SupportThread) });
   }
 
-  const payload = (await request.json().catch(() => ({}))) as {
-    action?: string;
-    threadId?: string;
-    body?: string;
-  };
+  const contentType = request.headers.get("content-type") || "";
+  let payload: { action?: string; threadId?: string; body?: string } = {};
+  let attachment: File | null = null;
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    payload = {
+      action: String(form.get("action") || ""),
+      threadId: String(form.get("threadId") || ""),
+      body: String(form.get("body") || ""),
+    };
+    const file = form.get("file");
+    attachment = file instanceof File ? file : null;
+  } else {
+    payload = (await request.json().catch(() => ({}))) as typeof payload;
+  }
   const threadId = payload.threadId?.trim() || "";
   const action = payload.action?.trim() || "";
   if (!UUID.test(threadId) || !['reply', 'close'].includes(action)) {
     return json({ error: "Ação de atendimento inválida." }, 400);
   }
   const body = payload.body?.trim().slice(0, 4000) || "";
-  if (action === "reply" && !body) return json({ error: "Escreva uma resposta." }, 400);
+  if (action === "reply" && !body && !attachment) return json({ error: "Escreva uma resposta ou anexe uma mídia." }, 400);
+  if (attachment && (attachment.size <= 0 || attachment.size > 16 * 1024 * 1024))
+    return json({ error: "A mídia precisa ter até 16 MB." }, 413);
+  const mediaKind = attachment
+    ? attachment.type.startsWith("audio/") ? "audio"
+      : attachment.type.startsWith("image/") ? "image"
+        : attachment.type.startsWith("video/") ? "video" : "document"
+    : null;
+  if (attachment && mediaKind === "document" && attachment.type !== "application/pdf")
+    return json({ error: "Envie documentos em PDF." }, 415);
 
   const { data: loaded, error: loadError } = await admin.rpc(
     "server_get_whatsapp_support_thread",
@@ -103,17 +137,44 @@ export default async (request: Request) => {
     const outgoingBody = action === "close"
       ? `Atendimento encerrado. Quando precisar, escolha uma nova opção.\n\n${mainMenuMessage()}`
       : body;
+    let storagePath: string | null = null;
+    let signedUrl: string | null = null;
+    if (attachment && mediaKind) {
+      storagePath = `outbound/${threadId}/${crypto.randomUUID()}-${attachment.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120)}`;
+      const upload = await admin.storage.from("whatsapp-support-media").upload(storagePath, attachment, {
+        contentType: attachment.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (upload.error) throw new Error(`media_upload:${upload.error.message}`);
+      const signed = await admin.storage.from("whatsapp-support-media").createSignedUrl(storagePath, 3600);
+      if (signed.error || !signed.data?.signedUrl) throw new Error("media_signed_url");
+      signedUrl = signed.data.signedUrl;
+    }
     const sent = await client.messages.create({
       from: address.official,
       to: address.customer,
-      body: outgoingBody,
+      ...(outgoingBody ? { body: outgoingBody } : {}),
+      ...(signedUrl ? { mediaUrl: [signedUrl] } : {}),
     });
-    const { error: replyError } = await admin.rpc("server_add_whatsapp_support_reply", {
-      requested_thread_id: threadId,
-      requested_staff_user_id: authorization.actorUserId,
-      requested_message_sid: sent.sid,
-      requested_body: outgoingBody,
-    });
+    const { error: replyError } = attachment && mediaKind && storagePath
+      ? await admin.rpc("server_add_whatsapp_support_media", {
+        requested_thread_id: threadId,
+        requested_staff_user_id: authorization.actorUserId,
+        requested_message_sid: sent.sid,
+        requested_body: outgoingBody || `Mídia enviada: ${attachment.name}`,
+        requested_media_kind: mediaKind,
+        requested_media_storage_path: storagePath,
+        requested_media_content_type: attachment.type || "application/octet-stream",
+        requested_media_filename: attachment.name,
+        requested_media_size_bytes: attachment.size,
+        requested_media_duration_seconds: null,
+      })
+      : await admin.rpc("server_add_whatsapp_support_reply", {
+        requested_thread_id: threadId,
+        requested_staff_user_id: authorization.actorUserId,
+        requested_message_sid: sent.sid,
+        requested_body: outgoingBody,
+      });
     if (replyError) throw new Error(`store_reply:${replyError.code}`);
 
     if (action === "close") {
