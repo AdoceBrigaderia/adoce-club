@@ -51,6 +51,7 @@ export default function WhatsAppSupportInbox() {
   const [thread, setThread] = useState<SupportThread | null>(null);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingReply, setPendingReply] = useState<SupportMessage | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
   const [orderHealth, setOrderHealth] = useState<OrderNotificationHealth | null>(null);
@@ -122,7 +123,7 @@ export default function WhatsAppSupportInbox() {
       messageList.scrollTop = messageList.scrollHeight;
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [thread?.id, thread?.messages?.length]);
+  }, [thread?.id, thread?.messages?.length, pendingReply?.id]);
 
   const selectThread = async (threadId: string) => {
     setSelectedId(threadId);
@@ -140,13 +141,17 @@ export default function WhatsAppSupportInbox() {
 
   const act = async (action: "reply" | "close") => {
     if (!selectedId || (action === "reply" && !reply.trim())) return;
+    const replyBody = reply.trim();
     setBusy(true);
+    if (action === "reply") {
+      setReply("");
+      setPendingReply({ id: -Date.now(), direction: "outbound", body: replyBody, created_at: new Date().toISOString() });
+    }
     try {
       await supportRequest("", {
         method: "POST",
-        body: JSON.stringify({ action, threadId: selectedId, body: reply.trim() }),
+        body: JSON.stringify({ action, threadId: selectedId, body: replyBody }),
       });
-      setReply("");
       if (action === "close") {
         setSelectedId("");
         setThread(null);
@@ -155,11 +160,16 @@ export default function WhatsAppSupportInbox() {
         window.history.replaceState({}, "", url);
       } else {
         await loadThread(selectedId);
+        setPendingReply(null);
       }
-      await load(true);
       setNotice(action === "close" ? "Atendimento encerrado e automação liberada." : "Resposta enviada pelo número oficial.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Não foi possível concluir a ação.");
+      if (action === "reply") {
+        setReply(replyBody);
+        setPendingReply(null);
+      }
+      setNotice(error instanceof Error ? error.message : "NÃ£o foi possÃ­vel concluir a aÃ§Ã£o.");
     } finally {
       setBusy(false);
     }
@@ -240,10 +250,10 @@ export default function WhatsAppSupportInbox() {
                 </button>
               </header>
               <div ref={messageListRef} className="whatsapp-support-messages" aria-live="polite">
-                {(thread.messages || []).map((message) => (
+                {[...(thread.messages || []), ...(pendingReply ? [pendingReply] : [])].map((message) => (
                   <article key={message.id} className={`is-${message.direction}`}>
                     <p>{message.body}</p>
-                    <time>{new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.created_at))}</time>
+                    <time>{pendingReply?.id === message.id ? "Enviandoâ€¦" : new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.created_at))}</time>
                   </article>
                 ))}
               </div>
@@ -255,7 +265,13 @@ export default function WhatsAppSupportInbox() {
                     value={reply}
                     maxLength={4000}
                     rows={3}
-                    placeholder="Escreva sua resposta para o cliente"
+                    placeholder="Escreva sua resposta. Enter envia; Shift+Enter quebra linha"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void act("reply");
+                      }
+                    }}
                     onChange={(event) => setReply(event.target.value)}
                   />
                   <button type="submit" disabled={busy || !reply.trim()}>

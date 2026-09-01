@@ -13,6 +13,9 @@ describe("conversa humana do WhatsApp", () => {
     expect(component).toContain('table: "operation_notifications"');
     expect(component).toContain('event_type=eq.whatsapp.support.message');
     expect(component).not.toContain("setInterval");
+    expect(component).toContain('event.key === "Enter" && !event.shiftKey');
+    expect(component).toContain("setPendingReply");
+    expect(component).toContain("Enviandoâ€¦");
   });
 
   it("mantem texto digitado e baloes legiveis no WebView Android", () => {
