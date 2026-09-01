@@ -16,4 +16,11 @@ describe("conversa humana do WhatsApp", () => {
     expect(styles).toContain("caret-color: #3b160f");
     expect(styles).toContain("article p { margin: 0; color: #3b160f");
   });
+
+  it("usa uma unica rolagem em tablets e outros dispositivos de toque", () => {
+    expect(styles).toContain("@media (hover: none) and (pointer: coarse)");
+    expect(styles).toContain("max-height: none");
+    expect(styles).toContain("overflow-y: visible");
+    expect(styles).toContain("touch-action: pan-y");
+  });
 });

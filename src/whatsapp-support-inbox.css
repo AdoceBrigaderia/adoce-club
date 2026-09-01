@@ -74,6 +74,15 @@
 .whatsapp-support-conversation textarea { width: 100%; resize: vertical; border: 1px solid #dcbcaf; border-radius: .85rem; padding: .75rem; background: #fffdf9; color: #3b160f; caret-color: #3b160f; -webkit-text-fill-color: #3b160f; opacity: 1; font: inherit; }
 .whatsapp-support-conversation form button { min-width: 7rem; border: 0; border-radius: .85rem; background: #3b1f12; color: white; display: inline-flex; align-items: center; justify-content: center; gap: .4rem; font-weight: 800; }
 .whatsapp-support-conversation form button svg { width: 1rem; }
+@media (hover: none) and (pointer: coarse) {
+  .whatsapp-support-conversation { overflow: visible; }
+  .whatsapp-support-messages {
+    max-height: none;
+    overflow-y: visible;
+    touch-action: pan-y;
+    overscroll-behavior-y: auto;
+  }
+}
 @media (max-width: 760px) {
   .whatsapp-support { padding: .8rem; border-radius: 1rem; }
   .whatsapp-support-heading { align-items: stretch; flex-direction: column; }
