@@ -68,6 +68,10 @@
 .whatsapp-support-messages article.is-inbound { align-self: flex-start; background: #fff; }
 .whatsapp-support-messages article.is-outbound { align-self: flex-end; background: #fbd8ce; }
 .whatsapp-support-messages article.is-system { align-self: center; max-width: 92%; background: #fff4cf; font-size: .82rem; text-align: center; }
+.whatsapp-support-media-image,
+.whatsapp-support-media-video { display: block; width: min(100%, 20rem); max-height: 22rem; object-fit: cover; border-radius: .75rem; margin: -.1rem 0 .55rem; }
+.whatsapp-support-media-audio { display: block; width: min(100%, 20rem); margin: -.05rem 0 .45rem; }
+.whatsapp-support-media-document { display: inline-flex; margin: -.05rem 0 .45rem; color: #7c2638; font-weight: 800; text-decoration: underline; }
 .whatsapp-support-conversation form { padding: .85rem; display: grid; gap: .45rem; border-top: 1px solid #f0ddd3; }
 .whatsapp-support-conversation form label { color: #6d4036; font-size: .78rem; font-weight: 800; }
 .whatsapp-support-conversation form > div { display: grid; grid-template-columns: 1fr auto; gap: .6rem; align-items: stretch; }

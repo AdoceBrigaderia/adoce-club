@@ -17,6 +17,10 @@ type SupportMessage = {
   direction: "inbound" | "outbound" | "system";
   body: string;
   created_at: string;
+  media_kind?: "audio" | "image" | "video" | "document" | null;
+  media_url?: string | null;
+  media_content_type?: string | null;
+  media_filename?: string | null;
 };
 
 type SupportThread = SupportThreadSummary & { messages: SupportMessage[] };
@@ -252,6 +256,10 @@ export default function WhatsAppSupportInbox() {
               <div ref={messageListRef} className="whatsapp-support-messages" aria-live="polite">
                 {[...(thread.messages || []), ...(pendingReply ? [pendingReply] : [])].map((message) => (
                   <article key={message.id} className={`is-${message.direction}`}>
+                    {message.media_url && message.media_kind === "image" ? <img className="whatsapp-support-media-image" src={message.media_url} alt={message.media_filename || "Imagem recebida"} loading="lazy" /> : null}
+                    {message.media_url && message.media_kind === "video" ? <video className="whatsapp-support-media-video" src={message.media_url} controls preload="metadata" /> : null}
+                    {message.media_url && message.media_kind === "audio" ? <audio className="whatsapp-support-media-audio" src={message.media_url} controls preload="metadata" /> : null}
+                    {message.media_url && message.media_kind === "document" ? <a className="whatsapp-support-media-document" href={message.media_url} target="_blank" rel="noreferrer">Abrir {message.media_filename || "documento"}</a> : null}
                     <p>{message.body}</p>
                     <time>{pendingReply?.id === message.id ? "Enviandoâ€¦" : new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(message.created_at))}</time>
                   </article>
