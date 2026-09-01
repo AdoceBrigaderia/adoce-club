@@ -90,7 +90,6 @@ export default function WhatsAppSupportInbox() {
   }, [load]);
 
   useEffect(() => {
-    if (!selectedId) return;
     const supabase = requireSupabase();
     const channel = supabase
       .channel("whatsapp-support-realtime")
