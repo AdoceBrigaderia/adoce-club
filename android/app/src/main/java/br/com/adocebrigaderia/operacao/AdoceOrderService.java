@@ -157,7 +157,10 @@ public class AdoceOrderService extends Service {
         String access = prefs.getString("access", "");
         if (base.isEmpty() || key.isEmpty() || access.isEmpty()) { setState("sem sessao"); return; }
         String ws = base.replaceFirst("^https", "wss") + "/realtime/v1/websocket?apikey=" + key + "&vsn=1.0.0";
-        Request request = new Request.Builder().url(ws).header("Authorization", "Bearer " + access).build();
+        // Supabase Realtime authenticates this websocket with the apikey query
+        // parameter and the access_token in the join payload below. Sending a
+        // second Authorization header makes the gateway reject the upgrade.
+        Request request = new Request.Builder().url(ws).build();
         socket = http.newWebSocket(request, new WebSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
                 try {
@@ -182,8 +185,14 @@ public class AdoceOrderService extends Service {
                     if (record != null) fetchOrder(record.optString("id"));
                 } catch (Exception ignored) { }
             }
-            @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) { reconnect("reconectando"); }
-            @Override public void onClosed(WebSocket webSocket, int code, String reason) { reconnect("reconectando"); }
+            @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                Log.e(TAG, "Falha Realtime HTTP " + (response == null ? "sem resposta" : response.code()), t);
+                reconnect("reconectando");
+            }
+            @Override public void onClosed(WebSocket webSocket, int code, String reason) {
+                Log.w(TAG, "Realtime fechado " + code + ": " + reason);
+                reconnect("reconectando");
+            }
         });
     }
 
