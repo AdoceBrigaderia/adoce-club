@@ -53,6 +53,7 @@ export default function OperationDashboard({
   const [data, setData] = useState(emptyData);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [deviceStatus, setDeviceStatus] = useState<{ tablet_online: boolean; printer_online: boolean; service_state: string; pending_count: number; last_seen_at: string } | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -145,6 +146,16 @@ export default function OperationDashboard({
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    const supabase = requireSupabase();
+    const refresh = async () => {
+      const { data } = await supabase.from("operation_device_status").select("tablet_online,printer_online,service_state,pending_count,last_seen_at").eq("device_key", "tablet-operacao-adoce-01").maybeSingle();
+      if (data) setDeviceStatus(data);
+    };
+    void refresh();
+    const channel = supabase.channel("operation-device-status").on("postgres_changes", { event: "*", schema: "public", table: "operation_device_status" }, () => void refresh()).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, []);
 
   const priority = useMemo(
     () =>
@@ -184,6 +195,12 @@ export default function OperationDashboard({
       </header>
 
       {notice ? <p className="operation-dashboard-notice">{notice}</p> : null}
+
+      <div className="operation-device-status" aria-label="Status do tablet e da impressora">
+        <span className={deviceStatus?.tablet_online ? "online" : "offline"}><i /> Tablet {deviceStatus?.tablet_online ? "online" : "offline"}</span>
+        <span className={deviceStatus?.printer_online ? "online" : "offline"}><i /> Impressora {deviceStatus?.printer_online ? "online" : "offline"}</span>
+        {deviceStatus?.pending_count ? <small>{deviceStatus.pending_count} pedido(s) na fila de impressão</small> : null}
+      </div>
 
       <WhatsAppSupportInbox />
 

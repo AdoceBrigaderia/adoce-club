@@ -65,6 +65,7 @@ public class AdoceOrderService extends Service {
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
     private static final String TAG = "AdocePrinter";
+    private static final String DEVICE_KEY = "tablet-operacao-adoce-01";
     private static final UUID PRINTER_SERVICE = UUID.fromString("000018f0-0000-1000-8000-00805f9b34fb");
     private static final UUID PRINTER_WRITE = UUID.fromString("00002af1-0000-1000-8000-00805f9b34fb");
     private final OkHttpClient http = new OkHttpClient.Builder().retryOnConnectionFailure(true).build();
@@ -169,6 +170,7 @@ public class AdoceOrderService extends Service {
                     webSocket.send(new JSONObject().put("topic", "realtime:public:instant_orders")
                         .put("event", "phx_join").put("payload", payload).put("ref", "1").put("join_ref", "1").toString());
                     setState("ouvindo pedidos");
+                    sendHeartbeat();
                     scheduleHeartbeat();
                 } catch (Exception e) { reconnect("falha no canal"); }
             }
@@ -188,6 +190,7 @@ public class AdoceOrderService extends Service {
     private void scheduleHeartbeat() {
         handler.postDelayed(() -> {
             if (socket == null) return;
+            sendHeartbeat();
             try {
                 socket.send(new JSONObject().put("topic", "phoenix").put("event", "heartbeat")
                     .put("payload", new JSONObject()).put("ref", String.valueOf(System.currentTimeMillis())).toString());
@@ -195,6 +198,32 @@ public class AdoceOrderService extends Service {
             if (tokenExpiresSoon()) refreshSession(() -> reconnect("renovando sessao"));
             else scheduleHeartbeat();
         }, 25_000);
+    }
+
+    private void sendHeartbeat() {
+        String base = prefs.getString("url", "");
+        String key = prefs.getString("key", "");
+        String access = prefs.getString("access", "");
+        if (base.isEmpty() || key.isEmpty() || access.isEmpty()) return;
+        try {
+            JSONObject body = new JSONObject()
+                .put("p_device_key", DEVICE_KEY)
+                .put("p_device_label", "Tablet VAIO TL10")
+                .put("p_service_state", state)
+                .put("p_printer_online", writer != null)
+                .put("p_pending_count", pendingIds(prefs).size());
+            Request request = new Request.Builder()
+                .url(base + "/rest/v1/rpc/staff_upsert_operation_device_status")
+                .post(RequestBody.create(body.toString(), MediaType.get("application/json")))
+                .header("apikey", key)
+                .header("Authorization", "Bearer " + access)
+                .header("Content-Type", "application/json")
+                .build();
+            http.newCall(request).enqueue(new Callback() {
+                @Override public void onFailure(Call call, java.io.IOException e) { }
+                @Override public void onResponse(Call call, Response response) throws java.io.IOException { response.close(); }
+            });
+        } catch (Exception ignored) { }
     }
 
     private void reconnect(String label) {

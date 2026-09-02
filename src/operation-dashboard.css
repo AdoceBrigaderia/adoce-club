@@ -60,3 +60,4 @@
   .operation-dashboard-metrics, .operation-dashboard-shortcuts { grid-template-columns: 1fr; }
   .operation-dashboard-shortcuts > div { grid-column: auto; }
 }
+.operation-device-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0;padding:10px 12px;border:1px solid #ead2c4;border-radius:10px;background:#fffaf5;color:#69483e;font-size:.78rem}.operation-device-status span{display:inline-flex;align-items:center;gap:6px;font-weight:800}.operation-device-status i{width:8px;height:8px;border-radius:50%;background:#b8a9a3}.operation-device-status .online i{background:#2f9b67;box-shadow:0 0 0 3px #d9f1e3}.operation-device-status small{margin-left:auto;color:#896b60}
