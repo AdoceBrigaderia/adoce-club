@@ -110,7 +110,8 @@ export default function OperationInstantOrders() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [recoveryMethod, setRecoveryMethod] = useState("pix");
   const [directFinishOpen, setDirectFinishOpen] = useState(false);
-  const [view, setView] = useState<"active" | "expired">("active");
+  const [view, setView] = useState<"active" | "expired" | "finished">("active");
+  const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
   const directFinishRef = useRef<HTMLElement>(null);
 
   const load = useCallback(async () => {
@@ -429,9 +430,22 @@ export default function OperationInstantOrders() {
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
     return orders
-      .filter((order) => view === "expired" ? order.status === "expired" : !["completed", "cancelled", "expired"].includes(order.status))
+      .filter((order) => view === "expired" ? order.status === "expired" : view === "finished" ? ["completed", "cancelled"].includes(order.status) : !["completed", "cancelled", "expired"].includes(order.status))
       .filter((order) => !term || `${order.order_number} ${order.customer_name} ${order.customer_phone}`.toLocaleLowerCase("pt-BR").includes(term));
   }, [orders, search, view]);
+  const printSelected = async () => {
+    const targets = orders.filter((order) => selectedPrintIds.includes(order.id));
+    if (!targets.length) return setNotice("Selecione ao menos um pedido para reimprimir.");
+    setBusy(true);
+    let printed = 0;
+    for (const order of targets) {
+      const result = await printThermalOrder(order, true);
+      if (result === "printed") printed += 1;
+    }
+    setBusy(false);
+    setNotice(`${printed} pedido(s) enviado(s) para reimpressão${printed < targets.length ? "; os demais ficaram na fila do aplicativo." : "."}`);
+    setSelectedPrintIds([]);
+  };
   const active = orders.filter((order) => !["completed", "cancelled", "expired"].includes(order.status));
   const rewardExistingOptions = selected?.instant_order_items
     .filter((item) => !item.is_reward)
@@ -454,7 +468,9 @@ export default function OperationInstantOrders() {
     <div className="instant-order-view-switch">
       <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Em andamento</button>
       <button className={view === "expired" ? "active" : ""} onClick={() => setView("expired")}>Prazo encerrado ({orders.filter((order) => order.status === "expired").length})</button>
+      <button className={view === "finished" ? "active" : ""} onClick={() => { setView("finished"); setSelectedPrintIds([]); }}>Finalizados e reimpressão ({orders.filter((order) => ["completed", "cancelled"].includes(order.status)).length})</button>
     </div>
+    {view === "finished" ? <div className="instant-order-reprint-toolbar"><span>Selecione as comandas que deseja reimprimir.</span><button type="button" onClick={() => void printSelected()} disabled={busy || !selectedPrintIds.length}><Printer /> Reimprimir selecionados ({selectedPrintIds.length})</button></div> : null}
     <label className="instant-order-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar número, cliente ou celular" /></label>
     <div className="instant-order-operation-list">
       {filtered.map((order) => {
@@ -475,7 +491,7 @@ export default function OperationInstantOrders() {
             : null,
           pago: order.payment_status === "approved",
         };
-        return <PedidoNaEsteira key={order.id} pedido={pedido} criadoEm={order.created_at} onAbrir={() => openOrder(order)} />;
+        return <div key={order.id} className="instant-order-row-with-select">{view === "finished" ? <label className="instant-order-reprint-select"><input type="checkbox" checked={selectedPrintIds.includes(order.id)} onChange={() => setSelectedPrintIds((current) => current.includes(order.id) ? current.filter((id) => id !== order.id) : [...current, order.id])} aria-label={`Selecionar ${order.order_number} para reimprimir`} /><span>Reimprimir</span></label> : null}<PedidoNaEsteira pedido={pedido} criadoEm={order.created_at} onAbrir={() => openOrder(order)} /></div>;
       })}
       {!filtered.length ? <div className="operation-empty"><ShoppingCart /><p>Nenhum pedido de retirada encontrado.</p></div> : null}
     </div>

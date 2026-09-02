@@ -3045,6 +3045,34 @@ function OperationHome({ session }: { session: Session }) {
     if (!authorized) return;
     void loadCounterWorkspace(results);
   }, [authorized, loadCounterWorkspace, results]);
+  useEffect(() => {
+    if (!authorized) return;
+    const supabase = requireSupabase();
+    let timer: number | null = null;
+    const refreshDirectory = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void search("", memberStatusFilter);
+      }, 250);
+    };
+    const refreshCounters = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void loadCounterWorkspace(results);
+      }, 250);
+    };
+    const channel = supabase
+      .channel("operation-customer-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshDirectory)
+      .on("postgres_changes", { event: "*", schema: "public", table: "account_memberships" }, refreshDirectory)
+      .on("postgres_changes", { event: "*", schema: "public", table: "loyalty_tracks" }, refreshCounters)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ledger_entries" }, refreshCounters)
+      .subscribe();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [authorized, loadCounterWorkspace, memberStatusFilter, results, search]);
   const issueAccessCode = useCallback(async () => {
     if (!selected) return;
     setBusy(true);
@@ -3493,12 +3521,12 @@ function OperationHome({ session }: { session: Session }) {
     const { error } = await requireSupabase().rpc("owner_remove_stamps", {
       target_account_id: selected.account_id,
       target_profile_id: selected.profile_id,
-      quantity_to_remove: correctionQty,
+      quantity_to_remove: Number(correctionQty),
       adjustment_reason: normalizedReason,
       operation_key: crypto.randomUUID(),
     });
     setBusy(false);
-    if (error) setMessage(error.message);
+    if (error) setMessage(`NÃ£o foi possÃ­vel estornar os carimbos: ${error.message}`);
     else {
       setMessage(
         `${correctionQty} carimbo(s) removido(s). A correção foi registrada no histórico.`,
@@ -3539,6 +3567,17 @@ function OperationHome({ session }: { session: Session }) {
       referral_code: null,
     });
     if (error) throw error;
+    await search(query);
+  };
+  const carimbarIndicacao = async (cliente: Cliente, quantidade: number) => {
+    const { error } = await requireSupabase().rpc("staff_record_referral_stamps", {
+      target_profile_id: cliente.id,
+      quantity: quantidade,
+      operation_key: crypto.randomUUID(),
+      adjustment_reason: "Indicação confirmada no atendimento",
+    });
+    if (error) throw error;
+    setMessage(`${quantidade} carimbo(s) de indicação registrado(s) para ${cliente.nome}.`);
     await search(query);
   };
   const carregarSaboresPresente = async () => {
@@ -3954,6 +3993,7 @@ function OperationHome({ session }: { session: Session }) {
               <BalcaoAtendimento
                 clientes={counterFichas}
                 onCarimbar={carimbarBalcao}
+                onCarimbarIndicacao={carimbarIndicacao}
                 onEntregarPresente={entregarBalcao}
                 onAbrirCadastro={(cliente) => {
                   const customer = results.find(
@@ -4177,6 +4217,21 @@ function OperationHome({ session }: { session: Session }) {
                         disabled={busy}
                       >
                         Revisar e confirmar {qty} carimbo(s)
+                      </button>
+                    </article>
+                    <article>
+                      <Users />
+                      <h3>Registrar indicação</h3>
+                      <p>Use quando este cliente trouxer alguém novo para a Adoce.</p>
+                      <button
+                        className="access-secondary"
+                        onClick={() => {
+                          const value = Number(window.prompt("Quantas indicações deseja registrar?", "1") || "0");
+                          if (Number.isInteger(value) && value > 0) void carimbarIndicacao({ id: selected.profile_id, nome: selected.full_name, telefone: selected.phone_e164 || "", carimbos: 0, presentesGuardados: 0, ultimaCompra: null }, value);
+                        }}
+                        disabled={busy}
+                      >
+                        <Users /> Adicionar carimbo por indicação
                       </button>
                     </article>
                     <article>

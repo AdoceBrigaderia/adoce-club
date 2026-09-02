@@ -167,6 +167,7 @@
 
 .bal-carimbar { background: var(--adoce-terra); color: #fff; }
 .bal-entregar { background: var(--adoce-marrom); color: #fff; }
+.bal-indicacao { flex: 0 0 auto; min-height: 42px; padding: 0 12px; border: 1px solid var(--adoce-terra); border-radius: 999px; background: #fff7f2; color: var(--adoce-terra); font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
 
 .bal-carimbar:disabled,
 .bal-entregar:disabled { opacity: 0.6; cursor: default; }

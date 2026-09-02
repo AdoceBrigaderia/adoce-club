@@ -16,17 +16,13 @@ export default function NativePrinterSettings() {
   useEffect(() => { void refresh(); }, [refresh]);
   if (!Capacitor.isNativePlatform()) return null;
 
-  const run = async (action: "discover" | "test") => {
+  const run = async (action: "discover") => {
     setBusy(true); setMessage("");
     try {
       if (action === "discover") {
         await NativeOperation.discoverPrinter();
         setMessage("Procurando a KNUP por até 12 segundos...");
         window.setTimeout(() => void refresh(), 13_000);
-      } else {
-        await NativeOperation.printTest();
-        setMessage("Ficha de teste enviada.");
-        window.setTimeout(() => void refresh(), 1_500);
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível falar com a impressora.");
@@ -44,7 +40,6 @@ export default function NativePrinterSettings() {
     {message ? <p role="status" className="native-printer-message">{message}</p> : null}
     <div className="native-printer-actions">
       <button type="button" disabled={busy} onClick={() => void run("discover")}><Bluetooth /> Localizar e conectar KNUP</button>
-      <button type="button" disabled={busy} onClick={() => void run("test")}><Printer /> Imprimir teste</button>
       <button type="button" disabled={busy} onClick={() => void refresh()} aria-label="Atualizar estado"><RefreshCw /> Atualizar</button>
     </div>
   </section>;
