@@ -286,7 +286,10 @@ public class AdoceOrderService extends Service {
                     JSONObject data = message.optJSONObject("payload").optJSONObject("data");
                     if (data == null) return;
                     if ("operation_print_commands".equals(data.optString("table"))) {
-                        printPendingOrders();
+                        JSONObject commandRecord = data.optJSONObject("record");
+                        JSONArray requestedIds = commandRecord == null ? null : commandRecord.optJSONArray("order_ids");
+                        if (requestedIds != null && requestedIds.length() > 0) printSpecificOrders(requestedIds);
+                        else printPendingOrders();
                         return;
                     }
                     JSONObject record = data.optJSONObject("record");
@@ -434,9 +437,21 @@ public class AdoceOrderService extends Service {
         });
     }
 
-    private void fetchOrder(String id) {
-        if (id == null || id.isEmpty() || isPrinted(id)) return;
-        if (tokenExpiresSoon()) { queue(id); refreshSession(() -> drainQueue()); return; }
+    private void fetchOrder(String id) { fetchOrder(id, false); }
+
+    // force=true reimprime mesmo que o tablet ja tenha marcado esta comanda
+    // como impressa antes -- e o caso do "Reimprimir selecionados" do portal
+    // de operacao, que pede de novo comandas ja finalizadas. Sem forcar,
+    // isPrinted(id) faria este pedido de reimpressao ser descartado em
+    // silencio, exatamente o sintoma reportado ("seleciono e nao acontece
+    // nada").
+    private void fetchOrder(String id, boolean force) {
+        if (id == null || id.isEmpty() || (!force && isPrinted(id))) return;
+        if (tokenExpiresSoon()) { if (!force) queue(id); refreshSession(() -> fetchOrderNow(id, force)); return; }
+        fetchOrderNow(id, force);
+    }
+
+    private void fetchOrderNow(String id, boolean force) {
         HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
             .addQueryParameter("id", "eq." + id)
             .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,unit_price,is_reward,reward_id,instant_order_item_sauces(unit_number,sauce_name))")
@@ -446,16 +461,28 @@ public class AdoceOrderService extends Service {
             .header("Authorization", "Bearer " + prefs.getString("access", ""))
             .header("Accept", "application/json").build();
         http.newCall(request).enqueue(new Callback() {
-            @Override public void onFailure(Call call, java.io.IOException e) { queue(id); }
+            @Override public void onFailure(Call call, java.io.IOException e) { if (!force) queue(id); }
             @Override public void onResponse(Call call, Response response) throws java.io.IOException {
                 try (response) {
-                    if (!response.isSuccessful()) { queue(id); return; }
+                    if (!response.isSuccessful()) { if (!force) queue(id); return; }
                     JSONArray rows = new JSONArray(response.body().string());
-                    if (rows.length() == 0) { queue(id); return; }
+                    if (rows.length() == 0) { if (!force) queue(id); return; }
                     printOrder(id, rows.getJSONObject(0));
-                } catch (Exception e) { queue(id); }
+                } catch (Exception e) { if (!force) queue(id); }
             }
         });
+    }
+
+    // Comando especifico do portal de operacao (RemotePrintTrigger /
+    // "Reimprimir selecionados"): reimprime exatamente estas comandas, ainda
+    // que ja estejam marcadas como impressas.
+    private void printSpecificOrders(JSONArray orderIds) {
+        if (tokenExpiresSoon()) { refreshSession(() -> printSpecificOrders(orderIds)); return; }
+        setState("reimprimindo " + orderIds.length() + " comanda(s) a pedido do portal");
+        for (int i = 0; i < orderIds.length(); i++) {
+            String id = orderIds.optString(i, "");
+            if (!id.isEmpty()) fetchOrder(id, true);
+        }
     }
 
     private void printOrder(String id, JSONObject order) {
