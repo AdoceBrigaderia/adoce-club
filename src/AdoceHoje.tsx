@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   CalendarDays,
@@ -476,9 +476,9 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
       }).format(new Date()),
     [],
   );
-  useEffect(() => {
+  const loadCatalog = useCallback(async () => {
     if (!isSupabaseConfigured) return;
-    void (async () => {
+    {
       const supabase = requireSupabase();
       const today = getFortalezaNow().date;
       const scheduleEnd = dateAfter(today, 6);
@@ -579,8 +579,34 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
         setHourExceptions(exceptionData as BusinessHourException[]);
       if (weeklyMenuData) setWeeklyMenu(weeklyMenuData as WeeklyMenuItem[]);
       setUpdated(!catalogError);
-    })();
+    }
   }, []);
+  useEffect(() => {
+    void loadCatalog();
+  }, [loadCatalog]);
+  useEffect(() => {
+    // A pagina so buscava o estoque uma vez, ao carregar. Depois de um
+    // pedido ser confirmado/finalizado a fatia vendida sai do estoque no
+    // banco, mas quem ja estava com a pagina aberta continuava vendo o
+    // numero antigo ate recarregar na mao. Reescuta o mesmo tipo de mudanca
+    // que a operacao ja escuta e busca tudo de novo.
+    if (!isSupabaseConfigured) return;
+    const today = getFortalezaNow().date;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { void loadCatalog(); }, 1500);
+    };
+    const channel = requireSupabase()
+      .channel("adoce-hoje-availability")
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability", filter: `service_date=eq.${today}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability_batches", filter: `service_date=eq.${today}` }, scheduleReload)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      requireSupabase().removeChannel(channel);
+    };
+  }, [loadCatalog]);
   const visible = useMemo(
     () =>
       sortFlavorsByAvailability(flavors.filter((flavor) => {
