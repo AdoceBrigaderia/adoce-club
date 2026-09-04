@@ -18,10 +18,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Base64;
 import android.util.Log;
 import androidx.annotation.Nullable;
@@ -61,6 +65,8 @@ public class AdoceOrderService extends Service {
     public static final String ACTION_START = "adoce.START";
     public static final String ACTION_DISCOVER = "adoce.DISCOVER";
     public static final String ACTION_TEST = "adoce.TEST";
+    public static final String ACTION_SAMPLES = "adoce.SAMPLES";
+    public static final String ACTION_LARGE_SAMPLE = "adoce.LARGE_SAMPLE";
     private static final String PREFS = "adoce_native_operation";
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
@@ -76,8 +82,19 @@ public class AdoceOrderService extends Service {
     private BluetoothGattCharacteristic writer;
     private int writerWriteType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
     private boolean testPending;
+    private boolean samplesPending;
+    private boolean largeSamplePending;
     private boolean discoveringPrinter;
     private String state = "iniciando";
+    // O site (autoRefreshToken) e este servico podiam renovar o mesmo
+    // refresh_token ao mesmo tempo; o Supabase so aceita um uso por token e
+    // derrubava a sessao inteira quando os dois disputavam. Agora só um
+    // pedido de renovacao fica em voo por vez, e uma resposta que chega
+    // depois de o token ja ter sido substituido (pelo site ou por outra
+    // renovacao) e descartada em vez de sobrescrever o token mais novo.
+    private volatile boolean refreshInFlight;
+    private int writeChunkSize = 20;
+    private boolean printerWatchdogScheduled;
 
     public static void saveSession(Context context, String url, String key, String access, String refresh) {
         securePrefs(context).edit()
@@ -87,7 +104,22 @@ public class AdoceOrderService extends Service {
 
     public static void clearSession(Context context) {
         securePrefs(context).edit()
+            .remove("url").remove("key")
             .remove("access").remove("refresh").apply();
+    }
+
+    public static boolean hasSavedSession(Context context) {
+        SharedPreferences p = securePrefs(context);
+        return !p.getString("access", "").isEmpty()
+            && !p.getString("refresh", "").isEmpty();
+    }
+
+    public static JSObject savedSession(Context context) {
+        SharedPreferences p = securePrefs(context);
+        JSObject result = new JSObject();
+        result.put("accessToken", p.getString("access", ""));
+        result.put("refreshToken", p.getString("refresh", ""));
+        return result;
     }
 
     public static JSObject status(Context context) {
@@ -104,12 +136,30 @@ public class AdoceOrderService extends Service {
         prefs = securePrefs(this);
         createChannel();
         startForeground(NOTIFICATION_ID, notification("Conectando aos pedidos..."));
+        schedulePrinterWatchdog();
+    }
+
+    // Antes, a impressora so tentava reconectar quando um pedido novo
+    // chegava - se ela ficasse fora de alcance ou sem bateria num momento sem
+    // pedidos, continuava desconectada indefinidamente. Agora tenta de novo
+    // sozinha em segundo plano enquanto houver um endereco salvo.
+    private void schedulePrinterWatchdog() {
+        if (printerWatchdogScheduled) return;
+        printerWatchdogScheduled = true;
+        handler.postDelayed(this::printerWatchdogTick, 45_000);
+    }
+
+    private void printerWatchdogTick() {
+        ensurePrinter();
+        handler.postDelayed(this::printerWatchdogTick, 45_000);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
         if (ACTION_DISCOVER.equals(action)) discoverPrinter();
         else if (ACTION_TEST.equals(action)) printTest();
+        else if (ACTION_SAMPLES.equals(action)) printSamples();
+        else if (ACTION_LARGE_SAMPLE.equals(action)) printLargeSample();
         connectRealtime();
         ensurePrinter();
         return START_STICKY;
@@ -130,6 +180,58 @@ public class AdoceOrderService extends Service {
                 writer = null;
                 setState("falha ao imprimir teste");
                 Log.e(TAG, "Falha ao imprimir ficha de teste", error);
+            }
+        });
+    }
+
+    private void printSamples() {
+        if (writer == null) {
+            samplesPending = true;
+            ensurePrinter();
+            return;
+        }
+        printerExecutor.execute(() -> {
+            long totalStarted = SystemClock.elapsedRealtime();
+            try {
+                List<JSONObject> samples = sampleOrders();
+                for (int index = 0; index < samples.size(); index++) {
+                    JSONObject sample = samples.get(index);
+                    byte[] bytes = receipt(sample);
+                    long started = SystemClock.elapsedRealtime();
+                    writeReceipt(bytes);
+                    long duration = SystemClock.elapsedRealtime() - started;
+                    Log.i(TAG, "Amostra " + (index + 1) + "/3 enviada: " + bytes.length + " bytes em " + duration + " ms");
+                    Thread.sleep(600);
+                }
+                long totalDuration = SystemClock.elapsedRealtime() - totalStarted;
+                setState("3 amostras impressas");
+                Log.i(TAG, "Tres amostras enviadas em " + totalDuration + " ms");
+            } catch (Exception error) {
+                writer = null;
+                setState("falha nas amostras");
+                Log.e(TAG, "Falha ao imprimir amostras", error);
+            }
+        });
+    }
+
+    private void printLargeSample() {
+        if (writer == null) {
+            largeSamplePending = true;
+            ensurePrinter();
+            return;
+        }
+        printerExecutor.execute(() -> {
+            try {
+                byte[] bytes = receipt(sampleOrders().get(2));
+                long started = SystemClock.elapsedRealtime();
+                writeReceipt(bytes);
+                long duration = SystemClock.elapsedRealtime() - started;
+                setState("amostra grande impressa");
+                Log.i(TAG, "Amostra grande enviada: " + bytes.length + " bytes em " + duration + " ms");
+            } catch (Exception error) {
+                writer = null;
+                setState("falha na amostra grande");
+                Log.e(TAG, "Falha ao imprimir amostra grande", error);
             }
         });
     }
@@ -213,23 +315,68 @@ public class AdoceOrderService extends Service {
     }
 
     private void refreshSession(Runnable done) {
+        // O site tambem renova este mesmo refresh_token por conta propria. Se
+        // uma renovacao ja esta em voo, nao dispara outra: espera terminar e
+        // reavalia com o token que sobrar (do site ou desta renovacao).
+        if (refreshInFlight) {
+            handler.postDelayed(() -> {
+                if (tokenExpiresSoon()) refreshSession(done); else done.run();
+            }, 800);
+            return;
+        }
+        String tokenUsed = prefs.getString("refresh", "");
+        if (tokenUsed.isEmpty()) { setState("sessao expirada"); return; }
         String url = prefs.getString("url", "") + "/auth/v1/token?grant_type=refresh_token";
         String key = prefs.getString("key", "");
+        refreshInFlight = true;
         try {
-            RequestBody body = RequestBody.create(new JSONObject().put("refresh_token", prefs.getString("refresh", "")).toString(), MediaType.get("application/json"));
+            RequestBody body = RequestBody.create(new JSONObject().put("refresh_token", tokenUsed).toString(), MediaType.get("application/json"));
             http.newCall(new Request.Builder().url(url).post(body).header("apikey", key).build()).enqueue(new Callback() {
-                @Override public void onFailure(Call call, java.io.IOException e) { setState("sessao expirada"); }
+                @Override public void onFailure(Call call, java.io.IOException e) {
+                    refreshInFlight = false;
+                    recoverFromRefreshFailure(tokenUsed, done);
+                }
                 @Override public void onResponse(Call call, Response response) throws java.io.IOException {
                     try (response) {
-                        if (!response.isSuccessful()) { setState("sessao expirada"); return; }
+                        if (!response.isSuccessful()) {
+                            refreshInFlight = false;
+                            recoverFromRefreshFailure(tokenUsed, done);
+                            return;
+                        }
                         JSONObject json = new JSONObject(response.body().string());
-                        prefs.edit().putString("access", json.getString("access_token"))
-                            .putString("refresh", json.optString("refresh_token", prefs.getString("refresh", ""))).apply();
+                        // So grava se ninguem (o site, via start(), ou outra
+                        // renovacao) ja trocou o refresh_token enquanto esta
+                        // chamada estava em voo - senao estariamos
+                        // sobrescrevendo um token mais novo com um mais velho.
+                        if (tokenUsed.equals(prefs.getString("refresh", ""))) {
+                            prefs.edit().putString("access", json.getString("access_token"))
+                                .putString("refresh", json.optString("refresh_token", tokenUsed)).apply();
+                        }
+                        refreshInFlight = false;
                         done.run();
-                    } catch (Exception e) { setState("sessao expirada"); }
+                    } catch (Exception e) {
+                        refreshInFlight = false;
+                        recoverFromRefreshFailure(tokenUsed, done);
+                    }
                 }
             });
-        } catch (Exception e) { setState("sessao expirada"); }
+        } catch (Exception e) {
+            refreshInFlight = false;
+            recoverFromRefreshFailure(tokenUsed, done);
+        }
+    }
+
+    // Uma renovacao pode falhar (ex.: "refresh_token already used") justamente
+    // porque o site venceu a corrida e ja renovou por fora. Nesse caso o token
+    // salvo agora e diferente do que usamos - e valido, so nao era o nosso.
+    // So declaramos sessao expirada quando o token continua o mesmo de antes
+    // da tentativa, ou seja, ninguem renovou por nos.
+    private void recoverFromRefreshFailure(String tokenUsedInFailedAttempt, Runnable done) {
+        if (!tokenUsedInFailedAttempt.equals(prefs.getString("refresh", ""))) {
+            done.run();
+        } else {
+            setState("sessao expirada");
+        }
     }
 
     private void fetchOrder(String id) {
@@ -237,7 +384,7 @@ public class AdoceOrderService extends Service {
         if (tokenExpiresSoon()) { queue(id); refreshSession(() -> drainQueue()); return; }
         HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
             .addQueryParameter("id", "eq." + id)
-            .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,instant_order_item_sauces(unit_number,sauce_name))")
+            .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,unit_price,is_reward,reward_id,instant_order_item_sauces(unit_number,sauce_name))")
             .build();
         Request request = new Request.Builder().url(url)
             .header("apikey", prefs.getString("key", ""))
@@ -319,8 +466,21 @@ public class AdoceOrderService extends Service {
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
         @Override public void onConnectionStateChange(BluetoothGatt bluetoothGatt, int status, int newState) {
             if (!hasConnectPermission()) return;
-            if (newState == android.bluetooth.BluetoothProfile.STATE_CONNECTED) bluetoothGatt.discoverServices();
-            else { writer = null; setState("impressora desconectada"); }
+            if (newState == android.bluetooth.BluetoothProfile.STATE_CONNECTED) {
+                writeChunkSize = 20;
+                // MTU padrao BLE (23 bytes, 20 uteis) e o minimo garantido. A
+                // KP-1025 e a maioria das impressoras termicas aceitam bem
+                // mais - pedimos 185 e so usamos o valor negociado se ele
+                // vier maior; senao seguimos com os 20 bytes de sempre.
+                bluetoothGatt.requestMtu(185);
+                bluetoothGatt.discoverServices();
+            } else { writer = null; setState("impressora desconectada"); }
+        }
+        @Override public void onMtuChanged(BluetoothGatt bluetoothGatt, int mtu, int status) {
+            if (status == BluetoothGatt.GATT_SUCCESS && mtu > 23) {
+                writeChunkSize = mtu - 3;
+                Log.i(TAG, "MTU negociado: " + mtu + " (blocos de " + writeChunkSize + " bytes)");
+            }
         }
         @Override public void onServicesDiscovered(BluetoothGatt bluetoothGatt, int status) {
             BluetoothGattService service = bluetoothGatt.getService(PRINTER_SERVICE);
@@ -334,6 +494,8 @@ public class AdoceOrderService extends Service {
             Log.i(TAG, "Canal de impressao: " + writer.getService().getUuid() + "/" + writer.getUuid());
             setState("impressora pronta");
             if (testPending) { testPending = false; printerExecutor.execute(() -> { try { writeReceipt(testReceipt()); } catch (Exception ignored) {} }); }
+            if (samplesPending) { samplesPending = false; printSamples(); }
+            if (largeSamplePending) { largeSamplePending = false; printLargeSample(); }
             drainQueue();
         }
     };
@@ -359,45 +521,239 @@ public class AdoceOrderService extends Service {
 
     private void writeReceipt(byte[] bytes) throws Exception {
         if (writer == null || gatt == null || !hasConnectPermission()) throw new IllegalStateException("sem impressora");
-        for (int start = 0; start < bytes.length; start += 180) {
-            int size = Math.min(180, bytes.length - start);
+        // Antes disto era sempre 20 bytes (MTU BLE padrao). Quando a
+        // impressora aceita um MTU maior (negociado em onMtuChanged), usamos
+        // blocos maiores - menos escritas, ficha mais rapida. Continua em
+        // blocos porque a caracteristica GATT tem um limite por escrita, e
+        // enviar tudo de uma vez chega truncado.
+        int chunkSize = Math.max(20, writeChunkSize);
+        for (int start = 0; start < bytes.length; start += chunkSize) {
+            int size = Math.min(chunkSize, bytes.length - start);
             byte[] chunk = new byte[size]; System.arraycopy(bytes, start, chunk, 0, size);
             int result;
             if (Build.VERSION.SDK_INT >= 33) result = gatt.writeCharacteristic(writer, chunk, writerWriteType);
             else { writer.setValue(chunk); result = gatt.writeCharacteristic(writer) ? 0 : -1; }
             if (result != 0) throw new IllegalStateException("falha Bluetooth " + result);
-            Thread.sleep(24);
+            Thread.sleep(20);
         }
     }
 
     private byte[] receipt(JSONObject order) throws Exception {
-        List<String> lines = new ArrayList<>();
-        lines.add(center("ADOCE BRIGADERIA")); lines.add(center("Confeitaria artesanal")); lines.add("");
-        lines.add(center(order.optString("order_number", "PEDIDO")));
-        lines.add(center("Pedido em " + formatDate(order.optString("created_at")))); lines.add(dashes());
-        lines.add("CLIENTE"); wrap(lines, order.optString("customer_name")); lines.add(order.optString("customer_phone")); lines.add(dashes());
-        lines.add("PEDIDO"); int quantity = 0;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Charset charset = printerCharset();
+        out.write(new byte[]{0x1b, 0x40, 0x1b, 0x74, 0x03});
+        printerAlign(out, 1);
+        printLogo(out);
+        printerBold(out, true); printerSize(out, true, true);
+        printerLine(out, charset, "ADOCE BRIGADERIA");
+        printerSize(out, false, false); printerBold(out, false);
+        printerLine(out, charset, "FICHA DE PRODUÇÃO E ENTREGA");
+        printerLine(out, charset, dashes());
+
+        printerBold(out, true); printerSize(out, false, true);
+        printerLine(out, charset, "PEDIDO");
+        printerSize(out, false, false);
+        printerWrapped(out, charset, order.optString("order_number", "PEDIDO"));
+        printerBold(out, false);
+        printerLine(out, charset, "Recebido " + formatDate(order.optString("created_at")));
+        printerLine(out, charset, dashes());
+
+        printerAlign(out, 0); printerBold(out, true);
+        printerLine(out, charset, "CLIENTE");
+        printerSize(out, false, true);
+        printerWrapped(out, charset, order.optString("customer_name", "Cliente"));
+        printerSize(out, false, false); printerBold(out, false);
+        printerLine(out, charset, formatPhone(order.optString("customer_phone")));
+
+        String pickup = order.optString("pickup_requested_time");
+        String pickupLabel = order.optString("pickup_label", "Retirada na Adoce");
+        String pickupMethod = "driver".equals(order.optString("pickup_method")) ? "Entregador de aplicativo" : "Cliente";
+        printerBold(out, true); printerLine(out, charset, "RETIRADA"); printerBold(out, false);
+        printerWrapped(out, charset, pickupLabel + (pickup.isEmpty() ? " - horário a confirmar" : " - " + pickup.substring(0, Math.min(5, pickup.length()))));
+        printerWrapped(out, charset, "Responsável: " + pickupMethod);
+
+        String payment = order.optString("payment_method_label");
+        if (!payment.isEmpty()) {
+            printerBold(out, true); printerLine(out, charset, "PAGAMENTO"); printerBold(out, false);
+            printerWrapped(out, charset, payment);
+        }
+
+        String notes = order.optString("customer_notes");
+        if (!notes.isEmpty()) {
+            printerLine(out, charset, dashes()); printerBold(out, true);
+            printerLine(out, charset, "OBSERVAÇÕES DO CLIENTE"); printerBold(out, false);
+            printerWrapped(out, charset, notes);
+        }
+
         JSONArray items = order.optJSONArray("instant_order_items");
+        int quantity = 0;
+        if (items != null) for (int i = 0; i < items.length(); i++) quantity += items.getJSONObject(i).optInt("quantity", 1);
+        printerLine(out, charset, dashes()); printerAlign(out, 1); printerBold(out, true);
+        printerLine(out, charset, "ITENS DO PEDIDO - " + quantity + (quantity == 1 ? " FATIA" : " FATIAS"));
+        printerBold(out, false); printerAlign(out, 0);
+
+        int itemNumber = 0;
         if (items != null) for (int i = 0; i < items.length(); i++) {
-            JSONObject item = items.getJSONObject(i); int qty = item.optInt("quantity", 1); quantity += qty;
+            JSONObject item = items.getJSONObject(i); int qty = item.optInt("quantity", 1);
             JSONArray sauces = item.optJSONArray("instant_order_item_sauces");
             for (int unit = 1; unit <= qty; unit++) {
-                lines.add(("1x " + item.optString("flavor_name")).substring(0, Math.min(32, ("1x " + item.optString("flavor_name")).length())));
+                itemNumber++;
                 List<String> selected = new ArrayList<>();
                 if (sauces != null) for (int s = 0; s < sauces.length(); s++) if (sauces.getJSONObject(s).optInt("unit_number") == unit) selected.add(sauces.getJSONObject(s).optString("sauce_name"));
-                lines.add("   " + (selected.isEmpty() ? "Sem calda" : String.join(" e ", selected)));
+                printerLine(out, charset, "................................");
+                printerBold(out, true);
+                printerLine(out, charset, "[ ] ITEM " + itemNumber + " DE " + quantity + " - 1x");
+                printerWrapped(out, charset, "SABOR: " + item.optString("flavor_name"));
+                printerBold(out, false);
+                printerWrapped(out, charset, "CALDA: " + (selected.isEmpty() ? "Sem calda" : String.join(" e ", selected)));
+                if (item.optBoolean("is_reward")) {
+                    printerBold(out, true); printerLine(out, charset, "FATIA-PRESENTE DO CLUBE - GRÁTIS"); printerBold(out, false);
+                } else {
+                    printerLine(out, charset, "VALOR: " + money(item.optDouble("unit_price")));
+                }
             }
         }
-        lines.add(dashes()); lines.add(quantity + (quantity == 1 ? " FATIA" : " FATIAS") + "  R$ " + String.format(new Locale("pt", "BR"), "%.2f", order.optDouble("total")));
-        String notes = order.optString("customer_notes"); if (!notes.isEmpty()) { lines.add(dashes()); lines.add("OBSERVACAO"); wrap(lines, notes); }
-        String pickup = order.optString("pickup_requested_time"); if (!pickup.isEmpty()) { lines.add(dashes()); lines.add("RETIRADA"); lines.add(order.optString("pickup_label", "Adoce") + " - " + pickup.substring(0, Math.min(5, pickup.length()))); }
-        lines.add(dashes()); lines.add(center("Feito pelas maos da Beth")); lines.add(center("Obrigado por adocar")); lines.add(center("seu momento com a gente")); lines.add(""); lines.add(center("impresso " + formatDate(Instant.now().toString())));
-        return escPos(lines, order.optString("order_number"));
+
+        printerLine(out, charset, dashes()); printerAlign(out, 1); printerBold(out, true);
+        printerLine(out, charset, quantity + (quantity == 1 ? " FATIA" : " FATIAS"));
+        printerSize(out, true, true);
+        printerLine(out, charset, "TOTAL " + money(order.optDouble("total")));
+        printerSize(out, false, false); printerBold(out, false);
+
+        printerLine(out, charset, dashes()); printerAlign(out, 0); printerBold(out, true);
+        printerLine(out, charset, "CONFERÊNCIA DA ENTREGA"); printerBold(out, false);
+        printerLine(out, charset, "[ ] Sabores    [ ] Caldas");
+        printerLine(out, charset, "[ ] Embalado   [ ] Identificado");
+        printerLine(out, charset, "[ ] Pronto     [ ] Entregue");
+
+        printerLine(out, charset, dashes()); printerAlign(out, 1);
+        printerLine(out, charset, "Preparado com carinho para");
+        printerLine(out, charset, "adoçar o seu dia. Obrigado por");
+        printerLine(out, charset, "escolher a Adoce! <3");
+        printerLine(out, charset, "");
+        printerLine(out, charset, "Impresso " + formatDate(Instant.now().toString()));
+        out.write(new byte[]{0x1b, 0x64, 0x05, 0x1d, 0x56, 0x42, 0x00});
+        return out.toByteArray();
+    }
+
+    private Charset printerCharset() {
+        try { return Charset.forName("IBM860"); }
+        catch (Exception error) { return StandardCharsets.US_ASCII; }
+    }
+
+    private void printerLine(ByteArrayOutputStream out, Charset charset, String value) throws Exception {
+        out.write(value.getBytes(charset)); out.write(0x0a);
+    }
+
+    private void printerWrapped(ByteArrayOutputStream out, Charset charset, String value) throws Exception {
+        List<String> wrapped = new ArrayList<>(); wrap(wrapped, value);
+        for (String line : wrapped) printerLine(out, charset, line);
+    }
+
+    private void printerAlign(ByteArrayOutputStream out, int alignment) throws Exception { out.write(new byte[]{0x1b, 0x61, (byte)alignment}); }
+    private void printerBold(ByteArrayOutputStream out, boolean enabled) throws Exception { out.write(new byte[]{0x1b, 0x45, (byte)(enabled ? 1 : 0)}); }
+    private void printerSize(ByteArrayOutputStream out, boolean doubleWidth, boolean doubleHeight) throws Exception {
+        out.write(new byte[]{0x1d, 0x21, (byte)((doubleWidth ? 0x10 : 0) | (doubleHeight ? 0x01 : 0))});
+    }
+
+    private void printLogo(ByteArrayOutputStream out) {
+        try {
+            Bitmap source = BitmapFactory.decodeStream(getAssets().open("public/site/logo.webp"));
+            if (source == null) return;
+            int width = 112;
+            int height = Math.max(1, Math.round(source.getHeight() * (width / (float)source.getWidth())));
+            Bitmap logo = Bitmap.createScaledBitmap(source, width, height, true);
+            int widthBytes = (width + 7) / 8;
+            byte[] pixels = new byte[widthBytes * height];
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) {
+                int color = logo.getPixel(x, y);
+                int alpha = Color.alpha(color);
+                int luminance = (Color.red(color) * 299 + Color.green(color) * 587 + Color.blue(color) * 114) / 1000;
+                if (alpha > 80 && luminance < 205) pixels[y * widthBytes + (x / 8)] |= (byte)(0x80 >> (x % 8));
+            }
+            out.write(new byte[]{0x1d, 0x76, 0x30, 0x00, (byte)(widthBytes & 0xff), (byte)((widthBytes >> 8) & 0xff), (byte)(height & 0xff), (byte)((height >> 8) & 0xff)});
+            out.write(pixels);
+            out.write(0x0a);
+            if (logo != source) logo.recycle();
+            source.recycle();
+        } catch (Exception error) {
+            Log.w(TAG, "Logo nao impresso", error);
+        }
+    }
+
+    private String money(double value) { return String.format(new Locale("pt", "BR"), "R$ %.2f", value); }
+    private String formatPhone(String value) {
+        String digits = value.replaceAll("\\D", "");
+        if (digits.startsWith("55")) digits = digits.substring(2);
+        if (digits.length() == 11) return String.format("(%s) %s-%s", digits.substring(0, 2), digits.substring(2, 7), digits.substring(7));
+        return value;
     }
 
     private byte[] testReceipt() {
         List<String> lines = List.of(center("ADOCE BRIGADERIA"), "", center("TESTE ANDROID"), dashes(), "VAIO TL10 + KNUP KP-1025", "Acentos: acao, coracao, cafe", "", center("Impressora pronta"));
         return escPos(lines, "TESTE ANDROID");
+    }
+
+    private List<JSONObject> sampleOrders() throws Exception {
+        String now = Instant.now().toString();
+        List<JSONObject> samples = new ArrayList<>();
+
+        samples.add(new JSONObject()
+            .put("order_number", "AMOSTRA 1/3 SIMPLES")
+            .put("created_at", now)
+            .put("customer_name", "Cliente Teste Simples")
+            .put("customer_phone", "(85) 90000-0001")
+            .put("total", 18.00)
+            .put("payment_method_label", "Dinheiro")
+            .put("customer_notes", "")
+            .put("pickup_requested_time", "")
+            .put("instant_order_items", new JSONArray()
+                .put(sampleItem("Fatia Brigadeiro", "Sem calda", 18.00, false))));
+
+        samples.add(new JSONObject()
+            .put("order_number", "AMOSTRA 2/3 RETIRADA")
+            .put("created_at", now)
+            .put("customer_name", "Cliente Teste Retirada")
+            .put("customer_phone", "(85) 90000-0002")
+            .put("total", 54.00)
+            .put("payment_method_label", "Pix")
+            .put("customer_notes", "Separar guardanapos e identificar a embalagem com o nome Ana.")
+            .put("pickup_requested_time", "15:30")
+            .put("pickup_label", "Cantinho da Adoce")
+            .put("instant_order_items", new JSONArray()
+                .put(sampleItem("Fatia Ninho", "Calda de Ninho", 18.00, false))
+                .put(sampleItem("Fatia Chocolate", "Calda de Chocolate", 18.00, false))
+                .put(sampleItem("Fatia Maracuja", "Calda de Maracuja", 18.00, false))));
+
+        samples.add(new JSONObject()
+            .put("order_number", "AMOSTRA 3/3 GRANDE")
+            .put("created_at", now)
+            .put("customer_name", "Cliente Teste Pedido Grande")
+            .put("customer_phone", "(85) 90000-0003")
+            .put("total", 84.00)
+            .put("payment_method_label", "Cartão de crédito")
+            .put("customer_notes", "Pedido com seis sabores reais do cardápio. Conferir todas as caldas antes de fechar a embalagem e manter refrigerado.")
+            .put("pickup_requested_time", "17:45")
+            .put("pickup_label", "Retirada na Adoce")
+            .put("instant_order_items", new JSONArray()
+                .put(sampleItem("Red Velvet com Geleia de Morango e Ninho", "Calda de Ninho", 16.00, false))
+                .put(sampleItem("Doce de Leite com Crocrante com churros", "Calda de chocolate", 16.00, false))
+                .put(sampleItem("Galak Trufado com Morangos", "Calda de Ninho", 16.00, false))
+                .put(sampleItem("KitKat Dark", "Calda Black", 16.00, false))
+                .put(sampleItem("Kinder Bueno", "Calda de chocolate", 20.00, false))
+                .put(sampleItem("Prestígio", "Calda Black", 0.00, true))));
+
+        return samples;
+    }
+
+    private JSONObject sampleItem(String flavor, String sauce, double unitPrice, boolean reward) throws Exception {
+        return new JSONObject()
+            .put("flavor_name", flavor)
+            .put("quantity", 1)
+            .put("unit_price", unitPrice)
+            .put("is_reward", reward)
+            .put("instant_order_item_sauces", new JSONArray()
+                .put(new JSONObject().put("unit_number", 1).put("sauce_name", sauce)));
     }
 
     private byte[] escPos(List<String> lines, String highlight) {
