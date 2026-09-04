@@ -67,6 +67,7 @@ public class AdoceOrderService extends Service {
     public static final String ACTION_TEST = "adoce.TEST";
     public static final String ACTION_SAMPLES = "adoce.SAMPLES";
     public static final String ACTION_LARGE_SAMPLE = "adoce.LARGE_SAMPLE";
+    public static final String ACTION_PRINT_PENDING = "adoce.PRINT_PENDING";
     private static final String PREFS = "adoce_native_operation";
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
@@ -160,6 +161,7 @@ public class AdoceOrderService extends Service {
         else if (ACTION_TEST.equals(action)) printTest();
         else if (ACTION_SAMPLES.equals(action)) printSamples();
         else if (ACTION_LARGE_SAMPLE.equals(action)) printLargeSample();
+        else if (ACTION_PRINT_PENDING.equals(action)) printPendingOrders();
         connectRealtime();
         ensurePrinter();
         return START_STICKY;
@@ -377,6 +379,50 @@ public class AdoceOrderService extends Service {
         } else {
             setState("sessao expirada");
         }
+    }
+
+    // Sob demanda: pedidos que ficaram sem ficha porque chegaram antes do
+    // aplicativo estar ouvindo (app fechado, tablet desligado, impressora
+    // fora de alcance na hora) nunca entram na fila local — a fila so
+    // guarda o que o canal em tempo real viu passar. Aqui busca direto no
+    // banco todo pedido ainda nao finalizado e reaproveita fetchOrder(), que
+    // ja pula o que estiver marcado como impresso.
+    private void printPendingOrders() {
+        if (tokenExpiresSoon()) { refreshSession(this::fetchPendingOrderIds); return; }
+        fetchPendingOrderIds();
+    }
+
+    private void fetchPendingOrderIds() {
+        HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
+            .addQueryParameter("status", "not.in.(completed,cancelled,expired)")
+            .addQueryParameter("select", "id")
+            .addQueryParameter("order", "created_at.asc")
+            .build();
+        Request request = new Request.Builder().url(url)
+            .header("apikey", prefs.getString("key", ""))
+            .header("Authorization", "Bearer " + prefs.getString("access", ""))
+            .header("Accept", "application/json").build();
+        setState("buscando pedidos pendentes");
+        http.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) {
+                setState("falha ao buscar pedidos pendentes");
+            }
+            @Override public void onResponse(Call call, Response response) throws java.io.IOException {
+                try (response) {
+                    if (!response.isSuccessful()) { setState("falha ao buscar pedidos pendentes"); return; }
+                    JSONArray rows = new JSONArray(response.body().string());
+                    setState(rows.length() == 0
+                        ? "nenhum pedido pendente"
+                        : "imprimindo " + rows.length() + " pedido(s) pendente(s)");
+                    for (int i = 0; i < rows.length(); i++) {
+                        String id = rows.getJSONObject(i).optString("id");
+                        if (!id.isEmpty()) fetchOrder(id);
+                    }
+                } catch (Exception e) {
+                    setState("falha ao buscar pedidos pendentes");
+                }
+            }
+        });
     }
 
     private void fetchOrder(String id) {
