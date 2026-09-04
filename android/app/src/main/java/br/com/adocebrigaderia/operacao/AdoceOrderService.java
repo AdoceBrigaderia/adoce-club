@@ -286,8 +286,7 @@ public class AdoceOrderService extends Service {
                     JSONObject data = message.optJSONObject("payload").optJSONObject("data");
                     if (data == null) return;
                     if ("operation_print_commands".equals(data.optString("table"))) {
-                        JSONObject commandRecord = data.optJSONObject("record");
-                        JSONArray requestedIds = commandRecord == null ? null : commandRecord.optJSONArray("order_ids");
+                        JSONArray requestedIds = resolveOrderIds(data.optJSONObject("record"));
                         if (requestedIds != null && requestedIds.length() > 0) printSpecificOrders(requestedIds);
                         else printPendingOrders();
                         return;
@@ -471,6 +470,27 @@ public class AdoceOrderService extends Service {
                 } catch (Exception e) { if (!force) queue(id); }
             }
         });
+    }
+
+    // O realtime do Supabase normalmente manda coluna uuid[] como array JSON
+    // de verdade, mas alguns caminhos (replica antiga, wal2json em modo
+    // "default") mandam a representacao textual do Postgres, tipo
+    // {"id1","id2"}. Cobre os dois formatos pra nao depender de qual
+    // exatamente chega.
+    private JSONArray resolveOrderIds(JSONObject commandRecord) {
+        if (commandRecord == null) return null;
+        JSONArray asArray = commandRecord.optJSONArray("order_ids");
+        if (asArray != null) return asArray;
+        String raw = commandRecord.optString("order_ids", "");
+        if (raw.isEmpty() || "null".equals(raw)) return null;
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) trimmed = trimmed.substring(1, trimmed.length() - 1);
+        JSONArray parsed = new JSONArray();
+        for (String piece : trimmed.split(",")) {
+            String id = piece.trim().replace("\"", "");
+            if (!id.isEmpty()) parsed.put(id);
+        }
+        return parsed.length() > 0 ? parsed : null;
     }
 
     // Comando especifico do portal de operacao (RemotePrintTrigger /
