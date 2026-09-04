@@ -438,15 +438,22 @@ export default function OperationInstantOrders() {
     const targets = orders.filter((order) => selectedPrintIds.includes(order.id));
     if (!targets.length) return setNotice("Selecione ao menos um pedido para reimprimir.");
     setBusy(true);
-    let printed = 0;
     try {
-      for (const order of targets) {
-        const result = await printThermalOrder(order, true);
-        if (result === "printed") printed += 1;
+      if (Capacitor.isNativePlatform()) {
+        // Dentro do app do tablet o proprio dispositivo e a impressora:
+        // imprime direto, sem precisar de comando remoto.
+        for (const order of targets) await printThermalOrder(order, true);
+        setNotice(`${targets.length} pedido(s) enviado(s) para a fila de impressão do tablet.`);
+      } else {
+        // Num navegador comum (portal de operacao) nao ha impressora local
+        // pareada de verdade -- manda o comando pro tablet reimprimir estas
+        // comandas especificas pelo mesmo canal em tempo real do pedido novo.
+        const { error } = await requireSupabase().rpc("server_request_order_reprint", {
+          target_order_ids: targets.map((order) => order.id),
+        });
+        if (error) throw error;
+        setNotice(`Comando de reimpressão enviado ao tablet para ${targets.length} pedido(s).`);
       }
-      setNotice(Capacitor.isNativePlatform()
-        ? `${targets.length} pedido(s) enviado(s) para a fila de impressão do tablet.`
-        : `${printed} pedido(s) enviado(s) para reimpressão${printed < targets.length ? "; os demais ficaram na fila do aplicativo." : "."}`);
     } catch (error) {
       setNotice(`Falha ao reimprimir: ${error instanceof Error ? error.message : "impressora indisponível."}`);
     }

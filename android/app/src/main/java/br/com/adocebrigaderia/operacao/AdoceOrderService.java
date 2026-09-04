@@ -191,10 +191,13 @@ public class AdoceOrderService extends Service {
             @Override public void onOpen(WebSocket webSocket, Response response) {
                 try {
                     JSONObject changes = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "instant_orders");
+                    // Portal de operacao (num navegador qualquer, sem Bluetooth) grava
+                    // aqui pra mandar o tablet imprimir/reimprimir a distancia.
+                    JSONObject printCommandChanges = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "operation_print_commands");
                     JSONObject config = new JSONObject()
                         .put("broadcast", new JSONObject().put("ack", false).put("self", false))
                         .put("presence", new JSONObject().put("key", ""))
-                        .put("postgres_changes", new JSONArray().put(changes));
+                        .put("postgres_changes", new JSONArray().put(changes).put(printCommandChanges));
                     JSONObject payload = new JSONObject().put("config", config).put("access_token", prefs.getString("access", ""));
                     webSocket.send(new JSONObject().put("topic", "realtime:public:instant_orders")
                         .put("event", "phx_join").put("payload", payload).put("ref", "1").put("join_ref", "1").toString());
@@ -218,7 +221,21 @@ public class AdoceOrderService extends Service {
                         return;
                     }
                     if (!"postgres_changes".equals(message.optString("event"))) return;
-                    JSONObject record = message.optJSONObject("payload").optJSONObject("data").optJSONObject("record");
+                    JSONObject data = message.optJSONObject("payload").optJSONObject("data");
+                    if (data == null) return;
+                    if ("operation_print_commands".equals(data.optString("table"))) {
+                        JSONObject commandRecord = data.optJSONObject("record");
+                        JSONArray requestedIds = commandRecord == null ? null : commandRecord.optJSONArray("order_ids");
+                        if (requestedIds != null && requestedIds.length() > 0) {
+                            Log.i(TAG, "Comando de reimpressao recebido: " + requestedIds.length() + " pedido(s)");
+                            printSpecificOrders(requestedIds);
+                        } else {
+                            Log.i(TAG, "Comando de impressao de pendentes recebido");
+                            printPendingOrders();
+                        }
+                        return;
+                    }
+                    JSONObject record = data.optJSONObject("record");
                     if (record != null) {
                         Log.i(TAG, "INSERT instant_orders recebido: " + record.optString("id"));
                         fetchOrder(record.optString("id"));
@@ -310,9 +327,24 @@ public class AdoceOrderService extends Service {
         } catch (Exception e) { setState("sessao expirada"); }
     }
 
-    private void fetchOrder(String id) {
-        if (id == null || id.isEmpty() || isPrinted(id)) return;
-        if (tokenExpiresSoon()) { queue(id); refreshSession(() -> drainQueue()); return; }
+    private void fetchOrder(String id) { fetchOrder(id, false); }
+
+    // force=true reimprime mesmo que o tablet ja tenha marcado esta comanda
+    // como impressa antes -- caso do "Reimprimir selecionados" do portal de
+    // operacao, que reimprime comandas ja finalizadas. Sem forcar,
+    // isPrinted(id) faria este pedido de reimpressao ser descartado em
+    // silencio (sintoma reportado: "seleciono e nao acontece nada").
+    private void fetchOrder(String id, boolean force) {
+        if (id == null || id.isEmpty() || (!force && isPrinted(id))) return;
+        if (tokenExpiresSoon()) {
+            if (!force) queue(id);
+            refreshSession(() -> { if (force) fetchOrderNow(id, true); else drainQueue(); });
+            return;
+        }
+        fetchOrderNow(id, force);
+    }
+
+    private void fetchOrderNow(String id, boolean force) {
         HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
             .addQueryParameter("id", "eq." + id)
             .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,unit_price,is_reward,instant_order_item_sauces(unit_number,sauce_name))")
@@ -322,14 +354,61 @@ public class AdoceOrderService extends Service {
             .header("Authorization", "Bearer " + prefs.getString("access", ""))
             .header("Accept", "application/json").build();
         http.newCall(request).enqueue(new Callback() {
-            @Override public void onFailure(Call call, java.io.IOException e) { queue(id); }
+            @Override public void onFailure(Call call, java.io.IOException e) { if (!force) queue(id); }
             @Override public void onResponse(Call call, Response response) throws java.io.IOException {
                 try (response) {
-                    if (!response.isSuccessful()) { queue(id); return; }
+                    if (!response.isSuccessful()) { if (!force) queue(id); return; }
                     JSONArray rows = new JSONArray(response.body().string());
-                    if (rows.length() == 0) { queue(id); return; }
+                    if (rows.length() == 0) { if (!force) queue(id); return; }
                     printOrder(id, rows.getJSONObject(0));
-                } catch (Exception e) { queue(id); }
+                } catch (Exception e) { if (!force) queue(id); }
+            }
+        });
+    }
+
+    // Comando especifico do portal de operacao (RemotePrintTrigger /
+    // "Reimprimir selecionados"): reimprime exatamente estas comandas, ainda
+    // que ja estejam marcadas como impressas.
+    private void printSpecificOrders(JSONArray orderIds) {
+        if (tokenExpiresSoon()) { refreshSession(() -> printSpecificOrders(orderIds)); return; }
+        setState("reimprimindo " + orderIds.length() + " comanda(s) a pedido do portal");
+        for (int i = 0; i < orderIds.length(); i++) {
+            String id = orderIds.optString(i, "");
+            if (!id.isEmpty()) fetchOrder(id, true);
+        }
+    }
+
+    // Sob demanda (RemotePrintTrigger "Mandar imprimir pendentes"): busca
+    // direto no banco todo pedido ainda nao finalizado e reaproveita
+    // fetchOrder(), que ja pula o que estiver marcado como impresso.
+    private void printPendingOrders() {
+        if (tokenExpiresSoon()) { refreshSession(this::fetchPendingOrderIds); return; }
+        fetchPendingOrderIds();
+    }
+
+    private void fetchPendingOrderIds() {
+        HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
+            .addQueryParameter("status", "not.in.(completed,cancelled,expired)")
+            .addQueryParameter("select", "id")
+            .addQueryParameter("order", "created_at.asc")
+            .build();
+        Request request = new Request.Builder().url(url)
+            .header("apikey", prefs.getString("key", ""))
+            .header("Authorization", "Bearer " + prefs.getString("access", ""))
+            .header("Accept", "application/json").build();
+        setState("buscando pedidos pendentes");
+        http.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) { setState("falha ao buscar pedidos pendentes"); }
+            @Override public void onResponse(Call call, Response response) throws java.io.IOException {
+                try (response) {
+                    if (!response.isSuccessful()) { setState("falha ao buscar pedidos pendentes"); return; }
+                    JSONArray rows = new JSONArray(response.body().string());
+                    setState(rows.length() == 0 ? "nenhum pedido pendente" : "imprimindo " + rows.length() + " pedido(s) pendente(s)");
+                    for (int i = 0; i < rows.length(); i++) {
+                        String id = rows.getJSONObject(i).optString("id");
+                        if (!id.isEmpty()) fetchOrder(id);
+                    }
+                } catch (Exception e) { setState("falha ao buscar pedidos pendentes"); }
             }
         });
     }
