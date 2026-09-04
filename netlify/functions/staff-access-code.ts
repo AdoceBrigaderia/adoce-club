@@ -1,19 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+import { env, isUuid, json } from "./_shared/whatsapp-auth";
 
 const allowedRoles = new Set(["owner", "manager", "attendant"]);
 
@@ -60,7 +46,7 @@ export default async (request: Request) => {
     profileId?: string;
   };
   const profileId = body.profileId?.trim() || "";
-  if (!/^[0-9a-f-]{36}$/i.test(profileId)) {
+  if (!isUuid(profileId)) {
     return json({ error: "Membro inválido." }, 400);
   }
 

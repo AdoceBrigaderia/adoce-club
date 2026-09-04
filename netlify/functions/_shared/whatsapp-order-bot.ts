@@ -63,12 +63,17 @@ export function parsePickupTime(value: string, currentTime: string) {
   return time >= currentTime ? time : null;
 }
 
+export const PICKUP_OPENING = "20:00";
+export const PICKUP_CLOSING = "23:00";
+
 export function pickupTimeOptions(minimum: string, limit = 10) {
   const [hour, minute] = minimum.slice(0, 5).split(":").map(Number);
   if (!Number.isInteger(hour) || !Number.isInteger(minute)) return [];
   let totalMinutes = Math.ceil((hour * 60 + minute) / 30) * 30;
   const options: string[] = [];
-  while (totalMinutes <= 23 * 60 + 30 && options.length < limit) {
+  const [closeHour, closeMinute] = PICKUP_CLOSING.split(":").map(Number);
+  const closingMinutes = closeHour * 60 + closeMinute;
+  while (totalMinutes <= closingMinutes && options.length < limit) {
     const optionHour = Math.floor(totalMinutes / 60);
     const optionMinute = totalMinutes % 60;
     options.push(`${String(optionHour).padStart(2, "0")}:${String(optionMinute).padStart(2, "0")}`);
@@ -96,20 +101,34 @@ export const emptyFestivalMenuMessage = () => [
   "Responda com o número da opção desejada.",
 ].join("\n");
 
+export const MAX_SLICES_PER_FLAVOR = 13;
+
 export const catalogMessage = (flavors: BotFlavor[], selections: BotSelection[] = []) => {
+  const subtotal = selections.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const selected = selections.length
-    ? ["Seu pedido até agora:", ...selections.map((item) => `• ${item.quantity}x ${item.name}`), ""]
+    ? [
+        "Seu pedido até agora:",
+        ...selections.map((item) => `• ${item.quantity}x ${item.name} — ${money(item.price * item.quantity)}`),
+        `Subtotal: ${money(subtotal)}`,
+        "",
+      ]
     : [];
+  const actions = [
+    `${flavors.length + 1}. Concluir a escolha${selections.length ? " e continuar" : ""}`,
+    `${flavors.length + 2}. Cancelar pedido`,
+    `${flavors.length + 3}. Falar com a equipe`,
+  ];
+  if (selections.length) actions.push(`${flavors.length + 4}. Remover um item do pedido`);
   return [
     "Escolha um sabor pelo número:",
     "",
     ...flavors.map((flavor, index) =>
-      `${index + 1}. ${flavor.name} — ${money(flavor.price)} (${flavor.free} disponível${flavor.free === 1 ? "" : "is"})`,
+      flavor.free > 0
+        ? `${index + 1}. ${flavor.name} — ${money(flavor.price)} (${flavor.free} disponíve${flavor.free === 1 ? "l" : "is"})`
+        : `${index + 1}. ${flavor.name} — esgotado`,
     ),
     "",
-    `${flavors.length + 1}. Concluir a escolha${selections.length ? " e continuar" : ""}`,
-    `${flavors.length + 2}. Cancelar pedido`,
-    `${flavors.length + 3}. Falar com a equipe`,
+    ...actions,
     "",
     ...selected,
     "Responda somente com o número da opção.",
@@ -118,6 +137,9 @@ export const catalogMessage = (flavors: BotFlavor[], selections: BotSelection[] 
 
 export const quantityMessage = (flavor: BotFlavor, maximum: number) => [
   `Quantas fatias de *${flavor.name}* você deseja?`,
+  ...(maximum < MAX_SLICES_PER_FLAVOR
+    ? ["", `Máximo disponível agora: ${maximum} fatia${maximum === 1 ? "" : "s"} deste sabor.`]
+    : []),
   "",
   ...Array.from({ length: maximum }, (_, index) =>
     `${index + 1}. ${index + 1} fatia${index ? "s" : ""}`,
@@ -127,8 +149,68 @@ export const quantityMessage = (flavor: BotFlavor, maximum: number) => [
   "Responda somente com o número da opção.",
 ].join("\n");
 
-export const optionsMessage = (title: string, options: BotOption[]) =>
-  [title, "", ...options.map((option, index) => `${index + 1}. ${option.label}`), "", "Responda somente com o número da opção."].join("\n");
+export const removeItemMessage = (selections: BotSelection[]) => [
+  "Qual item remover do pedido?",
+  "",
+  ...selections.map((item, index) => `${index + 1}. ${item.quantity}x ${item.name}`),
+  `${selections.length + 1}. Voltar sem remover`,
+  "",
+  "Responda somente com o número da opção.",
+].join("\n");
+
+export const optionsMessage = (title: string, options: BotOption[], withBack = false) =>
+  [
+    title,
+    "",
+    ...options.map((option, index) => `${index + 1}. ${option.label}`),
+    ...(withBack ? ["0. Voltar"] : []),
+    "",
+    "Responda somente com o número da opção.",
+  ].join("\n");
+
+export const sauceModeMessage = (totalSlices: number) => [
+  `Você quer a mesma calda para todas as ${totalSlices} fatias?`,
+  "",
+  "1. Sim, mesma calda para todas",
+  "2. Quero escolher a calda de cada fatia",
+  "0. Voltar",
+  "",
+  "Responda somente com o número da opção.",
+].join("\n");
+
+export const sliceSauceMessage = (
+  position: number,
+  total: number,
+  flavorName: string,
+  sauces: BotOption[],
+) => [
+  `Calda da fatia ${position} de ${total} — *${flavorName}*:`,
+  "",
+  ...sauces.map((option, index) => `${index + 1}. ${option.label}`),
+  "0. Voltar",
+  "",
+  "Responda somente com o número da opção.",
+].join("\n");
+
+export const pixMessage = () => [
+  "Pagamento somente via Pix.",
+  "",
+  "Chave (e-mail): pagamento@adocebrigaderia.com.br",
+  "Favorecido: Elizabeth Cristina Sampaio Nascimento",
+  "Banco: Mercado Pago",
+  "",
+  "O pagamento é confirmado pela equipe da Adoce aqui pelo WhatsApp. Nenhuma cobrança acontece antes disso.",
+].join("\n");
+
+export const driverAddressMessage = (customerName: string) => [
+  "Para o motorista chegar até nós:",
+  "",
+  "• Uber, Google Maps ou Waze: busque *Cantinho da Adoce*",
+  "• 99: ainda não aparece pelo nome — use o endereço *Rua Cento Quatro, 277 – Passaré*",
+  "",
+  `Peça a corrida com coleta nesse endereço, em nome de *${customerName}*.`,
+  "Quando o motorista estiver a caminho, avise por aqui.",
+].join("\n");
 
 export const pickupTimesMessage = (options: string[]) =>
   optionsMessage("Escolha o horário da retirada:", options.map((time) => ({ code: time, label: time })));

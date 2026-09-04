@@ -153,12 +153,12 @@ describe("envio para o aparelho", () => {
   it("vai em pedaços pequenos — pacote grande chega truncado", () => {
     const bytes = montarBytes(ficha());
     const pedacos = fatiar(bytes);
-    expect(pedacos.every((p) => p.length <= 180)).toBe(true);
+    expect(pedacos.every((p) => p.length <= 20)).toBe(true);
     expect(pedacos.reduce((s, p) => s + p.length, 0)).toBe(bytes.length);
   });
 
   it("ficha pequena vai num pedaço só", () => {
-    expect(fatiar(new Uint8Array(50))).toHaveLength(1);
+    expect(fatiar(new Uint8Array(50))).toHaveLength(3);
   });
 });
 

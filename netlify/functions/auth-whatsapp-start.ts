@@ -32,8 +32,6 @@ export default async (request: Request) => {
   const phone = normalizeBrazilPhone(body.phone || "");
   const fullName = body.fullName?.trim().replace(/\s+/g, " ") || "";
   if (!phone) return json({ error: "Informe um WhatsApp com DDD." }, 400);
-  if (!isValidFullName(fullName))
-    return json({ error: "Informe seu nome e sobrenome." }, 400);
   if (body.intent && body.intent !== "signup_or_login")
     return json({ error: "Finalidade de acesso inválida." }, 400);
 
@@ -47,6 +45,18 @@ export default async (request: Request) => {
 
   const authorization = await authorizeWhatsAppRequest(request, admin);
   if (authorization.errorResponse) return authorization.errorResponse;
+
+  // Quem já tem cadastro está entrando, não se cadastrando de novo - pedir
+  // nome e sobrenome aqui era o site tratar login como cadastro. Só exige o
+  // nome (e só envia como metadado do usuário) quando o telefone é novo.
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("phone_e164", phone)
+    .maybeSingle();
+  const isNewSignup = !existingProfile?.id;
+  if (isNewSignup && !isValidFullName(fullName))
+    return json({ error: "Informe seu nome e sobrenome." }, 400);
 
   try {
     const ip = clientIp(request);
@@ -118,7 +128,10 @@ export default async (request: Request) => {
         phone,
         create_user: true,
         data: {
-          full_name: fullName,
+          // Só manda full_name quando é cadastro novo. Num login não há
+          // nome novo pra aplicar, e não arriscamos sobrescrever o nome já
+          // salvo do cliente com um metadado de OTP.
+          ...(isNewSignup ? { full_name: fullName } : {}),
           auth_source: authorization.pilot
             ? "whatsapp_hook_pilot_v1"
             : "whatsapp_hook_v1",

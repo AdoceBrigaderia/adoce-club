@@ -61,11 +61,16 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
   it("baixa a fatia-presente no estoque ao entregar no balcão", () => {
     const access = source("./AccessApp.tsx");
     const endpoint = source("../netlify/functions/staff-redeem-reward-slice.ts");
+    const rpc = source("../supabase/migrations/20260904190000_staff_redeem_reward_slice_rpc.sql");
     expect(access).toContain("redeemRewardSlice");
     expect(access).toContain("A unidade sai do estoque de hoje.");
-    expect(endpoint).toContain("quantity_available");
-    expect(endpoint).toContain('status: "redeemed"');
-    expect(endpoint).toContain("flavor_availability");
+    // A baixa em si é transacional, dentro de staff_redeem_reward_slice (uma
+    // função por resgate era ~13 gravações soltas sem transação; ver
+    // 20260904190000_staff_redeem_reward_slice_rpc.sql).
+    expect(endpoint).toContain('"staff_redeem_reward_slice"');
+    expect(rpc).toContain("quantity_available");
+    expect(rpc).toContain("flavor_availability_batches");
+    expect(rpc).toMatch(/for update/i);
   });
 
   it("envia senha temporária para o cliente cadastrado no balcão entrar no portal", () => {
@@ -86,5 +91,17 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(tablet).toContain("minmax(220px, 260px)");
     expect(tablet).toContain("min-height: 56px");
     expect(tablet).toContain("font-size: 1.02rem");
+  });
+
+  it("usa dialogo proprio para registrar indicacoes no balcao e na ficha", () => {
+    const access = source("./AccessApp.tsx");
+    const balcao = source("./BalcaoAtendimento.tsx");
+    expect(access).toContain("referralDialog");
+    expect(access).toContain("staff_record_referral_stamps");
+    expect(access).toContain("Math.min(20, current + 1)");
+    expect(access).toContain('aria-labelledby="referral-stamp-title"');
+    expect(access).not.toContain("window.prompt");
+    expect(balcao).not.toContain("window.prompt");
+    expect(balcao).toContain("onCarimbarIndicacao(cliente)");
   });
 });

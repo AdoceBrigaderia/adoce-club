@@ -2432,6 +2432,63 @@
   background: var(--access-paper);
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
 }
+.referral-stamp-card {
+  width: min(460px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  position: relative;
+  padding: 30px;
+  border-radius: 24px;
+  background: var(--access-paper);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+}
+.referral-stamp-card > svg {
+  width: 30px;
+  height: 30px;
+  color: var(--access-coral);
+}
+.referral-stamp-card h2 {
+  margin: 12px 0 6px;
+  font: 600 2.1rem 'Playfair Display',Georgia,serif;
+}
+.referral-stamp-card > p {
+  color: #806056;
+  line-height: 1.5;
+}
+.referral-stamp-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 14px 16px;
+  border: 1px solid #e6c7b8;
+  border-radius: 14px;
+  background: #fff8f3;
+  color: var(--access-chocolate);
+  font-weight: 800;
+}
+.referral-stamp-summary strong {
+  color: var(--access-coral-dark);
+  font: 600 2rem 'Playfair Display',Georgia,serif;
+}
+.referral-stamp-card .stepper {
+  margin: 14px 0 8px;
+}
+.referral-stamp-card .field-help,
+.referral-stamp-card .field-error {
+  min-height: 0;
+  margin: 8px 0 0;
+  font-size: .76rem;
+}
+.referral-stamp-card .field-help { color: #806056; }
+.referral-stamp-card .field-error { color: #a83e36; font-weight: 750; }
+.referral-stamp-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
 .scanner-card > svg {
   color: var(--access-coral);
 }
@@ -2872,4 +2929,7 @@
   .customer-delete-dialog { padding: 24px 18px 18px; }
   .customer-delete-dialog-actions { flex-direction: column-reverse; }
   .customer-delete-dialog-actions button { width: 100%; }
+  .referral-stamp-card { padding: 24px 18px 18px; }
+  .referral-stamp-dialog-actions { flex-direction: column-reverse; }
+  .referral-stamp-dialog-actions button { width: 100%; }
 }

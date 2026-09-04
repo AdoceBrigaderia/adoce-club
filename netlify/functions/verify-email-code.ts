@@ -1,38 +1,12 @@
-declare const Netlify:
-  | { env: { get(name: string): string | undefined } }
-  | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
-};
+import {
+  allowedOrigin,
+  clientIp,
+  consumeRateLimit,
+  env,
+  hmacHex,
+  json,
+  serviceClient,
+} from "./_shared/whatsapp-auth";
 
 export default async (request: Request) => {
   if (request.method !== "POST")
@@ -52,21 +26,36 @@ export default async (request: Request) => {
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
     env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
+  const hmacSecret = env("AUTH_RATE_LIMIT_HMAC_SECRET") || "";
+  const rateLimitClient = hmacSecret ? serviceClient() : null;
   if (!supabaseUrl || !publishableKey)
     return json({ error: "Validação temporariamente indisponível." }, 503);
 
+  if (hmacSecret && rateLimitClient) {
+    const ip = clientIp(request);
+    const [emailLimit, ipLimit] = await Promise.all([
+      consumeRateLimit(rateLimitClient, "verify_email_code:email", await hmacHex(hmacSecret, `email:${email}`), 600, 8),
+      consumeRateLimit(rateLimitClient, "verify_email_code:ip", await hmacHex(hmacSecret, `ip:${ip}`), 600, 30),
+    ]);
+    const retryAfter = Math.max(emailLimit.retry_after_seconds || 0, ipLimit.retry_after_seconds || 0);
+    if (!emailLimit.allowed || !ipLimit.allowed)
+      return json(
+        { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." },
+        429,
+        { "Retry-After": String(Math.max(retryAfter, 1)) },
+      );
+  }
+
   try {
-    const forwardedIp = request.headers.get("x-nf-client-connection-ip") || "";
     const types = ["email", "recovery", "magiclink"] as const;
     let lastStatus = 401;
     for (const type of types) {
+      // Não repassamos o IP do cliente ao GoTrue aqui: ele conta como
+      // tentativa de OTP no limite dele, e um header vindo do cliente pode
+      // ser forjado para escapar desse limite.
       const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/verify`, {
         method: "POST",
-        headers: {
-          apikey: publishableKey,
-          "Content-Type": "application/json",
-          ...(forwardedIp ? { "X-Forwarded-For": forwardedIp } : {}),
-        },
+        headers: { apikey: publishableKey, "Content-Type": "application/json" },
         body: JSON.stringify({ email, token, type }),
         signal: AbortSignal.timeout(20000),
       });

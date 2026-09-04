@@ -13,7 +13,10 @@ describe("acesso local usa somente a réplica real", () => {
     for (const endpoint of [customerEndpoint, staffEndpoint]) {
       expect(endpoint).not.toContain("HOMOLOGATION_FAKE");
       expect(endpoint).not.toContain("homologation_demo");
-      expect(endpoint).toContain('env("SUPABASE_SECRET_KEY")');
+      // serviceClient() (de _shared/whatsapp-auth) é quem lê
+      // SUPABASE_SECRET_KEY — continua sendo a chave real de serviço, só
+      // deduplicada num módulo compartilhado em vez de repetida aqui.
+      expect(endpoint).toContain("serviceClient()");
     }
     expect(auth).toContain('fetch("/api/customer-phone-login"');
     expect(auth).toContain('fetch("/api/staff-phone-login"');

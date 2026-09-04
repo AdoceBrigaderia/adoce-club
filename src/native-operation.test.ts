@@ -34,10 +34,36 @@ describe("aplicativo Android da operação", () => {
     expect(service.indexOf("writeReceipt(receipt(order))")).toBeLessThan(service.indexOf("markPrinted(id)"));
   });
 
+  it("reimprime a ficha completa a partir do pedido aberto no tablet", () => {
+    expect(bridge).toContain("printOrder(options: { orderJson: string })");
+    expect(service).toContain("ACTION_PRINT_ORDER");
+    expect(service).toContain("EXTRA_ORDER_JSON");
+    expect(service).toContain("FICHA DE PRODU");
+    expect(service).toContain("ITENS DO PEDIDO");
+    expect(service).toContain("SABOR: ");
+    expect(service).toContain("CALDA: ");
+    expect(service).toContain("OBSERVA");
+    expect(service).toContain("CONFER");
+    expect(service).toContain("PENDING_ORDER_PREFIX");
+    expect(service).toContain("order.toString()");
+    expect(service).toContain("unit_price,is_reward,instant_order_item_sauces");
+  });
+
+  it("deixa a impressao automatica nativa somente no servico Android", () => {
+    expect(readFileSync(new URL("./OperationInstantOrders.tsx", import.meta.url), "utf8"))
+      .toContain('change.eventType !== "INSERT" || Capacitor.isNativePlatform()');
+    expect(service).toContain("printingIds");
+    expect(service).toContain("Impressao duplicada ignorada");
+    expect(service).toContain("sessao atualizada");
+    expect(service).toContain("sessao realtime rejeitada");
+  });
+
   it("fala o mesmo BLE GATT e envia pacotes curtos para a KNUP", () => {
     expect(service).toContain("000018f0-0000-1000-8000-00805f9b34fb");
     expect(service).toContain("00002af1-0000-1000-8000-00805f9b34fb");
-    expect(service).toContain("start += 180");
-    expect(service).toContain("Thread.sleep(24)");
+    expect(service).toContain("start += 20");
+    expect(service).toContain("Math.min(20");
+    expect(service).toContain("CountDownLatch");
+    expect(service).toContain("Thread.sleep(35)");
   });
 });

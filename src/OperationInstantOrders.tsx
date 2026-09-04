@@ -10,6 +10,7 @@ import "./operation-instant-orders-enhancements.css";
 import "./operation-print.css";
 import { printOperation } from "./lib/operation-print";
 import { printThermalOrder } from "./lib/thermal-printer";
+import { Capacitor } from "@capacitor/core";
 import PedidoNaEsteira from "./PedidoNaEsteira";
 import type { Pedido } from "./jornada-do-pedido";
 
@@ -156,7 +157,7 @@ export default function OperationInstantOrders() {
     const channel = supabase.channel("operation-instant-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "instant_orders" }, async (change) => {
         void load();
-        if (change.eventType !== "INSERT") return;
+        if (change.eventType !== "INSERT" || Capacitor.isNativePlatform()) return;
         const id = String((change.new as { id?: string }).id || "");
         if (!id) return;
         const { data } = await supabase.from("instant_orders")
@@ -438,12 +439,18 @@ export default function OperationInstantOrders() {
     if (!targets.length) return setNotice("Selecione ao menos um pedido para reimprimir.");
     setBusy(true);
     let printed = 0;
-    for (const order of targets) {
-      const result = await printThermalOrder(order, true);
-      if (result === "printed") printed += 1;
+    try {
+      for (const order of targets) {
+        const result = await printThermalOrder(order, true);
+        if (result === "printed") printed += 1;
+      }
+      setNotice(Capacitor.isNativePlatform()
+        ? `${targets.length} pedido(s) enviado(s) para a fila de impressão do tablet.`
+        : `${printed} pedido(s) enviado(s) para reimpressão${printed < targets.length ? "; os demais ficaram na fila do aplicativo." : "."}`);
+    } catch (error) {
+      setNotice(`Falha ao reimprimir: ${error instanceof Error ? error.message : "impressora indisponível."}`);
     }
     setBusy(false);
-    setNotice(`${printed} pedido(s) enviado(s) para reimpressão${printed < targets.length ? "; os demais ficaram na fila do aplicativo." : "."}`);
     setSelectedPrintIds([]);
   };
   const active = orders.filter((order) => !["completed", "cancelled", "expired"].includes(order.status));
@@ -502,7 +509,7 @@ export default function OperationInstantOrders() {
         <div className="thermal-receipt-brand"><img src="/site/logo.webp" alt="Adoce Brigaderia" /><strong>ADOCE BRIGADERIA</strong></div>
         <small>{selected.order_number}</small><h2>{nomeLegivel(selected.customer_name)}</h2>
         <div className="operation-print-actions">
-          <button type="button" className="drawer-print" onClick={async () => { const result = await printThermalOrder(selected, true); if (result === "queued_for_android") printOperation("thermal"); }}><Printer /> Imprimir cupom 58 mm</button>
+          <button type="button" className="drawer-print" onClick={async () => { const result = await printThermalOrder(selected, true); if (result === "queued_for_android" && !Capacitor.isNativePlatform()) printOperation("thermal"); }}><Printer /> Imprimir cupom 58 mm</button>
           <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
         </div>
         <p><a href={operationWhatsAppUrl(selected.customer_phone, `Olá! Estamos falando sobre o pedido ${selected.order_number} da Adoce.`)} target="_blank" rel="noreferrer">{formatarTelefoneBR(selected.customer_phone)}</a> · {labels[selected.status]}</p>

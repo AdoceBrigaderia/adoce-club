@@ -23,6 +23,7 @@ import com.getcapacitor.annotation.Permission;
     }
 )
 public class AdoceOperationPlugin extends Plugin {
+    private static final String TAG = "AdocePrinter";
     @PluginMethod
     public void start(PluginCall call) {
         if (Build.VERSION.SDK_INT >= 31 && getPermissionState("bluetooth") != PermissionState.GRANTED) {
@@ -37,6 +38,7 @@ public class AdoceOperationPlugin extends Plugin {
             call.reject("Sessao nativa incompleta.");
             return;
         }
+        android.util.Log.i(TAG, "Sessao nativa recebida (url=" + url.length() + ", key=" + key.length() + ", access=" + access.length() + ", refresh=" + refresh.length() + ")");
         AdoceOrderService.saveSession(getContext(), url, key, access, refresh);
         Intent intent = new Intent(getContext(), AdoceOrderService.class).setAction(AdoceOrderService.ACTION_START);
         ContextCompat.startForegroundService(getContext(), intent);
@@ -95,6 +97,17 @@ public class AdoceOperationPlugin extends Plugin {
     @PluginMethod
     public void printTest(PluginCall call) {
         Intent intent = new Intent(getContext(), AdoceOrderService.class).setAction(AdoceOrderService.ACTION_TEST);
+        ContextCompat.startForegroundService(getContext(), intent);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void printOrder(PluginCall call) {
+        String orderJson = call.getString("orderJson", "");
+        if (orderJson.isEmpty()) { call.reject("Pedido para impressão ausente."); return; }
+        Intent intent = new Intent(getContext(), AdoceOrderService.class)
+            .setAction(AdoceOrderService.ACTION_PRINT_ORDER)
+            .putExtra(AdoceOrderService.EXTRA_ORDER_JSON, orderJson);
         ContextCompat.startForegroundService(getContext(), intent);
         call.resolve();
     }

@@ -1,44 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
-
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+import { deliverAccessLink, generateAccessLink } from "./_shared/access-link";
+import { allowedOrigin, env, json, normalizeBrazilPhone } from "./_shared/whatsapp-auth";
 
 const allowedRoles = new Set(["owner", "manager", "attendant"]);
 
-const normalizePhone = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  const national = digits.startsWith("55") ? digits.slice(2) : digits;
-  return national.length === 10 || national.length === 11 ? `+55${national}` : null;
-};
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
+// Antes eram os 6 últimos dígitos de um único uint32 (~1 milhão de espaço).
+// Mesma ideia de _shared, mas só dígitos — o balcão lê em voz alta pro
+// cliente decorar até trocar no primeiro acesso.
+const generateTemporaryPassword = () => {
+  const digits = crypto.getRandomValues(new Uint32Array(8));
+  return Array.from(digits, (value) => String(value % 10)).join("");
 };
 
 export default async (request: Request) => {
@@ -79,7 +50,7 @@ export default async (request: Request) => {
     phone?: string;
   };
   const fullName = (body.fullName || "").trim().replace(/\s+/g, " ");
-  const phone = normalizePhone(body.phone || "");
+  const phone = normalizeBrazilPhone(body.phone || "");
   if (fullName.split(" ").filter((part) => part.length > 1).length < 2) {
     return json({ error: "Informe nome e sobrenome." }, 400);
   }
@@ -112,23 +83,25 @@ export default async (request: Request) => {
   }
 
   const fallbackEmail = `${phone.replace(/\D/g, "")}@membro.adocebrigaderia.com.br`;
-  const temporaryPassword = Array.from(crypto.getRandomValues(new Uint32Array(1)))[0]
-    .toString()
-    .slice(-6)
-    .padStart(6, "0");
+  const temporaryPassword = generateTemporaryPassword();
 
-  let createdUser = (
-    await admin.auth.admin.createUser({
-      email: fallbackEmail,
-      email_confirm: true,
-      phone,
-      phone_confirm: true,
-      password: temporaryPassword,
-      user_metadata: { full_name: fullName, created_at_counter: true },
-    })
-  ).data.user;
-  if (!createdUser) {
-    return json({ error: "Não foi possível criar o cadastro." }, 409);
+  const { data: createdData, error: createError } = await admin.auth.admin.createUser({
+    email: fallbackEmail,
+    email_confirm: true,
+    phone,
+    phone_confirm: true,
+    password: temporaryPassword,
+    user_metadata: { full_name: fullName, created_at_counter: true },
+  });
+  const createdUser = createdData?.user;
+  if (createError || !createdUser) {
+    // "already registered" quase sempre é o mesmo telefone/e-mail em conta
+    // encerrada (soft-deleted) — a mensagem genérica anterior escondia isso
+    // do atendente, que só via "não foi possível criar" sem saber o motivo.
+    const message = /already registered|already exists/i.test(createError?.message || "")
+      ? "Este telefone já teve um cadastro encerrado. Fale com a Adoce para reativar em vez de criar outro."
+      : "Não foi possível criar o cadastro.";
+    return json({ error: message }, 409);
   }
 
   const profileId = createdUser.id;
@@ -166,10 +139,26 @@ export default async (request: Request) => {
   });
 
   const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-  const loginUrl = `${siteUrl}/clube/entrar`;
+  let loginUrl = `${siteUrl}/clube/entrar`;
   const firstName = fullName.split(/\s+/)[0] || "cliente";
-  const accessMessage =
+  let accessMessage =
     `Olá, ${firstName}! Seu Clube Adoce já está pronto. Abra ${loginUrl} e entre com este WhatsApp e a senha temporária: ${temporaryPassword}\n\nNo primeiro acesso o site pede que você troque essa senha por uma só sua, com no mínimo 6 caracteres.`;
+  let whatsappSent = false;
+  let whatsappStatus = "not_configured";
+  let whatsappError: string | undefined;
+  try {
+    const access = await generateAccessLink(admin, fallbackEmail);
+    loginUrl = access.loginUrl;
+    accessMessage =
+      `Olá, ${firstName}! Seu acesso ao Clube Adoce está pronto. Toque neste link para criar sua senha e acompanhar seus carimbos: ${loginUrl}\n\nO link é pessoal e temporário.`;
+    const delivery = await deliverAccessLink(fullName, phone, access);
+    whatsappSent = delivery.status === "accepted";
+    whatsappStatus = delivery.status;
+    whatsappError = delivery.error;
+  } catch (error) {
+    whatsappStatus = "link_generation_failed";
+    whatsappError = error instanceof Error ? error.message : "access_link_generation_failed";
+  }
   const whatsappDigits = phone.replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(accessMessage)}`;
 
@@ -183,6 +172,9 @@ export default async (request: Request) => {
     loginUrl,
     accessMessage,
     whatsappUrl,
+    whatsappSent,
+    whatsappStatus,
+    whatsappError,
   });
 };
 

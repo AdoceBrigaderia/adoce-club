@@ -211,10 +211,14 @@ export function montarBytes(ficha: Ficha): Uint8Array {
 }
 
 /**
- * A impressora recebe em pedacos pequenos: o buffer dela e curto e pacote
- * grande demais chega truncado, imprimindo meia ficha.
+ * A impressora recebe em pedaços de no máximo 20 bytes: o buffer BLE da
+ * KNUP KP-1025 é curto e qualquer pacote maior pode chegar truncado.
+ *
+ * Esse limite é deliberadamente conservador e faz parte do contrato de
+ * transporte. Não aumentar sem atualizar o teste de regressão e validar
+ * fisicamente no aparelho.
  */
-export function fatiar(bytes: Uint8Array, tamanho = 180): Uint8Array[] {
+export function fatiar(bytes: Uint8Array, tamanho = 20): Uint8Array[] {
   const pedacos: Uint8Array[] = [];
   for (let i = 0; i < bytes.length; i += tamanho) {
     pedacos.push(bytes.slice(i, i + tamanho));

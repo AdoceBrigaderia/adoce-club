@@ -3,13 +3,20 @@ import { describe, expect, it } from "vitest";
 import orderWebhook from "../netlify/functions/twilio-whatsapp-order";
 import {
   catalogMessage,
+  driverAddressMessage,
   isFullName,
   mainMenuMessage,
+  MAX_SLICES_PER_FLAVOR,
   orderSummary,
   parseItemSelection,
   parsePickupTime,
+  PICKUP_CLOSING,
   pickupTimeOptions,
+  pixMessage,
   quantityMessage,
+  removeItemMessage,
+  sauceModeMessage,
+  sliceSauceMessage,
   twiml,
 } from "../netlify/functions/_shared/whatsapp-order-bot";
 
@@ -56,6 +63,83 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(pickupTimeOptions("18:10", 4)).toEqual(["18:30", "19:00", "19:30", "20:00"]);
     expect(pickupTimeOptions("23:31")).toEqual([]);
     expect(parsePickupTime("19:30", "18:00")).toBe("19:30");
+  });
+
+  it("limita a janela de retirada ao horário de fechamento do Cantinho", () => {
+    expect(PICKUP_CLOSING).toBe("23:00");
+    expect(pickupTimeOptions("20:00")).toEqual([
+      "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00",
+    ]);
+    expect(pickupTimeOptions("22:40")).toEqual(["23:00"]);
+    expect(pickupTimeOptions("23:10")).toEqual([]);
+  });
+
+  it("mostra subtotal e opção de remover item ao montar o pedido", () => {
+    const catalog = catalogMessage(flavors, [
+      { ...flavors[0], quantity: 2 },
+      { ...flavors[1], quantity: 1 },
+    ]);
+    expect(catalog).toMatch(/• 2x Brigadeiro — R\$\s?32,00/);
+    expect(catalog).toMatch(/Subtotal: R\$\s?50,00/);
+    expect(catalog).toContain("6. Remover um item do pedido");
+    expect(catalogMessage(flavors, [])).not.toContain("Remover um item");
+  });
+
+  it("teto de fatias é por sabor e avisa quando o estoque limita", () => {
+    expect(MAX_SLICES_PER_FLAVOR).toBe(13);
+    expect(quantityMessage(flavors[0], 13)).not.toContain("Máximo disponível");
+    expect(quantityMessage(flavors[1], 2)).toContain("Máximo disponível agora: 2 fatias deste sabor.");
+    expect(removeItemMessage([{ ...flavors[0], quantity: 3 }])).toContain("1. 3x Brigadeiro");
+  });
+
+  it("marca sabor sem estoque como esgotado no cardápio", () => {
+    const catalog = catalogMessage([flavors[0], { ...flavors[1], free: 0 }]);
+    expect(catalog).toMatch(/1\. Brigadeiro — R\$\s?16,00 \(5 disponíveis\)/);
+    expect(catalog).toContain("2. Ninho — esgotado");
+    expect(catalog).not.toMatch(/Ninho — R\$/);
+  });
+
+  it("só persiste passos aceitos pela função server_save_whatsapp_order_conversation", () => {
+    const endpoint = source("../netlify/functions/twilio-whatsapp-order.ts");
+    const foundation = source("../supabase/migrations/20260830104000_whatsapp_order_bot_foundation.sql");
+    const allowBlock = foundation.match(/requested_step not in \(([\s\S]*?)\)/);
+    expect(allowBlock).toBeTruthy();
+    const allowed = new Set(
+      Array.from(allowBlock![1].matchAll(/'([a-z_]+)'/g), (match) => match[1]),
+    );
+    const savedSteps = new Set(
+      Array.from(endpoint.matchAll(/\bsave\(\s*"([a-z_]+)"/g), (match) => match[1]),
+    );
+    for (const step of savedSteps) {
+      expect(allowed.has(step), `passo "${step}" não está na allowlist do banco`).toBe(true);
+    }
+  });
+
+  it("guarda apenas a janela de 30 min para pedido em andamento", () => {
+    const endpoint = source("../netlify/functions/twilio-whatsapp-order.ts");
+    expect(endpoint).toContain("CONVERSATION_TTL_MINUTES = 30");
+    expect(endpoint).not.toContain("CONVERSATION_TTL_HOURS");
+  });
+
+  it("relê o catálogo em vez de usar o estoque em cache do estado", () => {
+    const endpoint = source("../netlify/functions/twilio-whatsapp-order.ts");
+    // o estado não guarda mais a lista de sabores com quantidade
+    expect(endpoint).not.toMatch(/\bstate\.flavors\b/);
+    // choose_items recarrega o catálogo a cada mensagem
+    expect(endpoint).toMatch(/conversation\.step === "choose_items"[\s\S]{0,200}loadCatalog\(\)/);
+  });
+
+  it("oferece calda por fatia com atalho e traz os dados de Pix e retirada por entregador", () => {
+    expect(sauceModeMessage(6)).toContain("mesma calda para todas as 6 fatias");
+    expect(sauceModeMessage(6)).toContain("2. Quero escolher a calda de cada fatia");
+    expect(sliceSauceMessage(2, 5, "Brigadeiro", [{ code: "c", label: "Chocolate" }]))
+      .toContain("Calda da fatia 2 de 5 — *Brigadeiro*");
+    expect(pixMessage()).toContain("pagamento@adocebrigaderia.com.br");
+    expect(pixMessage()).toContain("Elizabeth Cristina Sampaio Nascimento");
+    expect(pixMessage()).toContain("Mercado Pago");
+    expect(driverAddressMessage("Maria")).toContain("Cantinho da Adoce");
+    expect(driverAddressMessage("Maria")).toContain("Rua Cento Quatro, 277 – Passaré");
+    expect(driverAddressMessage("Maria")).toContain("em nome de *Maria*");
   });
 
   it("confirma ou altera o pedido por números", () => {

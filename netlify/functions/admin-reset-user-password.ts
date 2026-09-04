@@ -1,23 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
+import { deliverAccessLink, generateAccessLink } from "./_shared/access-link";
+import { consumeRateLimit, env, hmacHex, isUuid, json, serviceClient } from "./_shared/whatsapp-auth";
 
-declare const Netlify:
-  | { env: { get(name: string): string | undefined } }
-  | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-
-const temporaryPassword = "123456@adoce";
+// Senha temporária única por reset — antes era sempre "123456@adoce" para
+// qualquer conta, o que deixava uma janela adivinhável entre o reset e a
+// pessoa trocar a senha. ~57 bits de entropia, sem caracteres ambíguos
+// (0/O, 1/l/I), fácil de repassar por voz ou WhatsApp.
+const PASSWORD_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+const generateTemporaryPassword = () => {
+  const random = crypto.getRandomValues(new Uint32Array(10));
+  const body = Array.from(random, (value) => PASSWORD_ALPHABET[value % PASSWORD_ALPHABET.length]).join("");
+  return `${body}@1`;
+};
 
 export default async (request: Request) => {
   if (request.method !== "POST")
@@ -32,9 +26,9 @@ export default async (request: Request) => {
   const publishableKey =
     env("SUPABASE_PUBLISHABLE_KEY") ||
     env("VITE_SUPABASE_PUBLISHABLE_KEY");
-  const secretKey =
-    env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !publishableKey || !secretKey)
+  const hmacSecret = env("AUTH_RATE_LIMIT_HMAC_SECRET") || "";
+  const admin = serviceClient();
+  if (!supabaseUrl || !publishableKey || !hmacSecret || !admin)
     return json(
       { error: "Redefinição de senha indisponível no servidor." },
       503,
@@ -60,23 +54,31 @@ export default async (request: Request) => {
       403,
     );
 
+  // Um gerente comprometido não pode martelar resets em massa: 10 por hora
+  // é bem acima do uso normal (um reset por atendimento).
+  const actorHash = await hmacHex(hmacSecret, `actor:${userData.user.id}`);
+  const actorLimit = await consumeRateLimit(admin, "admin_password_reset:actor", actorHash, 3600, 10);
+  if (!actorLimit.allowed)
+    return json(
+      { error: "Muitos resets em pouco tempo. Aguarde antes de continuar." },
+      429,
+      { "Retry-After": String(Math.max(actorLimit.retry_after_seconds || 60, 1)) },
+    );
+
   const body = (await request.json().catch(() => ({}))) as {
     targetUserId?: string;
     targetKind?: "staff" | "customer";
   };
   const targetUserId = body.targetUserId?.trim() || "";
   const targetKind = body.targetKind;
-  if (!/^[0-9a-f-]{36}$/i.test(targetUserId))
+  if (!isUuid(targetUserId))
     return json({ error: "Usuário inválido." }, 400);
   if (!targetKind || !["staff", "customer"].includes(targetKind))
     return json({ error: "Tipo de usuário inválido." }, 400);
 
-  const admin = createClient(supabaseUrl, secretKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
   const { data: targetProfile } = await admin
     .from("profiles")
-    .select("id,full_name,active,account_status")
+    .select("id,full_name,email,phone_e164,active,account_status")
     .eq("id", targetUserId)
     .maybeSingle();
   if (
@@ -99,6 +101,7 @@ export default async (request: Request) => {
       409,
     );
 
+  const temporaryPassword = generateTemporaryPassword();
   const now = new Date().toISOString();
   let flagError: { message?: string } | null = null;
   if (targetKind === "staff") {
@@ -155,11 +158,43 @@ export default async (request: Request) => {
     },
   });
 
+  let loginUrl: string | undefined;
+  let whatsappSent = false;
+  let whatsappStatus = "not_configured";
+  let whatsappError: string | undefined;
+  if (targetProfile.email) {
+    try {
+      const access = await generateAccessLink(admin, targetProfile.email);
+      loginUrl = access.loginUrl;
+      if (targetProfile.phone_e164) {
+        const delivery = await deliverAccessLink(
+          targetProfile.full_name,
+          targetProfile.phone_e164,
+          access,
+        );
+        whatsappSent = delivery.status === "accepted";
+        whatsappStatus = delivery.status;
+        whatsappError = delivery.error;
+      } else {
+        whatsappStatus = "phone_missing";
+      }
+    } catch (error) {
+      whatsappStatus = "link_generation_failed";
+      whatsappError = error instanceof Error ? error.message : "access_link_generation_failed";
+    }
+  } else {
+    whatsappStatus = "email_missing";
+  }
+
   return json({
     reset: true,
     fullName: targetProfile.full_name,
     temporaryPassword,
     mustChangePassword: true,
+    loginUrl,
+    whatsappSent,
+    whatsappStatus,
+    whatsappError,
   });
 };
 

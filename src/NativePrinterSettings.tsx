@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bluetooth, Printer, RefreshCw } from "lucide-react";
+import { Bluetooth, Printer, PrinterCheck, RefreshCw } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { NativeOperation } from "./lib/native-operation";
 
@@ -16,13 +16,17 @@ export default function NativePrinterSettings() {
   useEffect(() => { void refresh(); }, [refresh]);
   if (!Capacitor.isNativePlatform()) return null;
 
-  const run = async (action: "discover") => {
+  const run = async (action: "discover" | "printPending") => {
     setBusy(true); setMessage("");
     try {
       if (action === "discover") {
         await NativeOperation.discoverPrinter();
         setMessage("Procurando a KNUP por até 12 segundos...");
         window.setTimeout(() => void refresh(), 13_000);
+      } else {
+        await NativeOperation.printPendingOrders();
+        setMessage("Buscando pedidos ainda não finalizados para imprimir...");
+        window.setTimeout(() => void refresh(), 4_000);
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível falar com a impressora.");
@@ -40,6 +44,7 @@ export default function NativePrinterSettings() {
     {message ? <p role="status" className="native-printer-message">{message}</p> : null}
     <div className="native-printer-actions">
       <button type="button" disabled={busy} onClick={() => void run("discover")}><Bluetooth /> Localizar e conectar KNUP</button>
+      <button type="button" disabled={busy} onClick={() => void run("printPending")}><PrinterCheck /> Imprimir pedidos pendentes</button>
       <button type="button" disabled={busy} onClick={() => void refresh()} aria-label="Atualizar estado"><RefreshCw /> Atualizar</button>
     </div>
   </section>;

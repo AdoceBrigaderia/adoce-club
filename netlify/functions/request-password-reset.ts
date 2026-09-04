@@ -149,14 +149,10 @@ export default async (request: Request) => {
     );
     if (requestError) throw new Error("auth_request_unavailable");
 
-    // Marca a troca de senha como obrigatória assim que a pessoa entrar de
-    // novo - reaproveita a mesma tela já usada quando um gerente reseta senha.
-    await admin.from("profiles").update({ must_change_password: true }).eq("id", profile.id);
-    await admin
-      .from("staff_members")
-      .update({ must_change_password: true })
-      .eq("user_id", profile.id);
-
+    // A troca de senha obrigatória só é marcada depois que o código chega a
+    // ser confirmado (netlify/functions/confirm-password-reset.ts, chamado
+    // pelo front após verifyWhatsAppAuthCode). Marcar aqui, no envio, prendia
+    // o próximo login normal de quem pedisse o código e nunca o usasse.
     const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/otp`, {
       method: "POST",
       headers: {

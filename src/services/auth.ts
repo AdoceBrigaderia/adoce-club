@@ -134,6 +134,21 @@ export async function verifyWhatsAppAuthCode(
   return data;
 }
 
+// Chamar só depois de verifyWhatsAppAuthCode() ter sucesso no fluxo "esqueci
+// a senha" — marca a troca de senha como obrigatória no próximo acesso.
+// Erro aqui não impede o login (a sessão já existe); só falta a exigência de
+// trocar a senha, que não é motivo pra travar quem já confirmou o código.
+export async function confirmPasswordReset(accessToken: string) {
+  try {
+    await fetch("/api/confirm-password-reset", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  } catch {
+    // silencioso de propósito - ver comentário acima
+  }
+}
+
 export async function requestPasswordReset(input: { phone: string }) {
   const response = await fetch("/api/request-password-reset", {
     method: "POST",
@@ -315,6 +330,10 @@ export async function resetUserPasswordByManager(
     fullName?: string;
     temporaryPassword?: string;
     mustChangePassword?: boolean;
+    loginUrl?: string;
+    whatsappSent?: boolean;
+    whatsappStatus?: string;
+    whatsappError?: string;
     error?: string;
   };
   if (!response.ok || !payload.reset)

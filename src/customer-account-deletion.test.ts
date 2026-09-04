@@ -6,6 +6,10 @@ const accountActionSource = readFileSync(
   new URL("../netlify/functions/customer-account-action.ts", import.meta.url),
   "utf8",
 );
+const accountActionRpcSource = readFileSync(
+  new URL("../supabase/migrations/20260904210000_customer_account_action_rpc.sql", import.meta.url),
+  "utf8",
+);
 
 describe("administração segura de membros", () => {
   it("oferece exclusão imediata e não mostra cadastros anonimizados", () => {
@@ -19,11 +23,19 @@ describe("administração segura de membros", () => {
   });
 
   it("remove o acesso e anonimiza os dados pessoais mantendo o histórico", () => {
+    // A anonimização e a limpeza dos registros relacionados são atômicas
+    // dentro de server_customer_account_action (RPC), não mais ~11
+    // gravações soltas na function — ver
+    // 20260904210000_customer_account_action_rpc.sql.
+    expect(accountActionSource).toContain('rpc("server_customer_account_action"');
     expect(accountActionSource).toContain("deleteUser(profileId, true)");
-    expect(accountActionSource).toContain('account_status: resultingStatus');
-    expect(accountActionSource).toContain('customer_name: "Cliente excluído"');
-    expect(accountActionSource).toContain("notification_email: null");
-    expect(accountActionSource).toContain('adminClient.from("staff_members")');
-    expect(accountActionSource).not.toContain('sessionClient.from("staff_members")');
+    expect(accountActionSource).toContain("server_revert_customer_account_action");
+    expect(accountActionRpcSource).toContain("'anonymized'");
+    expect(accountActionRpcSource).toContain("'Cliente excluído'");
+    expect(accountActionRpcSource).toContain("'Cadastro excluído '");
+    expect(accountActionRpcSource).toContain("service_requests");
+    expect(accountActionRpcSource).toContain("crm_notes");
+    expect(accountActionRpcSource).toContain("crm_tasks");
+    expect(accountActionRpcSource).toMatch(/for update/i);
   });
 });

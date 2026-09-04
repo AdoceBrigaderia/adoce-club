@@ -12,6 +12,12 @@ type NativeOperationPlugin = {
   stop(): Promise<void>;
   discoverPrinter(): Promise<{ printer?: string }>;
   printTest(): Promise<void>;
+  printOrder(options: { orderJson: string }): Promise<void>;
+  // Pedidos que chegaram sem ficha porque o app não estava ouvindo (fechado,
+  // tablet desligado, impressora fora de alcance) nunca entram na fila local
+  // — ela só guarda o que o canal em tempo real viu passar. Isto busca no
+  // banco todo pedido ainda não finalizado e imprime o que faltar.
+  printPendingOrders(): Promise<void>;
   getStatus(): Promise<{ service: string; printer: string; pending: number }>;
 };
 

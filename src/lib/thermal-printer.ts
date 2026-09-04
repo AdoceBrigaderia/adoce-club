@@ -1,4 +1,6 @@
+import { Capacitor } from "@capacitor/core";
 import { estaPronta, imprimir } from "./conexao-bluetooth";
+import { NativeOperation } from "./native-operation";
 
 export type ThermalOrder = {
   id: string;
@@ -74,6 +76,11 @@ export function hasNativeThermalPrinter() {
 
 export async function printThermalOrder(order: ThermalOrder, force = false) {
   if (!force && localStorage.getItem(key(order.id))) return "already_printed" as const;
+  if (Capacitor.isNativePlatform()) {
+    await NativeOperation.printOrder({ orderJson: JSON.stringify(order) });
+    localStorage.removeItem(`adoce-thermal-pending:${order.id}`);
+    return "queued_for_android" as const;
+  }
   if (estaPronta()) {
     await imprimir({
       numero: order.order_number,

@@ -1,29 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
-  });
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set([
-    configured,
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ].filter(Boolean)).has(origin);
-};
+import { allowedOrigin, env, isUuid, json, serviceClient } from "./_shared/whatsapp-auth";
 
 const actions = new Set(["deactivate", "reactivate", "request_deletion", "delete_account", "mark_duplicate", "cancel_deletion"]);
 const reasons = new Set([
@@ -84,24 +60,18 @@ export default async (request: Request) => {
 
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey = env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
-  const secretKey = env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !publishableKey || !secretKey) return json({ error: "Ação administrativa não configurada." }, 503);
+  const admin = serviceClient();
+  if (!supabaseUrl || !publishableKey || !admin) return json({ error: "Ação administrativa não configurada." }, 503);
 
+  // A sessão do próprio gerente é quem chama a RPC — ela mesma confere o
+  // papel (owner/manager) via private.is_staff() e o role check internos,
+  // então não precisamos repetir a checagem aqui com a chave de serviço.
   const sessionClient = createClient(supabaseUrl, publishableKey, {
     global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: userData, error: userError } = await sessionClient.auth.getUser(accessToken);
   if (userError || !userData.user) return json({ error: "Sessão inválida ou expirada." }, 401);
-  // A identidade vem do JWT validado acima. A autorização administrativa é
-  // consultada com o cliente de serviço para não depender das políticas RLS do
-  // schema private dentro desta Function.
-  const adminClient = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: staff, error: staffError } = await adminClient.from("staff_members").select("role,active").eq("user_id", userData.user.id).maybeSingle();
-  if (staffError) return json({ error: "Não foi possível confirmar a permissão para excluir este cadastro." }, 500);
-  if (!staff?.active || !["owner", "manager"].includes(staff.role)) {
-    return json({ error: "Somente proprietários e gerentes podem alterar cadastros." }, 403);
-  }
 
   const body = (await request.json().catch(() => ({}))) as {
     profileId?: string; action?: string; reasonCode?: string; reasonNote?: string;
@@ -110,7 +80,7 @@ export default async (request: Request) => {
   const action = body.action || "";
   const reasonCode = body.reasonCode || "";
   const reasonNote = body.reasonNote?.trim() || null;
-  if (!/^[0-9a-f-]{36}$/i.test(profileId) || !actions.has(action) || !reasons.has(reasonCode)) {
+  if (!isUuid(profileId) || !actions.has(action) || !reasons.has(reasonCode)) {
     return json({ error: "Ação ou motivo inválido." }, 400);
   }
   if (reasonCode === "other" && (!reasonNote || reasonNote.length < 5)) {
@@ -118,160 +88,58 @@ export default async (request: Request) => {
   }
   if (profileId === userData.user.id) return json({ error: "Você não pode alterar o próprio cadastro por esta tela." }, 409);
 
-  const { data: profile, error: profileError } = await adminClient
-    .from("profiles")
-    .select("id,full_name,email,phone_e164,birth_date,preferred_channel,postal_code,address_line,address_number,address_complement,neighborhood,city,state_code,flavor_preferences,whatsapp_verified_at,auth_upgraded_at,account_status,active,status_reason_code,status_reason_note,status_changed_at,status_changed_by,member_code")
-    .eq("id", profileId)
-    .maybeSingle();
-  if (profileError || !profile) return json({ error: "Cliente não encontrado." }, 404);
-
-  const resultingStatus = action === "delete_account"
-    ? "anonymized"
-    : action === "request_deletion"
-      ? "pending_deletion"
-    : action === "reactivate" || action === "cancel_deletion"
-      ? "active"
-      : "deactivated";
-  const active = resultingStatus === "active";
-  const now = new Date().toISOString();
-  const profileUpdate = {
-    account_status: resultingStatus,
-    active,
-    status_reason_code: reasonCode,
-    status_reason_note: reasonNote,
-    status_changed_at: now,
-    status_changed_by: userData.user.id,
-    updated_at: now,
-    ...(action === "delete_account" ? {
-      full_name: `Cadastro excluído ${profile.member_code.slice(-4)}`,
-      email: null,
-      phone_e164: null,
-      birth_date: null,
-      preferred_channel: "none",
-      postal_code: null,
-      address_line: null,
-      address_number: null,
-      address_complement: null,
-      neighborhood: null,
-      city: null,
-      state_code: null,
-      flavor_preferences: [],
-      whatsapp_verified_at: null,
-      auth_upgraded_at: null,
-    } : {}),
-  };
-  const { error: updateError } = await adminClient.from("profiles").update(profileUpdate).eq("id", profileId);
-  if (updateError) return json({ error: updateError.message }, 500);
-
-  const restorePreviousState = async () => {
-    await adminClient.from("profiles").update({
-      account_status: profile.account_status,
-      active: profile.active,
-      status_reason_code: profile.status_reason_code,
-      status_reason_note: profile.status_reason_note,
-      status_changed_at: profile.status_changed_at,
-      status_changed_by: profile.status_changed_by,
-      full_name: profile.full_name,
-      email: profile.email,
-      phone_e164: profile.phone_e164,
-      birth_date: profile.birth_date,
-      preferred_channel: profile.preferred_channel,
-      postal_code: profile.postal_code,
-      address_line: profile.address_line,
-      address_number: profile.address_number,
-      address_complement: profile.address_complement,
-      neighborhood: profile.neighborhood,
-      city: profile.city,
-      state_code: profile.state_code,
-      flavor_preferences: profile.flavor_preferences,
-      whatsapp_verified_at: profile.whatsapp_verified_at,
-      auth_upgraded_at: profile.auth_upgraded_at,
-      updated_at: new Date().toISOString(),
-    }).eq("id", profileId);
-    await adminClient.auth.admin.updateUserById(profileId, {
-      ban_duration: profile.active ? "none" : "876000h",
-    });
-  };
-
-  const initialNotificationStatus = profile.email ? "pending" : "not_applicable";
-  const { data: actionRecord, error: actionError } = await adminClient.from("customer_account_actions").insert({
-    profile_id: profileId,
-    actor_user_id: userData.user.id,
-    action,
-    reason_code: reasonCode,
-    reason_note: reasonNote,
-    previous_status: profile.account_status,
-    resulting_status: resultingStatus,
-    notification_email: profile.email,
-    notification_status: initialNotificationStatus,
-    notification_error: null,
-  }).select("id").single();
-  if (actionError || !actionRecord) {
-    await restorePreviousState();
-    return json({ error: "A alteração não foi concluída porque o registro de auditoria falhou." }, 500);
+  // server_customer_account_action faz, numa única transação: valida o
+  // papel de quem chama, atualiza o profile (com a anonimização de
+  // delete_account), grava customer_account_actions e, se for exclusão, já
+  // anonimiza os registros relacionados (audit_events, service_requests,
+  // crm_notes, crm_tasks). Antes eram ~11 gravações soltas sem transação,
+  // com reversão escrita à mão que não cobria a limpeza de delete_account.
+  const { data: result, error: rpcError } = await sessionClient.rpc("server_customer_account_action", {
+    target_profile_id: profileId,
+    requested_action: action,
+    requested_reason_code: reasonCode,
+    requested_reason_note: reasonNote,
+  });
+  if (rpcError) {
+    const message = /Somente proprietários e gerentes/i.test(rpcError.message)
+      ? "Somente proprietários e gerentes podem alterar cadastros."
+      : /Cliente não encontrado/i.test(rpcError.message)
+        ? "Cliente não encontrado."
+        : "Não foi possível concluir a alteração agora.";
+    return json({ error: message }, /permitidos|autorizado/i.test(rpcError.message) ? 403 : 409);
   }
 
+  const actionId = result.action_id as string;
+  const resultingStatus = result.resulting_status as string;
+  const willBeActive = Boolean(result.will_be_active);
+  const notificationEmail = result.notification_email as string | null;
+  const fullName = result.full_name as string;
+
+  // O ban/exclusão em auth.users passa pela API administrativa do GoTrue,
+  // que fica fora da transação da RPC (ela só cobre o schema public). Se
+  // falhar aqui, desfazemos a RPC inteira numa única chamada em vez de
+  // reversão manual espalhada.
   const { error: authError } = action === "delete_account"
-    ? await adminClient.auth.admin.deleteUser(profileId, true)
-    : await adminClient.auth.admin.updateUserById(profileId, { ban_duration: active ? "none" : "876000h" });
+    ? await admin.auth.admin.deleteUser(profileId, true)
+    : await admin.auth.admin.updateUserById(profileId, { ban_duration: willBeActive ? "none" : "876000h" });
   if (authError) {
-    await restorePreviousState();
-    await adminClient.from("customer_account_actions").delete().eq("id", actionRecord.id);
+    await sessionClient.rpc("server_revert_customer_account_action", { action_id: actionId });
     return json({ error: "A alteração não foi concluída e o cadastro foi restaurado ao estado anterior." }, 500);
   }
 
-  const notification = profile.email
-    ? await sendNotification(profile.email, profile.full_name, action, reasonCode)
+  const notification = notificationEmail
+    ? await sendNotification(notificationEmail, fullName, action, reasonCode)
     : { status: "not_applicable", error: null };
-  const { error: notificationAuditError } = await adminClient
+  const { error: notificationAuditError } = await admin
     .from("customer_account_actions")
-    .update({
-      notification_status: notification.status,
-      notification_error: notification.error,
-    })
-    .eq("id", actionRecord.id);
-
-  const cleanupErrors: string[] = [];
-  if (action === "delete_account") {
-    const cleanupResults = await Promise.all([
-      adminClient
-        .from("customer_account_actions")
-        .update({ notification_email: null, reason_note: null })
-        .eq("profile_id", profileId),
-      adminClient
-        .from("audit_events")
-        .update({ payload: { anonymized: true } })
-        .eq("entity_type", "profile")
-        .eq("entity_id", profileId),
-      adminClient
-        .from("service_requests")
-        .update({
-          customer_name: "Cliente excluído",
-          customer_phone: "550000000000",
-          customer_email: null,
-          service_location: "Dados removidos",
-          customer_notes: "",
-        })
-        .eq("profile_id", profileId),
-      adminClient
-        .from("crm_notes")
-        .update({ note: "Conteúdo removido após exclusão do cadastro." })
-        .eq("profile_id", profileId),
-      adminClient
-        .from("crm_tasks")
-        .update({ title: "Cadastro excluído", description: "" })
-        .eq("profile_id", profileId),
-    ]);
-    cleanupResults.forEach((result) => {
-      if (result.error) cleanupErrors.push(result.error.message);
-    });
-  }
+    .update({ notification_status: notification.status, notification_error: notification.error })
+    .eq("id", actionId);
 
   return json({
     applied: true,
     resultingStatus,
     notificationStatus: notification.status,
-    auditWarning: notificationAuditError || cleanupErrors.length > 0
+    auditWarning: notificationAuditError
       ? "A ação principal foi concluída, mas uma etapa secundária de auditoria precisa ser conferida."
       : null,
   });

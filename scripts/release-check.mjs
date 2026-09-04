@@ -27,7 +27,7 @@ for (const [label, args] of stages) {
   }
 }
 
-console.log("\nAPROVADO PARA HOMOLOGACAO VISUAL");
-console.log("1. Conferir as telas alteradas no computador e no celular.");
-console.log("2. Confirmar textos, links, imagens e dados reais.");
-console.log("3. Somente depois usar npm run release:prod.\n");
+console.log("\nPORTAO APROVADO (testes + tipos + build)");
+console.log("1. Homologar na replica local: D:\\Clube Adoce Replica Local (Supabase 127.0.0.1:54321 + app working-copy).");
+console.log("2. Conferir as telas alteradas no computador e no celular contra a replica.");
+console.log("3. Somente depois publicar com netlify-cli (deploy --prod) manualmente.\n");

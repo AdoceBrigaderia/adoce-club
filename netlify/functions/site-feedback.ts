@@ -1,24 +1,19 @@
-import { createClient } from "@supabase/supabase-js";
+import {
+  allowedOrigin,
+  clientIp,
+  consumeRateLimit,
+  env,
+  hmacHex,
+  json,
+  serviceClient,
+} from "./_shared/whatsapp-auth";
 
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) || process.env[name];
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status,
-  headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
-});
 const clean = (value: unknown, max: number) => String(value || "").trim().slice(0, max);
 const categories = new Set(["problem", "complaint", "suggestion", "compliment"]);
 
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
-  const origin = request.headers.get("origin");
-  if (origin && !new Set([
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ]).has(origin)) return json({ error: "Origem não autorizada." }, 403);
+  if (!allowedOrigin(request)) return json({ error: "Origem não autorizada." }, 403);
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const name = clean(body.name, 120);
@@ -31,10 +26,22 @@ export default async (request: Request) => {
     return json({ error: "Informe seu nome, o tipo e detalhes do que aconteceu." }, 400);
   if (email && !/^\S+@\S+\.\S+$/.test(email)) return json({ error: "Informe um e-mail válido." }, 400);
 
-  const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
-  const secretKey = env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !secretKey) return json({ error: "Canal temporariamente indisponível." }, 503);
-  const admin = createClient(supabaseUrl, secretKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const hmacSecret = env("AUTH_RATE_LIMIT_HMAC_SECRET") || "";
+  const admin = serviceClient();
+  if (!hmacSecret || !admin) return json({ error: "Canal temporariamente indisponível." }, 503);
+
+  // Escrita pública sem sessão: sem limite aqui, era um canal aberto pra
+  // encher site_feedback de spam. 5 por 10 min por IP é generoso pra alguém
+  // com um problema real e curto pra um roteiro automatizado.
+  const ip = clientIp(request);
+  const ipHash = await hmacHex(hmacSecret, `ip:${ip}`);
+  const limit = await consumeRateLimit(admin, "site_feedback:ip", ipHash, 600, 5);
+  if (!limit.allowed)
+    return json(
+      { error: "Muitas mensagens em pouco tempo. Aguarde alguns minutos e tente de novo." },
+      429,
+      { "Retry-After": String(Math.max(limit.retry_after_seconds || 60, 1)) },
+    );
 
   let profileId: string | null = null;
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";

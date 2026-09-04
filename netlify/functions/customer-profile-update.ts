@@ -1,8 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { env, isUuid, json } from "./_shared/whatsapp-auth";
 
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-const env = (name: string) => (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) || process.env[name];
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 const invalidNames = new Set(["cliente", "cliente adoce", "adoce", "teste", "test", "nome", "sem nome", "nao informado", "não informado"]);
 
 export default async (request: Request) => {
@@ -24,7 +22,7 @@ export default async (request: Request) => {
   const fullName = (body.fullName || "").trim().replace(/\s+/g, " ");
   const normalized = fullName.toLocaleLowerCase("pt-BR");
   if (
-    !/^[0-9a-f-]{36}$/i.test(profileId)
+    !isUuid(profileId)
     || fullName.length < 3
     || fullName.length > 120
     || !/[a-záàâãéêíóôõúç]/i.test(fullName)

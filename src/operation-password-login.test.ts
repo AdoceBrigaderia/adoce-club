@@ -48,7 +48,7 @@ describe("acesso da operação com senha", () => {
     expect(auth).toContain('fetch("/api/staff-phone-login"');
     expect(endpoint).toContain('.eq("phone_e164", phone)');
     expect(endpoint).toContain('.from("staff_members")');
-    expect(endpoint).toContain('const configured = env("SITE_URL")');
+    expect(endpoint).toContain('allowedOrigin(request)');
     expect(endpoint).toContain('"Celular ou senha incorretos."');
   });
 

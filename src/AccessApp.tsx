@@ -73,6 +73,7 @@ import {
   getWhatsAppVerificationStatus,
   registerCustomerPasskey,
   requestEmailCode,
+  confirmPasswordReset,
   requestPasswordReset,
   signInWithPhonePassword,
   signInWithStaffPhonePassword,
@@ -108,6 +109,7 @@ import { createStaffCustomer } from "./staff-create-customer";
 import { redeemRewardSlice } from "./staff-redeem-reward-slice";
 import type { Cliente } from "./balcao-atendimento";
 import NativePrinterSettings from "./NativePrinterSettings";
+import RemotePrintTrigger from "./RemotePrintTrigger";
 import { syncNativeOperationSession } from "./lib/native-operation";
 import "./access-app.css";
 import "./operation-dashboard.css";
@@ -825,7 +827,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
     setMessage("");
     if (resetChallengeId) {
       try {
-        await verifyWhatsAppAuthCode(resetChallengeId, phone, code);
+        const verified = await verifyWhatsAppAuthCode(resetChallengeId, phone, code);
+        const newAccessToken = verified.session?.access_token;
+        if (newAccessToken) await confirmPasswordReset(newAccessToken);
         setResetChallengeId("");
         sessionStorage.setItem(passwordRecoveryStorageKey, "true");
         window.location.assign(surface === "operation" ? "/operacao" : "/clube");
@@ -2708,6 +2712,10 @@ function OperationHome({ session }: { session: Session }) {
     targetUserId: string;
     fullName: string;
     temporaryPassword: string;
+    loginUrl?: string;
+    whatsappSent?: boolean;
+    whatsappStatus?: string;
+    whatsappError?: string;
   } | null>(null);
   const [qty, setQty] = useState(1);
   const [message, setMessage] = useState("");
@@ -2717,6 +2725,9 @@ function OperationHome({ session }: { session: Session }) {
   const [correctionError, setCorrectionError] = useState("");
   const [deleteCustomerOpen, setDeleteCustomerOpen] = useState(false);
   const [deleteCustomerConfirmation, setDeleteCustomerConfirmation] = useState("");
+  const [referralDialog, setReferralDialog] = useState<{ id: string; nome: string } | null>(null);
+  const [referralQty, setReferralQty] = useState(1);
+  const [referralError, setReferralError] = useState("");
   const [memberCounts, setMemberCounts] = useState<MemberCounts>({ total: 0, active: 0, deactivated: 0, pending: 0 });
   const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("all");
   const [cadastrando, setCadastrando] = useState(false);
@@ -2724,8 +2735,12 @@ function OperationHome({ session }: { session: Session }) {
   const [acessoDoBalcao, setAcessoDoBalcao] = useState<{
     fullName: string;
     temporaryPassword: string;
+    loginUrl?: string;
     whatsappUrl?: string;
     accessMessage?: string;
+    whatsappSent?: boolean;
+    whatsappStatus?: string;
+    whatsappError?: string;
   } | null>(null);
   const [entregaPresente, setEntregaPresente] = useState<{
     profileId: string;
@@ -3291,6 +3306,10 @@ function OperationHome({ session }: { session: Session }) {
         targetUserId,
         fullName: result.fullName || fullName,
         temporaryPassword,
+        loginUrl: result.loginUrl,
+        whatsappSent: result.whatsappSent,
+        whatsappStatus: result.whatsappStatus,
+        whatsappError: result.whatsappError,
       });
       if (targetKind === "staff") {
         setTeam((currentTeam) =>
@@ -3302,7 +3321,9 @@ function OperationHome({ session }: { session: Session }) {
         );
       }
       setMessage(
-        `Senha temporária criada para ${result.fullName || fullName}. A troca será obrigatória no próximo acesso.`,
+        result.whatsappSent
+          ? `Senha temporária criada e link enviado pelo WhatsApp para ${result.fullName || fullName}.`
+          : `Senha temporária criada para ${result.fullName || fullName}. O link não foi enviado automaticamente (${result.whatsappStatus || "pendente"}); use o botão manual.`,
       );
     } catch (resetError) {
       setMessage(
@@ -3580,6 +3601,46 @@ function OperationHome({ session }: { session: Session }) {
     setMessage(`${quantidade} carimbo(s) de indicação registrado(s) para ${cliente.nome}.`);
     await search(query);
   };
+  const solicitarIndicacao = (cliente: Pick<Cliente, "id" | "nome">) => {
+    setReferralQty(1);
+    setReferralError("");
+    setReferralDialog({ id: cliente.id, nome: cliente.nome });
+  };
+  const fecharDialogoIndicacao = () => {
+    if (busy) return;
+    setReferralDialog(null);
+    setReferralError("");
+    setReferralQty(1);
+  };
+  const confirmarIndicacao = async () => {
+    if (!referralDialog) return;
+    setBusy(true);
+    setReferralError("");
+    try {
+      await carimbarIndicacao(
+        {
+          id: referralDialog.id,
+          nome: referralDialog.nome,
+          telefone: "",
+          carimbos: 0,
+          presentesGuardados: 0,
+          ultimaCompra: null,
+        },
+        referralQty,
+      );
+      if (selected?.profile_id === referralDialog.id) await refreshSelected();
+      setReferralDialog(null);
+      setReferralQty(1);
+    } catch (error) {
+      setReferralError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível registrar a indicação agora.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
   const carregarSaboresPresente = async () => {
     const supabase = requireSupabase();
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
@@ -3640,8 +3701,12 @@ function OperationHome({ session }: { session: Session }) {
       setAcessoDoBalcao({
         fullName: created.fullName,
         temporaryPassword: created.temporaryPassword,
+        loginUrl: created.loginUrl,
         whatsappUrl: created.whatsappUrl,
         accessMessage: created.accessMessage,
+        whatsappSent: created.whatsappSent,
+        whatsappStatus: created.whatsappStatus,
+        whatsappError: created.whatsappError,
       });
     }
     if (created.accountId) {
@@ -3963,9 +4028,13 @@ function OperationHome({ session }: { session: Session }) {
                 <section className="cad-acesso" role="status">
                   <p>
                     <strong>{acessoDoBalcao.fullName.split(/\s+/)[0]}</strong> já está no Clube.
-                    Senha temporária: <code>{acessoDoBalcao.temporaryPassword}</code>
                   </p>
-                  <p>Envie no WhatsApp para a pessoa ver os carimbos no celular. Ela entra em adocebrigaderia.com.br/clube/entrar com este número e essa senha.</p>
+                  {acessoDoBalcao.whatsappSent ? (
+                    <p className="access-message"><Check /> Link para criar a senha enviado automaticamente pelo WhatsApp.</p>
+                  ) : (
+                    <p className="access-message">O envio automático está pendente ({acessoDoBalcao.whatsappStatus || "não configurado"}). Use o botão abaixo para enviar manualmente.</p>
+                  )}
+                  <p>Link de acesso: <code>{acessoDoBalcao.loginUrl || "indisponível"}</code><br />Senha temporária de fallback: <code>{acessoDoBalcao.temporaryPassword}</code></p>
                   <div className="cad-acesso-acoes">
                     {acessoDoBalcao.whatsappUrl ? (
                       <a className="cad-salvar" href={acessoDoBalcao.whatsappUrl} target="_blank" rel="noreferrer">
@@ -3993,7 +4062,7 @@ function OperationHome({ session }: { session: Session }) {
               <BalcaoAtendimento
                 clientes={counterFichas}
                 onCarimbar={carimbarBalcao}
-                onCarimbarIndicacao={carimbarIndicacao}
+                onCarimbarIndicacao={solicitarIndicacao}
                 onEntregarPresente={entregarBalcao}
                 onAbrirCadastro={(cliente) => {
                   const customer = results.find(
@@ -4164,10 +4233,18 @@ function OperationHome({ session }: { session: Session }) {
                       {passwordResetNotice?.targetUserId ===
                         selected.profile_id && (
                         <div className="password-reset-result" role="status">
-                          <strong>Senha temporária criada</strong>
+                          <strong>{passwordResetNotice.whatsappSent ? "Senha redefinida e link enviado pelo WhatsApp" : "Senha temporária criada; link pendente"}</strong>
+                          {passwordResetNotice.loginUrl ? (
+                            <a className="access-link" href={passwordResetNotice.loginUrl} target="_blank" rel="noreferrer">
+                              <ArrowRight /> Abrir link de criação de senha
+                            </a>
+                          ) : null}
                           <code>
                             {passwordResetNotice.temporaryPassword}
                           </code>
+                          {passwordResetNotice.whatsappError ? (
+                            <small>Detalhe do envio: {passwordResetNotice.whatsappError}</small>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => void copyTemporaryPassword()}
@@ -4225,10 +4302,7 @@ function OperationHome({ session }: { session: Session }) {
                       <p>Use quando este cliente trouxer alguém novo para a Adoce.</p>
                       <button
                         className="access-secondary"
-                        onClick={() => {
-                          const value = Number(window.prompt("Quantas indicações deseja registrar?", "1") || "0");
-                          if (Number.isInteger(value) && value > 0) void carimbarIndicacao({ id: selected.profile_id, nome: selected.full_name, telefone: selected.phone_e164 || "", carimbos: 0, presentesGuardados: 0, ultimaCompra: null }, value);
-                        }}
+                        onClick={() => solicitarIndicacao({ id: selected.profile_id, nome: selected.full_name })}
                         disabled={busy}
                       >
                         <Users /> Adicionar carimbo por indicação
@@ -4383,6 +4457,72 @@ function OperationHome({ session }: { session: Session }) {
                   )}
                 </div>
               ) : null}
+              {referralDialog ? (
+                <div
+                  className="operation-modal"
+                  role="presentation"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) fecharDialogoIndicacao();
+                  }}
+                >
+                  <section
+                    className="referral-stamp-card"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="referral-stamp-title"
+                  >
+                    <button
+                      type="button"
+                      className="modal-close"
+                      onClick={fecharDialogoIndicacao}
+                      aria-label="Fechar registro de indicação"
+                      disabled={busy}
+                    >
+                      <X />
+                    </button>
+                    <Users aria-hidden="true" />
+                    <h2 id="referral-stamp-title">Registrar indicação</h2>
+                    <p>
+                      Quantas pessoas novas <strong>{referralDialog.nome}</strong> trouxe para a Adoce?
+                    </p>
+                    <div className="referral-stamp-summary">
+                      <span>Carimbos de indicação</span>
+                      <strong>{referralQty}</strong>
+                    </div>
+                    <div className="stepper" aria-label="Quantidade de indicações">
+                      <button
+                        type="button"
+                        aria-label="Diminuir indicações"
+                        onClick={() => setReferralQty((current) => Math.max(1, current - 1))}
+                        disabled={busy || referralQty <= 1}
+                      >
+                        −
+                      </button>
+                      <strong aria-live="polite">{referralQty}</strong>
+                      <button
+                        type="button"
+                        aria-label="Aumentar indicações"
+                        onClick={() => setReferralQty((current) => Math.min(20, current + 1))}
+                        disabled={busy || referralQty >= 20}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <p className="field-help">
+                      Cada indicação confirmada adiciona um carimbo ao cartão de indicações. Limite por registro: 20.
+                    </p>
+                    {referralError ? <p className="field-error" role="alert">{referralError}</p> : null}
+                    <div className="referral-stamp-dialog-actions">
+                      <button type="button" className="access-secondary" onClick={fecharDialogoIndicacao} disabled={busy}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="access-primary" onClick={() => void confirmarIndicacao()} disabled={busy}>
+                        {busy ? "Registrando..." : `Confirmar ${referralQty} carimbo(s)`}
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              ) : null}
             </>
           )}
           {view === "products" && (
@@ -4437,6 +4577,7 @@ function OperationHome({ session }: { session: Session }) {
               </nav>
               {settingsTab === "store" ? (
                 <>
+                  <RemotePrintTrigger />
                   <NativePrinterSettings />
                   <Suspense fallback={<p>Carregando configurações...</p>}>
                     <OperationCommerceSettings />

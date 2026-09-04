@@ -3,16 +3,24 @@ import { env, hmacHex, normalizeBrazilPhone, serviceClient } from "./_shared/wha
 import { downloadAndStoreTwilioMedia } from "./_shared/whatsapp-media";
 import {
   catalogMessage,
+  driverAddressMessage,
   emptyFestivalMenuMessage,
   isFullName,
   mainMenuMessage,
+  MAX_SLICES_PER_FLAVOR,
   normalizeCommand,
   optionsMessage,
   orderSummary,
   parseOption,
+  PICKUP_CLOSING,
+  PICKUP_OPENING,
   pickupTimeOptions,
   pickupTimesMessage,
+  pixMessage,
   quantityMessage,
+  removeItemMessage,
+  sauceModeMessage,
+  sliceSauceMessage,
   twiml,
   type BotFlavor,
   type BotOption,
@@ -28,13 +36,18 @@ type Catalog = {
   payment_methods: BotOption[];
 };
 type Conversation = { step: string; state: OrderState } | null;
+type SauceChoice = { flavorId: string; unitNumber: number; code: string; label: string };
+type MenuEntry = { id: string; name: string; price: number };
 type OrderState = {
   operationKey?: string;
-  flavors?: CatalogFlavor[];
+  menu?: MenuEntry[];
   selections?: BotSelection[];
   name?: string;
   sauces?: BotOption[];
   sauce?: BotOption;
+  sauceStep?: "mode" | "pick";
+  sauceMode?: "uniform" | "per_slice";
+  sauceSelections?: SauceChoice[];
   payments?: BotOption[];
   payment?: BotOption;
   pickupMethod?: "customer" | "driver";
@@ -42,6 +55,8 @@ type OrderState = {
   pickupOptions?: string[];
   menuMode?: boolean;
   emptyCatalog?: boolean;
+  removing?: boolean;
+  previousStep?: string;
   department?: SupportDepartment;
   supportThreadId?: string;
   pendingFlavorId?: string;
@@ -50,7 +65,10 @@ type SupportDepartment = "festival" | "quote";
 type FunctionContext = { waitUntil?: (promise: Promise<unknown>) => void };
 
 const MAX_WEBHOOK_BYTES = 32768;
-const CONVERSATION_TTL_HOURS = 24;
+// Pedido em andamento sem confirmação vence em 30 min — evita retomar um
+// carrinho velho com estoque desatualizado. Só o atendimento humano dura mais.
+const CONVERSATION_TTL_MINUTES = 30;
+const HANDOFF_TTL_HOURS = 24;
 const XML_HEADERS = {
   "Content-Type": "text/xml; charset=utf-8",
   "Cache-Control": "no-store",
@@ -72,7 +90,10 @@ const localClock = (date = new Date()) => {
 };
 
 const earliestPickup = (selections: BotSelection[], catalog: Catalog) => {
-  const required: string[] = [localClock()];
+  // Retirada só à noite: nunca antes das 20h e nunca depois das 23h.
+  const now = localClock();
+  const required: string[] = [PICKUP_OPENING];
+  if (now > PICKUP_OPENING) required.push(now);
   for (const selection of selections) {
     const flavor = catalog.flavors.find((item) => item.id === selection.id);
     if (!flavor) return null;
@@ -88,8 +109,33 @@ const earliestPickup = (selections: BotSelection[], catalog: Catalog) => {
     if (!found) return null;
     required.push(found);
   }
-  return required.sort().at(-1) || null;
+  const minimum = required.sort().at(-1) || null;
+  if (minimum && minimum > PICKUP_CLOSING) return null;
+  return minimum;
 };
+
+const totalSlices = (state: OrderState) =>
+  (state.selections || []).reduce((sum, item) => sum + item.quantity, 0);
+
+const sliceSlots = (state: OrderState) => {
+  const slots: { flavorId: string; flavorName: string; unitNumber: number }[] = [];
+  for (const item of state.selections || [])
+    for (let unit = 1; unit <= item.quantity; unit += 1)
+      slots.push({ flavorId: item.id, flavorName: item.name, unitNumber: unit });
+  return slots;
+};
+
+const describeSauce = (state: OrderState) => {
+  if (state.sauceMode === "per_slice" && state.sauceSelections?.length) {
+    const counts = new Map<string, number>();
+    for (const entry of state.sauceSelections)
+      counts.set(entry.label, (counts.get(entry.label) || 0) + 1);
+    return `por fatia — ${Array.from(counts, ([label, count]) => `${count}x ${label}`).join(", ")}`;
+  }
+  return state.sauce?.label || "Sem calda";
+};
+
+const isBackCommand = (command: string) => command === "0" || command === "voltar";
 
 const cleanProviderError = (message: string) => {
   if (/quantidade escolhida|dispon[ií]vel|estoque|pronta/i.test(message))
@@ -175,8 +221,11 @@ export default async (request: Request, context?: FunctionContext) => {
   let clearBeforeFinish = false;
   const finish = async (message: string, status = 200) => {
     const xml = twiml(message);
+    const ttlMs = nextConversation?.step === "handoff"
+      ? HANDOFF_TTL_HOURS * 60 * 60 * 1000
+      : CONVERSATION_TTL_MINUTES * 60 * 1000;
     const expires = nextConversation
-      ? new Date(Date.now() + CONVERSATION_TTL_HOURS * 60 * 60 * 1000).toISOString()
+      ? new Date(Date.now() + ttlMs).toISOString()
       : null;
     const { error } = await admin.rpc("server_finish_whatsapp_order_message", {
       requested_message_sid: messageSid,
@@ -237,7 +286,7 @@ export default async (request: Request, context?: FunctionContext) => {
       await save("choose_items", { menuMode: true });
       return await finish(mainMenuMessage());
     };
-    const handoff = async (department: SupportDepartment) => {
+    const handoff = async (department: SupportDepartment, note?: string) => {
       const { data: threadId, error } = await admin.rpc("server_open_whatsapp_support_thread", {
         requested_phone_hmac: phoneHash,
         requested_phone_last4: phone.slice(-4),
@@ -251,9 +300,10 @@ export default async (request: Request, context?: FunctionContext) => {
       const notification = notifySupport(department, String(threadId));
       if (context?.waitUntil) context.waitUntil(notification);
       else void notification;
-      return await finish(department === "festival"
+      const base = department === "festival"
         ? "Certo. Encaminhei sua conversa para a equipe do Festival de Fatias. Pode escrever sua dúvida por aqui."
-        : "Certo. Encaminhei sua conversa para a equipe de orçamentos. Pode contar por aqui o que você deseja.");
+        : "Certo. Encaminhei sua conversa para a equipe de orçamentos. Pode contar por aqui o que você deseja.";
+      return await finish(note ? `${note}\n\n${base}` : base);
     };
     const startOrder = async () => {
       const catalog = await loadCatalog();
@@ -262,8 +312,85 @@ export default async (request: Request, context?: FunctionContext) => {
         await save("choose_items", { emptyCatalog: true });
         return await finish(emptyFestivalMenuMessage());
       }
-      await save("choose_items", { flavors, selections: [] });
+      // Guarda só a lista estável (id/nome/preço). A quantidade disponível é
+      // relida do catálogo a cada mensagem, nunca do estado.
+      const menu = flavors.map((flavor) => ({ id: flavor.id, name: flavor.name, price: flavor.price }));
+      await save("choose_items", { menu, selections: [] });
       return await finish(catalogMessage(flavors));
+    };
+
+    // Reconstrói a lista de sabores exibida (posição estável) com a quantidade
+    // disponível ao vivo do catálogo recém-carregado.
+    const liveFlavors = (state: OrderState, catalog: Catalog): BotFlavor[] => {
+      const freeById = new Map(catalog.flavors.map((flavor) => [flavor.id, flavor.free]));
+      return (state.menu || []).map((entry) => ({ ...entry, free: freeById.get(entry.id) ?? 0 }));
+    };
+
+    const pickupMethodOptions: BotOption[] = [
+      { code: "customer", label: "Eu mesma(o)" },
+      { code: "driver", label: "Entregador de aplicativo" },
+    ];
+    const pickupMethodPrompt = (state: OrderState) =>
+      (state.payment?.code === "pix" ? `${pixMessage()}\n\n` : "") +
+      optionsMessage("Quem fará a retirada?", pickupMethodOptions, true);
+    const summaryMessage = (state: OrderState) => {
+      const base = orderSummary({
+        name: state.name || "Cliente",
+        selections: state.selections || [],
+        sauceLabel: describeSauce(state),
+        paymentLabel: state.payment?.label || "A combinar",
+        pickupMethod: state.pickupMethod || "customer",
+        pickupTime: state.pickupTime || "",
+      });
+      const extras: string[] = [];
+      if (state.pickupMethod === "driver") extras.push(driverAddressMessage(state.name || "seu nome"));
+      if (state.payment?.code === "pix") extras.push(pixMessage());
+      return [base, ...extras].join("\n\n");
+    };
+
+    // Reapresenta o texto de um passo anterior quando o cliente digita "0/voltar".
+    const renderStep = (step: string, state: OrderState): string => {
+      switch (step) {
+        case "name":
+          return "Agora digite seu *nome e sobrenome* para identificar o pedido.";
+        case "sauce":
+          if (state.sauceStep === "mode") return sauceModeMessage(totalSlices(state));
+          if (state.sauceMode === "per_slice") {
+            const slots = sliceSlots(state);
+            const index = Math.min(state.sauceSelections?.length || 0, Math.max(slots.length - 1, 0));
+            return sliceSauceMessage(index + 1, slots.length, slots[index]?.flavorName || "", state.sauces || []);
+          }
+          return optionsMessage("Escolha a calda para todas as fatias:", state.sauces || [], true);
+        case "payment":
+          return optionsMessage("Como deseja pagar?", state.payments || [], true);
+        case "pickup_method":
+          return pickupMethodPrompt(state);
+        case "pickup_time":
+          return pickupTimesMessage(state.pickupOptions || []);
+        case "confirm":
+          return summaryMessage(state);
+        default:
+          return mainMenuMessage();
+      }
+    };
+
+    // Depois da calda: Pix é a única forma, então pula a pergunta e mostra a chave.
+    const afterSauce = async (state: OrderState, from: string) => {
+      const payments = state.payments || [];
+      if (!payments.length) return await handoff("festival");
+      if (payments.length === 1) {
+        const next = { ...state, payment: payments[0], previousStep: from };
+        await save("pickup_method", next);
+        return await finish(pickupMethodPrompt(next));
+      }
+      await save("payment", { ...state, previousStep: from });
+      return await finish(optionsMessage("Como deseja pagar?", payments, true));
+    };
+
+    const goBack = async (step: string, state: OrderState) => {
+      const next = { ...state, previousStep: undefined };
+      await save(step, next);
+      return await finish(renderStep(step, next));
     };
 
     const command = normalizeCommand(body);
@@ -293,6 +420,10 @@ export default async (request: Request, context?: FunctionContext) => {
     }
 
     if (hasMedia && !conversation) return await handoff("festival");
+    if (hasMedia && conversation && conversation.step !== "handoff")
+      return await finish(
+        "Recebi seu anexo, mas para continuar o pedido preciso que você responda com o número da opção. Se quiser falar com uma pessoa, digite *atendente*.",
+      );
     if (!conversation) return await showMainMenu();
     if (conversation.step === "completed") {
       if (command === "1") return await startOrder();
@@ -318,14 +449,35 @@ export default async (request: Request, context?: FunctionContext) => {
     }
 
     if (conversation.step === "choose_items") {
-      const flavors = state.flavors || [];
+      // Estoque ao vivo: relê o catálogo a cada mensagem, nunca usa cache do estado.
+      const catalog = await loadCatalog();
+      const flavors = liveFlavors(state, catalog);
+      const freeById = new Map(catalog.flavors.map((flavor) => [flavor.id, flavor.free]));
       const selections = state.selections || [];
+      if (state.removing) {
+        const next = { ...state };
+        delete next.removing;
+        const pick = Number(command);
+        if (isBackCommand(command) || pick === selections.length + 1) {
+          await save("choose_items", next);
+          return await finish(catalogMessage(flavors, selections));
+        }
+        if (Number.isInteger(pick) && pick >= 1 && pick <= selections.length) {
+          const updated = selections.filter((_, index) => index !== pick - 1);
+          await save("choose_items", { ...next, selections: updated });
+          return await finish(
+            updated.length
+              ? catalogMessage(flavors, updated)
+              : `Pedido esvaziado.\n\n${catalogMessage(flavors, updated)}`,
+          );
+        }
+        return await finish(removeItemMessage(selections));
+      }
       if (state.pendingFlavorId) {
         const flavor = flavors.find((item) => item.id === state.pendingFlavorId);
         if (!flavor) return await startOrder();
         const selectedQuantity = selections.find((item) => item.id === flavor.id)?.quantity || 0;
-        const totalQuantity = selections.reduce((sum, item) => sum + item.quantity, 0);
-        const maximum = Math.min(10, flavor.free - selectedQuantity, 30 - totalQuantity);
+        const maximum = Math.min(MAX_SLICES_PER_FLAVOR, flavor.free - selectedQuantity);
         if (maximum < 1) {
           const next = { ...state };
           delete next.pendingFlavorId;
@@ -349,104 +501,209 @@ export default async (request: Request, context?: FunctionContext) => {
         return await finish(catalogMessage(flavors, updated));
       }
 
+      const finishBasket = async () => {
+        if (!selections.length)
+          return await finish(`Escolha pelo menos um sabor antes de continuar.\n\n${catalogMessage(flavors, selections)}`);
+        // Revalida a cesta contra o estoque ao vivo antes de seguir.
+        const adjusted: BotSelection[] = [];
+        const problems: string[] = [];
+        for (const item of selections) {
+          const live = freeById.get(item.id) ?? 0;
+          if (live <= 0) {
+            problems.push(`• ${item.name}: esgotou, tirei do pedido`);
+            continue;
+          }
+          if (item.quantity > live) {
+            problems.push(`• ${item.name}: só há ${live} agora, ajustei para ${live}`);
+            adjusted.push({ ...item, quantity: live });
+          } else {
+            adjusted.push(item);
+          }
+        }
+        if (problems.length) {
+          await save("choose_items", { ...state, selections: adjusted });
+          return await finish(
+            `O estoque mudou enquanto você montava o pedido:\n${problems.join("\n")}\n\n${catalogMessage(flavors, adjusted)}`,
+          );
+        }
+        await save("name", { ...state, operationKey: state.operationKey || crypto.randomUUID(), previousStep: "choose_items" });
+        return await finish("Agora digite seu *nome e sobrenome* para identificar o pedido.");
+      };
+      if (["ok", "concluir", "continuar", "finalizar"].includes(command)) return await finishBasket();
+
       const choice = Number(command);
       if (!Number.isInteger(choice)) return await finish(catalogMessage(flavors, selections));
       if (choice >= 1 && choice <= flavors.length) {
         const flavor = flavors[choice - 1];
         const selectedQuantity = selections.find((item) => item.id === flavor.id)?.quantity || 0;
-        const totalQuantity = selections.reduce((sum, item) => sum + item.quantity, 0);
-        const maximum = Math.min(10, flavor.free - selectedQuantity, 30 - totalQuantity);
-        if (maximum < 1) return await finish(`Esse sabor já atingiu o limite disponível.\n\n${catalogMessage(flavors, selections)}`);
+        const maximum = Math.min(MAX_SLICES_PER_FLAVOR, flavor.free - selectedQuantity);
+        if (maximum < 1) {
+          const reason = flavor.free <= 0 ? "esgotou" : "já atingiu o limite disponível";
+          return await finish(`*${flavor.name}* ${reason}. Escolha outro sabor.\n\n${catalogMessage(flavors, selections)}`);
+        }
         await save("choose_items", { ...state, pendingFlavorId: flavor.id });
         return await finish(quantityMessage(flavor, maximum));
       }
-      if (choice === flavors.length + 1) {
-        if (!selections.length) return await finish(`Escolha pelo menos um sabor antes de continuar.\n\n${catalogMessage(flavors, selections)}`);
-        await save("name", { ...state, operationKey: state.operationKey || crypto.randomUUID() });
-        return await finish("Agora digite seu *nome e sobrenome* para identificar o pedido.");
-      }
+      if (choice === flavors.length + 1) return await finishBasket();
       if (choice === flavors.length + 2) {
         await clear();
         return await showMainMenu();
       }
       if (choice === flavors.length + 3) return await handoff("festival");
+      if (selections.length && choice === flavors.length + 4) {
+        await save("choose_items", { ...state, removing: true });
+        return await finish(removeItemMessage(selections));
+      }
       return await finish(catalogMessage(flavors, selections));
     }
 
     if (conversation.step === "name") {
+      if (isBackCommand(command)) {
+        const catalog = await loadCatalog();
+        await save("choose_items", { ...state, previousStep: undefined });
+        return await finish(catalogMessage(liveFlavors(state, catalog), state.selections || []));
+      }
       if (!isFullName(body)) return await finish("Digite seu nome e sobrenome. Exemplo: *Maria da Silva*.");
       const catalog = await loadCatalog();
-      const sauces = [...catalog.sauces, { code: "", label: "Sem calda" }];
+      const realSauces = catalog.sauces;
+      const sauces = [...realSauces, { code: "", label: "Sem calda" }];
       const next = { ...state, name: body.trim(), sauces, payments: catalog.payment_methods };
-      if (sauces.length) {
-        await save("sauce", next);
-        return await finish(optionsMessage("Escolha uma calda para todas as fatias:", sauces));
+      // Sem caldas cadastradas: não faz sentido perguntar, segue com "Sem calda".
+      if (!realSauces.length)
+        return await afterSauce({ ...next, sauce: { code: "", label: "Sem calda" }, sauceMode: "uniform" }, "name");
+      if (totalSlices(next) >= 2) {
+        await save("sauce", { ...next, sauceStep: "mode", previousStep: "name" });
+        return await finish(sauceModeMessage(totalSlices(next)));
       }
-      if (!catalog.payment_methods.length) return await handoff("festival");
-      await save("payment", { ...next, sauce: { code: "", label: "Sem calda" } });
-      return await finish(optionsMessage("Como deseja pagar?", catalog.payment_methods));
+      await save("sauce", { ...next, sauceStep: "pick", sauceMode: "uniform", previousStep: "name" });
+      return await finish(optionsMessage("Escolha a calda para todas as fatias:", sauces, true));
     }
 
     if (conversation.step === "sauce") {
+      const slots = sliceSlots(state);
+
+      // Sub-passo "mode": mesma calda para todas ou escolher fatia por fatia?
+      if (state.sauceStep === "mode") {
+        if (isBackCommand(command)) return await goBack("name", state);
+        if (command === "1") {
+          await save("sauce", { ...state, sauceStep: "pick", sauceMode: "uniform", previousStep: "name" });
+          return await finish(optionsMessage("Escolha a calda para todas as fatias:", state.sauces || [], true));
+        }
+        if (command === "2") {
+          await save("sauce", {
+            ...state,
+            sauceStep: "pick",
+            sauceMode: "per_slice",
+            sauceSelections: [],
+            previousStep: "name",
+          });
+          return await finish(sliceSauceMessage(1, slots.length, slots[0]?.flavorName || "", state.sauces || []));
+        }
+        return await finish(sauceModeMessage(totalSlices(state)));
+      }
+
+      const backFromSauce = async () => {
+        // 2+ fatias: volta para a pergunta "mesma para todas?". 1 fatia: volta ao nome.
+        if (slots.length >= 2) {
+          const reset = { ...state, sauceStep: "mode" as const, sauceMode: undefined, sauceSelections: undefined };
+          await save("sauce", { ...reset, previousStep: "name" });
+          return await finish(sauceModeMessage(totalSlices(state)));
+        }
+        return await goBack("name", { ...state, sauceMode: undefined, sauceSelections: undefined });
+      };
+
+      // Sub-passo "pick" — fatia por fatia
+      if (state.sauceMode === "per_slice") {
+        const answered = state.sauceSelections || [];
+        if (isBackCommand(command)) {
+          if (!answered.length) return await backFromSauce();
+          const trimmed = answered.slice(0, -1);
+          await save("sauce", { ...state, sauceSelections: trimmed });
+          const slot = slots[trimmed.length];
+          return await finish(sliceSauceMessage(trimmed.length + 1, slots.length, slot?.flavorName || "", state.sauces || []));
+        }
+        const slot = slots[answered.length];
+        const sauce = parseOption(body, state.sauces || []);
+        if (!sauce)
+          return await finish(sliceSauceMessage(answered.length + 1, slots.length, slot?.flavorName || "", state.sauces || []));
+        const updated = [
+          ...answered,
+          { flavorId: slot.flavorId, unitNumber: slot.unitNumber, code: sauce.code, label: sauce.label },
+        ];
+        if (updated.length < slots.length) {
+          await save("sauce", { ...state, sauceSelections: updated });
+          const nextSlot = slots[updated.length];
+          return await finish(sliceSauceMessage(updated.length + 1, slots.length, nextSlot.flavorName, state.sauces || []));
+        }
+        return await afterSauce({ ...state, sauceSelections: updated, sauce: undefined }, "sauce");
+      }
+
+      // Sub-passo "pick" — uniforme
+      if (isBackCommand(command)) return await backFromSauce();
       const sauce = parseOption(body, state.sauces || []);
-      if (!sauce) return await finish(optionsMessage("Escolha uma calda para todas as fatias:", state.sauces || []));
-      const payments = state.payments || [];
-      if (!payments.length) return await handoff("festival");
-      await save("payment", { ...state, sauce });
-      return await finish(optionsMessage("Como deseja pagar?", payments));
+      if (!sauce) return await finish(optionsMessage("Escolha a calda para todas as fatias:", state.sauces || [], true));
+      return await afterSauce({ ...state, sauce, sauceMode: "uniform", sauceSelections: undefined }, "sauce");
     }
 
     if (conversation.step === "payment") {
+      if (isBackCommand(command)) {
+        const reset = totalSlices(state) >= 2
+          ? { ...state, sauceStep: "mode" as const, sauceMode: undefined, sauceSelections: undefined }
+          : { ...state, sauceStep: "pick" as const, sauceMode: "uniform" as const };
+        await save("sauce", { ...reset, previousStep: "name" });
+        return await finish(renderStep("sauce", reset));
+      }
       const payment = parseOption(body, state.payments || []);
-      if (!payment) return await finish(optionsMessage("Escolha a forma de pagamento:", state.payments || []));
-      await save("pickup_method", { ...state, payment });
-      return await finish(optionsMessage("Quem fará a retirada?", [
-        { code: "customer", label: "Eu mesma(o)" },
-        { code: "driver", label: "Entregador de aplicativo" },
-      ]));
+      if (!payment) return await finish(optionsMessage("Como deseja pagar?", state.payments || [], true));
+      const next = { ...state, payment, previousStep: "payment" };
+      await save("pickup_method", next);
+      return await finish(pickupMethodPrompt(next));
     }
 
     if (conversation.step === "pickup_method") {
-      if (command !== "1" && command !== "2")
-        return await finish(optionsMessage("Quem fará a retirada?", [
-          { code: "customer", label: "Eu mesma(o)" },
-          { code: "driver", label: "Entregador de aplicativo" },
-        ]));
+      if (isBackCommand(command)) {
+        if ((state.payments || []).length > 1) return await goBack("payment", state);
+        const reset = totalSlices(state) >= 2
+          ? { ...state, sauceStep: "mode" as const, sauceMode: undefined, sauceSelections: undefined }
+          : { ...state, sauceStep: "pick" as const, sauceMode: "uniform" as const };
+        await save("sauce", { ...reset, previousStep: "name" });
+        return await finish(renderStep("sauce", reset));
+      }
+      if (command !== "1" && command !== "2") return await finish(pickupMethodPrompt(state));
       const catalog = await loadCatalog();
       const minimum = earliestPickup(state.selections || [], catalog);
       const pickupOptions = minimum ? pickupTimeOptions(minimum) : [];
-      if (!pickupOptions.length) return await handoff("festival");
-      await save("pickup_time", {
-        ...state,
-        pickupMethod: command === "2" ? "driver" : "customer",
-        pickupOptions,
-      });
-      return await finish(pickupTimesMessage(pickupOptions));
+      if (!pickupOptions.length)
+        return await handoff(
+          "festival",
+          `Não consegui montar um horário de retirada (a retirada é das ${PICKUP_OPENING} às ${PICKUP_CLOSING}).`,
+        );
+      const pickupMethod: "customer" | "driver" = command === "2" ? "driver" : "customer";
+      await save("pickup_time", { ...state, pickupMethod, pickupOptions, previousStep: "pickup_method" });
+      return await finish(
+        (pickupMethod === "driver" ? `${driverAddressMessage(state.name || "seu nome")}\n\n` : "") +
+          pickupTimesMessage(pickupOptions),
+      );
     }
 
     if (conversation.step === "pickup_time") {
+      if (isBackCommand(command)) return await goBack("pickup_method", state);
       const pickupOptions = state.pickupOptions || [];
       const selected = parseOption(body, pickupOptions.map((time) => ({ code: time, label: time })));
       if (!selected) return await finish(pickupTimesMessage(pickupOptions));
-      const next = { ...state, pickupTime: selected.code };
+      const next = { ...state, pickupTime: selected.code, previousStep: "pickup_time" };
       await save("confirm", next);
-      return await finish(orderSummary({
-        name: next.name || "Cliente",
-        selections: next.selections || [],
-        sauceLabel: next.sauce?.label || "Sem calda",
-        paymentLabel: next.payment?.label || "A combinar",
-        pickupMethod: next.pickupMethod || "customer",
-        pickupTime: selected.code,
-      }));
+      return await finish(summaryMessage(next));
     }
 
     if (conversation.step === "confirm") {
-      if (command === "2") {
+      if (isBackCommand(command) || command === "2") {
         const catalog = await loadCatalog();
         const minimum = earliestPickup(state.selections || [], catalog);
         const pickupOptions = minimum ? pickupTimeOptions(minimum) : [];
-        if (!pickupOptions.length) return await handoff("festival");
-        await save("pickup_time", { ...state, pickupOptions });
+        if (!pickupOptions.length)
+          return await handoff("festival", "O horário que você tinha escolhido não está mais disponível.");
+        await save("pickup_time", { ...state, pickupOptions, previousStep: "pickup_method" });
         return await finish(pickupTimesMessage(pickupOptions));
       }
       if (command === "3" || command === "cancelar") {
@@ -454,14 +711,7 @@ export default async (request: Request, context?: FunctionContext) => {
         return await showMainMenu();
       }
       if (command !== "1" && command !== "sim" && command !== "confirmar")
-        return await finish(orderSummary({
-          name: state.name || "Cliente",
-          selections: state.selections || [],
-          sauceLabel: state.sauce?.label || "Sem calda",
-          paymentLabel: state.payment?.label || "A combinar",
-          pickupMethod: state.pickupMethod || "customer",
-          pickupTime: state.pickupTime || "",
-        }));
+        return await finish(summaryMessage(state));
       const catalog = await loadCatalog();
       const selections = state.selections || [];
       const freshById = new Map(catalog.flavors.map((item) => [item.id, item]));
@@ -469,14 +719,27 @@ export default async (request: Request, context?: FunctionContext) => {
         await clear();
         return await startOrder();
       }
-      const requestedItems = selections.map((item) => ({
-        flavor_id: item.id,
-        quantity: item.quantity,
-        sauces: Array.from({ length: item.quantity }, (_, index) => ({
-          unit_number: index + 1,
-          sauce_id: state.sauce?.code || null,
-        })),
-      }));
+      const perSliceByFlavor = new Map<string, SauceChoice[]>();
+      if (state.sauceMode === "per_slice")
+        for (const entry of state.sauceSelections || []) {
+          const list = perSliceByFlavor.get(entry.flavorId) || [];
+          list.push(entry);
+          perSliceByFlavor.set(entry.flavorId, list);
+        }
+      const requestedItems = selections.map((item) => {
+        const perSlice = perSliceByFlavor.get(item.id) || null;
+        return {
+          flavor_id: item.id,
+          quantity: item.quantity,
+          sauces: Array.from({ length: item.quantity }, (_, index) => {
+            const chosen = perSlice?.find((entry) => entry.unitNumber === index + 1);
+            return {
+              unit_number: index + 1,
+              sauce_id: (chosen ? chosen.code : state.sauce?.code) || null,
+            };
+          }),
+        };
+      });
       const { data, error } = await admin.rpc("server_submit_whatsapp_order", {
         requested_operation_key: state.operationKey,
         requested_customer_name: state.name,
@@ -492,9 +755,11 @@ export default async (request: Request, context?: FunctionContext) => {
       return await finish([
         `Pedido *${data.order_number}* registrado com sucesso! 🎉`,
         `Total: ${Number(data.total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
-        `Retirada: ${state.pickupTime}`,
+        `Retirada: ${state.pickupTime}${state.pickupMethod === "driver" ? " (entregador de aplicativo)" : ""}`,
         "",
-        "A Adoce confirmará a disponibilidade e o pagamento por aqui. Nenhuma cobrança acontece antes dessa confirmação.",
+        pixMessage(),
+        "",
+        "A Adoce confirmará a disponibilidade e o pagamento por aqui.",
         "",
         "1. Fazer outro pedido",
         "2. Falar com a equipe da Adoce",

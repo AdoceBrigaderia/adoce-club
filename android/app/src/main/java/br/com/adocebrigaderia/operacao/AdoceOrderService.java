@@ -42,8 +42,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.HttpUrl;
@@ -61,7 +64,10 @@ public class AdoceOrderService extends Service {
     public static final String ACTION_START = "adoce.START";
     public static final String ACTION_DISCOVER = "adoce.DISCOVER";
     public static final String ACTION_TEST = "adoce.TEST";
+    public static final String ACTION_PRINT_ORDER = "adoce.PRINT_ORDER";
+    public static final String EXTRA_ORDER_JSON = "order_json";
     private static final String PREFS = "adoce_native_operation";
+    private static final String PENDING_ORDER_PREFIX = "pending_order_";
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
     private static final String TAG = "AdocePrinter";
@@ -71,11 +77,13 @@ public class AdoceOrderService extends Service {
     private final OkHttpClient http = new OkHttpClient.Builder().retryOnConnectionFailure(true).build();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService printerExecutor = Executors.newSingleThreadExecutor();
+    private final Set<String> printingIds = ConcurrentHashMap.newKeySet();
     private SharedPreferences prefs;
     private WebSocket socket;
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic writer;
     private int writerWriteType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
+    private volatile CountDownLatch characteristicWriteLatch;
     private boolean testPending;
     private boolean discoveringPrinter;
     private String state = "iniciando";
@@ -109,11 +117,28 @@ public class AdoceOrderService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
+        if (ACTION_START.equals(action) && socket != null) {
+            socket.close(1000, "sessao atualizada");
+            socket = null;
+        }
         if (ACTION_DISCOVER.equals(action)) discoverPrinter();
         else if (ACTION_TEST.equals(action)) printTest();
+        else if (ACTION_PRINT_ORDER.equals(action)) printOrderExtra(intent);
         connectRealtime();
         ensurePrinter();
         return START_STICKY;
+    }
+
+    private void printOrderExtra(Intent intent) {
+        String json = intent == null ? "" : intent.getStringExtra(EXTRA_ORDER_JSON);
+        if (json == null || json.isEmpty()) { setState("pedido de impressão inválido"); return; }
+        try {
+            JSONObject order = new JSONObject(json);
+            String id = order.optString("id");
+            if (id.isEmpty()) id = "manual-" + System.currentTimeMillis();
+            printOrder(id, order);
+        }
+        catch (Exception error) { setState("pedido de impressão inválido"); Log.e(TAG, "Pedido para reimpressão inválido", error); }
     }
 
     private void printTest() {
@@ -155,7 +180,8 @@ public class AdoceOrderService extends Service {
         String base = prefs.getString("url", "");
         String key = prefs.getString("key", "");
         String access = prefs.getString("access", "");
-        if (base.isEmpty() || key.isEmpty() || access.isEmpty()) { setState("sem sessao"); return; }
+        if (base.isEmpty() || key.isEmpty() || access.isEmpty()) { setState("sem sessao"); Log.e(TAG, "Realtime sem sessao (url=" + base.length() + ", key=" + key.length() + ", access=" + access.length() + ")"); return; }
+        Log.i(TAG, "Abrindo Realtime (url=" + base.length() + ", key=" + key.length() + ", access=" + access.length() + ")");
         String ws = base.replaceFirst("^https", "wss") + "/realtime/v1/websocket?apikey=" + key + "&vsn=1.0.0";
         // Supabase Realtime authenticates this websocket with the apikey query
         // parameter and the access_token in the join payload below. Sending a
@@ -172,6 +198,7 @@ public class AdoceOrderService extends Service {
                     JSONObject payload = new JSONObject().put("config", config).put("access_token", prefs.getString("access", ""));
                     webSocket.send(new JSONObject().put("topic", "realtime:public:instant_orders")
                         .put("event", "phx_join").put("payload", payload).put("ref", "1").put("join_ref", "1").toString());
+                    Log.i(TAG, "Realtime socket aberto; join enviado");
                     setState("ouvindo pedidos");
                     sendHeartbeat();
                     scheduleHeartbeat();
@@ -180,9 +207,22 @@ public class AdoceOrderService extends Service {
             @Override public void onMessage(WebSocket webSocket, String text) {
                 try {
                     JSONObject message = new JSONObject(text);
+                    if ("phx_reply".equals(message.optString("event"))) {
+                        JSONObject payload = message.optJSONObject("payload");
+                        if (payload != null && "ok".equals(payload.optString("status"))) {
+                            Log.i(TAG, "Canal Realtime confirmado");
+                        } else if (payload != null) {
+                            setState("sessao realtime rejeitada");
+                            Log.e(TAG, "Realtime rejeitou a sessao: " + payload.optJSONObject("response"));
+                        }
+                        return;
+                    }
                     if (!"postgres_changes".equals(message.optString("event"))) return;
                     JSONObject record = message.optJSONObject("payload").optJSONObject("data").optJSONObject("record");
-                    if (record != null) fetchOrder(record.optString("id"));
+                    if (record != null) {
+                        Log.i(TAG, "INSERT instant_orders recebido: " + record.optString("id"));
+                        fetchOrder(record.optString("id"));
+                    }
                 } catch (Exception ignored) { }
             }
             @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
@@ -275,7 +315,7 @@ public class AdoceOrderService extends Service {
         if (tokenExpiresSoon()) { queue(id); refreshSession(() -> drainQueue()); return; }
         HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
             .addQueryParameter("id", "eq." + id)
-            .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,instant_order_item_sauces(unit_number,sauce_name))")
+            .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,unit_price,is_reward,instant_order_item_sauces(unit_number,sauce_name))")
             .build();
         Request request = new Request.Builder().url(url)
             .header("apikey", prefs.getString("key", ""))
@@ -295,13 +335,18 @@ public class AdoceOrderService extends Service {
     }
 
     private void printOrder(String id, JSONObject order) {
-        if (writer == null) { queue(id); ensurePrinter(); return; }
+        if (id == null || id.isEmpty() || !printingIds.add(id)) {
+            if (id != null && !id.isEmpty()) Log.i(TAG, "Impressao duplicada ignorada: " + id);
+            return;
+        }
+        if (writer == null) { queueOrder(id, order); ensurePrinter(); printingIds.remove(id); return; }
         printerExecutor.execute(() -> {
             try {
                 writeReceipt(receipt(order));
                 markPrinted(id);
                 setState("pedido " + order.optString("order_number") + " impresso");
-            } catch (Exception e) { queue(id); setState("impressora desconectada"); writer = null; }
+            } catch (Exception e) { queueOrder(id, order); setState("impressora desconectada"); writer = null; }
+            finally { printingIds.remove(id); }
         });
     }
 
@@ -374,6 +419,12 @@ public class AdoceOrderService extends Service {
             if (testPending) { testPending = false; printerExecutor.execute(() -> { try { writeReceipt(testReceipt()); } catch (Exception ignored) {} }); }
             drainQueue();
         }
+
+        @Override public void onCharacteristicWrite(BluetoothGatt bluetoothGatt, BluetoothGattCharacteristic characteristic, int status) {
+            CountDownLatch latch = characteristicWriteLatch;
+            if (latch != null) latch.countDown();
+            if (status != BluetoothGatt.GATT_SUCCESS) Log.e(TAG, "Falha na escrita BLE: " + status);
+        }
     };
 
     private boolean canWrite(BluetoothGattCharacteristic characteristic) {
@@ -397,39 +448,64 @@ public class AdoceOrderService extends Service {
 
     private void writeReceipt(byte[] bytes) throws Exception {
         if (writer == null || gatt == null || !hasConnectPermission()) throw new IllegalStateException("sem impressora");
-        for (int start = 0; start < bytes.length; start += 180) {
-            int size = Math.min(180, bytes.length - start);
+        int chunks = (bytes.length + 19) / 20;
+        Log.i(TAG, "Enviando ficha ESC/POS: " + bytes.length + " bytes em " + chunks + " pacotes");
+        for (int start = 0; start < bytes.length; start += 20) {
+            int size = Math.min(20, bytes.length - start);
             byte[] chunk = new byte[size]; System.arraycopy(bytes, start, chunk, 0, size);
             int result;
+            characteristicWriteLatch = writerWriteType == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                ? new CountDownLatch(1) : null;
             if (Build.VERSION.SDK_INT >= 33) result = gatt.writeCharacteristic(writer, chunk, writerWriteType);
             else { writer.setValue(chunk); result = gatt.writeCharacteristic(writer) ? 0 : -1; }
             if (result != 0) throw new IllegalStateException("falha Bluetooth " + result);
-            Thread.sleep(24);
+            CountDownLatch latch = characteristicWriteLatch;
+            if (latch != null && !latch.await(2, TimeUnit.SECONDS)) throw new IllegalStateException("tempo esgotado no Bluetooth");
+            Thread.sleep(35);
         }
+        characteristicWriteLatch = null;
     }
 
     private byte[] receipt(JSONObject order) throws Exception {
         List<String> lines = new ArrayList<>();
-        lines.add(center("ADOCE BRIGADERIA")); lines.add(center("Confeitaria artesanal")); lines.add("");
-        lines.add(center(order.optString("order_number", "PEDIDO")));
-        lines.add(center("Pedido em " + formatDate(order.optString("created_at")))); lines.add(dashes());
-        lines.add("CLIENTE"); wrap(lines, order.optString("customer_name")); lines.add(order.optString("customer_phone")); lines.add(dashes());
-        lines.add("PEDIDO"); int quantity = 0;
+        lines.add(center("ADOCE BRIGADERIA")); lines.add(center("FICHA DE PRODUÇÃO E ENTREGA")); lines.add(dashes());
+        lines.add(center("PEDIDO")); lines.add(center(order.optString("order_number", "PEDIDO")));
+        lines.add("Recebido " + formatDate(order.optString("created_at"))); lines.add(dashes());
+        lines.add("CLIENTE"); wrap(lines, order.optString("customer_name")); lines.add(order.optString("customer_phone"));
+        lines.add("RETIRADA");
+        String pickup = order.optString("pickup_requested_time");
+        String pickupLabel = order.optString("pickup_label", "Adoce");
+        if (!pickup.isEmpty()) lines.add(pickupLabel + " - " + pickup.substring(0, Math.min(5, pickup.length())));
+        else lines.add("A combinar");
+        lines.add("Responsável: Cliente");
+        String payment = order.optString("payment_method_label");
+        if (!payment.isEmpty()) { lines.add("PAGAMENTO"); lines.add(payment); }
+        String notes = order.optString("customer_notes");
+        if (!notes.isEmpty()) { lines.add(dashes()); lines.add("OBSERVAÇÕES DO CLIENTE"); wrap(lines, notes); }
+        lines.add(dashes()); lines.add(center("ITENS DO PEDIDO"));
         JSONArray items = order.optJSONArray("instant_order_items");
+        int quantity = 0; int itemNumber = 0; int totalUnits = 0;
+        if (items != null) for (int i = 0; i < items.length(); i++) totalUnits += Math.max(1, items.getJSONObject(i).optInt("quantity", 1));
         if (items != null) for (int i = 0; i < items.length(); i++) {
             JSONObject item = items.getJSONObject(i); int qty = item.optInt("quantity", 1); quantity += qty;
             JSONArray sauces = item.optJSONArray("instant_order_item_sauces");
             for (int unit = 1; unit <= qty; unit++) {
-                lines.add(("1x " + item.optString("flavor_name")).substring(0, Math.min(32, ("1x " + item.optString("flavor_name")).length())));
+                itemNumber++;
+                lines.add("[ ] ITEM " + itemNumber + " DE " + totalUnits + " - 1x");
+                lines.add("SABOR: " + item.optString("flavor_name"));
                 List<String> selected = new ArrayList<>();
                 if (sauces != null) for (int s = 0; s < sauces.length(); s++) if (sauces.getJSONObject(s).optInt("unit_number") == unit) selected.add(sauces.getJSONObject(s).optString("sauce_name"));
-                lines.add("   " + (selected.isEmpty() ? "Sem calda" : String.join(" e ", selected)));
+                lines.add("CALDA: " + (selected.isEmpty() ? "Sem calda" : String.join(" e ", selected)));
+                double unitPrice = item.optDouble("unit_price", 0);
+                if (item.optBoolean("is_reward", false) && unitPrice == 0) lines.add("FATIA-PRESENTE DO CLUBE - GRÁTIS");
+                else lines.add("VALOR: " + String.format(new Locale("pt", "BR"), "R$ %.2f", unitPrice));
+                if (unit < qty || i < items.length() - 1) lines.add("................................");
             }
         }
-        lines.add(dashes()); lines.add(quantity + (quantity == 1 ? " FATIA" : " FATIAS") + "  R$ " + String.format(new Locale("pt", "BR"), "%.2f", order.optDouble("total")));
-        String notes = order.optString("customer_notes"); if (!notes.isEmpty()) { lines.add(dashes()); lines.add("OBSERVACAO"); wrap(lines, notes); }
-        String pickup = order.optString("pickup_requested_time"); if (!pickup.isEmpty()) { lines.add(dashes()); lines.add("RETIRADA"); lines.add(order.optString("pickup_label", "Adoce") + " - " + pickup.substring(0, Math.min(5, pickup.length()))); }
-        lines.add(dashes()); lines.add(center("Feito pelas maos da Beth")); lines.add(center("Obrigado por adocar")); lines.add(center("seu momento com a gente")); lines.add(""); lines.add(center("impresso " + formatDate(Instant.now().toString())));
+        lines.add(dashes()); lines.add(center(quantity + (quantity == 1 ? " FATIA" : " FATIAS")));
+        lines.add(center("TOTAL  R$ " + String.format(new Locale("pt", "BR"), "%.2f", order.optDouble("total"))));
+        lines.add(dashes()); lines.add("CONFERÊNCIA DA ENTREGA"); lines.add("[ ] Sabores       [ ] Caldas"); lines.add("[ ] Embalado      [ ] Identificado"); lines.add("[ ] Pronto        [ ] Entregue");
+        lines.add(dashes()); lines.add(center("Preparado com carinho para")); lines.add(center("adoçar o seu dia. Obrigado por")); lines.add(center("escolher a Adoce! <3")); lines.add(""); lines.add(center("Impresso " + formatDate(Instant.now().toString())));
         return escPos(lines, order.optString("order_number"));
     }
 
@@ -452,10 +528,30 @@ public class AdoceOrderService extends Service {
         } catch (Exception e) { return new byte[0]; }
     }
 
-    private void queue(String id) { Set<String> ids = pendingIds(prefs); ids.add(id); prefs.edit().putStringSet("pending", ids).apply(); }
-    private void markPrinted(String id) { Set<String> ids = pendingIds(prefs); ids.remove(id); prefs.edit().putStringSet("pending", ids).putBoolean("printed_" + id, true).apply(); }
+    private void queue(String id) {
+        if (id == null || id.isEmpty()) return;
+        Set<String> ids = pendingIds(prefs); ids.add(id); prefs.edit().putStringSet("pending", ids).apply();
+    }
+    private void queueOrder(String id, JSONObject order) {
+        if (id == null || id.isEmpty()) return;
+        Set<String> ids = pendingIds(prefs); ids.add(id);
+        prefs.edit().putStringSet("pending", ids).putString(PENDING_ORDER_PREFIX + id, order.toString()).apply();
+    }
+    private void markPrinted(String id) {
+        Set<String> ids = pendingIds(prefs); ids.remove(id);
+        prefs.edit().putStringSet("pending", ids).remove(PENDING_ORDER_PREFIX + id).putBoolean("printed_" + id, true).apply();
+    }
     private boolean isPrinted(String id) { return prefs.getBoolean("printed_" + id, false); }
-    private void drainQueue() { if (writer != null) for (String id : pendingIds(prefs)) fetchOrder(id); }
+    private void drainQueue() {
+        if (writer == null) return;
+        for (String id : pendingIds(prefs)) {
+            String json = prefs.getString(PENDING_ORDER_PREFIX + id, "");
+            if (!json.isEmpty()) {
+                try { printOrder(id, new JSONObject(json)); }
+                catch (Exception error) { Log.e(TAG, "Pedido pendente invalido", error); queue(id); }
+            } else fetchOrder(id);
+        }
+    }
     private static Set<String> pendingIds(SharedPreferences p) { return new HashSet<>(p.getStringSet("pending", new HashSet<>())); }
     private static SharedPreferences securePrefs(Context context) {
         try {

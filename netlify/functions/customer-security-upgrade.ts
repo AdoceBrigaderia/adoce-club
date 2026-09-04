@@ -1,40 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
-
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set([
-    configured,
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ].filter(Boolean)).has(origin);
-};
-
-const normalizePhone = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  const national = digits.startsWith("55") ? digits.slice(2) : digits;
-  return national.length === 10 || national.length === 11
-    ? `+55${national}`
-    : null;
-};
+import {
+  allowedOrigin,
+  consumeRateLimit,
+  env,
+  hmacHex,
+  json,
+  normalizeBrazilPhone,
+  serviceClient,
+} from "./_shared/whatsapp-auth";
 
 const validPassword = (password: string) => password.length >= 6;
 
@@ -62,11 +35,24 @@ export default async (request: Request) => {
   const { data: userData, error: userError } = await sessionClient.auth.getUser(accessToken);
   if (userError || !userData.user) return json({ error: "Sessão inválida ou expirada." }, 401);
 
+  const hmacSecret = env("AUTH_RATE_LIMIT_HMAC_SECRET") || "";
+  const rateLimitClient = hmacSecret ? serviceClient() : null;
+  if (hmacSecret && rateLimitClient) {
+    const actorHash = await hmacHex(hmacSecret, `actor:${userData.user.id}`);
+    const limit = await consumeRateLimit(rateLimitClient, "customer_security_upgrade:actor", actorHash, 3600, 6);
+    if (!limit.allowed)
+      return json(
+        { error: "Muitas tentativas em pouco tempo. Aguarde antes de tentar de novo." },
+        429,
+        { "Retry-After": String(Math.max(limit.retry_after_seconds || 60, 1)) },
+      );
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
     phone?: string;
     password?: string;
   };
-  const phone = normalizePhone(body.phone || "");
+  const phone = normalizeBrazilPhone(body.phone || "");
   const password = body.password || "";
   if (!phone) return json({ error: "Informe um celular válido com DDD." }, 400);
   if (!validPassword(password)) {

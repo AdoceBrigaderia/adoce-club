@@ -1,40 +1,14 @@
-declare const Netlify:
-  | { env: { get(name: string): string | undefined } }
-  | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+import {
+  allowedOrigin,
+  clientIp,
+  consumeRateLimit,
+  env,
+  hmacHex,
+  json,
+  serviceClient,
+} from "./_shared/whatsapp-auth";
 
 const OTP_TIMEOUT_MS = 20000;
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
-};
 
 const provisionalNames = new Set([
   "",
@@ -78,18 +52,15 @@ const postAuthOtp = async (
   supabaseUrl: string,
   publishableKey: string,
   body: Record<string, unknown>,
-  forwardedIp: string,
 ) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), OTP_TIMEOUT_MS);
   try {
+    // Sem X-Forwarded-For do cliente: o GoTrue usaria esse header para o
+    // próprio limite por IP, e é um valor que o cliente pode forjar.
     return await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/otp`, {
       method: "POST",
-      headers: {
-        apikey: publishableKey,
-        "Content-Type": "application/json",
-        ...(forwardedIp ? { "X-Forwarded-For": forwardedIp } : {}),
-      },
+      headers: { apikey: publishableKey, "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -128,6 +99,23 @@ export default async (request: Request) => {
   if (!supabaseUrl || !publishableKey)
     return json({ error: "Envio de código temporariamente indisponível." }, 503);
 
+  const hmacSecret = env("AUTH_RATE_LIMIT_HMAC_SECRET") || "";
+  const rateLimitClient = hmacSecret ? serviceClient() : null;
+  if (hmacSecret && rateLimitClient) {
+    const ip = clientIp(request);
+    const [emailLimit, ipLimit] = await Promise.all([
+      consumeRateLimit(rateLimitClient, "request_email_code:email", await hmacHex(hmacSecret, `email:${email}`), 600, 4),
+      consumeRateLimit(rateLimitClient, "request_email_code:ip", await hmacHex(hmacSecret, `ip:${ip}`), 600, 20),
+    ]);
+    const retryAfter = Math.max(emailLimit.retry_after_seconds || 0, ipLimit.retry_after_seconds || 0);
+    if (!emailLimit.allowed || !ipLimit.allowed)
+      return json(
+        { error: "Muitas tentativas. Aguarde alguns minutos e tente novamente." },
+        429,
+        { "Retry-After": String(Math.max(retryAfter, 1)) },
+      );
+  }
+
   const otpBody = {
     email,
     create_user: Boolean(body.createUser),
@@ -136,7 +124,6 @@ export default async (request: Request) => {
       ? { full_name: body.fullName.trim() }
       : undefined,
   };
-  const forwardedIp = request.headers.get("x-nf-client-connection-ip") || "";
 
   const interpret = async (response: Response) => {
     const payload = (await response.json().catch(() => ({}))) as {
@@ -168,12 +155,7 @@ export default async (request: Request) => {
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
-      const response = await postAuthOtp(
-        supabaseUrl,
-        publishableKey,
-        otpBody,
-        forwardedIp,
-      );
+      const response = await postAuthOtp(supabaseUrl, publishableKey, otpBody);
       return await interpret(response);
     } catch (error) {
       lastError = error;
