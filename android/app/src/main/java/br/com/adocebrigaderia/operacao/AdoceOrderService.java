@@ -264,11 +264,14 @@ public class AdoceOrderService extends Service {
         socket = http.newWebSocket(request, new WebSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
                 try {
-                    JSONObject changes = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "instant_orders");
+                    JSONObject orderChanges = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "instant_orders");
+                    // Portal de operacao (num navegador qualquer, sem Bluetooth) grava
+                    // aqui pra mandar o tablet imprimir os pedidos pendentes a distancia.
+                    JSONObject printCommandChanges = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "operation_print_commands");
                     JSONObject config = new JSONObject()
                         .put("broadcast", new JSONObject().put("ack", false).put("self", false))
                         .put("presence", new JSONObject().put("key", ""))
-                        .put("postgres_changes", new JSONArray().put(changes));
+                        .put("postgres_changes", new JSONArray().put(orderChanges).put(printCommandChanges));
                     JSONObject payload = new JSONObject().put("config", config).put("access_token", prefs.getString("access", ""));
                     webSocket.send(new JSONObject().put("topic", "realtime:public:instant_orders")
                         .put("event", "phx_join").put("payload", payload).put("ref", "1").put("join_ref", "1").toString());
@@ -280,7 +283,13 @@ public class AdoceOrderService extends Service {
                 try {
                     JSONObject message = new JSONObject(text);
                     if (!"postgres_changes".equals(message.optString("event"))) return;
-                    JSONObject record = message.optJSONObject("payload").optJSONObject("data").optJSONObject("record");
+                    JSONObject data = message.optJSONObject("payload").optJSONObject("data");
+                    if (data == null) return;
+                    if ("operation_print_commands".equals(data.optString("table"))) {
+                        printPendingOrders();
+                        return;
+                    }
+                    JSONObject record = data.optJSONObject("record");
                     if (record != null) fetchOrder(record.optString("id"));
                 } catch (Exception ignored) { }
             }
