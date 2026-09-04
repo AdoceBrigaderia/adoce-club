@@ -322,6 +322,28 @@ export default function OperationContentAdmin({
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    // "Disponibilidade de hoje" so buscava uma vez, ao abrir a aba. Depois
+    // de uma venda ser paga a quantidade muda no banco, mas quem ja estava
+    // com a tela aberta continuava vendo o numero antigo ate recarregar na
+    // mao. Reescuta mudanca em tempo real e busca tudo de novo, com um
+    // pequeno atraso pra nao disparar uma rajada de buscas.
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { void load(); }, 1500);
+    };
+    const today = todayInFortaleza();
+    const channel = requireSupabase()
+      .channel("operation-content-admin-availability")
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability", filter: `service_date=eq.${today}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability_batches", filter: `service_date=eq.${today}` }, scheduleReload)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      requireSupabase().removeChannel(channel);
+    };
+  }, [load]);
 
   const saveFlavor = async () => {
     if (draft.name.trim().length < 2)
