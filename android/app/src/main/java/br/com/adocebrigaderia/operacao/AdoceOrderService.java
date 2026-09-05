@@ -71,6 +71,16 @@ public class AdoceOrderService extends Service {
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
     private static final String TAG = "AdocePrinter";
+    // O gateway do Realtime ainda exige o formato antigo de chave anon (JWT)
+    // no parametro "apikey" da URL do websocket -- a "publishable key" nova
+    // (sb_publishable_...) que o app manda em start() funciona certinho pra
+    // REST/GoTrue (por header), mas o handshake do Realtime responde 401
+    // Unauthorized se receber ela ali. Confirmado direto no log de producao:
+    // "onFailure: HTTP 401 / Expected HTTP 101 response but was '401
+    // Unauthorized'". Chave anon e publica por natureza (o proprio app web a
+    // embute no bundle), sem risco em hardcodar aqui.
+    private static final String REALTIME_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlZnd5d2l6cWhmdnZpamFvcGNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY5NTksImV4cCI6MjA5OTc5Mjk1OX0.YdfaTjgpBp-nStsmHY-I12it2ecwNIxm8rQbOAKGP5I";
     private static final String DEVICE_KEY = "tablet-operacao-adoce-01";
     private static final UUID PRINTER_SERVICE = UUID.fromString("000018f0-0000-1000-8000-00805f9b34fb");
     private static final UUID PRINTER_WRITE = UUID.fromString("00002af1-0000-1000-8000-00805f9b34fb");
@@ -191,7 +201,7 @@ public class AdoceOrderService extends Service {
         String access = prefs.getString("access", "");
         if (base.isEmpty() || key.isEmpty() || access.isEmpty()) { setState("sem sessao"); Log.e(TAG, "Realtime sem sessao (url=" + base.length() + ", key=" + key.length() + ", access=" + access.length() + ")"); return; }
         Log.i(TAG, "Abrindo Realtime (url=" + base.length() + ", key=" + key.length() + ", access=" + access.length() + ")");
-        String ws = base.replaceFirst("^https", "wss") + "/realtime/v1/websocket?apikey=" + key + "&vsn=1.0.0";
+        String ws = base.replaceFirst("^https", "wss") + "/realtime/v1/websocket?apikey=" + REALTIME_ANON_KEY + "&vsn=1.0.0";
         // Supabase Realtime authenticates this websocket with the apikey query
         // parameter and the access_token in the join payload below. Sending a
         // second Authorization header makes the gateway reject the upgrade.
