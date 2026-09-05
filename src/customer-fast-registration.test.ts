@@ -13,7 +13,7 @@ describe("cadastro rápido do Clube Adoce", () => {
   });
 
   it("cria o acesso definitivo e abre o cartão logo depois do código", () => {
-    const verifyPosition = access.indexOf("const result = await verifyEmailCode(email, code)");
+    const verifyPosition = access.indexOf("? await verifyWhatsAppAuthCode(whatsappAuthChallengeId, phone, code)");
     const upgradePosition = access.indexOf("await upgradeCustomerSecurity(accessToken, phone, password)");
     const cardPosition = access.indexOf('window.location.assign("/clube")', upgradePosition);
 
@@ -26,7 +26,7 @@ describe("cadastro rápido do Clube Adoce", () => {
   });
 
   it("não reaproveita uma tentativa anterior de recuperação para pedir a senha de novo", () => {
-    const requestStart = access.indexOf("const submitEmail = async");
+    const requestStart = access.indexOf("const submitWhatsappSignup = async");
     const requestEnd = access.indexOf("const submitPassword = async", requestStart);
     const requestFlow = access.slice(requestStart, requestEnd);
     const verificationStart = access.indexOf("const submitCode = async");

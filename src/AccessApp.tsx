@@ -33,7 +33,6 @@ import {
   ImagePlus,
   LayoutDashboard,
   LogOut,
-  Mail,
   KeyRound,
   MessageCircle,
   MoreHorizontal,
@@ -72,9 +71,9 @@ import {
   beginWhatsAppVerification,
   getWhatsAppVerificationStatus,
   registerCustomerPasskey,
-  requestEmailCode,
   confirmPasswordReset,
   requestPasswordReset,
+  requestWhatsAppAuthCode,
   signInWithPhonePassword,
   signInWithStaffPhonePassword,
   resetUserPasswordByManager,
@@ -652,13 +651,19 @@ function AuthScreen({ surface }: { surface: Surface }) {
   const [rememberLogin, setRememberLogin] = useState(
     getRememberLoginPreference,
   );
-  const [loginMode, setLoginMode] = useState<"password" | "email" | "forgot">(
+  const [loginMode, setLoginMode] = useState<"password" | "whatsapp" | "forgot">(
     "password",
   );
   const [code, setCode] = useState(directParams?.code || "");
   const [whatsAppChallenge, setWhatsAppChallenge] =
     useState<WhatsAppChallenge | null>(null);
   const [resetChallengeId, setResetChallengeId] = useState("");
+  // Primeiro acesso / "esqueci minha senha, mas sei mexer no WhatsApp":
+  // substitui o antigo fluxo por e-mail (request-email-code). O cliente
+  // nunca digita e-mail — o código chega no mesmo WhatsApp que ele já usa
+  // pra pedir fatia. auth-whatsapp-start decide sozinho se é cadastro novo
+  // ou login (baseado em já existir ou não um perfil com este telefone).
+  const [whatsappAuthChallengeId, setWhatsappAuthChallengeId] = useState("");
   const [terms, setTerms] = useState(false);
   const [privacy, setPrivacy] = useState(false);
   const marketing = false;
@@ -723,16 +728,18 @@ function AuthScreen({ surface }: { surface: Surface }) {
       .finally(() => setBusy(false));
   }, [directParams, surface]);
 
-  const submitEmail = async (event: React.FormEvent) => {
+  const submitWhatsappSignup = async (event: React.FormEvent) => {
     event.preventDefault();
     if (registering && !isRealCustomerName(name)) {
       setMessage("Informe seu nome e sobrenome para criar seu cadastro.");
       return;
     }
-    if (registering && (!name.trim() || phone.replace(/\D/g, "").length < 10 || !terms || !privacy)) {
-      setMessage(
-        "Informe seu nome e WhatsApp com DDD, e aceite os termos e a política de privacidade.",
-      );
+    if (phone.replace(/\D/g, "").length < 10) {
+      setMessage("Informe seu WhatsApp com DDD.");
+      return;
+    }
+    if (registering && (!terms || !privacy)) {
+      setMessage("Aceite os termos e a política de privacidade.");
       return;
     }
     if (registering && password.length < 6) {
@@ -745,32 +752,13 @@ function AuthScreen({ surface }: { surface: Surface }) {
       if (surface === "client" && registering) {
         sessionStorage.removeItem(passwordRecoveryStorageKey);
       }
-      await requestEmailCode(
-        email,
-        registering ? name : undefined,
-        registering,
-      );
+      const started = await requestWhatsAppAuthCode(registering ? name : "", phone);
+      setWhatsappAuthChallengeId(started.challengeId);
       setStage("code");
-      setMessage("Código enviado. Ele vale por 10 minutos.");
+      setMessage(`Enviamos um código pelo WhatsApp para ${started.maskedPhone || "seu número"}. Ele vale por 10 minutos.`);
     } catch (error) {
-      const safeMessage =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível enviar o código.";
-      if (
-        surface === "client" &&
-        !registering &&
-        safeMessage === "Não encontramos uma conta ativa com este e-mail."
-      ) {
-        setRegistering(true);
-        setLoginMode("email");
-        setMessage(
-          "Este e-mail ainda não tem cadastro. Complete seus dados para fazer parte.",
-        );
-        return;
-      }
       setMessage(
-        safeMessage,
+        error instanceof Error ? error.message : "Não foi possível enviar o código.",
       );
     } finally {
       setBusy(false);
@@ -843,7 +831,10 @@ function AuthScreen({ surface }: { surface: Surface }) {
       return;
     }
     try {
-      const result = await verifyEmailCode(email, code);
+      const result = whatsappAuthChallengeId
+        ? await verifyWhatsAppAuthCode(whatsappAuthChallengeId, phone, code)
+        : await verifyEmailCode(email, code);
+      setWhatsappAuthChallengeId("");
       if (registering && result.user) {
         sessionStorage.removeItem(passwordRecoveryStorageKey);
         const supabase = requireSupabase();
@@ -985,7 +976,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
           <img src="/site/logo.webp" alt="" />
           <h2>
             {stage === "code"
-              ? directParams ? "Acesso direto ao Clube" : resetChallengeId ? "Confira seu WhatsApp" : "Confira seu e-mail"
+              ? directParams ? "Acesso direto ao Clube" : "Confira seu WhatsApp"
               : stage === "whatsapp"
                 ? "Confirme seu WhatsApp"
               : invited
@@ -1003,14 +994,12 @@ function AuthScreen({ surface }: { surface: Surface }) {
           <p>
             {stage === "code"
               ? directParams
-                ? `Estamos validando o código seguro gerado para ${email}.`
-                : resetChallengeId
-                  ? "Toque em \"Copiar código\" na mensagem do WhatsApp e cole o código de 6 números abaixo."
-                  : "Se o e-mail tiver um código de 6 números, digite abaixo. Se tiver um botão ou link, toque nele — o site abre sozinho."
+                ? "Estamos validando o acesso seguro gerado pela Adoce."
+                : "Toque em \"Copiar código\" na mensagem do WhatsApp e cole o código de 6 números abaixo."
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : registering
-                ? "Preencha uma vez. Depois, confirme o código do seu e-mail e seu cartão abrirá."
+                ? "Preencha uma vez. Depois, confirme o código do seu WhatsApp e seu cartão abrirá."
               : loginMode === "forgot"
                 ? "Informe o WhatsApp cadastrado para receber o código de recuperação."
               : loginMode === "password" && !registering
@@ -1019,7 +1008,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   : "Use seu celular com DDD e a senha. Se a Adoce cadastrou você no balcão, use a senha temporária enviada no WhatsApp."
                 : surface === "operation"
                   ? "Rubens ou Beth podem redefinir a senha da equipe quando necessário."
-                  : "O código por e-mail será usado no primeiro acesso."}
+                  : "O código pelo WhatsApp será usado no primeiro acesso."}
           </p>
           {stage === "identify" ? (
             !registering && loginMode === "password" ? (
@@ -1089,11 +1078,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
                     className="access-link"
                     type="button"
                     onClick={() => {
-                      setLoginMode("email");
+                      setLoginMode("whatsapp");
                       setMessage("");
                     }}
                   >
-                    Primeiro acesso ou criar senha
+                    Primeiro acesso pelo WhatsApp
                   </button>
                 )}
               </form>
@@ -1118,7 +1107,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
               </button>
             </form>
             ) : (
-            <form onSubmit={submitEmail}>
+            <form onSubmit={submitWhatsappSignup}>
               {registering && (
                 <label>
                   Como podemos chamar você?
@@ -1131,35 +1120,19 @@ function AuthScreen({ surface }: { surface: Surface }) {
                 </label>
               )}
               <label>
-                Seu e-mail
+                Seu WhatsApp com DDD
                 <div className="input-icon">
-                  <Mail />
+                  <Smartphone />
                   <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email"
-                    autoComplete="email"
-                    placeholder="voce@exemplo.com"
+                    value={mascaraTelefone(phone)}
+                    onChange={(e) => setPhone(mascaraTelefone(e.target.value))}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="(85) 99999-9999"
                     required
                   />
                 </div>
               </label>
-              {registering && (
-                <label>
-                  Seu WhatsApp com DDD
-                  <div className="input-icon">
-                    <Smartphone />
-                    <input
-                      value={mascaraTelefone(phone)}
-                      onChange={(e) => setPhone(mascaraTelefone(e.target.value))}
-                      inputMode="tel"
-                      autoComplete="tel"
-                      placeholder="(85) 99999-9999"
-                      required
-                    />
-                  </div>
-                </label>
-              )}
               {registering && (
                 <label>
                   Crie sua senha
@@ -1208,9 +1181,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   ? "Enviando..."
                   : registering
                     ? "Criar meu cartão"
-                    : surface === "operation"
-                      ? "Receber código de acesso"
-                      : "Receber código de segurança"}
+                    : "Receber código pelo WhatsApp"}
                 <ArrowRight />
               </button>
             </form>
@@ -1295,11 +1266,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
               className="access-switch"
               type="button"
               onClick={() => {
-                if (!registering && (loginMode === "email" || loginMode === "forgot")) {
+                if (!registering && (loginMode === "whatsapp" || loginMode === "forgot")) {
                   setLoginMode("password");
                 } else {
                   setRegistering(!registering);
-                  setLoginMode("email");
+                  setLoginMode("whatsapp");
                   if (!registering) {
                     sessionStorage.removeItem(passwordRecoveryStorageKey);
                   }
@@ -1309,7 +1280,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
             >
               {registering
                 ? "Entrar no Clube"
-                : loginMode === "email" || loginMode === "forgot"
+                : loginMode === "whatsapp" || loginMode === "forgot"
                   ? "Entrar com celular e senha"
                   : "Quero fazer parte"}
             </button>

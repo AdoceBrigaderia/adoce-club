@@ -1,3 +1,4 @@
+import twilio from "twilio";
 import { createClient } from "@supabase/supabase-js";
 import { allowedOrigin, env, isUuid, json, serviceClient } from "./_shared/whatsapp-auth";
 
@@ -7,48 +8,61 @@ const reasons = new Set([
   "security_review", "terms_violation", "legal_requirement", "other",
 ]);
 
-const notificationCopy = (name: string, action: string, reason: string) => {
-  const firstName = name.trim().split(/\s+/)[0] || "cliente";
-  const reasonText: Record<string, string> = {
-    duplicate_registration: "identificamos mais de um cadastro e estamos preservando seu histórico em uma única conta",
-    customer_request: "recebemos sua solicitação relacionada à exclusão do cadastro",
-    created_by_mistake: "o cadastro foi identificado como criado por engano ou para teste",
-    security_review: "o acesso foi suspenso preventivamente para uma verificação de segurança",
-    terms_violation: "o acesso foi suspenso após revisão das regras do Clube Adoce",
-    legal_requirement: "o cadastro foi atualizado para atender uma obrigação aplicável",
-    other: "o cadastro passou por uma atualização administrativa",
-  };
-  const statusText = action === "reactivate" || action === "cancel_deletion"
+const reasonText: Record<string, string> = {
+  duplicate_registration: "identificamos mais de um cadastro e estamos preservando seu histórico em uma única conta",
+  customer_request: "recebemos sua solicitação relacionada à exclusão do cadastro",
+  created_by_mistake: "o cadastro foi identificado como criado por engano ou para teste",
+  security_review: "o acesso foi suspenso preventivamente para uma verificação de segurança",
+  terms_violation: "o acesso foi suspenso após revisão das regras do Clube Adoce",
+  legal_requirement: "o cadastro foi atualizado para atender uma obrigação aplicável",
+  other: "o cadastro passou por uma atualização administrativa",
+};
+
+const statusText = (action: string) =>
+  action === "reactivate" || action === "cancel_deletion"
     ? "Seu acesso ao Clube Adoce está ativo novamente."
     : action === "delete_account"
       ? "Seu acesso e seus dados pessoais foram excluídos. Mantivemos somente registros operacionais anonimizados exigidos para histórico e segurança."
       : action === "request_deletion"
-      ? "Seu cadastro entrou no processo seguro de exclusão e tratamento dos dados aplicáveis."
-      : "Seu acesso ao Clube Adoce foi desativado.";
-  return {
-    subject: action === "reactivate" || action === "cancel_deletion"
-      ? "Seu acesso ao Clube Adoce foi reativado"
-      : "Atualização importante no seu cadastro do Clube Adoce",
-    text: `Olá, ${firstName}.\n\n${statusText}\n\nMotivo informado: ${reasonText[reason] || reasonText.other}.\n\nSe precisar revisar esta decisão ou corrigir seus dados, responda a este e-mail ou fale com a Adoce pelos canais oficiais.\n\nAdoce Brigaderia`,
-  };
-};
+        ? "Seu cadastro entrou no processo seguro de exclusão e tratamento dos dados aplicáveis."
+        : "Seu acesso ao Clube Adoce foi desativado.";
 
-async function sendNotification(email: string, name: string, action: string, reason: string) {
-  const resendKey = env("RESEND_API_KEY");
-  if (!resendKey) return { status: "pending", error: "RESEND_API_KEY não configurada" };
-  const copy = notificationCopy(name, action, reason);
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: env("ACCOUNT_NOTIFICATION_FROM") || "Clube Adoce <acesso@auth.adocebrigaderia.com.br>",
-      to: [email],
-      subject: copy.subject,
-      text: copy.text,
-    }),
-  });
-  if (!response.ok) return { status: "failed", error: `Resend ${response.status}` };
-  return { status: "sent", error: null };
+const whatsappAddress = (value: string) => (value.startsWith("whatsapp:") ? value : `whatsapp:${value}`);
+
+// Nenhuma comunicação com o cliente passa por e-mail — só pelo WhatsApp
+// oficial da Adoce (Twilio). Mensagem business-initiated (o cliente não
+// necessariamente falou com a gente nas últimas 24h) exige um template
+// aprovado pelo Meta, por isso fica atrás de ACCOUNT_STATUS_ENABLED até a
+// aprovação sair — mesmo padrão de _shared/access-link.ts.
+async function sendNotification(phone: string, name: string, action: string, reason: string) {
+  if (env("TWILIO_ACCOUNT_STATUS_ENABLED") !== "true") {
+    return { status: "disabled", error: "account_status_notification_disabled_until_template_approval" };
+  }
+  const accountSid = env("TWILIO_ACCOUNT_SID") || "";
+  const authToken = env("TWILIO_AUTH_TOKEN") || "";
+  const from = env("TWILIO_WHATSAPP_FROM") || "";
+  const contentSid = env("TWILIO_ACCOUNT_STATUS_CONTENT_SID") || "";
+  if (!accountSid || !authToken || !from || !contentSid) {
+    return { status: "not_configured", error: "account_status_notification_configuration_missing" };
+  }
+  const firstName = name.trim().split(/\s+/)[0] || "cliente";
+  try {
+    const sent = await twilio(accountSid, authToken).messages.create({
+      from: whatsappAddress(from),
+      to: whatsappAddress(phone),
+      contentSid,
+      contentVariables: JSON.stringify({
+        "1": firstName.slice(0, 60),
+        "2": statusText(action),
+        "3": reasonText[reason] || reasonText.other,
+      }),
+    });
+    return { status: "sent", error: null, messageSid: sent.sid };
+  } catch (error) {
+    const status = Number((error as { status?: number })?.status || 0);
+    const code = String((error as { code?: string | number })?.code || "unknown").slice(0, 40);
+    return { status: "failed", error: `twilio_${status || "error"}_${code}` };
+  }
 }
 
 export default async (request: Request) => {
@@ -112,7 +126,7 @@ export default async (request: Request) => {
   const actionId = result.action_id as string;
   const resultingStatus = result.resulting_status as string;
   const willBeActive = Boolean(result.will_be_active);
-  const notificationEmail = result.notification_email as string | null;
+  const notificationPhone = result.notification_phone as string | null;
   const fullName = result.full_name as string;
 
   // O ban/exclusão em auth.users passa pela API administrativa do GoTrue,
@@ -127,8 +141,8 @@ export default async (request: Request) => {
     return json({ error: "A alteração não foi concluída e o cadastro foi restaurado ao estado anterior." }, 500);
   }
 
-  const notification = notificationEmail
-    ? await sendNotification(notificationEmail, fullName, action, reasonCode)
+  const notification = notificationPhone
+    ? await sendNotification(notificationPhone, fullName, action, reasonCode)
     : { status: "not_applicable", error: null };
   const { error: notificationAuditError } = await admin
     .from("customer_account_actions")

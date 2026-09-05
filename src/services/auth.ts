@@ -170,31 +170,12 @@ export async function requestPasswordReset(input: { phone: string }) {
   return payload;
 }
 
-export async function requestEmailCode(email: string, fullName?: string, createUser = false) {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
-    throw new Error("Informe um e-mail válido.");
-  }
-
-  const response = await fetch("/api/request-email-code", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email: normalizedEmail,
-      fullName: fullName?.trim() || undefined,
-      createUser,
-    }),
-  });
-  const payload = (await response.json().catch(() => ({}))) as {
-    sent?: boolean;
-    error?: string;
-  };
-  if (!response.ok || !payload.sent) {
-    throw new Error(payload.error || "Não foi possível enviar o código agora.");
-  }
-  return normalizedEmail;
-}
-
+// request-email-code.ts foi apagada: o cliente nunca mais digita o próprio
+// e-mail pra entrar ou se cadastrar (ver requestWhatsAppAuthCode). Esta
+// função de verificação continua existindo só porque o link de acesso que
+// chega pelo WhatsApp (quando a loja cadastra alguém no balcão) carrega um
+// e-mail e código internos nos parâmetros — o cliente nunca vê nem digita
+// esse e-mail, só toca no link.
 export async function verifyEmailCode(email: string, token: string) {
   const response = await fetch("/api/verify-email-code", {
     method: "POST",
