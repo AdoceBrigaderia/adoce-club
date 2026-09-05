@@ -111,40 +111,59 @@ export default function OperationInstantOrders() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [recoveryMethod, setRecoveryMethod] = useState("pix");
   const [directFinishOpen, setDirectFinishOpen] = useState(false);
+  // window.prompt() dentro do WebView do tablet e um dialogo nativo do
+  // sistema, fora do controle do app -- comportamento inconsistente entre
+  // aparelhos e versoes de Android, sem como estilizar nem garantir que
+  // sempre aparece. Um formulario proprio, no mesmo padrao ja usado pelo
+  // "Registrar como pago", tira essa incerteza.
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [view, setView] = useState<"active" | "expired" | "finished">("active");
   const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
   const directFinishRef = useRef<HTMLElement>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
-    const [{ data, error }, { data: flavorData, error: flavorError }, { data: availabilityData, error: availabilityError }, { data: settingsData, error: settingsError }, { data: sauceData, error: sauceError }] = await Promise.all([
-      requireSupabase().from("instant_orders")
-        .select("*,instant_order_items(id,flavor_id,flavor_name,quantity,unit_price,status,is_reward,reward_id,instant_order_item_sauces(id,unit_number,sauce_id,sauce_name))")
-        .order("created_at", { ascending: false }).limit(300),
-      requireSupabase().from("flavors").select("id,name,base_price").eq("active", true).order("name"),
-      requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", today),
-      requireSupabase().rpc("staff_get_commerce_settings"),
-      requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name"),
-    ]);
-    setBusy(false);
-    if (error || flavorError || availabilityError || settingsError || sauceError) return setNotice((error || flavorError || availabilityError || settingsError || sauceError)?.message || "Não foi possível atualizar a tela.");
-    setOrders((data || []) as InstantOrder[]);
-    const mappedFlavors = (flavorData || []).map((flavor) => {
-      const availability = availabilityData?.find((item) => item.flavor_id === flavor.id);
-      return {
-        id: flavor.id,
-        name: flavor.name,
-        base_price: Number(flavor.base_price || 0),
-        remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0)),
-      };
-    });
-    setAllFlavors(mappedFlavors);
-    setRewardFlavors(mappedFlavors.filter((flavor) => flavor.remaining > 0));
-    setOrderSauces((sauceData || []) as OrderSauce[]);
-    const activeMethods = ((settingsData?.payment_methods || []) as PaymentMethod[]).filter((method) => method.active);
-    setPaymentMethods(activeMethods);
-    setRecoveryMethod((current) => activeMethods.some((method) => method.code === current) ? current : (activeMethods[0]?.code || ""));
+    try {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
+      const [{ data, error }, { data: flavorData, error: flavorError }, { data: availabilityData, error: availabilityError }, { data: settingsData, error: settingsError }, { data: sauceData, error: sauceError }] = await Promise.all([
+        requireSupabase().from("instant_orders")
+          .select("*,instant_order_items(id,flavor_id,flavor_name,quantity,unit_price,status,is_reward,reward_id,instant_order_item_sauces(id,unit_number,sauce_id,sauce_name))")
+          .order("created_at", { ascending: false }).limit(300),
+        requireSupabase().from("flavors").select("id,name,base_price").eq("active", true).order("name"),
+        requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", today),
+        requireSupabase().rpc("staff_get_commerce_settings"),
+        requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name"),
+      ]);
+      if (error || flavorError || availabilityError || settingsError || sauceError) {
+        setNotice((error || flavorError || availabilityError || settingsError || sauceError)?.message || "Não foi possível atualizar a tela.");
+        return;
+      }
+      setOrders((data || []) as InstantOrder[]);
+      const mappedFlavors = (flavorData || []).map((flavor) => {
+        const availability = availabilityData?.find((item) => item.flavor_id === flavor.id);
+        return {
+          id: flavor.id,
+          name: flavor.name,
+          base_price: Number(flavor.base_price || 0),
+          remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0)),
+        };
+      });
+      setAllFlavors(mappedFlavors);
+      setRewardFlavors(mappedFlavors.filter((flavor) => flavor.remaining > 0));
+      setOrderSauces((sauceData || []) as OrderSauce[]);
+      const activeMethods = ((settingsData?.payment_methods || []) as PaymentMethod[]).filter((method) => method.active);
+      setPaymentMethods(activeMethods);
+      setRecoveryMethod((current) => activeMethods.some((method) => method.code === current) ? current : (activeMethods[0]?.code || ""));
+    } catch (error) {
+      // Sem isto, uma falha de rede (comum no wifi do balcao) fazia o
+      // Promise.all rejeitar sem nenhum aviso: a tela ficava com dados
+      // velhos -- por exemplo mostrando um pedido ja cancelado como se
+      // ainda estivesse aberto -- e ninguem via mensagem de erro nenhuma.
+      setNotice(`Não foi possível atualizar a tela: ${error instanceof Error ? error.message : "falha de conexão."} Toque em Atualizar para tentar de novo.`);
+    } finally {
+      setBusy(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -193,6 +212,8 @@ export default function OperationInstantOrders() {
     setLoyalty(null);
     setNotice("");
     setDirectFinishOpen(false);
+    setCancelOpen(false);
+    setCancelReason("");
     setEditOpen(false);
     setEditUnits([]);
     setRewardMode("existing");
@@ -273,20 +294,29 @@ export default function OperationInstantOrders() {
 
   const persistStatus = async (order: InstantOrder, status: InstantOrderStatus, reason = "", paymentLink = extractPaymentLink()) => {
     setBusy(true);
-    const { error } = await requireSupabase().rpc("staff_update_instant_order", {
-      target_order_id: order.id,
-      next_status: status,
-      next_payment_url: paymentLink || null,
-      next_payment_expires_at: status === "awaiting_payment" ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
-      next_internal_notes: internalNotes,
-      next_cancellation_reason: reason || null,
-    });
-    setBusy(false);
-    if (error) {
-      setNotice(error.message);
+    try {
+      const { error } = await requireSupabase().rpc("staff_update_instant_order", {
+        target_order_id: order.id,
+        next_status: status,
+        next_payment_url: paymentLink || null,
+        next_payment_expires_at: status === "awaiting_payment" ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+        next_internal_notes: internalNotes,
+        next_cancellation_reason: reason || null,
+      });
+      if (error) {
+        setNotice(error.message);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      // Falha de rede aqui (fetch rejeitando em vez de devolver {error}) fazia
+      // a promessa estourar sem aviso -- o atendente nao via nada, mesmo
+      // quando a acao as vezes ainda chegava a acontecer no servidor.
+      setNotice(`Não foi possível confirmar a alteração: ${error instanceof Error ? error.message : "falha de conexão."} Confira no site antes de repetir.`);
       return false;
+    } finally {
+      setBusy(false);
     }
-    return true;
   };
 
   const update = async (status: InstantOrderStatus, reason = "", paymentLink = extractPaymentLink()) => {
@@ -460,6 +490,27 @@ export default function OperationInstantOrders() {
     setBusy(false);
     setSelectedPrintIds([]);
   };
+
+  // Este botao nunca tinha tratamento de erro nenhum: se a impressao
+  // falhasse por qualquer motivo (Bluetooth desligado, impressora fora de
+  // alcance, plugin nativo rejeitando a chamada), a promessa rejeitava sem
+  // ninguem ver nada -- o atendente so via "nao aconteceu nada".
+  const printSingleThermal = async (order: InstantOrder) => {
+    setBusy(true);
+    try {
+      const result = await printThermalOrder(order, true);
+      if (result === "queued_for_android" && !Capacitor.isNativePlatform()) {
+        printOperation("thermal");
+      } else if (result === "queued_for_android") {
+        setNotice("A impressora não respondeu — o pedido ficou na fila do tablet e será impresso quando ela reconectar.");
+      } else {
+        setNotice(`${order.order_number}: cupom enviado para a impressora.`);
+      }
+    } catch (error) {
+      setNotice(`Falha ao imprimir: ${error instanceof Error ? error.message : "impressora indisponível."}`);
+    }
+    setBusy(false);
+  };
   const active = orders.filter((order) => !["completed", "cancelled", "expired"].includes(order.status));
   const rewardExistingOptions = selected?.instant_order_items
     .filter((item) => !item.is_reward)
@@ -516,7 +567,7 @@ export default function OperationInstantOrders() {
         <div className="thermal-receipt-brand"><img src="/site/logo.webp" alt="Adoce Brigaderia" /><strong>ADOCE BRIGADERIA</strong></div>
         <small>{selected.order_number}</small><h2>{nomeLegivel(selected.customer_name)}</h2>
         <div className="operation-print-actions">
-          <button type="button" className="drawer-print" onClick={async () => { const result = await printThermalOrder(selected, true); if (result === "queued_for_android" && !Capacitor.isNativePlatform()) printOperation("thermal"); }}><Printer /> Imprimir cupom 58 mm</button>
+          <button type="button" className="drawer-print" disabled={busy} onClick={() => void printSingleThermal(selected)}><Printer /> Imprimir cupom 58 mm</button>
           <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
         </div>
         <p><a href={operationWhatsAppUrl(selected.customer_phone, `Olá! Estamos falando sobre o pedido ${selected.order_number} da Adoce.`)} target="_blank" rel="noreferrer">{formatarTelefoneBR(selected.customer_phone)}</a> · {labels[selected.status]}</p>
@@ -614,8 +665,20 @@ export default function OperationInstantOrders() {
           {selected.status === "preparing" ? <button onClick={() => void updateAndNotify("ready", (order) => `Olá, ${order.customer_name.split(/\s+/)[0]}! Seu pedido ${order.order_number} está separado e pronto para retirada. 📍 ${order.pickup_label}: ${order.pickup_address}`)} disabled={busy}><PackageCheck /> Pedido pronto e avisar retirada</button> : null}
           {selected.status === "ready" ? <button onClick={() => void update("completed")} disabled={busy}><Check /> Marcar como entregue</button> : null}
           {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="direct-finish" onClick={() => setDirectFinishOpen(true)} disabled={busy}><Check /> Registrar como pago e finalizar</button> : null}
-          {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="cancel" onClick={() => { const reason = window.prompt("Informe ao menos 5 caracteres explicando o cancelamento:")?.trim() || ""; if (reason.length >= 5) void update("cancelled", reason); }} disabled={busy}><X /> Cancelar pedido</button> : null}
+          {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="cancel" onClick={() => setCancelOpen(true)} disabled={busy}><X /> Cancelar pedido</button> : null}
         </div>
+        {cancelOpen && !["completed", "cancelled", "expired"].includes(selected.status) ? <section className="instant-order-direct-finish">
+          <small>Cancelamento</small>
+          <h3>Por que este pedido está sendo cancelado?</h3>
+          <label>Motivo (mínimo 5 caracteres)
+            <textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: cliente desistiu, sabor esgotou, pedido duplicado..." autoFocus />
+          </label>
+          {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
+          <div>
+            <button type="button" className="secondary" onClick={() => { setCancelOpen(false); setCancelReason(""); }} disabled={busy}>Voltar</button>
+            <button type="button" className="cancel" onClick={() => void update("cancelled", cancelReason.trim())} disabled={busy || cancelReason.trim().length < 5}><X /> {busy ? "Cancelando..." : "Confirmar cancelamento"}</button>
+          </div>
+        </section> : null}
         <a href={operationWhatsAppUrl(selected.customer_phone, `Olá, ${selected.customer_name.split(" ")[0]}! Estamos falando sobre o pedido ${selected.order_number} da Adoce.`)} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente no WhatsApp Business</a>
         {selected.reserved_until ? <p className="instant-order-reservation"><Clock3 /> Reserva até {dateTime(selected.reserved_until)}</p> : null}
       </aside>
