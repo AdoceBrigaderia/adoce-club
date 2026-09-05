@@ -72,6 +72,17 @@ public class AdoceOrderService extends Service {
     private static final String CHANNEL = "adoce_orders";
     private static final int NOTIFICATION_ID = 2106;
     private static final String TAG = "AdocePrinter";
+    // O gateway do Realtime ainda exige o formato antigo de chave anon (JWT)
+    // no parametro "apikey" da URL do websocket -- a "publishable key" nova
+    // (sb_publishable_...) que o app manda em start() funciona certinho pra
+    // REST/GoTrue (por header), mas o handshake do Realtime responde 401
+    // Unauthorized se receber ela ali. Confirmado direto no log:
+    // "onFailure: HTTP 401 / Expected HTTP 101 response but was '401
+    // Unauthorized'" -- nao era corrida de condicao nenhuma, so a chave
+    // errada no parametro errado. Chave anon e publica por natureza (o
+    // proprio app web a embute no bundle), sem risco em hardcodar aqui.
+    private static final String REALTIME_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVlZnd5d2l6cWhmdnZpamFvcGNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyMTY5NTksImV4cCI6MjA5OTc5Mjk1OX0.YdfaTjgpBp-nStsmHY-I12it2ecwNIxm8rQbOAKGP5I";
     private static final UUID PRINTER_SERVICE = UUID.fromString("000018f0-0000-1000-8000-00805f9b34fb");
     private static final UUID PRINTER_WRITE = UUID.fromString("00002af1-0000-1000-8000-00805f9b34fb");
     private final OkHttpClient http = new OkHttpClient.Builder().retryOnConnectionFailure(true).build();
@@ -79,6 +90,18 @@ public class AdoceOrderService extends Service {
     private final ExecutorService printerExecutor = Executors.newSingleThreadExecutor();
     private SharedPreferences prefs;
     private WebSocket socket;
+    // Duas chamadas de start() quase simultaneas (ex.: dois efeitos da tela
+    // web disparando syncNativeOperationSession ao mesmo tempo) podiam matar
+    // o socket bem no meio do handshake com .close() -- o OkHttp so aciona
+    // onOpen/onFailure/onClosed para um socket que chegou a abrir; fechar
+    // antes disso e um cancelamento mudo, sem callback nenhum. O campo
+    // ficava com uma referencia "morta" pra sempre, e o guard socket != null
+    // bloqueava qualquer nova tentativa -- o tablet ficava surdo ao canal em
+    // tempo real ate reiniciar o processo inteiro. Este numero de geracao
+    // identifica cada tentativa: se depois do prazo o socket ainda for o
+    // mesmo desta tentativa e ela nunca abriu, o watchdog descarta e tenta
+    // de novo, sem depender de nenhum callback do OkHttp.
+    private int socketGeneration;
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic writer;
     private int writerWriteType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
@@ -249,8 +272,8 @@ public class AdoceOrderService extends Service {
     }
 
     private void connectRealtime() {
-        if (socket != null) return;
-        if (tokenExpiresSoon()) { refreshSession(this::openSocket); return; }
+        if (socket != null) { Log.i(TAG, "connectRealtime: socket ja existe, ignorando"); return; }
+        if (tokenExpiresSoon()) { Log.i(TAG, "connectRealtime: token expirando, renovando antes"); refreshSession(this::openSocket); return; }
         openSocket();
     }
 
@@ -258,11 +281,15 @@ public class AdoceOrderService extends Service {
         String base = prefs.getString("url", "");
         String key = prefs.getString("key", "");
         String access = prefs.getString("access", "");
-        if (base.isEmpty() || key.isEmpty() || access.isEmpty()) { setState("sem sessao"); return; }
-        String ws = base.replaceFirst("^https", "wss") + "/realtime/v1/websocket?apikey=" + key + "&vsn=1.0.0";
+        if (base.isEmpty() || key.isEmpty() || access.isEmpty()) { setState("sem sessao"); Log.e(TAG, "openSocket: sessao vazia (url=" + base.length() + " key=" + key.length() + " access=" + access.length() + ")"); return; }
+        Log.i(TAG, "openSocket: abrindo websocket");
+        String ws = base.replaceFirst("^https", "wss") + "/realtime/v1/websocket?apikey=" + REALTIME_ANON_KEY + "&vsn=1.0.0";
         Request request = new Request.Builder().url(ws).header("Authorization", "Bearer " + access).build();
+        int myGeneration = ++socketGeneration;
+        boolean[] opened = { false };
         socket = http.newWebSocket(request, new WebSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
+                opened[0] = true;
                 try {
                     JSONObject orderChanges = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "instant_orders");
                     // Portal de operacao (num navegador qualquer, sem Bluetooth) grava
@@ -276,13 +303,24 @@ public class AdoceOrderService extends Service {
                     webSocket.send(new JSONObject().put("topic", "realtime:public:instant_orders")
                         .put("event", "phx_join").put("payload", payload).put("ref", "1").put("join_ref", "1").toString());
                     setState("ouvindo pedidos");
+                    Log.i(TAG, "onOpen: canal aberto e join enviado");
                     scheduleHeartbeat();
-                } catch (Exception e) { reconnect("falha no canal"); }
+                } catch (Exception e) { Log.e(TAG, "onOpen: falha ao montar join", e); reconnect("falha no canal"); }
             }
             @Override public void onMessage(WebSocket webSocket, String text) {
                 try {
                     JSONObject message = new JSONObject(text);
-                    if (!"postgres_changes".equals(message.optString("event"))) return;
+                    String event = message.optString("event");
+                    // Nao logar o texto bruto da mensagem: instant_orders traz nome e
+                    // telefone do cliente no payload, e isso iria parar no logcat do
+                    // sistema (legivel por quem tiver acesso fisico/ADB ao aparelho).
+                    // Só o essencial para diagnostico, sem dado pessoal.
+                    if ("phx_reply".equals(event)) {
+                        JSONObject payload = message.optJSONObject("payload");
+                        String status = payload == null ? "?" : payload.optString("status");
+                        if (!"ok".equals(status)) Log.w(TAG, "onMessage: phx_reply status=" + status);
+                    }
+                    if (!"postgres_changes".equals(event)) return;
                     JSONObject data = message.optJSONObject("payload").optJSONObject("data");
                     if (data == null) return;
                     if ("operation_print_commands".equals(data.optString("table"))) {
@@ -293,11 +331,29 @@ public class AdoceOrderService extends Service {
                     }
                     JSONObject record = data.optJSONObject("record");
                     if (record != null) fetchOrder(record.optString("id"));
-                } catch (Exception ignored) { }
+                } catch (Exception e) { Log.e(TAG, "onMessage: falha ao processar", e); }
             }
-            @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) { reconnect("reconectando"); }
-            @Override public void onClosed(WebSocket webSocket, int code, String reason) { reconnect("reconectando"); }
+            @Override public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+                Log.e(TAG, "onFailure: " + (response == null ? "sem resposta HTTP" : ("HTTP " + response.code())), t);
+                reconnect("reconectando");
+            }
+            @Override public void onClosed(WebSocket webSocket, int code, String reason) {
+                Log.w(TAG, "onClosed: codigo=" + code + " motivo=" + reason);
+                reconnect("reconectando");
+            }
         });
+        // Watchdog: se em 10s esta tentativa nao abriu nem falhou (o
+        // cancelamento de um socket ainda em handshake as vezes nao aciona
+        // nenhum callback do OkHttp), descarta a referencia morta e tenta de
+        // novo. Sem isto um socket "morto no meio do caminho" trava
+        // connectRealtime() para sempre (o guard so olha socket != null).
+        handler.postDelayed(() -> {
+            if (socketGeneration != myGeneration || opened[0]) return;
+            Log.w(TAG, "watchdog: geracao " + myGeneration + " nao abriu em 10s, descartando e tentando de novo");
+            if (socket != null) socket.cancel();
+            socket = null;
+            connectRealtime();
+        }, 10_000);
     }
 
     private void scheduleHeartbeat() {
@@ -445,12 +501,14 @@ public class AdoceOrderService extends Service {
     // silencio, exatamente o sintoma reportado ("seleciono e nao acontece
     // nada").
     private void fetchOrder(String id, boolean force) {
+        Log.i(TAG, "fetchOrder: id=" + id + " force=" + force + " isPrinted=" + (id == null ? "?" : isPrinted(id)));
         if (id == null || id.isEmpty() || (!force && isPrinted(id))) return;
         if (tokenExpiresSoon()) { if (!force) queue(id); refreshSession(() -> fetchOrderNow(id, force)); return; }
         fetchOrderNow(id, force);
     }
 
     private void fetchOrderNow(String id, boolean force) {
+        Log.i(TAG, "fetchOrderNow: buscando pedido " + id);
         HttpUrl url = HttpUrl.parse(prefs.getString("url", "") + "/rest/v1/instant_orders").newBuilder()
             .addQueryParameter("id", "eq." + id)
             .addQueryParameter("select", "*,instant_order_items(id,flavor_name,quantity,unit_price,is_reward,reward_id,instant_order_item_sauces(unit_number,sauce_name))")
@@ -460,14 +518,16 @@ public class AdoceOrderService extends Service {
             .header("Authorization", "Bearer " + prefs.getString("access", ""))
             .header("Accept", "application/json").build();
         http.newCall(request).enqueue(new Callback() {
-            @Override public void onFailure(Call call, java.io.IOException e) { if (!force) queue(id); }
+            @Override public void onFailure(Call call, java.io.IOException e) { Log.e(TAG, "fetchOrderNow: falha de rede", e); if (!force) queue(id); }
             @Override public void onResponse(Call call, Response response) throws java.io.IOException {
                 try (response) {
+                    Log.i(TAG, "fetchOrderNow: resposta HTTP " + response.code());
                     if (!response.isSuccessful()) { if (!force) queue(id); return; }
                     JSONArray rows = new JSONArray(response.body().string());
+                    Log.i(TAG, "fetchOrderNow: " + rows.length() + " linha(s) encontrada(s)");
                     if (rows.length() == 0) { if (!force) queue(id); return; }
                     printOrder(id, rows.getJSONObject(0));
-                } catch (Exception e) { if (!force) queue(id); }
+                } catch (Exception e) { Log.e(TAG, "fetchOrderNow: falha ao processar resposta", e); if (!force) queue(id); }
             }
         });
     }
@@ -497,7 +557,8 @@ public class AdoceOrderService extends Service {
     // "Reimprimir selecionados"): reimprime exatamente estas comandas, ainda
     // que ja estejam marcadas como impressas.
     private void printSpecificOrders(JSONArray orderIds) {
-        if (tokenExpiresSoon()) { refreshSession(() -> printSpecificOrders(orderIds)); return; }
+        Log.i(TAG, "printSpecificOrders: " + orderIds.length() + " id(s) recebido(s): " + orderIds);
+        if (tokenExpiresSoon()) { Log.i(TAG, "printSpecificOrders: token expirando, renovando antes"); refreshSession(() -> printSpecificOrders(orderIds)); return; }
         setState("reimprimindo " + orderIds.length() + " comanda(s) a pedido do portal");
         for (int i = 0; i < orderIds.length(); i++) {
             String id = orderIds.optString(i, "");
@@ -506,6 +567,7 @@ public class AdoceOrderService extends Service {
     }
 
     private void printOrder(String id, JSONObject order) {
+        Log.i(TAG, "printOrder: id=" + id + " writer=" + (writer == null ? "null (impressora nao conectada)" : "ok"));
         if (writer == null) { queue(id); ensurePrinter(); return; }
         printerExecutor.execute(() -> {
             try {
