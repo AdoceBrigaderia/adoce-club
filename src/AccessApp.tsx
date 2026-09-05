@@ -1216,10 +1216,11 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   setStage("identify");
                   setCode("");
                   setResetChallengeId("");
+                  setWhatsappAuthChallengeId("");
                   setMessage("");
                 }}
               >
-                {resetChallengeId ? "Usar outro WhatsApp" : "Usar outro e-mail"}
+                Pedir um código novo pelo WhatsApp
               </button>
             </form>
           ) : (
