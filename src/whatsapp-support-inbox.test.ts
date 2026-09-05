@@ -22,7 +22,15 @@ describe("conversa humana do WhatsApp", () => {
     expect(component).toContain('window.addEventListener("focus"');
     expect(component).toContain("setInterval(resync, 30_000)");
     // e continua chamando a API pelo origin de producao no app nativo
-    expect(component).toContain("Capacitor.isNativePlatform() ? productionApiOrigin");
+    expect(component).toContain("native ? productionApiOrigin");
+  });
+
+  it("fura o cache do CapacitorHttp no tablet com URL unica por chamada", () => {
+    // O CapacitorHttp do Android ignora Cache-Control/no-store neste GET e
+    // servia a lista de atendimentos congelada. So uma query unica resolve.
+    expect(component).toContain("_ts=${Date.now()}");
+    expect(component).toContain('path.includes("?") ? "&" : "?"');
+    expect(component).toContain('cache: "no-store"');
   });
 
   it("mantem texto digitado e baloes legiveis no WebView Android", () => {

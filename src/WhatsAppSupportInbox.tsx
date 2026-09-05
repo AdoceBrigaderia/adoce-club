@@ -41,9 +41,17 @@ async function supportRequest(path = "", init?: RequestInit) {
   // caminho relativo "/api/..." não chega à Netlify. O origin de produção
   // é montado explicitamente aqui em vez de depender do monkey-patch global
   // de fetch (cuja ordem de instalação vs. CapacitorHttp não é garantida).
-  const base = Capacitor.isNativePlatform() ? productionApiOrigin : "";
-  const response = await fetch(`${base}/api/whatsapp/support${path}`, {
+  const native = Capacitor.isNativePlatform();
+  const base = native ? productionApiOrigin : "";
+  // O CapacitorHttp do Android guarda a resposta deste GET e ignora
+  // Cache-Control: no-store, o header de request e o cache:"no-store" do
+  // fetch -- o tablet servia uma lista de atendimentos congelada e os
+  // clientes só apareciam no site. Só uma URL única por chamada fura esse
+  // cache. A função ignora query params desconhecidos.
+  const bust = native ? `${path.includes("?") ? "&" : "?"}_ts=${Date.now()}` : "";
+  const response = await fetch(`${base}/api/whatsapp/support${path}${bust}`, {
     ...init,
+    cache: "no-store",
     headers: {
       ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       Authorization: `Bearer ${accessToken}`,
