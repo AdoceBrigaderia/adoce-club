@@ -156,6 +156,22 @@ export default function OperationDashboard({
     const channel = supabase.channel("operation-device-status").on("postgres_changes", { event: "*", schema: "public", table: "operation_device_status" }, () => void refresh()).subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, []);
+  // O tablet manda um "estou vivo" a cada ~25s enquanto o app esta aberto,
+  // mas nunca avisa quando desliga ou perde energia -- so para de mandar.
+  // Sem isto, "true" gravado na ultima vez que ele respondeu ficava
+  // mostrando verde pra sempre, mesmo com o tablet e a impressora desligados
+  // ha muito tempo. Reavalia sozinho a cada 15s, sem depender de nenhum
+  // evento novo chegar.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(timer);
+  }, []);
+  const DEVICE_STALE_MS = 90_000;
+  const lastSeenMs = deviceStatus?.last_seen_at ? new Date(deviceStatus.last_seen_at).getTime() : null;
+  const deviceStale = lastSeenMs === null || now - lastSeenMs > DEVICE_STALE_MS;
+  const tabletOnline = Boolean(deviceStatus?.tablet_online) && !deviceStale;
+  const printerOnline = Boolean(deviceStatus?.printer_online) && !deviceStale;
 
   const priority = useMemo(
     () =>
@@ -197,9 +213,10 @@ export default function OperationDashboard({
       {notice ? <p className="operation-dashboard-notice">{notice}</p> : null}
 
       <div className="operation-device-status" aria-label="Status do tablet e da impressora">
-        <span className={deviceStatus?.tablet_online ? "online" : "offline"}><i /> Tablet {deviceStatus?.tablet_online ? "online" : "offline"}</span>
-        <span className={deviceStatus?.printer_online ? "online" : "offline"}><i /> Impressora {deviceStatus?.printer_online ? "online" : "offline"}</span>
+        <span className={tabletOnline ? "online" : "offline"}><i /> Tablet {tabletOnline ? "online" : "offline"}</span>
+        <span className={printerOnline ? "online" : "offline"}><i /> Impressora {printerOnline ? "online" : "offline"}</span>
         {deviceStatus?.pending_count ? <small>{deviceStatus.pending_count} pedido(s) na fila de impressão</small> : null}
+        {deviceStale && deviceStatus ? <small>Sem contato com o tablet desde {new Date(deviceStatus.last_seen_at).toLocaleTimeString("pt-BR")}</small> : null}
       </div>
 
       <WhatsAppSupportInbox />

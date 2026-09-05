@@ -80,6 +80,15 @@ public class AdoceOrderService extends Service {
     private final Set<String> printingIds = ConcurrentHashMap.newKeySet();
     private SharedPreferences prefs;
     private WebSocket socket;
+    // Duas chamadas de start() quase simultaneas podiam matar o socket bem
+    // no meio do handshake com .close() -- o OkHttp so aciona
+    // onOpen/onFailure/onClosed para um socket que chegou a abrir; fechar
+    // antes disso e um cancelamento mudo, sem callback nenhum, e o guard
+    // socket != null trava connectRealtime() para sempre. Este numero de
+    // geracao identifica cada tentativa: se depois do prazo o socket ainda
+    // for o mesmo desta tentativa e ela nunca abriu, o watchdog descarta e
+    // tenta de novo, sem depender de nenhum callback do OkHttp.
+    private int socketGeneration;
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic writer;
     private int writerWriteType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
@@ -187,8 +196,11 @@ public class AdoceOrderService extends Service {
         // parameter and the access_token in the join payload below. Sending a
         // second Authorization header makes the gateway reject the upgrade.
         Request request = new Request.Builder().url(ws).build();
+        int myGeneration = ++socketGeneration;
+        boolean[] opened = { false };
         socket = http.newWebSocket(request, new WebSocketListener() {
             @Override public void onOpen(WebSocket webSocket, Response response) {
+                opened[0] = true;
                 try {
                     JSONObject changes = new JSONObject().put("event", "INSERT").put("schema", "public").put("table", "instant_orders");
                     // Portal de operacao (num navegador qualquer, sem Bluetooth) grava
@@ -250,6 +262,18 @@ public class AdoceOrderService extends Service {
                 reconnect("reconectando");
             }
         });
+        // Watchdog: se em 10s esta tentativa nao abriu nem falhou (o
+        // cancelamento de um socket ainda em handshake as vezes nao aciona
+        // nenhum callback do OkHttp), descarta a referencia morta e tenta de
+        // novo. Sem isto um socket "morto no meio do caminho" trava
+        // connectRealtime() para sempre (o guard so olha socket != null).
+        handler.postDelayed(() -> {
+            if (socketGeneration != myGeneration || opened[0]) return;
+            Log.w(TAG, "Realtime nao abriu em 10s, descartando e tentando de novo");
+            if (socket != null) socket.cancel();
+            socket = null;
+            connectRealtime();
+        }, 10_000);
     }
 
     private void scheduleHeartbeat() {
