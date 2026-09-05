@@ -2708,7 +2708,6 @@ function OperationHome({ session }: { session: Session }) {
     fullName: string;
     temporaryPassword: string;
     loginUrl?: string;
-    whatsappUrl?: string;
     accessMessage?: string;
     whatsappSent?: boolean;
     whatsappStatus?: string;
@@ -3674,7 +3673,6 @@ function OperationHome({ session }: { session: Session }) {
         fullName: created.fullName,
         temporaryPassword: created.temporaryPassword,
         loginUrl: created.loginUrl,
-        whatsappUrl: created.whatsappUrl,
         accessMessage: created.accessMessage,
         whatsappSent: created.whatsappSent,
         whatsappStatus: created.whatsappStatus,
@@ -4002,24 +4000,24 @@ function OperationHome({ session }: { session: Session }) {
                     <strong>{acessoDoBalcao.fullName.split(/\s+/)[0]}</strong> já está no Clube.
                   </p>
                   {acessoDoBalcao.whatsappSent ? (
-                    <p className="access-message"><Check /> Link para criar a senha enviado automaticamente pelo WhatsApp.</p>
+                    <p className="access-message"><Check /> Link para criar a senha enviado automaticamente pelo WhatsApp oficial da Adoce.</p>
                   ) : (
-                    <p className="access-message">O envio automático está pendente ({acessoDoBalcao.whatsappStatus || "não configurado"}). Use o botão abaixo para enviar manualmente.</p>
+                    <p className="access-message">
+                      O envio automático não saiu ({acessoDoBalcao.whatsappStatus || "não configurado"}).
+                      Diga a senha temporária abaixo para {acessoDoBalcao.fullName.split(/\s+/)[0]} entrar em{" "}
+                      <code>{acessoDoBalcao.loginUrl ? "adocebrigaderia.com.br/clube/entrar" : "adocebrigaderia.com.br"}</code>{" "}
+                      com o próprio WhatsApp. No primeiro acesso o site pede uma senha nova.
+                    </p>
                   )}
-                  <p>Link de acesso: <code>{acessoDoBalcao.loginUrl || "indisponível"}</code><br />Senha temporária de fallback: <code>{acessoDoBalcao.temporaryPassword}</code></p>
+                  <p>Link de acesso: <code>{acessoDoBalcao.loginUrl || "indisponível"}</code><br />Senha temporária: <code>{acessoDoBalcao.temporaryPassword}</code></p>
                   <div className="cad-acesso-acoes">
-                    {acessoDoBalcao.whatsappUrl ? (
-                      <a className="cad-salvar" href={acessoDoBalcao.whatsappUrl} target="_blank" rel="noreferrer">
-                        <MessageCircle aria-hidden="true" /> Enviar acesso no WhatsApp
-                      </a>
-                    ) : null}
                     {acessoDoBalcao.accessMessage ? (
                       <button
                         type="button"
                         className="access-secondary"
                         onClick={() => {
                           void navigator.clipboard.writeText(acessoDoBalcao.accessMessage || "");
-                          setMessage("Mensagem de acesso copiada.");
+                          setMessage("Mensagem de acesso copiada. Cole no WhatsApp oficial da Adoce.");
                         }}
                       >
                         <Copy /> Copiar mensagem
@@ -4170,12 +4168,12 @@ function OperationHome({ session }: { session: Session }) {
                           </a>
                           {staffAccessWhatsAppUrl(generatedAccess) && (
                             <a
-                              className="access-primary"
+                              className="access-secondary"
                               href={staffAccessWhatsAppUrl(generatedAccess) || undefined}
                               target="_blank"
                               rel="noreferrer"
                             >
-                              <MessageCircle /> Enviar pelo WhatsApp
+                              <MessageCircle /> Abrir no meu WhatsApp
                             </a>
                           )}
                         </div>

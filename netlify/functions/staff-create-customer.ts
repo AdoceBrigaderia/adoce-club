@@ -159,9 +159,11 @@ export default async (request: Request) => {
     whatsappStatus = "link_generation_failed";
     whatsappError = error instanceof Error ? error.message : "access_link_generation_failed";
   }
-  const whatsappDigits = phone.replace(/\D/g, "");
-  const whatsappUrl = `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(accessMessage)}`;
-
+  // Sem link wa.me/<cliente>: abrir esse deep link manda a mensagem pelo
+  // WhatsApp PESSOAL de quem está no balcão, não pelo número oficial. Quando
+  // o envio automático (Twilio) falha, o caminho seguro é ditar a senha
+  // temporária para o cliente entrar sozinho -- accessMessage segue no
+  // retorno só para "Copiar mensagem" e colar no canal oficial.
   return json({
     profileId,
     accountId: membership?.account_id || null,
@@ -171,7 +173,6 @@ export default async (request: Request) => {
     temporaryPassword,
     loginUrl,
     accessMessage,
-    whatsappUrl,
     whatsappSent,
     whatsappStatus,
     whatsappError,

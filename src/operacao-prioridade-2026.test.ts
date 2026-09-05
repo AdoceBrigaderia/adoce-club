@@ -80,7 +80,11 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(endpoint).toContain("auth_upgraded_at");
     expect(endpoint).toContain("must_change_password: true");
     expect(access).toContain("acessoDoBalcao");
-    expect(access).toContain("Enviar acesso no WhatsApp");
+    // Nao existe mais botao wa.me/<cliente> aqui: abrir esse deep link
+    // mandaria a mensagem pelo WhatsApp pessoal do atendente, nao pelo
+    // numero oficial. So "Copiar mensagem" (canal neutro) + ditar a senha.
+    expect(access).not.toContain("acessoDoBalcao.whatsappUrl");
+    expect(endpoint).not.toContain("const whatsappUrl =");
     expect(access).toContain('.eq("status", "available")');
     expect(access).not.toContain("Math.floor(principal / TOTAL_CLUBE)");
   });
