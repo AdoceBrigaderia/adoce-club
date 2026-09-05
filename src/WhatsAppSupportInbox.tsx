@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { CheckCircle2, MessageCircle, RefreshCw, Send, Paperclip, Mic, Square, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
+import { productionApiOrigin } from "./lib/native-api";
 import "./whatsapp-support-inbox.css";
 
 type SupportThreadSummary = {
@@ -35,7 +37,12 @@ async function supportRequest(path = "", init?: RequestInit) {
   const { data } = await supabase.auth.getSession();
   const accessToken = data.session?.access_token;
   if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente na operação.");
-  const response = await fetch(`/api/whatsapp/support${path}`, {
+  // No app do tablet o WebView é servido de https://localhost, então um
+  // caminho relativo "/api/..." não chega à Netlify. O origin de produção
+  // é montado explicitamente aqui em vez de depender do monkey-patch global
+  // de fetch (cuja ordem de instalação vs. CapacitorHttp não é garantida).
+  const base = Capacitor.isNativePlatform() ? productionApiOrigin : "";
+  const response = await fetch(`${base}/api/whatsapp/support${path}`, {
     ...init,
     headers: {
       ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
@@ -123,6 +130,28 @@ export default function WhatsAppSupportInbox() {
         }
       });
     return () => { void supabase.removeChannel(channel); };
+  }, [load, loadThread, selectedId]);
+
+  // No tablet (app Capacitor), quando a operação fica em segundo plano o
+  // WebView é suspenso e o WebSocket do realtime cai -- as mensagens que
+  // chegam nesse meio-tempo não são reentregues. Sem isto, o atendimento
+  // só aparecia no site (aba do navegador não sofre esse corte). Recarrega
+  // ao voltar o foco e mantém um polling leve enquanto a tela está visível.
+  useEffect(() => {
+    const resync = () => {
+      if (document.visibilityState !== "visible") return;
+      void load(true);
+      if (selectedId) void loadThread(selectedId).catch(() => undefined);
+    };
+    const onVisible = () => { if (document.visibilityState === "visible") resync(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", resync);
+    const interval = window.setInterval(resync, 30_000);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", resync);
+      window.clearInterval(interval);
+    };
   }, [load, loadThread, selectedId]);
 
   useEffect(() => {

@@ -12,10 +12,17 @@ describe("conversa humana do WhatsApp", () => {
     expect(component).toContain('channel("whatsapp-support-realtime")');
     expect(component).toContain('table: "operation_notifications"');
     expect(component).toContain('event_type=eq.whatsapp.support.message');
-    expect(component).not.toContain("setInterval");
     expect(component).toContain('event.key === "Enter" && !event.shiftKey');
     expect(component).toContain("setPendingReply");
     expect(component).toContain("Enviandoâ€¦");
+  });
+
+  it("recarrega ao voltar o foco e mantem polling leve (WebView do tablet suspende o realtime em segundo plano)", () => {
+    expect(component).toContain('addEventListener("visibilitychange"');
+    expect(component).toContain('window.addEventListener("focus"');
+    expect(component).toContain("setInterval(resync, 30_000)");
+    // e continua chamando a API pelo origin de producao no app nativo
+    expect(component).toContain("Capacitor.isNativePlatform() ? productionApiOrigin");
   });
 
   it("mantem texto digitado e baloes legiveis no WebView Android", () => {
