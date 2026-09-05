@@ -34,7 +34,6 @@ import {
   LayoutDashboard,
   LogOut,
   KeyRound,
-  MessageCircle,
   MoreHorizontal,
   Package,
   MapPin,
@@ -91,7 +90,6 @@ import {
 import {
   generateStaffAccessCode,
   staffAccessMessage,
-  staffAccessWhatsAppUrl,
   type StaffAccessCode,
 } from "./staff-access-code";
 import {
@@ -4166,16 +4164,10 @@ function OperationHome({ session }: { session: Session }) {
                           >
                             <ArrowRight /> Testar link direto
                           </a>
-                          {staffAccessWhatsAppUrl(generatedAccess) && (
-                            <a
-                              className="access-secondary"
-                              href={staffAccessWhatsAppUrl(generatedAccess) || undefined}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <MessageCircle /> Abrir no meu WhatsApp
-                            </a>
-                          )}
+                          <p className="access-message">
+                            Copie a mensagem e cole no WhatsApp oficial da Adoce. Abrir um link
+                            <code> wa.me </code> aqui usaria o seu WhatsApp pessoal.
+                          </p>
                         </div>
                       )}
                     </section>

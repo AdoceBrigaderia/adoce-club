@@ -36,8 +36,7 @@ export function staffAccessMessage(access: StaffAccessCode): string {
   return `Olá, ${firstName}! A Adoce gerou seu acesso ao Clube. Toque neste link para abrir a tela segura e entrar diretamente: ${access.loginUrl}\n\nSe preferir digitar, acesse https://www.adocebrigaderia.com.br/clube/entrar, informe o e-mail ${access.email} e use o código ${access.code}. O link e o código são temporários e de uso pessoal.`;
 }
 
-export function staffAccessWhatsAppUrl(access: StaffAccessCode): string | null {
-  const digits = access.phone?.replace(/\D/g, "") || "";
-  if (digits.length < 12 || digits.length > 13) return null;
-  return `https://wa.me/${digits}?text=${encodeURIComponent(staffAccessMessage(access))}`;
-}
+// Sem helper de link wa.me/<cliente>: abrir esse deep link envia a mensagem
+// pelo WhatsApp PESSOAL de quem está no balcão, não pelo número oficial da
+// Adoce. Quem gera o código copia a mensagem (staffAccessMessage) e cola no
+// canal oficial.

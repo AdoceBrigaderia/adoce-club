@@ -80,11 +80,17 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(endpoint).toContain("auth_upgraded_at");
     expect(endpoint).toContain("must_change_password: true");
     expect(access).toContain("acessoDoBalcao");
-    // Nao existe mais botao wa.me/<cliente> aqui: abrir esse deep link
-    // mandaria a mensagem pelo WhatsApp pessoal do atendente, nao pelo
+    // Nao existe mais link wa.me/<cliente> aqui nem na funcao: abrir esse deep
+    // link mandaria a mensagem pelo WhatsApp pessoal do atendente, nao pelo
     // numero oficial. So "Copiar mensagem" (canal neutro) + ditar a senha.
-    expect(access).not.toContain("acessoDoBalcao.whatsappUrl");
-    expect(endpoint).not.toContain("const whatsappUrl =");
+    expect(endpoint).not.toMatch(/wa\.me\/\$\{/);
+    expect(endpoint).not.toMatch(/\bwhatsappUrl\b/);
+    expect(access).not.toMatch(/acessoDoBalcao\.whatsappUrl/);
+    // A UI de fallback (sem envio automatico) precisa continuar mostrando a
+    // senha temporaria e o botao de copiar a mensagem.
+    expect(access).toContain("acessoDoBalcao.temporaryPassword");
+    expect(access).toContain("acessoDoBalcao.accessMessage");
+    expect(access).toContain("Copiar mensagem");
     expect(access).toContain('.eq("status", "available")');
     expect(access).not.toContain("Math.floor(principal / TOTAL_CLUBE)");
   });
