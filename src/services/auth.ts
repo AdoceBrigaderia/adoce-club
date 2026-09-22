@@ -1,4 +1,5 @@
 import { requireSupabase, setRememberLogin } from "../lib/supabase";
+import { clearNativeOperationSession } from "../lib/native-operation";
 
 export type SocialAuthProvider = "google" | "facebook";
 export type SocialAuthReturn = "clube" | "operacao";
@@ -400,5 +401,6 @@ export async function verifyPhoneCode(phone: string, token: string) {
 
 export async function signOut() {
   const { error } = await requireSupabase().auth.signOut();
+  await clearNativeOperationSession();
   if (error) throw error;
 }

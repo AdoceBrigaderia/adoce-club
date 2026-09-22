@@ -57,9 +57,23 @@ describe("acesso da operação com senha", () => {
     const migration = source(
       "../supabase/migrations/20260723101500_forced_password_change.sql",
     );
-    expect(app).toContain("if (mustChangePassword)");
+    expect(app).toContain("if (mustChangePassword || passwordRecoveryRequested)");
     expect(app).toContain('"complete_forced_password_change"');
     expect(migration).toContain("must_change_password boolean");
+  });
+
+  it("obriga a criação de nova senha após recuperação pelo WhatsApp", () => {
+    const app = source("./AccessApp.tsx");
+
+    expect(app).toContain(
+      'sessionStorage.getItem(passwordRecoveryStorageKey) === "true"',
+    );
+    expect(app).toContain("if (mustChangePassword || passwordRecoveryRequested)");
+    expect(app).toContain("setPasswordRecoveryRequested(false)");
+    expect(app).toContain(
+      "sessionStorage.removeItem(passwordRecoveryStorageKey)",
+    );
+    expect(app).toContain("O código recebido pelo WhatsApp confirmou sua identidade.");
   });
 
   it("permite concluir a troca somente com uma sessão autenticada", () => {

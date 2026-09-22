@@ -16,17 +16,25 @@ export default function NativePrinterSettings() {
   useEffect(() => { void refresh(); }, [refresh]);
   if (!Capacitor.isNativePlatform()) return null;
 
-  const run = async (action: "discover" | "test") => {
+  const run = async (action: "discover" | "test" | "samples" | "large-sample") => {
     setBusy(true); setMessage("");
     try {
       if (action === "discover") {
         await NativeOperation.discoverPrinter();
         setMessage("Procurando a KNUP por até 12 segundos...");
         window.setTimeout(() => void refresh(), 13_000);
-      } else {
+      } else if (action === "test") {
         await NativeOperation.printTest();
         setMessage("Ficha de teste enviada.");
         window.setTimeout(() => void refresh(), 1_500);
+      } else if (action === "samples") {
+        await NativeOperation.printSamples();
+        setMessage("Enviando 3 amostras: simples, retirada e pedido grande...");
+        window.setTimeout(() => void refresh(), 4_000);
+      } else {
+        await NativeOperation.printLargeSample();
+        setMessage("Enviando uma amostra grande detalhada...");
+        window.setTimeout(() => void refresh(), 3_000);
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível falar com a impressora.");
@@ -45,6 +53,8 @@ export default function NativePrinterSettings() {
     <div className="native-printer-actions">
       <button type="button" disabled={busy} onClick={() => void run("discover")}><Bluetooth /> Localizar e conectar KNUP</button>
       <button type="button" disabled={busy} onClick={() => void run("test")}><Printer /> Imprimir teste</button>
+      <button type="button" disabled={busy} onClick={() => void run("samples")}><Printer /> Imprimir 3 amostras</button>
+      <button type="button" disabled={busy} onClick={() => void run("large-sample")}><Printer /> Imprimir amostra grande</button>
       <button type="button" disabled={busy} onClick={() => void refresh()} aria-label="Atualizar estado"><RefreshCw /> Atualizar</button>
     </div>
   </section>;

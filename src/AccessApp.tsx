@@ -27,6 +27,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  Fingerprint,
   Gift,
   Heart,
   History,
@@ -108,7 +109,11 @@ import { createStaffCustomer } from "./staff-create-customer";
 import { redeemRewardSlice } from "./staff-redeem-reward-slice";
 import type { Cliente } from "./balcao-atendimento";
 import NativePrinterSettings from "./NativePrinterSettings";
-import { syncNativeOperationSession } from "./lib/native-operation";
+import {
+  getNativeBiometricStatus,
+  restoreNativeOperationSessionWithBiometrics,
+  syncNativeOperationSession,
+} from "./lib/native-operation";
 import "./access-app.css";
 import "./operation-dashboard.css";
 import "./operation-v3.css";
@@ -665,6 +670,17 @@ function AuthScreen({ surface }: { surface: Surface }) {
   });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [nativeBiometric, setNativeBiometric] = useState({
+    available: false,
+    savedSession: false,
+  });
+
+  useEffect(() => {
+    if (surface !== "operation") return;
+    void getNativeBiometricStatus()
+      .then(setNativeBiometric)
+      .catch(() => setNativeBiometric({ available: false, savedSession: false }));
+  }, [surface]);
 
   useEffect(() => {
     if (surface === "client") {
@@ -789,6 +805,19 @@ function AuthScreen({ surface }: { surface: Surface }) {
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível entrar agora.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitBiometric = async () => {
+    setBusy(true);
+    setMessage("");
+    try {
+      await restoreNativeOperationSessionWithBiometrics();
+      window.location.assign("/operacao");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Não foi possível entrar com a biometria.");
     } finally {
       setBusy(false);
     }
@@ -1020,6 +1049,16 @@ function AuthScreen({ surface }: { surface: Surface }) {
           {stage === "identify" ? (
             !registering && loginMode === "password" ? (
               <form onSubmit={submitPassword}>
+                {surface === "operation" && nativeBiometric.available && nativeBiometric.savedSession && (
+                  <button
+                    className="access-secondary"
+                    type="button"
+                    onClick={() => void submitBiometric()}
+                    disabled={busy}
+                  >
+                    <Fingerprint /> Entrar com biometria
+                  </button>
+                )}
                 <label>
                   Celular com DDD
                   <div className="input-icon">
@@ -2697,6 +2736,9 @@ function OperationHome({ session }: { session: Session }) {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [role, setRole] = useState("");
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [passwordRecoveryRequested, setPasswordRecoveryRequested] = useState(
+    () => sessionStorage.getItem(passwordRecoveryStorageKey) === "true",
+  );
   const [newStaffPassword, setNewStaffPassword] = useState("");
   const [newStaffPasswordConfirm, setNewStaffPasswordConfirm] = useState("");
   const [query, setQuery] = useState("");
@@ -3224,6 +3266,8 @@ function OperationHome({ session }: { session: Session }) {
       );
       if (completionError) throw completionError;
       setMustChangePassword(false);
+      setPasswordRecoveryRequested(false);
+      sessionStorage.removeItem(passwordRecoveryStorageKey);
       setNewStaffPassword("");
       setNewStaffPasswordConfirm("");
       setMessage("Senha atualizada. Seu acesso à operação está liberado.");
@@ -3638,7 +3682,7 @@ function OperationHome({ session }: { session: Session }) {
         <button onClick={() => void signOut()}>Sair</button>
       </main>
     );
-  if (mustChangePassword)
+  if (mustChangePassword || passwordRecoveryRequested)
     return (
       <main className="club-onboarding">
         <header>
@@ -3650,11 +3694,16 @@ function OperationHome({ session }: { session: Session }) {
         <section className="club-onboarding-shell">
           <div className="club-onboarding-copy">
             <KeyRound />
-            <span>Primeiro acesso após redefinição</span>
+            <span>
+              {passwordRecoveryRequested
+                ? "Recuperação de senha"
+                : "Primeiro acesso após redefinição"}
+            </span>
             <h1>Crie uma senha só sua.</h1>
             <p>
-              A senha temporária serviu apenas para abrir este acesso. Ela deixa
-              de funcionar assim que você salvar a nova senha.
+              {passwordRecoveryRequested
+                ? "O código recebido pelo WhatsApp confirmou sua identidade. Agora escolha a nova senha da operação."
+                : "A senha temporária serviu apenas para abrir este acesso. Ela deixa de funcionar assim que você salvar a nova senha."}
             </p>
             <div>
               <ShieldCheck />
@@ -4575,7 +4624,8 @@ export default function AccessApp({ surface }: { surface: Surface }) {
   }, [identityDecision.porta, surface]);
   useEffect(() => {
     if (surface !== "operation") return;
-    void syncNativeOperationSession(session || null);
+    if (session === undefined) return;
+    void syncNativeOperationSession(session);
   }, [session, surface]);
   useEffect(() => {
     if (!session) return;
