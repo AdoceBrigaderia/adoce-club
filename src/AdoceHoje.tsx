@@ -892,7 +892,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
               {!flavor.available ? <button className="today-unavailable-prompt" type="button" onClick={() => setAlertFlavor(flavor)}>
                 <strong>Indisponível no momento</strong><span>Quer receber um aviso quando voltar?</span>
               </button> : null}
-              <button className="today-card-image product-image-trigger" type="button" onClick={() => setViewedImage({ src: flavor.image, alt: `Fatia ${flavor.name}` })} aria-label={`Ampliar foto de ${flavor.name}`}>
+              <button className="today-card-image product-image-trigger" type="button" onClick={() => setSelectedFlavor(flavor)} aria-label={`Ver fotos e informações de ${flavor.name}`}>
                 <img
                   src={flavor.image}
                   alt={`Fatia ${flavor.name}`}
@@ -913,7 +913,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                 {flavor.illustrative && (
                   <span className="today-illustrative">Imagem ilustrativa</span>
                 )}
-                {(flavor.photos?.length || 0) > 1 && <span className="today-gallery-button"><Images /> Ver fotos</span>}
+                <span className="today-gallery-button"><Images /> Ver fotos e detalhes</span>
               </button>
               <div className="today-card-body">
                 <div>
@@ -956,15 +956,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
               ) : (
                 <button className="today-order-flavor today-alert-flavor" type="button" onClick={() => setAlertFlavor(flavor)}>
                   <Bell /> <span>Avise quando voltar</span>
-                </button>
-              )}
-              {(flavor.photos?.length || 0) > 1 && (
-                <button
-                  className="today-gallery-link"
-                  type="button"
-                  onClick={() => setSelectedFlavor(flavor)}
-                >
-                  Conhecer o produto
                 </button>
               )}
             </article>
@@ -1141,10 +1132,35 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
             </button>
             <p className="today-kicker">Galeria do sabor</p>
             <h2>{selectedFlavor.name}</h2>
+            <div className="today-gallery-status">
+              {selectedFlavor.available ? (
+                <span className="now">
+                  {selectedFlavor.status === "preorder_only"
+                    ? "Festival de hoje à noite"
+                    : selectedFlavor.status === "last_units"
+                      ? "Últimas unidades"
+                      : "Disponível hoje"}
+                </span>
+              ) : (
+                <span><Clock3 /> Indisponível no momento</span>
+              )}
+              {selectedFlavor.premium ? <span className="today-premium"><Sparkles /> Premium</span> : null}
+            </div>
+            {selectedFlavor.available && selectedFlavor.availabilityBatches?.length ? (
+              <div className="today-batch-availability" aria-label="Disponibilidade por horário">
+                {formatBatchAvailability(selectedFlavor.availabilityBatches).map((line) => (
+                  <small key={line}><Clock3 /> {line}</small>
+                ))}
+              </div>
+            ) : selectedFlavor.available && selectedFlavor.quantityAvailable !== null && selectedFlavor.quantityAvailable !== undefined ? (
+              <div className="today-stock-count">
+                {Math.max(selectedFlavor.quantityAvailable - (selectedFlavor.quantityReserved || 0), 0)} fatia(s) disponível(is) agora
+              </div>
+            ) : null}
             <p>{selectedFlavor.note}</p>
             <p className="today-gallery-price"><strong>{selectedFlavor.price ? `R$ ${selectedFlavor.price.toFixed(2).replace(".", ",")}` : "Consulte o valor"}</strong></p>
             <div className="today-gallery-photos">
-              {(selectedFlavor.photos || []).map((photo) => (
+              {(selectedFlavor.photos?.length ? selectedFlavor.photos : [{ id: `${selectedFlavor.id}-cover`, flavor_id: selectedFlavor.id, image_path: selectedFlavor.image, alt_text: `Fatia ${selectedFlavor.name}`, image_role: "cover" as const, sort_order: 0 }]).map((photo) => (
                 <figure key={photo.id}>
                   <button className="product-image-trigger" type="button" onClick={() => setViewedImage({ src: photo.image_path, alt: photo.alt_text || selectedFlavor.name })} aria-label={`Ampliar ${photo.alt_text || selectedFlavor.name}`}>
                     <img src={photo.image_path} alt={photo.alt_text || selectedFlavor.name} />
@@ -1157,14 +1173,32 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                 </figure>
               ))}
             </div>
-            <a
-              className="today-primary"
-              href={orderLink(selectedFlavor.name)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MessageCircle /> Consultar disponibilidade
-            </a>
+            {selectedFlavor.available && instantOrderFlavors.some((item) => item.id === selectedFlavor.id) ? (
+              <button
+                className="today-primary"
+                type="button"
+                onClick={() => { openInstantOrder(selectedFlavor.id); setSelectedFlavor(null); }}
+              >
+                <ShoppingBag /> Adicionar ao pedido
+              </button>
+            ) : !selectedFlavor.available ? (
+              <button
+                className="today-primary"
+                type="button"
+                onClick={() => { setAlertFlavor(selectedFlavor); setSelectedFlavor(null); }}
+              >
+                <Bell /> Avise quando voltar
+              </button>
+            ) : (
+              <a
+                className="today-primary"
+                href={orderLink(selectedFlavor.name)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <MessageCircle /> Consultar disponibilidade
+              </a>
+            )}
           </div>
         </div>
       )}
