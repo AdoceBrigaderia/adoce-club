@@ -37,7 +37,9 @@
 .instant-order-sauce-new input { min-width: 0; border: 1px solid #e5cbbc; border-radius: 9px; padding: 10px; }
 .instant-order-sauce-new button { border: 0; border-radius: 9px; padding: 0 14px; background: #ec6660; color: #fff; display: flex; align-items: center; gap: 6px; font-weight: 800; }
 .instant-order-sauce-new button svg { width: 16px; }
-.instant-order-operation-items > span > span { display: grid; gap: 3px; }
+.instant-order-operation-items > span { grid-template-columns: auto minmax(0,1fr) auto; align-items: start; }
+.instant-order-operation-items > span > span { display: grid; gap: 3px; min-width: 0; }
+.instant-order-operation-items > span > span strong,.instant-order-operation-items > span > span small { min-width: 0; overflow-wrap: normal; word-break: normal; }
 .instant-order-operation-items > span > span small { color: #8f7066; line-height: 1.4; }
 .instant-order-operation-actions button.payment-send { background: #168b55; }
 .instant-order-operation-actions button.direct-finish { grid-column: 1 / -1; background: #3f241b; color: #fff; }
@@ -175,8 +177,8 @@
   .instant-order-status-track li { min-width: 0; }
   .instant-order-status-track small {
     max-width: 100%;
-    font-size: .5rem;
-    overflow-wrap: anywhere;
+    font-size: .72rem;
+    overflow-wrap: break-word;
   }
   .instant-order-direct-finish > div:last-child { grid-template-columns: 1fr; }
   .instant-order-edit-unit { grid-template-columns: 1fr; }
@@ -185,3 +187,40 @@
   .instant-order-edit-actions { grid-template-columns: 1fr; }
 }
 .instant-order-reprint-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;padding:12px 14px;border:1px solid #ead2c4;border-radius:10px;background:#fffaf5;color:#69483e;font-size:.85rem}.instant-order-reprint-toolbar button{display:flex;align-items:center;gap:6px;border:0;border-radius:9px;padding:10px 13px;background:#557a62;color:#fff;font-weight:800}.instant-order-reprint-toolbar button:disabled{opacity:.5}.instant-order-row-with-select{display:grid;grid-template-columns:auto 1fr;align-items:center;border-bottom:1px solid #ead2c4}.instant-order-row-with-select>button{border:0;background:transparent;padding:15px 4px;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:12px;align-items:center;text-align:left;color:#3a170f;width:100%}.instant-order-reprint-select{display:flex;align-items:center;gap:6px;padding:10px 6px;color:#69483e;font-size:.72rem}.instant-order-reprint-select input{accent-color:#557a62}
+
+/* Auditoria 23/09/2026 — fila e painel do pedido.
+   Os números filtram a fila; no painel a próxima ação vem logo abaixo do nome
+   (a ordem do cupom impresso continua a mesma, só a tela muda). */
+.instant-order-metrics > button { display: grid; gap: 2px; padding: 16px; border: 0; border-right: 1px solid #ead2c4; background: transparent; text-align: left; cursor: pointer; }
+.instant-order-metrics > button:last-child { border-right: 0; }
+.instant-order-metrics > button strong { font: 600 2rem 'Playfair Display', Georgia, serif; color: #c7343f; }
+.instant-order-metrics > button small { color: #6f5249; font-size: 13px; }
+.instant-order-metrics > button.active { background: #fff0ec; box-shadow: inset 0 -3px 0 #c7343f; }
+.instant-order-view-switch button { min-height: 44px; font-size: 14px; }
+.instant-order-operation-list em, .instant-order-operation-list small { font-size: 13px; }
+.instant-order-operation-list > button > b { font-size: 12px; }
+.instant-order-operation-layer label { font-size: 13px; }
+
+@media screen {
+  .instant-order-operation-layer > aside > .drawer-close { order: -10; }
+  .instant-order-operation-layer > aside > small { order: -9; }
+  .instant-order-operation-layer > aside > h2 { order: -8; }
+  .instant-order-operation-layer > aside > .instant-order-direct-error { order: -7; }
+  .instant-order-operation-layer > aside > .instant-order-operation-actions { order: -6; }
+  .instant-order-operation-layer > aside > .instant-order-direct-finish,
+  .instant-order-operation-layer > aside > .expired-recovery-box { order: -5; }
+  .instant-order-operation-layer > aside > .thermal-receipt-brand { display: none; }
+  .instant-order-operation-actions button { min-height: 48px; font-size: 15px; }
+  .instant-order-operation-actions button.direct-finish { background: #fff; color: #2f5d44; border: 1px solid #9cc2ab; }
+  .instant-order-operation-actions button.cancel { background: #fff; color: #9f2a35; border: 1px solid #e3b1b5; }
+  .instant-order-operation-layer .drawer-close { width: 44px; height: 44px; }
+}
+
+@media screen and (min-width: 1280px) {
+  .instant-order-operation-layer > aside { width: min(640px, 46vw); }
+}
+
+@media screen and (max-width: 560px) {
+  .instant-order-metrics > button:nth-child(2) { border-right: 0; }
+  .instant-order-metrics > button:nth-child(-n + 2) { border-bottom: 1px solid #ead2c4; }
+}

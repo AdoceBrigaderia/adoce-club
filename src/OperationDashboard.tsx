@@ -3,13 +3,16 @@ import {
   AlertTriangle,
   ArrowRight,
   PackageCheck,
+  MessageCircle,
   RefreshCw,
   ShoppingCart,
   Users,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { countCustomerProfiles } from "./customer-search";
-import WhatsAppSupportInbox from "./WhatsAppSupportInbox";
+import { supportRequest } from "./WhatsAppSupportInbox";
+import RemotePrintTrigger from "./RemotePrintTrigger";
+import { openOperationArea } from "./lib/operation-navigation";
 import "./operation-dashboard.css";
 
 export type DashboardDestination =
@@ -145,7 +148,24 @@ export default function OperationDashboard({
 
   useEffect(() => {
     void load();
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") void load(); };
+    const timer = window.setInterval(refreshWhenVisible, 60_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refreshWhenVisible); };
   }, [load]);
+  const [pendingChats, setPendingChats] = useState(0);
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState !== "visible") return;
+      void supportRequest()
+        .then((result: { threads?: Array<{ has_customer_messages?: boolean }> }) => setPendingChats((result.threads || []).filter((item) => item.has_customer_messages).length))
+        .catch(() => setPendingChats(0));
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("adoce-support-updated", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("adoce-support-updated", refresh); };
+  }, []);
   useEffect(() => {
     const supabase = requireSupabase();
     const refresh = async () => {
@@ -197,29 +217,40 @@ export default function OperationDashboard({
     timeZone: "America/Fortaleza",
   }).format(new Date());
 
+  const attentionItems = [
+    { key: "payment", count: data.awaitingPayment, label: data.awaitingPayment === 1 ? "pedido aguardando pagamento" : "pedidos aguardando pagamento", destination: "sales" as const },
+    { key: "ready", count: data.ready, label: data.ready === 1 ? "pedido pronto para retirada" : "pedidos prontos para retirada", destination: "sales" as const },
+    { key: "production", count: data.productionPending, label: data.productionPending === 1 ? "sabor aguardando liberação da produção" : "sabores aguardando liberação da produção", destination: "availability" as const },
+    { key: "stock", count: data.lowStock, label: data.lowStock === 1 ? "sabor com estoque baixo" : "sabores com estoque baixo", destination: "low-stock" as const },
+  ].filter((item) => item.count > 0);
+  const devicesOffline = !tabletOnline || !printerOnline;
+
   return (
-    <section className="operation-dashboard">
+    <section className="operation-dashboard operation-dashboard-v4">
       <header className="operation-dashboard-heading">
         <div>
           <span>Visão do dia</span>
           <h1>{greeting}, <em>{operatorName || "Adoce"}</em></h1>
           <p className="operation-dashboard-date">{todayLabel}</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={busy}>
-          <RefreshCw /> {busy ? "Atualizando…" : "Atualizar"}
+        <button type="button" onClick={() => void load()} disabled={busy} aria-label="Atualizar números do dia">
+          <RefreshCw aria-hidden="true" /> <span>{busy ? "Atualizando…" : "Atualizar"}</span>
         </button>
       </header>
 
       {notice ? <p className="operation-dashboard-notice">{notice}</p> : null}
 
-      <div className="operation-device-status" aria-label="Status do tablet e da impressora">
+      <div
+        className={devicesOffline ? "operation-device-status is-alert" : "operation-device-status"}
+        role={devicesOffline ? "alert" : "status"}
+        aria-label="Status do tablet e da impressora"
+      >
+        {devicesOffline ? <AlertTriangle aria-hidden="true" /> : null}
         <span className={tabletOnline ? "online" : "offline"}><i /> Tablet {tabletOnline ? "online" : "offline"}</span>
         <span className={printerOnline ? "online" : "offline"}><i /> Impressora {printerOnline ? "online" : "offline"}</span>
         {deviceStatus?.pending_count ? <small>{deviceStatus.pending_count} pedido(s) na fila de impressão</small> : null}
-        {deviceStale && deviceStatus ? <small>Sem contato com o tablet desde {new Date(deviceStatus.last_seen_at).toLocaleTimeString("pt-BR")}</small> : null}
+        {deviceStale && deviceStatus ? <small>Sem contato com o tablet desde {new Date(deviceStatus.last_seen_at).toLocaleTimeString("pt-BR")}. Confira se o tablet do balcão está ligado, com internet e com o app aberto.</small> : null}
       </div>
-
-      <WhatsAppSupportInbox />
 
       <div className="operation-dashboard-heroes">
         <button type="button" className="operation-hero-sale" onClick={() => onNavigate("sales")}>
@@ -240,13 +271,33 @@ export default function OperationDashboard({
         </button>
       </div>
 
-      <div className="operation-dashboard-priority">
+      <div className={attentionItems.length ? "operation-dashboard-priority has-items" : "operation-dashboard-priority"}>
         <div>
-          <AlertTriangle />
+          <AlertTriangle aria-hidden="true" />
           <span><small>Precisa de atenção</small><strong>{priority}</strong></span>
         </div>
-        <p>{priority ? "Confira pedidos, retiradas e itens com poucas unidades." : "Nada urgente neste momento."}</p>
+        {attentionItems.length ? (
+          <ul>
+            {attentionItems.map((item) => (
+              <li key={item.key}>
+                <button type="button" onClick={() => onNavigate(item.destination)}>
+                  <strong>{item.count}</strong> {item.label} <ArrowRight aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : <p>Nada urgente neste momento.</p>}
       </div>
+
+      <button type="button" className="operation-dashboard-whatsapp" onClick={() => openOperationArea({ view: "orders", channel: "official" })}>
+        <MessageCircle aria-hidden="true" />
+        <span>
+          <strong>Conversas do WhatsApp</strong>
+          <small>{pendingChats ? `${pendingChats} ${pendingChats === 1 ? "cliente aguardando resposta" : "clientes aguardando resposta"}` : "Nenhum cliente aguardando agora"}</small>
+        </span>
+        {pendingChats ? <b>{pendingChats}</b> : null}
+        <ArrowRight aria-hidden="true" />
+      </button>
 
       <div className="operation-dashboard-metrics">
         <button
@@ -268,18 +319,18 @@ export default function OperationDashboard({
         <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span><strong>{data.activeSales}</strong><small>vendas em andamento</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span><strong>{data.awaitingPayment}</strong><small>aguardando pagamento</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("sales")}><PackageCheck /><span><strong>{data.ready}</strong><small>prontas para retirada</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>{data.activeRequests}</strong><small>solicitações em aberto</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>{data.activeRequests}</strong><small>encomendas em aberto</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("customers")}><Users /><span><strong>{data.members}</strong><small>clientes cadastrados</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("low-stock")} className={data.lowStock ? "is-warning" : ""}><AlertTriangle /><span><strong>{data.lowStock}</strong><small>itens com estoque baixo</small></span><ArrowRight /></button>
       </div>
 
       <div className="operation-dashboard-shortcuts">
-        <div><small>Acesso rápido</small><h2>O que você quer fazer agora?</h2></div>
-        <button type="button" onClick={() => onNavigate("sales")}><ShoppingCart /><span>Venda rápida<small>Lançar ou acompanhar</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span>Pedidos futuros<small>Solicitações e retiradas</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("customers")}><Users /><span>Clientes<small>Buscar e gerenciar Clube</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span>Produtos<small>Disponibilidade e produção</small></span><ArrowRight /></button>
+        <div><small>Acesso rápido</small><h2>Outras tarefas</h2></div>
+        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span>Encomendas<small>Pedidos futuros e retiradas</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span>Produção de hoje<small>Liberar sabores e quantidades</small></span><ArrowRight /></button>
       </div>
+
+      <RemotePrintTrigger />
     </section>
   );
 }

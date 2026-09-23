@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { confirmAction } from "./lib/confirm-dialog";
 import type { Session } from "@supabase/supabase-js";
 import { operationWhatsAppUrl } from "./operation-whatsapp";
 import {
@@ -39,6 +40,7 @@ import ClipboardImageInput from "./ClipboardImageInput";
 import CommercialMediaAdmin from "./CommercialMediaAdmin";
 import { normalizeInstagramUrl, type CommercialMediaItem } from "./commercial-media";
 import OperationInstantOrders from "./OperationInstantOrders";
+import OperationManualSale from "./OperationManualSale";
 import {
   CommercialEventSubcategory,
   CommercialProduct,
@@ -59,7 +61,7 @@ import "./operation-media-editor.css";
 type AdminTab = "sales" | "requests" | "catalog";
 const tabPresentation: Record<AdminTab, { eyebrow: string; title: string; description: string }> = {
   sales: { eyebrow: "Vendas de fatias", title: "Caixa e pedidos", description: "Lance vendas, acompanhe pagamentos, separação, retirada e baixa de estoque." },
-  requests: { eyebrow: "Encomendas", title: "Pedidos e pré-reservas", description: "Acompanhe cada solicitação desde o primeiro contato até a entrega." },
+  requests: { eyebrow: "Caixa", title: "Encomendas", description: "Pedidos futuros e pré-reservas: do primeiro contato até a entrega." },
   catalog: { eyebrow: "Produtos", title: "Catálogo comercial", description: "Produtos, opções, preços, fotos e informações apresentadas aos clientes." },
 };
 type RequestStatus =
@@ -402,7 +404,7 @@ export default function OperationCommercialAdmin({
     const confirmation = status === "confirmed"
       ? `Confirmar ${request.request_number}? O sinal de 50% deve ter sido recebido.`
       : `Alterar ${request.request_number} para “${statuses[status]}”?`;
-    if (!window.confirm(confirmation)) return;
+    if (!await confirmAction(confirmation)) return;
     setBusy(true);
     const { error } = await requireSupabase().rpc("manager_update_service_request", {
       target_request_id: request.id,
@@ -609,7 +611,7 @@ export default function OperationCommercialAdmin({
   };
 
   const removeGalleryMedia = async (item: CommercialMediaItem) => {
-    if (!window.confirm("Remover esta mídia da apresentação pública?")) return;
+    if (!await confirmAction("Remover esta mídia da apresentação pública?", { destructive: true, confirmLabel: "Remover" })) return;
     setBusy(true);
     const { error } = await requireSupabase().from("commercial_media_items").update({ active: false, updated_by: session.user.id }).eq("id", item.id);
     setBusy(false); if (error) setNotice(error.message); else { setNotice("Mídia removida da apresentação."); await load(); }
@@ -752,7 +754,14 @@ export default function OperationCommercialAdmin({
 
   return (
     <div className="operation-commercial">
-      <div className="operation-title">
+      <nav className="operation-commercial-tabs" aria-label="Áreas de pedidos">
+        <div><span>
+          {allowedTabs.includes("sales") ? <button className={tab === "sales" ? "active" : ""} onClick={() => changeTab("sales")}><ShoppingCart /> Caixa</button> : null}
+          {allowedTabs.includes("requests") ? <button className={tab === "requests" ? "active" : ""} onClick={() => changeTab("requests")}><PackagePlus /> Encomendas</button> : null}
+          {allowedTabs.includes("catalog") ? <button className={tab === "catalog" ? "active" : ""} onClick={() => changeTab("catalog")}><Edit3 /> Catálogo</button> : null}
+        </span></div>
+      </nav>
+      <div className="operation-title" hidden={tab === "sales"}>
         <div>
           <span>{presentation.eyebrow}</span>
           <h1>{presentation.title}</h1>
@@ -770,13 +779,6 @@ export default function OperationCommercialAdmin({
         <span><strong>{tasks.filter((item) => item.status === "open" && item.due_at && new Date(item.due_at).getTime() <= now + 24 * 60 * 60 * 1000).length}</strong><small>lembretes em 24h</small></span>
       </div> : null}
 
-      <nav className="operation-commercial-tabs" aria-label="Áreas de pedidos">
-        <div><small>Pedidos</small><span>
-          {allowedTabs.includes("sales") ? <button className={tab === "sales" ? "active" : ""} onClick={() => changeTab("sales")}><ShoppingCart /> Fatias</button> : null}
-          {allowedTabs.includes("requests") ? <button className={tab === "requests" ? "active" : ""} onClick={() => changeTab("requests")}><PackagePlus /> Pedidos futuros</button> : null}
-          {allowedTabs.includes("catalog") ? <button className={tab === "catalog" ? "active" : ""} onClick={() => changeTab("catalog")}><Edit3 /> Catálogo</button> : null}
-        </span></div>
-      </nav>
 
       {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
 
@@ -830,7 +832,7 @@ export default function OperationCommercialAdmin({
         </div>
       ) : null}
 
-      {tab === "sales" ? <OperationInstantOrders /> : null}
+      {tab === "sales" ? <OperationManualSale onCreated={() => void load()} /> : null}
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">

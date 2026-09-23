@@ -49,7 +49,7 @@ export default function OperationCommerceSettings() {
 
   if (!settings) return <section className="commerce-tool-card"><p>{busy ? "Carregando configurações…" : notice}</p></section>;
   return <section className="commerce-settings-page">
-    <header className="commerce-tool-heading"><div><small>Regras da operação</small><h2>Configurações globais</h2><p>Um único lugar para controlar prazos, pagamento e taxas.</p></div><Settings2 /></header>
+    <header className="commerce-tool-heading"><div><small>Loja e pagamentos</small><h2>Prazos, pagamentos e taxas</h2><p>As alterações valem para os próximos pedidos. Salve no botão ao final desta seção.</p></div><Settings2 /></header>
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
     <div className="commerce-settings-grid">
       <section className="commerce-tool-card">

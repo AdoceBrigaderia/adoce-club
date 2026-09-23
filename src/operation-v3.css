@@ -716,7 +716,8 @@
 .operation-commercial-grid > * { min-width: 0; }
 
 .operation-home :where(p, small, strong, span, a, button, label, td, th) {
-  overflow-wrap: anywhere;
+  /* break-word só quebra palavras que não cabem; anywhere encolhia colunas e partia "153" em "15 / 3". */
+  overflow-wrap: break-word;
 }
 
 .operation-home :where(input, select, textarea) {
@@ -914,4 +915,18 @@ body:has(.operation-home) { overflow-x: hidden; }
   .operation-shell > aside button svg { width: 22px; height: 22px; }
   .operation-shell > aside button.active { box-shadow: inset 0 -3px 0 var(--op-coral); }
   .operation-nav-group { margin: 14px 2px 6px; text-align: center; font-size: .46rem; }
+}
+/* Navegação superior aprovada para desktop, tablet e celular. */
+.operation-shell{display:block;min-height:calc(100dvh - 76px)}
+.operation-shell>aside{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:6px;overflow-x:auto;min-height:64px;padding:8px 16px;background:var(--op-paper,#fffdfb);border-right:0;border-bottom:1px solid var(--op-line,#ecd8cd);box-shadow:0 5px 18px rgba(79,40,29,.08)}
+.operation-shell>aside .operation-nav-group{display:none}
+.operation-shell>aside button{flex:0 0 auto;min-height:44px;width:auto;padding:0 13px;border-radius:11px;white-space:nowrap}
+.operation-shell>aside .operation-nav-account{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}
+.operation-shell>aside .operation-nav-account button{min-height:42px}
+.operation-work{min-width:0;padding:28px 24px 54px}
+@media(max-width:800px){
+  .operation-shell>aside{padding:7px 10px;min-height:58px}
+  .operation-shell>aside button{min-height:44px;padding:0 11px;font-size:.78rem}
+  .operation-shell>aside .operation-nav-account{margin-left:0}
+  .operation-work{padding:20px 14px 112px}
 }

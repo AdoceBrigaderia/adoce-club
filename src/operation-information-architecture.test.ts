@@ -18,7 +18,7 @@ describe("arquitetura da Adoce Operação", () => {
   it("mantém somente os cinco galhos principais da operação", () => {
     expect(access).toContain('type OperationView = "dashboard" | "orders" | "products" | "attend" | "settings"');
     expect(access).toContain("Hoje");
-    expect(access).toContain("Pedidos");
+    expect(access).toContain("Caixa");
     expect(access).toContain("Produtos");
     expect(access).toContain("Clientes");
     expect(access).toContain("Configurações");
@@ -29,7 +29,8 @@ describe("arquitetura da Adoce Operação", () => {
   it("abre pelo painel orientado a pendências e atalhos", () => {
     expect(access).toContain(': "dashboard"');
     expect(dashboard).toContain("Precisa de atenção");
-    expect(dashboard).toContain("O que você quer fazer agora?");
+    expect(dashboard).toContain("Outras tarefas");
+    expect(dashboard).toContain("attentionItems");
     expect(dashboard).toContain('from("flavor_availability")');
   });
 
@@ -37,7 +38,7 @@ describe("arquitetura da Adoce Operação", () => {
     expect(access).toContain('className="operation-mobile-tabbar"');
     expect(access).toContain('aria-label="Navega');
     expect(access).toContain("Hoje");
-    expect(access).toContain("Pedidos");
+    expect(access).toContain("Caixa");
     expect(access).toContain("Produtos");
     expect(access).toContain("Clientes");
     expect(access).toContain("Config");
@@ -55,7 +56,7 @@ describe("arquitetura da Adoce Operação", () => {
   it("mantém Clientes separado e integra o relacionamento aos Pedidos", () => {
     expect(access).toContain('attend: "/operacao/clientes"');
     expect(access).toContain('requests: "/operacao/pedidos?tipo=encomendas"');
-    expect(access).toContain('sales: "/operacao/pedidos?tipo=vendas"');
+    expect(access).toContain('sales: "/operacao/caixa"');
     expect(access).toContain('new URLSearchParams(location.search).get("tipo")');
     expect(access).not.toContain("operacao-relacionamento");
     expect(commercial).toContain('aria-label="Histórico e lembretes do pedido"');
@@ -87,7 +88,7 @@ describe("arquitetura da Adoce Operação", () => {
   it("dá contexto próprio a cada fluxo comercial", () => {
     expect(commercial).toContain("tabPresentation");
     expect(commercial).toContain('title: "Caixa e pedidos"');
-    expect(commercial).toContain('title: "Pedidos e pré-reservas"');
+    expect(commercial).toContain('title: "Encomendas"');
     expect(commercial).toContain('title: "Catálogo comercial"');
     expect(access).toContain('allowedTabs={["sales", "requests"]}');
     expect(access).toContain('allowedTabs={["catalog"]}');

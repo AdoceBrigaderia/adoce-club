@@ -8,10 +8,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { confirmAction } from "./lib/confirm-dialog";
 import type { Session } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
 import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import QRCode from "qrcode";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Archive,
@@ -34,6 +37,7 @@ import {
   LayoutDashboard,
   LogOut,
   KeyRound,
+  MessageCircle,
   MoreHorizontal,
   Package,
   MapPin,
@@ -99,6 +103,9 @@ import {
   type ConsentEvent,
 } from "./customer-onboarding";
 import { updateCustomerName } from "./customer-profile-admin";
+import OperationAccountMenu from "./OperationAccountMenu";
+import { operationNavigateEvent, type OperationAreaRequest, type StampSale } from "./lib/operation-navigation";
+import { describeOperationMessage, type OperationMessageKind } from "./lib/operation-feedback";
 import BalcaoAtendimento from "./BalcaoAtendimento";
 import CadastroRapido from "./CadastroRapido";
 import { mascaraTelefone } from "./cadastro-rapido";
@@ -106,12 +113,14 @@ import { createStaffCustomer } from "./staff-create-customer";
 import { redeemRewardSlice } from "./staff-redeem-reward-slice";
 import type { Cliente } from "./balcao-atendimento";
 import NativePrinterSettings from "./NativePrinterSettings";
-import RemotePrintTrigger from "./RemotePrintTrigger";
 import { syncNativeOperationSession } from "./lib/native-operation";
+import { productionApiOrigin } from "./lib/native-api";
 import "./access-app.css";
 import "./operation-dashboard.css";
 import "./operation-v3.css";
 import "./operation-tablet.css";
+import "./cash-register-layout.css";
+import "./operation-shell.css";
 import "./referral.css";
 import "./customer-v3.css";
 import "./customer-account-reference-2026.css";
@@ -972,6 +981,7 @@ function AuthScreen({ surface }: { surface: Surface }) {
         </div>}
         <div className="access-auth-card">
           <img src="/site/logo.webp" alt="" />
+          {surface === "operation" ? <small className="access-auth-eyebrow">Adoce Operação · Acesso da equipe</small> : null}
           <h2>
             {stage === "code"
               ? directParams ? "Acesso direto ao Clube" : "Confira seu WhatsApp"
@@ -1883,7 +1893,7 @@ function CustomerHome({ session }: { session: Session }) {
     await Promise.all([loadGroup(), loadSnapshot()]);
   };
   const removeGroupMember = async (profileId: string) => {
-    if (!window.confirm("Remover este membro do cartão em grupo?")) return;
+    if (!await confirmAction("Remover este membro do cartão em grupo?", { destructive: true, confirmLabel: "Remover" })) return;
     setBusy(true);
     const { error: removeError } = await requireSupabase().rpc(
       "remove_group_member",
@@ -2688,7 +2698,15 @@ function OperationHome({ session }: { session: Session }) {
     whatsappError?: string;
   } | null>(null);
   const [qty, setQty] = useState(1);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<{ kind: OperationMessageKind; text: string }>({ kind: "success", text: "" });
+  const message = feedback.text;
+  const messageKind = feedback.kind;
+  const setMessage = useCallback((text: string) => setFeedback(describeOperationMessage(text)), []);
+  useEffect(() => {
+    if (!feedback.text || feedback.kind === "error") return;
+    const timer = window.setTimeout(() => setFeedback({ kind: "success", text: "" }), 6000);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
   const [busy, setBusy] = useState(false);
   const [correctionQty, setCorrectionQty] = useState(1);
   const [correctionReason, setCorrectionReason] = useState("");
@@ -2724,7 +2742,7 @@ function OperationHome({ session }: { session: Session }) {
     if (path.includes("/operacao/clientes")) return "attend";
     if (path.includes("/operacao/configuracoes")) return "settings";
     if (path.includes("/operacao/produtos")) return "products";
-    if (path.includes("/operacao/pedidos")) return "orders";
+    if (path.includes("/operacao/pedidos") || path.includes("/operacao/caixa")) return "orders";
     return "dashboard";
   });
   const [commercialTab, setCommercialTab] = useState<OperationCommercialTab>(() =>
@@ -2796,6 +2814,9 @@ function OperationHome({ session }: { session: Session }) {
   const scannerControls = useRef<IScannerControls | null>(null);
   const scanHandled = useRef(false);
   const installApp = useInstallApp();
+  // Cache curto da lista de perfis: antes cada busca baixava a base inteira.
+  // Mudanças em profiles/account_memberships (tempo real) limpam o cache.
+  const profileDirectoryCacheRef = useRef<{ at: number; profiles: Array<{ id: string; full_name: string; phone_e164: string | null; email: string | null; member_code: string | null; account_status: string; updated_at: string }>; staffIds: Set<string> } | null>(null);
   const search = useCallback(
     async (term = query, statusFilter: MemberStatusFilter = memberStatusFilter) => {
       setBusy(true);
@@ -2825,16 +2846,23 @@ function OperationHome({ session }: { session: Session }) {
           if ((page.data || []).length < 1000) return { data: rows, error: null };
         }
       };
-      const [{ data: profiles, error: profilesError }, { data: staffRows }] = await Promise.all([
-        loadAllProfiles(),
-        supabase.from("staff_members").select("user_id"),
-      ]);
-      if (profilesError) {
-        setBusy(false);
-        setMessage(profilesError.message);
-        return;
+      const cached = profileDirectoryCacheRef.current;
+      let profiles = cached && Date.now() - cached.at < 60_000 ? cached.profiles : null;
+      let staffIds = cached && profiles ? cached.staffIds : new Set<string>();
+      if (!profiles) {
+        const [{ data: loadedProfiles, error: profilesError }, { data: staffRows }] = await Promise.all([
+          loadAllProfiles(),
+          supabase.from("staff_members").select("user_id"),
+        ]);
+        if (profilesError) {
+          setBusy(false);
+          setMessage(profilesError.message);
+          return;
+        }
+        profiles = loadedProfiles || [];
+        staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
+        profileDirectoryCacheRef.current = { at: Date.now(), profiles, staffIds };
       }
-      const staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
       const customers = [...(profiles || [])]
         .filter((profile) => isCustomerProfile(profile, staffIds));
       setMemberCounts({
@@ -3034,6 +3062,7 @@ function OperationHome({ session }: { session: Session }) {
     const supabase = requireSupabase();
     let timer: number | null = null;
     const refreshDirectory = () => {
+      profileDirectoryCacheRef.current = null;
       if (timer !== null) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         void search("", memberStatusFilter);
@@ -3256,7 +3285,7 @@ function OperationHome({ session }: { session: Session }) {
     fullName: string,
   ) => {
     if (!["owner", "manager"].includes(role)) return;
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `Redefinir a senha de ${fullName}?\n\nA senha temporária será 123456@adoce e a pessoa será obrigada a criar uma nova senha no próximo acesso.`,
     );
     if (!confirmed) return;
@@ -3314,6 +3343,36 @@ function OperationHome({ session }: { session: Session }) {
   const refreshSelected = async () => {
     if (selected) await openCustomer(selected);
   };
+  const operationApiRequest = async (path: string, body: unknown) => {
+    const { data } = await requireSupabase().auth.getSession();
+    const accessToken = data.session?.access_token;
+    if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente na operação.");
+    const base = Capacitor.isNativePlatform() ? productionApiOrigin : "";
+    const response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Não foi possível concluir a ação.");
+    return payload;
+  };
+  const openCustomerWhatsApp = async (phone: string | null) => {
+    if (!phone) {
+      setMessage("Este cliente não tem WhatsApp cadastrado.");
+      return;
+    }
+    rememberOperationLocation("orders", "sales");
+    setView("orders");
+    setCommercialTab("sales");
+    setSelected(null);
+    const url = new URL(window.location.href);
+    url.pathname = "/operacao/caixa";
+    url.search = "";
+    url.searchParams.set("whatsappStart", phone);
+    window.history.replaceState(null, "", url);
+    setMessage("Conversa oficial pronta para escrever a primeira mensagem.");
+  };
   const showCustomersByStatus = async (statusFilter: MemberStatusFilter) => {
     setMemberStatusFilter(statusFilter);
     setQuery("");
@@ -3326,7 +3385,7 @@ function OperationHome({ session }: { session: Session }) {
   const operationPath = useCallback((nextView: OperationView, nextCommercialTab: OperationCommercialTab) => {
     if (nextView === "orders") {
       const paths: Record<OperationCommercialTab, string> = {
-        sales: "/operacao/pedidos?tipo=vendas",
+        sales: "/operacao/caixa",
         requests: "/operacao/pedidos?tipo=encomendas",
         catalog: "/operacao/pedidos?tipo=catalogo",
       };
@@ -3358,7 +3417,7 @@ function OperationHome({ session }: { session: Session }) {
     const viewPaths: Record<OperationView, string> = {
       dashboard: "/operacao",
       attend: "/operacao/clientes",
-      orders: "/operacao/pedidos?tipo=vendas",
+      orders: "/operacao/caixa",
       products: "/operacao/produtos",
       settings: "/operacao/configuracoes",
     };
@@ -3419,6 +3478,53 @@ function OperationHome({ session }: { session: Session }) {
     setMessage("");
     resetOperationViewport();
   }, [operationPath, rememberOperationLocation, resetOperationViewport]);
+  const canManageOperation = role === "owner" || role === "manager";
+  const [stampSale, setStampSale] = useState<StampSale | null>(null);
+  useEffect(() => {
+    const onNavigate = (event: Event) => {
+      const request = (event as CustomEvent<OperationAreaRequest>).detail;
+      if (!request) return;
+      if (request.view === "products") {
+        setProductArea("flavors");
+        setContentTab(request.contentTab || "catalog");
+        setContentAvailabilityFilter("all");
+        void openView("products");
+      } else if (request.view === "attend") {
+        setStampSale(request.stampSale && request.stampSale.quantity > 0 ? request.stampSale : null);
+        void openView("attend");
+      } else if (request.view === "orders") {
+        openCommercial("sales");
+        if (request.channel === "official") window.history.replaceState(null, "", "/operacao/caixa?whatsappStart=1");
+      } else {
+        void openView("dashboard");
+      }
+    };
+    window.addEventListener(operationNavigateEvent, onNavigate);
+    return () => window.removeEventListener(operationNavigateEvent, onNavigate);
+  });
+  const roleLabel = role === "owner" ? "Proprietário" : role === "manager" ? "Gerente" : "Atendimento";
+  // Um único mapa de destinos alimenta o menu superior e a barra inferior:
+  // ninguém vê um botão que leva a uma tela bloqueada para o próprio perfil.
+  const operationNavItems: Array<{ view: OperationView; label: string; shortLabel: string; icon: typeof LayoutDashboard; open: () => void }> = [
+    { view: "dashboard", label: "Hoje", shortLabel: "Hoje", icon: LayoutDashboard, open: () => void openView("dashboard") },
+    { view: "orders", label: "Caixa", shortLabel: "Caixa", icon: ShoppingCart, open: () => openCommercial("sales") },
+    {
+      view: "products",
+      label: "Produtos",
+      shortLabel: "Produtos",
+      icon: Package,
+      open: () => {
+        setProductArea("flavors");
+        setContentTab("catalog");
+        setContentAvailabilityFilter("all");
+        void openView("products");
+      },
+    },
+    { view: "attend", label: "Clientes", shortLabel: "Clientes", icon: Users, open: () => void openView("attend") },
+    ...(canManageOperation
+      ? [{ view: "settings" as const, label: "Configurações", shortLabel: "Ajustes", icon: Settings2, open: () => void openView("settings") }]
+      : []),
+  ];
   const goBackInOperation = useCallback(() => {
     setMobileNavOpen(false);
     setProfileMenuOpen(false);
@@ -3464,7 +3570,7 @@ function OperationHome({ session }: { session: Session }) {
     const total = selected.current_progress + qty;
     const nextProgress = total % 14;
     const newRewards = Math.floor(total / 14);
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `Confirmar ${qty} carimbo(s) para ${selected.full_name}?\n\nAntes: ${selected.current_progress} de 14\nDepois: ${nextProgress} de 14${newRewards ? ` e ${newRewards} nova(s) fatia(s) grátis` : ""}`,
     );
     if (!confirmed) return;
@@ -3483,10 +3589,22 @@ function OperationHome({ session }: { session: Session }) {
     setBusy(false);
     if (error) setMessage(error.message);
     else {
+      let whatsappNotice = "";
+      try {
+        await operationApiRequest("/api/loyalty/stamp-message", {
+          profileId: selected.profile_id,
+          stampsAdded: qty,
+          progress: Number(data?.progress || nextProgress),
+          newRewards: Number(data?.new_rewards || newRewards),
+        });
+        whatsappNotice = " Cliente avisado pelo WhatsApp oficial.";
+      } catch (messageError) {
+        whatsappNotice = ` ${messageError instanceof Error ? messageError.message : "Não foi possível avisar pelo WhatsApp oficial."}`;
+      }
       setMessage(
-        data?.referral_confirmed
+        (data?.referral_confirmed
           ? `${qty} carimbo(s) da compra registrados. A indicação vinculada também foi confirmada automaticamente.`
-          : `${qty} carimbo(s) registrado(s) com sucesso.`,
+          : `${qty} carimbo(s) registrado(s) com sucesso.`) + whatsappNotice,
       );
       setQty(1);
       await refreshSelected();
@@ -3502,7 +3620,7 @@ function OperationHome({ session }: { session: Session }) {
       return;
     }
     setCorrectionError("");
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `Remover ${correctionQty} carimbo(s) de ${selected.full_name}?\n\nSaldo atual: ${selected.current_progress} de 14\nMotivo: ${normalizedReason}\n\nA correção ficará registrada no histórico.`,
     );
     if (!confirmed) return;
@@ -3516,7 +3634,7 @@ function OperationHome({ session }: { session: Session }) {
       operation_key: crypto.randomUUID(),
     });
     setBusy(false);
-    if (error) setMessage(`NÃ£o foi possÃ­vel estornar os carimbos: ${error.message}`);
+    if (error) setMessage(`Não foi possível estornar os carimbos: ${error.message}`);
     else {
       setMessage(
         `${correctionQty} carimbo(s) removido(s). A correção foi registrada no histórico.`,
@@ -3825,76 +3943,31 @@ function OperationHome({ session }: { session: Session }) {
       <header>
         <Brand label="Adoce Operação" />
         <div>
-          <span>
-            {role === "owner"
-              ? "Proprietário"
-              : role === "manager"
-                ? "Gerente"
-                : "Atendimento"}
-          </span>
-          {currentStaffBadge ? <span className="operation-current-staff" title={`Atendimento por ${currentStaffBadge.name}`}>{currentStaffBadge.avatarUrl ? <img src={currentStaffBadge.avatarUrl} alt="" /> : <UserRound />}<small>{currentStaffBadge.name}</small></span> : null}
-          <button className="operation-mobile-nav-toggle" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Abrir menu da operação" aria-expanded={mobileNavOpen}>
-            {mobileNavOpen ? <X /> : <MoreHorizontal />}
-          </button>
-          <button onClick={() => setInstallGuideOpen(true)}>
-            <Download /> Instalar
-          </button>
-          <button onClick={() => void signOut()}>
-            <LogOut /> Sair
-          </button>
+          <OperationAccountMenu
+            name={currentStaffBadge?.name || String(session.user.user_metadata?.full_name || session.user.user_metadata?.name || "")}
+            avatarUrl={currentStaffBadge?.avatarUrl}
+            roleLabel={roleLabel}
+            onInstall={() => setInstallGuideOpen(true)}
+            onSignOut={() => void signOut()}
+          />
         </div>
       </header>
       <div className="operation-shell">
-        <aside className={mobileNavOpen ? "is-open" : ""}>
-          <small className="operation-nav-group">Operação enxuta</small>
-          <button
-            className={view === "dashboard" ? "active" : ""}
-            onClick={() => void openView("dashboard")}
-          >
-            <LayoutDashboard /> Hoje
-          </button>
-          <button
-            className={view === "orders" ? "active" : ""}
-            onClick={() => openCommercial("sales")}
-          >
-            <ShoppingCart /> Pedidos
-          </button>
-          <button
-            className={view === "products" ? "active" : ""}
-            onClick={() => {
-              setProductArea("flavors");
-              setContentTab("catalog");
-              setContentAvailabilityFilter("all");
-              void openView("products");
-            }}
-          >
-            <Package /> Produtos
-          </button>
-          <button
-            className={view === "attend" ? "active" : ""}
-            onClick={() => void openView("attend")}
-          >
-            <Users /> Clientes
-          </button>
-          {(role === "owner" || role === "manager") && (
+        <aside aria-label="Navegação da operação">
+          {operationNavItems.map((item) => (
             <button
-              className={view === "settings" ? "active" : ""}
-              onClick={() => void openView("settings")}
+              key={item.view}
+              type="button"
+              className={view === item.view ? "active" : ""}
+              aria-current={view === item.view ? "page" : undefined}
+              onClick={item.open}
             >
-              <Settings2 /> Configurações
+              <item.icon /> {item.label}
             </button>
-          )}
-          <div className="operation-nav-account">
-            <button type="button" onClick={() => setInstallGuideOpen(true)}>
-              <Download /> Instalar aplicativo
-            </button>
-            <button type="button" onClick={() => void signOut()}>
-              <LogOut /> Sair da operação
-            </button>
-          </div>
+          ))}
         </aside>
         <section className="operation-work">
-          {(view !== "dashboard" || selected) && (
+          {selected && (
             <nav className="operation-back-bar" aria-label="Retorno da tela atual">
               <button type="button" className="operation-back-button" onClick={goBackInOperation}>
                 <ArrowLeft /> Voltar
@@ -4027,6 +4100,17 @@ function OperationHome({ session }: { session: Session }) {
                   </div>
                 </section>
               ) : null}
+              {stampSale ? (
+                <section className="cad-acesso operation-stamp-sale" role="status">
+                  <p>
+                    <strong>Venda {stampSale.orderNumber}: {stampSale.quantity} {stampSale.quantity === 1 ? "fatia paga" : "fatias pagas"}.</strong>{" "}
+                    Busque o cliente abaixo e toque em <strong>Carimbar</strong> {stampSale.quantity === 1 ? "uma vez" : `${stampSale.quantity} vezes`} (um carimbo por fatia).
+                  </p>
+                  <div className="cad-acesso-acoes">
+                    <button type="button" className="access-link" onClick={() => setStampSale(null)}>Concluído</button>
+                  </div>
+                </section>
+              ) : null}
               <BalcaoAtendimento
                 clientes={counterFichas}
                 onCarimbar={carimbarBalcao}
@@ -4091,6 +4175,11 @@ function OperationHome({ session }: { session: Session }) {
                         {["owner", "manager"].includes(role) ? <button type="button" onClick={() => setEditingCustomerName(true)}>Editar nome</button> : null}
                       </div>}
                       <p>{selected.phone_e164 || selected.email}</p>
+                      {selected.phone_e164 ? (
+                        <button type="button" className="access-secondary customer-whatsapp-action" onClick={() => void openCustomerWhatsApp(selected.phone_e164)}>
+                          <MessageCircle /> Conversar pelo WhatsApp oficial
+                        </button>
+                      ) : null}
                       <p className="customer-member-code">
                         Código do Membro: <strong>{selected.member_code}</strong>
                       </p>
@@ -4512,7 +4601,7 @@ function OperationHome({ session }: { session: Session }) {
               ) : null}
             </div>
           )}
-          {view === "orders" && (role === "owner" || role === "manager") && (
+          {view === "orders" && Boolean(role) && (
             <Suspense fallback={<p>Carregando pedidos...</p>}>
               <OperationCommercialAdmin
                 session={session}
@@ -4539,7 +4628,6 @@ function OperationHome({ session }: { session: Session }) {
               </nav>
               {settingsTab === "store" ? (
                 <>
-                  <RemotePrintTrigger />
                   <NativePrinterSettings />
                   <Suspense fallback={<p>Carregando configurações...</p>}>
                     <OperationCommerceSettings />
@@ -4634,54 +4722,35 @@ function OperationHome({ session }: { session: Session }) {
             </div>
           )}
           {message && (
-            <div className="operation-toast">
-              <Check />
-              {message}
+            <div
+              className={`operation-toast ${messageKind === "error" ? "is-error" : ""}`}
+              role={messageKind === "error" ? "alert" : "status"}
+            >
+              {messageKind === "error" ? <AlertTriangle aria-hidden="true" /> : <Check aria-hidden="true" />}
+              <span>{message}</span>
+              <button type="button" onClick={() => setMessage("")} aria-label="Fechar aviso">
+                <X aria-hidden="true" />
+              </button>
             </div>
           )}
         </section>
       </div>
-      <nav className="operation-mobile-tabbar" aria-label="Navegação principal da operação">
-        <button
-          type="button"
-          className={view === "dashboard" ? "active" : ""}
-          onClick={() => void openView("dashboard")}
-          aria-current={view === "dashboard" ? "page" : undefined}
-        >
-          <LayoutDashboard /><span>Hoje</span>
-        </button>
-        <button
-          type="button"
-          className={view === "orders" && commercialTab === "sales" ? "active" : ""}
-          onClick={() => openCommercial("sales")}
-          aria-current={view === "orders" && commercialTab === "sales" ? "page" : undefined}
-        >
-          <ShoppingCart /><span>Pedidos</span>
-        </button>
-        <button
-          type="button"
-          className={view === "products" ? "active" : ""}
-          onClick={() => { setProductArea("flavors"); setContentTab("catalog"); setContentAvailabilityFilter("all"); void openView("products"); }}
-          aria-current={view === "products" ? "page" : undefined}
-        >
-          <Package /><span>Produtos</span>
-        </button>
-        <button
-          type="button"
-          className={view === "attend" ? "active" : ""}
-          onClick={() => void openView("attend")}
-          aria-current={view === "attend" ? "page" : undefined}
-        >
-          <Users /><span>Clientes</span>
-        </button>
-        <button
-          type="button"
-          className={view === "settings" ? "active" : ""}
-          onClick={() => void openView("settings")}
-          aria-current={view === "settings" ? "page" : undefined}
-        >
-          <Settings2 /><span>Config.</span>
-        </button>
+      <nav
+        className="operation-mobile-tabbar"
+        aria-label="Navegação principal da operação"
+        style={{ gridTemplateColumns: `repeat(${operationNavItems.length}, minmax(0, 1fr))` }}
+      >
+        {operationNavItems.map((item) => (
+          <button
+            key={item.view}
+            type="button"
+            className={view === item.view ? "active" : ""}
+            onClick={item.open}
+            aria-current={view === item.view ? "page" : undefined}
+          >
+            <item.icon /><span>{item.shortLabel}</span>
+          </button>
+        ))}
       </nav>
     </main>
   );

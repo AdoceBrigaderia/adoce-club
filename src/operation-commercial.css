@@ -32,3 +32,20 @@
   .operation-commercial-tabs > div:last-child { border-right: 0; }
   .operation-commercial-tabs button { padding-inline: 11px; }
 }
+
+/* Auditoria 23/09/2026: abas no mesmo lugar em Caixa e Encomendas, textos legíveis e alvos de toque. */
+.operation-commercial > .operation-commercial-tabs { margin: 0 0 16px; padding-top: 0; }
+.operation-commercial-tabs button { min-height: 48px; font-size: 15px; }
+.operation-commercial-tabs button svg { width: 19px; }
+.operation-commercial-metrics small { font-size: 13px; }
+.operation-request-filters button { min-height: 44px; font-size: 14px; }
+.operation-request-list small, .operation-product-list small, .operation-request-list em { font-size: 13px; }
+.operation-request-list > button > b { font-size: 12px; }
+.operation-request-drawer label, .operation-block-form label, .operation-product-form label, .operation-crm-summary label { font-size: 13px; }
+.drawer-actions button { min-height: 48px; font-size: 14px; }
+.operation-request-drawer dt { font-size: 12px; }
+.operation-request-drawer dd { font-size: 15px; }
+.operation-commercial-notice { font-size: 15px; }
+.commercial-refresh { min-height: 44px; font-size: 14px; }
+.drawer-close { width: 44px; height: 44px; }
+.operation-commercial-head small, .operation-block-form > small, .operation-product-form > small, .operation-crm-summary > small { font-size: 12px; }

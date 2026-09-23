@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { confirmAction } from "./lib/confirm-dialog";
 import type { Session } from "@supabase/supabase-js";
 import {
   Check,
@@ -31,6 +32,7 @@ export type AdminTab = "catalog" | "today" | "operation";
 type Flavor = {
   id: string;
   name: string;
+  short_name: string | null;
   category: "traditional" | "premium";
   short_description: string | null;
   description: string | null;
@@ -101,11 +103,12 @@ type BusinessHourException = {
 };
 const emptyFlavor = {
   name: "",
+  short_name: "",
   category: "traditional" as "traditional" | "premium",
   short_description: "",
   description: "",
   ingredients: "",
-  base_price: "16.00",
+  base_price: "16,00",
   whole_cake_price: "",
   whole_cake_available: false,
   active: true,
@@ -119,6 +122,11 @@ const availabilityLabels: Record<AvailabilityStatus, string> = {
   unavailable: "Indisponível",
 };
 const week = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const normalizeSearch = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+const matchesText = (flavor: { name: string; short_name?: string | null }, term: string) => {
+  const wanted = normalizeSearch(term);
+  return !wanted || normalizeSearch(`${flavor.name} ${flavor.short_name || ""}`).includes(wanted);
+};
 
 const scheduleChannelHints: Record<string, string> = {
   online_orders: "Pedidos de fatias feitos on-line para retirada na Adoce.",
@@ -198,6 +206,8 @@ export default function OperationContentAdmin({
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "low">(initialAvailabilityFilter);
+  const [productSearch, setProductSearch] = useState("");
+  const [availabilitySearch, setAvailabilitySearch] = useState("");
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
@@ -214,13 +224,16 @@ export default function OperationContentAdmin({
     }).map((item) => item.flavor_id)),
     [availability],
   );
-  const visibleAvailabilityFlavors = availabilityFilter === "low"
+  const visibleAvailabilityFlavors = (availabilityFilter === "low"
     ? sortedAvailabilityFlavors.filter((flavor) => lowStockFlavorIds.has(flavor.id))
-    : sortedAvailabilityFlavors;
+    : sortedAvailabilityFlavors
+  ).filter((flavor) => matchesText(flavor, availabilitySearch));
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
   const [editing, setEditing] = useState<Flavor | null>(null);
+  const [creatingFlavor, setCreatingFlavor] = useState(false);
+  const productFormOpen = creatingFlavor || Boolean(editing);
   const [draft, setDraft] = useState({ ...emptyFlavor });
   const [galleryFlavor, setGalleryFlavor] = useState<Flavor | null>(null);
   const [pendingImage, setPendingImage] = useState<PendingFlavorImage | null>(null);
@@ -258,7 +271,7 @@ export default function OperationContentAdmin({
       supabase
         .from("flavors")
         .select(
-          "id,name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
+          "id,name,short_name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
         )
         .order("name"),
       supabase
@@ -355,6 +368,7 @@ export default function OperationContentAdmin({
     setBusy(true);
     const payload = {
       name: draft.name.trim(),
+      short_name: (draft.short_name.trim() || draft.name.trim().split(/\s+/).slice(0, 3).join(" ")).slice(0, 40),
       category: draft.category,
       short_description: draft.short_description.trim() || null,
       description: draft.description.trim() || null,
@@ -377,6 +391,7 @@ export default function OperationContentAdmin({
         : "Produto criado. Agora você pode adicionar as fotos.",
     );
     setEditing(null);
+    setCreatingFlavor(false);
     setDraft({ ...emptyFlavor });
     await load();
   };
@@ -385,12 +400,13 @@ export default function OperationContentAdmin({
     setEditing(flavor);
     setDraft({
       name: flavor.name,
+      short_name: flavor.short_name || flavor.name.split(/\s+/).slice(0, 3).join(" "),
       category: flavor.category,
       short_description: flavor.short_description || "",
       description: flavor.description || "",
       ingredients: flavor.ingredients || "",
-      base_price: flavor.base_price?.toFixed(2) || "",
-      whole_cake_price: flavor.whole_cake_price?.toFixed(2) || "",
+      base_price: flavor.base_price?.toFixed(2).replace(".", ",") || "",
+      whole_cake_price: flavor.whole_cake_price?.toFixed(2).replace(".", ",") || "",
       whole_cake_available: flavor.whole_cake_available,
       active: flavor.active,
     });
@@ -486,7 +502,7 @@ export default function OperationContentAdmin({
   };
 
   const removeImage = async (image: FlavorImage) => {
-    if (!window.confirm("Remover esta foto da apresentação do produto?"))
+    if (!await confirmAction("Remover esta foto da apresentação do produto?", { destructive: true, confirmLabel: "Remover" }))
       return;
     const { error } = await requireSupabase().rpc(
       "manager_disable_gallery_media",
@@ -641,7 +657,7 @@ export default function OperationContentAdmin({
   };
 
   const removeHour = async (id: string) => {
-    if (!window.confirm("Remover este horário recorrente?")) return;
+    if (!await confirmAction("Remover este horário recorrente?", { destructive: true, confirmLabel: "Remover" })) return;
     const { error } = await requireSupabase()
       .from("business_hours")
       .delete()
@@ -670,7 +686,7 @@ export default function OperationContentAdmin({
   };
 
   const removeException = async (id: string) => {
-    if (!window.confirm("Remover esta exceção de funcionamento?")) return;
+    if (!await confirmAction("Remover esta exceção de funcionamento?", { destructive: true, confirmLabel: "Remover" })) return;
     const { error } = await requireSupabase()
       .from("business_hour_exceptions")
       .delete()
@@ -689,9 +705,9 @@ export default function OperationContentAdmin({
     <div className="content-admin">
       <div className="operation-title content-admin-title">
         <div>
-          <span>Operação e administração</span>
-          <h1>Central Adoce</h1>
-          <p>Atualize o Adoce Hoje sem depender de alterações no site.</p>
+          <span>{tab === "operation" ? "Configurações" : "Produtos"}</span>
+          <h1>{tab === "today" ? "Produção de hoje" : tab === "operation" ? "Funcionamento" : "Sabores e preços"}</h1>
+          <p>{tab === "today" ? "Libere os sabores e as quantidades que o Caixa e o site podem vender." : tab === "operation" ? "Horários e modalidades de atendimento." : "Cadastro, fotos e preços das fatias."}</p>
         </div>
         <a
           className="content-preview"
@@ -713,7 +729,7 @@ export default function OperationContentAdmin({
           className={tab === "today" ? "active" : ""}
           onClick={() => setTab("today")}
         >
-          <Check /> Disponibilidade
+          <Check /> Produção de hoje
         </button> : null}
         {allowedTabs.includes("operation") ? <button
           className={tab === "operation" ? "active" : ""}
@@ -725,23 +741,49 @@ export default function OperationContentAdmin({
 
       {tab === "catalog" && (
         <>
-          <section className="admin-panel editor-panel">
+          <div className="admin-list-toolbar">
+            <label className="admin-search">
+              <span className="sr-only">Buscar sabor</span>
+              <input
+                type="search"
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                placeholder="Buscar sabor pelo nome"
+                aria-label="Buscar sabor pelo nome"
+              />
+            </label>
+            {!productFormOpen ? (
+              <button
+                type="button"
+                className="admin-primary"
+                onClick={() => {
+                  setEditing(null);
+                  setDraft({ ...emptyFlavor });
+                  setCreatingFlavor(true);
+                }}
+              >
+                <Plus /> Novo sabor
+              </button>
+            ) : null}
+          </div>
+          {productFormOpen ? <section className="admin-panel editor-panel" ref={(node) => { if (node && editing) node.scrollIntoView({ block: "start", behavior: "smooth" }); }}>
             <div className="panel-heading">
               <div>
                 <small>{editing ? "Editando produto" : "Novo produto"}</small>
                 <h2>{editing?.name || "Cadastrar sabor"}</h2>
               </div>
-              {editing && (
-                <button
-                  className="icon-button"
-                  onClick={() => {
-                    setEditing(null);
-                    setDraft({ ...emptyFlavor });
-                  }}
-                >
-                  <X />
-                </button>
-              )}
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar formulário"
+                onClick={() => {
+                  setEditing(null);
+                  setCreatingFlavor(false);
+                  setDraft({ ...emptyFlavor });
+                }}
+              >
+                <X />
+              </button>
             </div>
             <div className="admin-form-grid">
               <label>
@@ -751,6 +793,16 @@ export default function OperationContentAdmin({
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 />
+              </label>
+              <label>
+                Nome curto no caixa <span>{draft.short_name.length}/40</span>
+                <input
+                  maxLength={40}
+                  value={draft.short_name}
+                  placeholder="Sugestão automática pelas primeiras palavras"
+                  onChange={(e) => setDraft({ ...draft, short_name: e.target.value })}
+                />
+                <small>Você pode editar este nome a qualquer momento.</small>
               </label>
               <label>
                 Categoria
@@ -850,9 +902,12 @@ export default function OperationContentAdmin({
             >
               <Save /> {editing ? "Salvar alterações" : "Cadastrar produto"}
             </button>
-          </section>
+          </section> : null}
+          <p className="admin-list-count" role="status">
+            {flavors.filter((flavor) => matchesText(flavor, productSearch)).length} de {flavors.length} sabores
+          </p>
           <div className="admin-product-grid">
-            {flavors.map((flavor) => (
+            {flavors.filter((flavor) => matchesText(flavor, productSearch)).map((flavor) => (
               <article
                 key={flavor.id}
                 className={!flavor.active ? "inactive" : ""}
@@ -913,6 +968,19 @@ export default function OperationContentAdmin({
             </div>
           </div>
           <OperationSliceAlerts />
+          <label className="admin-search availability-search">
+            <span className="sr-only">Buscar sabor</span>
+            <input
+              type="search"
+              value={availabilitySearch}
+              onChange={(event) => setAvailabilitySearch(event.target.value)}
+              placeholder="Buscar sabor"
+              aria-label="Buscar sabor na produção de hoje"
+            />
+          </label>
+          <p className="availability-summary" role="status">
+            {availability.filter((item) => item.status !== "unavailable").length} liberado(s) para venda · {Math.max(0, flavors.filter((flavor) => flavor.active).length - availability.filter((item) => item.status !== "unavailable").length)} indisponível(is)
+          </p>
           <div className="availability-filter" role="group" aria-label="Filtrar itens por situação do estoque">
             <button type="button" className={availabilityFilter === "all" ? "active" : ""} onClick={() => setAvailabilityFilter("all")}>Todos os itens</button>
             <button type="button" className={availabilityFilter === "low" ? "active warning" : ""} onClick={() => setAvailabilityFilter("low")}>{lowStockFlavorIds.size} com estoque baixo</button>
@@ -931,9 +999,14 @@ export default function OperationContentAdmin({
                     <span className={`availability-dot ${current}`} />
                     <div>
                       <strong>{flavor.name}</strong>
-                      <small>{availabilityLabels[current]}</small>
+                      <small>
+                        {inventory?.quantity_available !== null && inventory?.quantity_available !== undefined
+                          ? `${Math.max(inventory.quantity_available - (inventory.quantity_reserved || 0), 0)} livre(s) · ${inventory.quantity_reserved || 0} reservada(s)`
+                          : "Sem quantidade lançada"}
+                      </small>
                     </div>
                     <select
+                      aria-label={`Situação de ${flavor.name} hoje`}
                       value={current}
                       onChange={(e) =>
                         void setTodayStatus(
@@ -951,8 +1024,10 @@ export default function OperationContentAdmin({
                         ),
                       )}
                     </select>
-                    <div className="availability-batches">
-                      <span>Lotes por horário</span>
+                    <details className="availability-batches">
+                      <summary>
+                        Lotes por horário ({availabilityBatches.filter((batch) => batch.flavor_id === flavor.id).length})
+                      </summary>
                       {availabilityBatches
                         .filter((batch) => batch.flavor_id === flavor.id)
                         .map((batch) => (
@@ -1026,7 +1101,7 @@ export default function OperationContentAdmin({
                           Total: {Math.max(inventory.quantity_available - (inventory.quantity_reserved || 0), 0)} livre(s) · {inventory.quantity_reserved || 0} reservada(s)
                         </small>
                       ) : null}
-                    </div>
+                    </details>
                   </article>
                 );
               })}
