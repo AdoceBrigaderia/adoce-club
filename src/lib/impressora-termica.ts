@@ -122,6 +122,13 @@ export type Ficha = {
   criadoEm: string;
   /** Quando a ficha saiu da impressora. Nunca confundir com a de cima. */
   impressoEm?: string;
+  pagamentos?: Array<{ metodo: string; valor: number }>;
+  saldoRestante?: number;
+  troco?: number;
+  trocoPix?: number;
+  contaTrocoPix?: string;
+  clubeResumo?: string;
+  clubeUrl?: string;
 };
 
 /** "12/08/2026 as 02h17" — data curta, do jeito que se fala. */
@@ -162,6 +169,23 @@ export function montarTexto(ficha: Ficha): string[] {
   const fatias = ficha.itens.reduce((s, i) => s + i.quantidade, 0);
   linhas.push(doisLados(`${fatias} ${fatias === 1 ? "FATIA" : "FATIAS"}`, dinheiro(ficha.total)));
 
+  if ((ficha.saldoRestante ?? 0) > 0) {
+    linhas.push(centralizar("PAGAMENTO PENDENTE"));
+    linhas.push(doisLados("A RECEBER", dinheiro(ficha.saldoRestante ?? 0)));
+  }
+  if ((ficha.troco ?? 0) > 0) linhas.push(doisLados("TROCO DINHEIRO", dinheiro((ficha.troco ?? 0) - (ficha.trocoPix ?? 0))));
+  if ((ficha.trocoPix ?? 0) > 0) {
+    linhas.push(doisLados("TROCO PIX", dinheiro(ficha.trocoPix ?? 0)));
+    linhas.push(ficha.contaTrocoPix || "Conta pessoal");
+  }
+  if (ficha.pagamentos?.length) {
+    linhas.push(linhaTracejada());
+    linhas.push("PAGAMENTOS");
+    for (const pagamento of ficha.pagamentos) linhas.push(doisLados(pagamento.metodo, dinheiro(pagamento.valor)));
+    linhas.push(doisLados("SALDO RESTANTE", dinheiro(Math.max(0, ficha.saldoRestante ?? 0))));
+    if ((ficha.saldoRestante ?? 0) <= 0) linhas.push(centralizar("PAGO"));
+  }
+
   if (ficha.observacao) {
     linhas.push(linhaTracejada());
     linhas.push("OBSERVACAO");
@@ -178,6 +202,11 @@ export function montarTexto(ficha: Ficha): string[] {
   linhas.push(centralizar("Feito pelas maos da Beth"));
   linhas.push(centralizar("Obrigado por adocar"));
   linhas.push(centralizar("seu momento com a gente"));
+  linhas.push(linhaTracejada());
+  linhas.push(centralizar("CLUBE ADOCE"));
+  linhas.push(...quebrarLinha(ficha.clubeResumo || "Com 14 carimbos, ganhe 1 fatia de presente grátis - exceto pudim."));
+  linhas.push(centralizar("Aponte a camera para entrar"));
+  linhas.push(centralizar("adocebrigaderia.com.br/clube/entrar"));
   linhas.push("");
   // Discreta, no fim, e sempre com o rotulo. Sem rotulo ela vira data do pedido
   // na cabeca de quem le com pressa.
@@ -204,6 +233,18 @@ export function montarBytes(ficha: Ficha): Uint8Array {
     if (destacar) push(...COMANDOS.dobroDesligado, ...COMANDOS.negritoDesligado, ...COMANDOS.alinharEsquerda);
     if (indice === 0) push(...COMANDOS.alinharEsquerda);
   }
+
+  // ESC/POS QR Code (modelo 2), armazenado e impresso no fim do cupom.
+  const url = ficha.clubeUrl || "https://www.adocebrigaderia.com.br/clube/entrar";
+  const dados = Array.from(new TextEncoder().encode(url));
+  const tamanho = dados.length + 3;
+  const pl = tamanho & 0xff;
+  const ph = (tamanho >> 8) & 0xff;
+  push(0x1d, 0x28, 0x6b, 4, 0, 0x31, 0x41, 0x32, 0);
+  push(0x1d, 0x28, 0x6b, 3, 0, 0x31, 0x43, 6);
+  push(0x1d, 0x28, 0x6b, 3, 0, 0x31, 0x45, 0x30);
+  push(0x1d, 0x28, 0x6b, pl, ph, 0x31, 0x50, 0x30, ...dados);
+  push(0x1d, 0x28, 0x6b, 3, 0, 0x31, 0x51, 0x30);
 
   push(...COMANDOS.avancar(4));
   push(...COMANDOS.cortar);

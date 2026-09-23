@@ -32,14 +32,18 @@ const dinheiro = (valor: number) =>
 export default function PedidoNaEsteira({
   pedido,
   criadoEm,
+  atualizadoEm,
   onAvancar,
   onAbrir,
+  avisosOficiais = false,
 }: {
   pedido: Pedido;
   criadoEm: string;
+  atualizadoEm?: string;
   /** Recebe a etapa de destino. A gravacao no banco fica por conta de quem chama. */
   onAvancar?: (proxima: NonNullable<ReturnType<typeof proximaEtapa>>) => void;
   onAbrir?: () => void;
+  avisosOficiais?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const [copiado, setCopiado] = useState<Etapa | null>(null);
@@ -66,7 +70,7 @@ export default function PedidoNaEsteira({
   const definicao = JORNADA[pedido.etapa];
   const proxima = proximaEtapa(pedido);
   const rotulo = rotuloDoAvanco(pedido);
-  const atraso = pendencia(pedido, Date.now(), new Date(criadoEm).getTime());
+  const atraso = pendencia(pedido, Date.now(), new Date(atualizadoEm || criadoEm).getTime());
   const passoAtual = definicao.passo ?? 0;
 
   return (
@@ -91,7 +95,7 @@ export default function PedidoNaEsteira({
                 <span className="pe-bolinha" aria-hidden="true">
                   {estado === "feito" ? <Check /> : null}
                 </span>
-                <span className="pe-passo-nome">{JORNADA[etapa].cliente}</span>
+                <span className="pe-passo-nome">{avisosOficiais && etapa === "reserved" ? "Reserva registrada" : JORNADA[etapa].cliente}</span>
               </li>
             );
           })}
@@ -114,7 +118,7 @@ export default function PedidoNaEsteira({
 
       {pedido.retirada ? (
         <p className="pe-retirada">
-          Retira a partir das {pedido.retirada.aPartirDe} · {pedido.retirada.local}
+          {avisosOficiais ? `Local de retirada: ${pedido.retirada.local}.${pedido.etapa === "ready" ? " Retirada liberada." : pedido.etapa === "completed" ? " Pedido entregue." : " Aguarde a liberação da equipe."}` : `Retira a partir das ${pedido.retirada.aPartirDe} · ${pedido.retirada.local}`}
         </p>
       ) : null}
 
@@ -139,17 +143,17 @@ export default function PedidoNaEsteira({
           </button>
         ) : null}
 
-        <button
+        {!avisosOficiais ? <button
           type="button"
           className="pe-whatsapp"
           onClick={() => void avisar(pedido.etapa)}
         >
           {copiado === pedido.etapa ? <Check aria-hidden="true" /> : <MessageCircle aria-hidden="true" />}
           {copiado === pedido.etapa ? "Copiado — abrindo o zap" : "Copiar e abrir o WhatsApp"}
-        </button>
+        </button> : null}
       </div>
 
-      <details className="pe-previa" open={aberto} onToggle={(e) => setAberto(e.currentTarget.open)}>
+      {!avisosOficiais ? <details className="pe-previa" open={aberto} onToggle={(e) => setAberto(e.currentTarget.open)}>
         <summary>Outras mensagens deste pedido</summary>
 
         <pre>{mensagemParaCliente(pedido)}</pre>
@@ -168,7 +172,7 @@ export default function PedidoNaEsteira({
             </button>
           ))}
         </div>
-      </details>
+      </details> : <p className="pe-atraso">Avisos das etapas pelo WhatsApp oficial. Acompanhe o envio dentro do pedido.</p>}
     </article>
   );
 }

@@ -1,0 +1,13 @@
+.order-communication { margin-block: 1rem; padding: 1rem; border: 1px solid #e5c6b7; border-radius: 12px; min-width: 0; overflow-wrap: anywhere; background: #fffaf7; }
+.order-communication h3 { font-size: 1rem; margin: .4rem 0; }
+.order-communication p,.order-communication small { font-size: .85rem; line-height: 1.5; }
+.order-communication figure { margin: 1rem 0; }
+.order-communication img { display: block; width: 100%; height: auto; max-height: 320px; object-fit: contain; background: white; }
+.order-communication figcaption small,.order-communication li span { display: block; }
+.order-communication ul { padding-inline-start: 1.1rem; }
+.order-communication li { margin-block: .75rem; font-size: .85rem; }
+.order-communication button { min-height: 44px; width: 100%; white-space: normal; }
+.order-communication [role=alert] { color: #a62222; }
+.instant-order-pix-key { overflow-wrap: anywhere; padding: .75rem; border: 1px solid #e5c6b7; border-radius: 8px; }
+.operation-instant-orders .instant-order-view-switch { flex-wrap: wrap; }
+.operation-instant-orders .instant-order-view-switch button { min-width: 0; max-width: 100%; }

@@ -3,7 +3,7 @@ import { ArrowLeft, Check, Clock3, Copy, Droplets, Gift, Heart, MapPin, MessageC
 import { requireSupabase } from "./lib/supabase";
 import { trackPublicEvent } from "./analytics";
 import { buildOrderWhatsAppMessage, orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
-import { pickupBoundsForDay, pickupWindowHint, type PickupWindow } from "./pickup-window";
+import { type PickupWindow } from "./pickup-window";
 import { mascaraTelefone } from "./cadastro-rapido";
 import {
   currentLocalTime,
@@ -69,7 +69,6 @@ export default function InstantOrderPanel({
   onClose,
   flavors,
   initialFlavorId,
-  pickupWindows = null,
 }: {
   open: boolean;
   onClose: () => void;
@@ -77,9 +76,6 @@ export default function InstantOrderPanel({
   initialFlavorId?: string | null;
   pickupWindows?: PickupWindow[] | null;
 }) {
-  // Limites do campo cobrem da primeira abertura ao ultimo fechamento; a
-  // validacao no envio e que recusa o vao entre duas janelas.
-  const pickupBounds = pickupWindows ? pickupBoundsForDay(pickupWindows) : null;
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -102,7 +98,6 @@ export default function InstantOrderPanel({
   const [paymentMethodsError, setPaymentMethodsError] = useState("");
   const [checkoutConfigAttempt, setCheckoutConfigAttempt] = useState(0);
   const [pickupMethod, setPickupMethod] = useState<"customer" | "driver">("customer");
-  const [pickupTime, setPickupTime] = useState("");
   const operationKey = useRef(crypto.randomUUID());
   const operationPayload = useRef("");
   const orderWhatsAppNumber = useOrderWhatsAppNumber();
@@ -181,7 +176,7 @@ export default function InstantOrderPanel({
     ...(wantsReward && rewardFlavor
       ? [{ batches: rewardFlavor.batches, quantity: 1 }]
       : []),
-  ], pickupBounds?.min, currentLocalTime());
+  ], undefined, currentLocalTime());
   const rewardUpgrade = wantsReward && rewardFlavor ? Math.max(0, rewardFlavor.price - 16) : 0;
   const displayTotal = total + rewardUpgrade;
 
@@ -230,30 +225,6 @@ export default function InstantOrderPanel({
     });
   };
 
-  // O horario digitado NAO e corrigido enquanto a pessoa digita.
-  //
-  // Antes este efeito dependia de `pickupTime` e o reescrevia. Em <input
-  // type="time"> o navegador emite valores intermediarios a cada tecla: quem
-  // queria 20:00 digitava o "2", o campo virava "02:00", o efeito via que
-  // 02:00 < 19:30 e devolvia 19:30 na hora. Resultado: **so era possivel
-  // deixar 19:30**, e o aviso reaparecia sem parar. Cliente travava aqui.
-  //
-  // Agora a correcao acontece so quando o MINIMO muda — ou seja, quando a
-  // pessoa altera as quantidades e o pedido passa a ficar pronto mais tarde.
-  // O que ela digita fica intacto; a validacao final e feita no envio.
-  const pickupTimeRef = useRef(pickupTime);
-  pickupTimeRef.current = pickupTime;
-
-  useEffect(() => {
-    const escolhido = pickupTimeRef.current;
-    if (escolhido && pickupMinimum && escolhido < pickupMinimum) {
-      // Apenas avisa. NAO reescreve o campo: trocar o valor por baixo de quem
-      // esta com o campo aberto e o que dava a sensacao de loop. A pessoa
-      // decide o novo horario, e a validacao de verdade acontece ao avancar.
-      setNotice(`Com as quantidades escolhidas, o pedido completo fica pronto a partir das ${pickupMinimum.replace(":00", "h")}. Ajuste o horário de retirada.`);
-    }
-  }, [pickupMinimum]);
-
   const selectedUnits = useMemo(() => flavors.flatMap((flavor) =>
     Array.from({ length: quantities[flavor.id] || 0 }, (_, index) => ({
       flavor,
@@ -270,10 +241,6 @@ export default function InstantOrderPanel({
     if (paymentMethodsLoading) return setNotice("Aguarde o carregamento das formas de pagamento."), false;
     if (paymentMethodsError) return setNotice("Tente carregar novamente as formas de pagamento para continuar."), false;
     if (!paymentMethod) return setNotice("Escolha como deseja pagar."), false;
-    if (!pickupTime) return setNotice("Escolha o horário desejado para a retirada."), false;
-    if (pickupMinimum && pickupTime < pickupMinimum) {
-      return setNotice(`Escolha um horário a partir das ${pickupMinimum.replace(":00", "h")} para retirar o pedido completo.`), false;
-    }
     setNotice("");
     return true;
   };
@@ -283,10 +250,6 @@ export default function InstantOrderPanel({
     if (!allSaucesChosen) return setNotice("Escolha uma opção de calda para cada fatia.");
     if (!rewardChoiceReady) return setNotice("Escolha o sabor e a calda da sua fatia-presente.");
     if (!paymentMethod) return setNotice("Escolha como deseja pagar.");
-    if (!pickupTime) return setNotice("Escolha o horário desejado para a retirada.");
-    if (pickupMinimum && pickupTime < pickupMinimum) {
-      return setNotice(`Escolha um horário a partir das ${pickupMinimum.replace(":00", "h")} para retirar o pedido completo.`);
-    }
     setBusy(true);
     setNotice("");
     trackPublicEvent("instant_order_start", { quantity: totalQuantity });
@@ -307,7 +270,7 @@ export default function InstantOrderPanel({
         })),
       requested_notes: notes.trim(),
     };
-    const serializedPayload = JSON.stringify({ ...requestPayload, paymentMethod, wantsReward, rewardFlavorId, rewardSauceId, pickupTime, pickupMethod });
+    const serializedPayload = JSON.stringify({ ...requestPayload, paymentMethod, wantsReward, rewardFlavorId, rewardSauceId, pickupMethod });
     if (operationPayload.current && operationPayload.current !== serializedPayload) {
       operationKey.current = crypto.randomUUID();
     }
@@ -320,7 +283,7 @@ export default function InstantOrderPanel({
         flavor_id: rewardFlavorId,
         sauce_id: rewardSauceId === "none" ? null : rewardSauceId,
       } : null,
-      requested_pickup_time: pickupTime,
+      requested_pickup_time: null,
       requested_pickup_method: pickupMethod,
     });
     setBusy(false);
@@ -350,7 +313,8 @@ export default function InstantOrderPanel({
       customerName: name,
       items: whatsappItems,
       total: response.total || displayTotal,
-      pickupTime,
+      pickupTime: "",
+      availableFrom: pickupMinimum,
       pickupMethod,
     });
     window.location.assign(orderWhatsAppUrl(orderWhatsAppNumber, message));
@@ -384,7 +348,6 @@ export default function InstantOrderPanel({
     setPaymentMethod("");
     setPaymentMethodsError("");
     setPickupMethod("customer");
-    setPickupTime("");
     operationKey.current = crypto.randomUUID();
     operationPayload.current = "";
     onClose();
@@ -408,7 +371,8 @@ export default function InstantOrderPanel({
         };
       }),
       total: result.total || displayTotal,
-      pickupTime,
+      pickupTime: "",
+      availableFrom: pickupMinimum,
       pickupMethod,
     })
     : "Olá, Adoce! Quero montar um pedido de fatias para retirada.";
@@ -469,10 +433,10 @@ export default function InstantOrderPanel({
             {paymentMethodsError ? <div className="instant-order-payment-error" role="alert"><span>{paymentMethodsError} Tente novamente para continuar.</span><button type="button" onClick={() => setCheckoutConfigAttempt((attempt) => attempt + 1)}>Tentar novamente</button></div> : null}
             <fieldset className="instant-order-pickup-choice"><legend>Quem fará a retirada?</legend><label><input type="radio" name="pickup-method" checked={pickupMethod === "customer"} onChange={() => setPickupMethod("customer")} /> Eu mesma(o)</label><label><input type="radio" name="pickup-method" checked={pickupMethod === "driver"} onChange={() => setPickupMethod("driver")} /> Entregador de aplicativo</label></fieldset>
             <label>Observação <small>(opcional)</small><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Alguma informação importante para a Adoce" /></label>
-            <label>Horário desejado para retirada<input type="time" value={pickupTime} onChange={(event) => setPickupTime(event.target.value)} />{pickupMinimum ? <small>Seu pedido completo pode ser retirado a partir das {pickupMinimum.replace(":00", "h")}.</small> : pickupWindows?.length ? <small>{pickupWindowHint(pickupWindows)}</small> : null}</label>
+            <p role="status">{pickupMinimum ? `Disponibilidade a partir das ${pickupMinimum}. ` : ""}Você pode reservar agora. Aguarde a confirmação da separação e a liberação da equipe antes de retirar.</p>
             {notice ? <p className="instant-order-notice" role="alert">{notice}</p> : null}
             <button className="instant-order-submit" disabled={!totalQuantity || paymentMethodsLoading || Boolean(paymentMethodsError) || !paymentMethod}>{needsSauceStep ? "Escolher caldas e enviar" : "Enviar pedido"}</button>
-            <small className="instant-order-explanation">Nenhum pagamento será solicitado antes da confirmação da disponibilidade.</small>
+            <small className="instant-order-explanation">Nenhum pagamento será solicitado antes da confirmação da separação pela equipe.</small>
           </form> : null}
         </> : !result && step === "sauces" ? <section className="instant-order-sauces">
           <button type="button" className="instant-order-back" onClick={() => { setStep("details"); setNotice(""); }}><ArrowLeft /> Voltar ao pedido</button>
@@ -505,7 +469,7 @@ export default function InstantOrderPanel({
           <p>{result!.message}</p>
           {loyaltyPreview?.recognized ? <div className="instant-order-club-success"><Heart /><span><strong>{totalQuantity} carimbo(s) reservado(s) para esta compra</strong><small>Eles entram no seu cartão assim que o pagamento for confirmado.{loyaltyPreview.will_unlock_reward ? " Esta compra também completa seu cartão e libera sua fatia-presente." : ""}</small></span></div> : null}
           {result!.reward_requested ? <div className="instant-order-reward-success"><Gift /><span><strong>Sua fatia-presente entrou no pedido</strong><small>{result!.reward_flavor_name}{result!.reward_sauce_name ? ` · ${result!.reward_sauce_name}` : ""}. Ela será resgatada e baixada do estoque quando o pagamento for confirmado.</small></span></div> : null}
-          <dl><div><dt>Total</dt><dd>{money(result!.total || 0)}</dd></div><div><dt>Retirada</dt><dd>{result!.pickup_requested_time || pickupTime}</dd></div><div><dt>Próximo passo</dt><dd>Confira o WhatsApp</dd></div></dl>
+          <dl><div><dt>Total</dt><dd>{money(result!.total || 0)}</dd></div><div><dt>Retirada</dt><dd>{"Após liberação da equipe"}</dd></div><div><dt>Próximo passo</dt><dd>Confira o WhatsApp</dd></div></dl>
           {result!.pickup_address ? <div className="instant-order-pickup"><MapPin /><span><strong>{result!.pickup_label}</strong><small>{result!.pickup_address}</small></span><button type="button" onClick={() => void navigator.clipboard.writeText(result!.pickup_address || "")}><Copy /> Copiar</button></div> : null}
           <a href={orderWhatsAppUrl(orderWhatsAppNumber, whatsappMessage)} target="_blank" rel="noreferrer"><MessageCircle /> Finalizar pelo WhatsApp</a>
           <button type="button" className="instant-order-finish" onClick={reset}>Concluir</button>

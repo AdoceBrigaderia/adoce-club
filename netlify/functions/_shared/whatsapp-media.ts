@@ -21,22 +21,32 @@ export async function downloadAndStoreTwilioMedia(
   authToken: string,
   pathPrefix: string,
   filenameHint = "media",
+  bucket = "whatsapp-support-media",
 ) {
-  if (!/^https:\/\//i.test(mediaUrl)) throw new Error("media_url_invalid");
+  const source=new URL(mediaUrl);
+  if (source.protocol!=="https:" || source.hostname!=="api.twilio.com" || source.port || source.username || source.password
+    || !/^AC[a-f0-9]{32}$/i.test(accountSid) || !source.pathname.startsWith(`/2010-04-01/Accounts/${accountSid}/Messages/`)) throw new Error("media_url_invalid");
   const response = await fetch(mediaUrl, {
     headers: { Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}` },
   });
   if (!response.ok) throw new Error(`media_download_${response.status}`);
   const declared = Number(response.headers.get("content-length") || "0");
   if (declared > MAX_MEDIA_BYTES) throw new Error("media_too_large");
-  const blob = await response.blob();
+  const reader=response.body?.getReader();
+  if(!reader) throw new Error("media_empty");
+  const chunks:Uint8Array<ArrayBuffer>[]=[];let received=0;
+  for(;;){const next=await reader.read();if(next.done)break;received+=next.value.byteLength;
+    if(received>MAX_MEDIA_BYTES){await reader.cancel();throw new Error("media_too_large");}
+    chunks.push(Uint8Array.from(next.value));
+  }
+  const blob = new Blob(chunks,{type:response.headers.get("content-type")||contentType});
   if (!blob.size || blob.size > MAX_MEDIA_BYTES) throw new Error("media_too_large");
   const normalizedType = contentType || blob.type || "application/octet-stream";
   const kind = mediaKindFromContentType(normalizedType);
-  const storagePath = `${pathPrefix}/${crypto.randomUUID()}-${safeName(filenameHint)}`;
-  const upload = await admin.storage.from("whatsapp-support-media").upload(storagePath, blob, {
+  const storagePath = bucket==="order-payment-receipts" ? `${pathPrefix}/${safeName(filenameHint)}` : `${pathPrefix}/${crypto.randomUUID()}-${safeName(filenameHint)}`;
+  const upload = await admin.storage.from(bucket).upload(storagePath, blob, {
     contentType: normalizedType,
-    upsert: false,
+    upsert: bucket==="order-payment-receipts",
   });
   if (upload.error) throw new Error(`media_upload:${upload.error.message}`);
   return {

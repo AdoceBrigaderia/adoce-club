@@ -300,6 +300,7 @@ public class AdoceOrderService extends Service {
     }
 
     private void sendHeartbeat() {
+        pollClosingReports();
         String base = prefs.getString("url", "");
         String key = prefs.getString("key", "");
         String access = prefs.getString("access", "");
@@ -597,6 +598,75 @@ public class AdoceOrderService extends Service {
         characteristicWriteLatch = null;
     }
 
+
+    private void pollClosingReports() {
+        String base = prefs.getString("url", "");
+        if (base.isEmpty() || writer == null || tokenExpiresSoon()) return;
+        Request request = new Request.Builder().url(base + "/rest/v1/cash_closing_reports?printed_at=is.null&select=id,report&order=created_at.asc&limit=20")
+            .header("apikey", prefs.getString("key", "")).header("Authorization", "Bearer " + prefs.getString("access", "")).build();
+        http.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) { }
+            @Override public void onResponse(Call call, Response response) throws java.io.IOException {
+                try (response) {
+                    if (!response.isSuccessful()) return;
+                    JSONArray rows = new JSONArray(response.body().string());
+                    for (int i = 0; i < rows.length(); i++) {
+                        JSONObject row = rows.getJSONObject(i); String id = row.getString("id");
+                        if (!printingIds.add("closing:" + id)) continue;
+                        printerExecutor.execute(() -> {
+                            try {
+                                if (!prefs.getBoolean("closing_printed_" + id, false)) {
+                                    writeReceipt(closingReceipt(row.getJSONObject("report")));
+                                    prefs.edit().putBoolean("closing_printed_" + id, true).commit();
+                                }
+                                JSONObject body = new JSONObject().put("target_report_id", id);
+                                Request ack = new Request.Builder().url(base + "/rest/v1/rpc/staff_ack_cash_closing_print")
+                                    .header("apikey", prefs.getString("key", "")).header("Authorization", "Bearer " + prefs.getString("access", ""))
+                                    .post(RequestBody.create(body.toString(), MediaType.get("application/json"))).build();
+                                try (Response acknowledged = http.newCall(ack).execute()) { }
+                                setState("fechamento impresso");
+                            } catch (Exception e) { setState("impressao do fechamento pendente"); }
+                            finally { printingIds.remove("closing:" + id); }
+                        });
+                    }
+                } catch (Exception e) { Log.e(TAG, "Falha ao ler fechamento", e); }
+            }
+        });
+    }
+
+    private String cashMoney(double value) { return String.format(new Locale("pt", "BR"), "R$ %.2f", value); }
+    private byte[] closingReceipt(JSONObject report) throws Exception {
+        List<String> lines = new ArrayList<>(); JSONObject session = report.getJSONObject("session");
+        lines.add(center("ADOCE BRIGADERIA")); lines.add(center("FECHAMENTO DE CAIXA"));
+        lines.add("Abertura: " + formatDate(session.optString("opened_at")));
+        lines.add("Fechamento: " + formatDate(session.optString("closed_at"))); lines.add(dashes());
+        JSONArray slices = report.getJSONArray("slices"); int quantity = 0;
+        for (int i=0;i<slices.length();i++) { JSONObject item=slices.getJSONObject(i); quantity+=item.optInt("quantity"); wrap(lines,item.optString("name")+": "+item.optInt("quantity")); }
+        lines.add("TOTAL DE FATIAS: " + quantity); lines.add(dashes()); lines.add("RECEBIMENTOS NESTE CAIXA");
+        String[] codes={"cash","pix","credit_card","debit_card"}; String[] labels={"Dinheiro","Pix","Credito","Debito"};
+        JSONArray payments=report.getJSONArray("payments");
+        for(int i=0;i<codes.length;i++) { double total=0; for(int j=0;j<payments.length();j++) { JSONObject pay=payments.getJSONObject(j); if(codes[i].equals(pay.optString("method"))) total+=pay.optDouble("amount"); } lines.add(labels[i]+": "+cashMoney(total)); }
+        wrap(lines,"Inclui pagamentos de vendas anteriores."); lines.add(dashes());
+        lines.add("Fundo: "+cashMoney(session.optDouble("opening_float")));
+        lines.add("Esperado: "+cashMoney(session.optDouble("expected_cash")));
+        lines.add("Contado: "+cashMoney(session.optDouble("counted_cash")));
+        lines.add("Diferenca: "+cashMoney(session.optDouble("cash_difference"))); lines.add(dashes());
+        lines.add("PAGAMENTOS PENDENTES"); JSONArray pending=report.getJSONArray("pending"); double debt=0;
+        for(int i=0;i<pending.length();i++) { JSONObject item=pending.getJSONObject(i); debt+=item.optDouble("remaining"); wrap(lines,item.optString("customer_name")); wrap(lines,item.optString("order_number")+": "+cashMoney(item.optDouble("remaining"))); }
+        if(pending.length()==0) lines.add("Nenhum"); lines.add("TOTAL PENDENTE: "+cashMoney(debt));
+        wrap(lines,"Pendencias nao sao dinheiro recebido.");
+        lines.add(dashes()); lines.add("DESPESAS");
+        JSONArray expenses=report.optJSONArray("expenses");
+        if(expenses==null || expenses.length()==0) lines.add("Nenhuma");
+        else for(int i=0;i<expenses.length();i++) { JSONObject expense=expenses.getJSONObject(i); wrap(lines,expense.optString("description")); wrap(lines,expense.optString("method")+": "+cashMoney(expense.optDouble("amount"))); }
+        lines.add(dashes()); lines.add("TROCO DEVOLVIDO POR PIX");
+        JSONArray pixChanges=report.optJSONArray("pix_change");
+        if(pixChanges==null || pixChanges.length()==0) lines.add("Nenhum");
+        else for(int i=0;i<pixChanges.length();i++) { JSONObject change=pixChanges.getJSONObject(i); wrap(lines,change.optString("source")+": "+cashMoney(change.optDouble("amount"))); }
+        wrap(lines,"Troco por Pix nao sai da gaveta.");
+        return escPos(lines,"FECHAMENTO DE CAIXA");
+    }
+
     private byte[] receipt(JSONObject order) throws Exception {
         List<String> lines = new ArrayList<>();
         lines.add(center("ADOCE BRIGADERIA")); lines.add(center("FICHA DE PRODUÇÃO E ENTREGA")); lines.add(dashes());
@@ -635,8 +705,26 @@ public class AdoceOrderService extends Service {
         }
         lines.add(dashes()); lines.add(center(quantity + (quantity == 1 ? " FATIA" : " FATIAS")));
         lines.add(center("TOTAL  R$ " + String.format(new Locale("pt", "BR"), "%.2f", order.optDouble("total"))));
+        JSONArray payments = order.optJSONArray("payment_allocations");
+        if (payments == null) payments = order.optJSONArray("payments");
+        if (payments != null) for (int i = 0; i < payments.length(); i++) {
+            JSONObject pay = payments.getJSONObject(i);
+            String method = pay.optString("method");
+            String label = method.equals("cash") ? "Dinheiro" : method.equals("pix") ? "Pix" : method.equals("credit_card") ? "Credito" : "Debito";
+            lines.add(label + ": R$ " + String.format(new Locale("pt", "BR"), "%.2f", pay.optDouble("amount")));
+        }
+        if (order.optDouble("discount_amount") > 0) lines.add("Desconto: R$ " + String.format(new Locale("pt", "BR"), "%.2f", order.optDouble("discount_amount")));
+        if (order.optDouble("change_pix_amount") > 0) { lines.add("Troco por Pix: " + cashMoney(order.optDouble("change_pix_amount"))); wrap(lines,"Conta: " + order.optString("change_pix_source")); lines.add("Troco em dinheiro: " + cashMoney(order.optDouble("change_amount") - order.optDouble("change_pix_amount"))); }
+        if (order.optDouble("change_amount") > 0) lines.add("TROCO: R$ " + String.format(new Locale("pt", "BR"), "%.2f", order.optDouble("change_amount")));
+        if (order.optBoolean("payment_deferred") && !"approved".equals(order.optString("payment_status"))) { lines.add("PAGAMENTO PENDENTE"); lines.add("A RECEBER: " + cashMoney(order.optDouble("total") - order.optDouble("amount_paid"))); }
         lines.add(dashes()); lines.add("CONFERÊNCIA DA ENTREGA"); lines.add("[ ] Sabores       [ ] Caldas"); lines.add("[ ] Embalado      [ ] Identificado"); lines.add("[ ] Pronto        [ ] Entregue");
         lines.add(dashes()); lines.add(center("Preparado com carinho para")); lines.add(center("adoçar o seu dia. Obrigado por")); lines.add(center("escolher a Adoce! <3")); lines.add(""); lines.add(center("Impresso " + formatDate(Instant.now().toString())));
+        lines.add(dashes()); lines.add(center("CLUBE ADOCE"));
+        lines.add(center("14 carimbos = 1 fatia"));
+        lines.add(center("de presente totalmente gratis!"));
+        lines.add(center("Exceto pudim."));
+        lines.add(center("Cadastre-se pelo QR Code:"));
+        lines.add("[CLUBE_QR]");
         return escPos(lines, order.optString("order_number"));
     }
 
@@ -651,6 +739,16 @@ public class AdoceOrderService extends Service {
             out.write(new byte[]{0x1b,0x40,0x1b,0x74,0x03});
             Charset charset; try { charset = Charset.forName("IBM860"); } catch (Exception e) { charset = StandardCharsets.US_ASCII; }
             for (String line : lines) {
+                if (line.equals("[CLUBE_QR]")) {
+                    byte[] qr = "https://www.adocebrigaderia.com.br/clube/entrar".getBytes(StandardCharsets.UTF_8);
+                    int len = qr.length + 3;
+                    out.write(new byte[]{0x1b,0x61,1,0x1d,0x28,0x6b,4,0,49,65,50,0});
+                    out.write(new byte[]{0x1d,0x28,0x6b,3,0,49,67,5});
+                    out.write(new byte[]{0x1d,0x28,0x6b,3,0,49,69,48});
+                    out.write(new byte[]{0x1d,0x28,0x6b,(byte)(len & 255),(byte)(len >> 8),49,80,48});
+                    out.write(qr); out.write(new byte[]{0x1d,0x28,0x6b,3,0,49,81,48,10,0x1b,0x61,0});
+                    continue;
+                }
                 if (line.trim().equals(highlight)) out.write(new byte[]{0x1b,0x45,0x01,0x1d,0x21,0x11,0x1b,0x61,0x01});
                 out.write(line.getBytes(charset)); out.write(0x0a);
                 if (line.trim().equals(highlight)) out.write(new byte[]{0x1d,0x21,0x00,0x1b,0x45,0x00,0x1b,0x61,0x00});

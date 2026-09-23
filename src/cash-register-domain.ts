@@ -1,0 +1,11 @@
+export type CashFlavor = { id: string; shortName: string; unitPrice: number; stockUnits?: number };
+export type CashLine = CashFlavor & { flavorId: string; quantity: number; sauce: string | null };
+export type Discount = { kind: "none" | "amount" | "percent"; value: number };
+export type Payment = { method: "cash" | "pix" | "credit_card" | "debit_card"; amount: number };
+const cents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+export function addLine(lines: CashLine[], flavor: CashFlavor, sauce?: string | null): CashLine[] { const key = `${flavor.id}:${sauce ?? ""}`; const index = lines.findIndex((line) => `${line.flavorId}:${line.sauce ?? ""}` === key); if (index < 0) return [...lines, { ...flavor, flavorId: flavor.id, quantity: 1, sauce: sauce ?? null }]; return lines.map((line, i) => i === index ? { ...line, quantity: line.quantity + 1 } : line); }
+export function removeLine(lines: CashLine[], flavorId: string, sauce?: string | null): CashLine[] { const index = lines.findIndex((line) => line.flavorId === flavorId && (sauce === undefined || line.sauce === sauce)); if (index < 0) return lines; const line = lines[index]; if (line.quantity <= 1) return lines.filter((_, i) => i !== index); return lines.map((item, i) => i === index ? { ...item, quantity: item.quantity - 1 } : item); }
+export function applyDiscount(subtotal: number, discount: Discount): number { const raw = discount.kind === "amount" ? subtotal - discount.value : discount.kind === "percent" ? subtotal - subtotal * discount.value / 100 : subtotal; return cents(Math.max(0, raw)); }
+export function recordPayment(payments: Payment[], payment: Payment): Payment[] { return payment.amount > 0 ? [...payments, { ...payment, amount: cents(payment.amount) }] : payments; }
+export function calculateTotals(lines: CashLine[], discount: Discount, payments: Payment[] = []) { const subtotal = cents(lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)); const total = applyDiscount(subtotal, discount); const paid = cents(payments.reduce((sum, payment) => sum + payment.amount, 0)); return { subtotal, total, paid, remaining: cents(Math.max(0, total - paid)), change: cents(Math.max(0, paid - total)) }; }
+

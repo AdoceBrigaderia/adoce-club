@@ -1,8 +1,8 @@
 {
   "title": "Adoce — Documentação do Produto",
   "subtitle": "Uma experiência digital que começa na carteira e continua todos os dias.",
-  "version": "5.1",
-  "updatedAt": "30/08/2026",
+  "version": "5.9",
+  "updatedAt": "22/09/2026",
   "files": [
     "00-visao-do-produto.md",
     "01-regras-de-negocio.md",
@@ -23,6 +23,7 @@
     "18-guia-de-entrega-para-outra-ia.md",
     "22-operacao-sqlserver-caixa-estoque.md",
     "23-simplificacao-operacao-20260826.md",
-    "23-pedidos-automatizados-whatsapp-twilio.md"
+    "23-pedidos-automatizados-whatsapp-twilio.md",
+    "24-correcao-pedidos-estoque-pix-whatsapp.md"
   ]
 }

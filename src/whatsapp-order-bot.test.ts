@@ -3,15 +3,13 @@ import { describe, expect, it } from "vitest";
 import orderWebhook from "../netlify/functions/twilio-whatsapp-order";
 import {
   catalogMessage,
-  driverAddressMessage,
+  deliveryNoticeMessage,
+  DELIVERY_MIN_SLICES,
   isFullName,
   mainMenuMessage,
   MAX_SLICES_PER_FLAVOR,
   orderSummary,
   parseItemSelection,
-  parsePickupTime,
-  PICKUP_CLOSING,
-  pickupTimeOptions,
   pixMessage,
   quantityMessage,
   removeItemMessage,
@@ -59,19 +57,22 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(quantities).toContain("3. Voltar aos sabores");
   });
 
-  it("gera horários futuros de meia em meia hora para escolha numérica", () => {
-    expect(pickupTimeOptions("18:10", 4)).toEqual(["18:30", "19:00", "19:30", "20:00"]);
-    expect(pickupTimeOptions("23:31")).toEqual([]);
-    expect(parsePickupTime("19:30", "18:00")).toBe("19:30");
-  });
+  it("não pede horário de retirada: só informa a regra de entrega/coleta", () => {
+    const endpoint = source("../netlify/functions/twilio-whatsapp-order.ts");
+    // nenhum passo de horário nem de quem retira
+    expect(endpoint).not.toMatch(/save\(\s*"pickup_time"/);
+    expect(endpoint).not.toMatch(/save\(\s*"pickup_method"/);
+    expect(endpoint).not.toContain("requested_pickup_time");
+    expect(endpoint).not.toContain("requested_pickup_method");
 
-  it("limita a janela de retirada ao horário de fechamento do Cantinho", () => {
-    expect(PICKUP_CLOSING).toBe("23:00");
-    expect(pickupTimeOptions("20:00")).toEqual([
-      "20:00", "20:30", "21:00", "21:30", "22:00", "22:30", "23:00",
-    ]);
-    expect(pickupTimeOptions("22:40")).toEqual(["23:00"]);
-    expect(pickupTimeOptions("23:10")).toEqual([]);
+    const abaixo = deliveryNoticeMessage(DELIVERY_MIN_SLICES - 1);
+    expect(abaixo).toContain(`${DELIVERY_MIN_SLICES} fatias ou mais`);
+    expect(abaixo).toContain("retira no local ou envia um entregador");
+    expect(abaixo).toContain("depois que avisarmos");
+
+    const acima = deliveryNoticeMessage(DELIVERY_MIN_SLICES);
+    expect(acima).toContain("pode ser entregue pela Adoce");
+    expect(acima).toContain("assim que o pedido estiver separado");
   });
 
   it("mostra subtotal e opção de remover item ao montar o pedido", () => {
@@ -129,31 +130,26 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(endpoint).toMatch(/conversation\.step === "choose_items"[\s\S]{0,200}loadCatalog\(\)/);
   });
 
-  it("oferece calda por fatia com atalho e traz os dados de Pix e retirada por entregador", () => {
+  it("oferece calda por fatia com atalho e traz os dados de Pix", () => {
     expect(sauceModeMessage(6)).toContain("mesma calda para todas as 6 fatias");
     expect(sauceModeMessage(6)).toContain("2. Quero escolher a calda de cada fatia");
     expect(sliceSauceMessage(2, 5, "Brigadeiro", [{ code: "c", label: "Chocolate" }]))
       .toContain("Calda da fatia 2 de 5 — *Brigadeiro*");
-    expect(pixMessage()).toContain("pagamento@adocebrigaderia.com.br");
-    expect(pixMessage()).toContain("Elizabeth Cristina Sampaio Nascimento");
-    expect(pixMessage()).toContain("Mercado Pago");
-    expect(driverAddressMessage("Maria")).toContain("Cantinho da Adoce");
-    expect(driverAddressMessage("Maria")).toContain("Rua Cento Quatro, 277 – Passaré");
-    expect(driverAddressMessage("Maria")).toContain("em nome de *Maria*");
+    expect(pixMessage()).toContain("pagamentos@adocebrigaderia.com.br");
+    expect(pixMessage()).toContain("comprovante");
   });
 
-  it("confirma ou altera o pedido por números", () => {
+  it("confirma ou cancela o pedido por números, sem passo de horário", () => {
     const summary = orderSummary({
       name: "Maria da Silva",
       selections: [{ ...flavors[0], quantity: 1 }],
       sauceLabel: "Chocolate",
       paymentLabel: "Pix",
-      pickupMethod: "customer",
-      pickupTime: "19:30",
     });
     expect(summary).toContain("1. Registrar pedido");
-    expect(summary).toContain("2. Escolher outro horário");
-    expect(summary).toContain("3. Cancelar pedido");
+    expect(summary).toContain("2. Cancelar pedido");
+    expect(summary).not.toContain("horário");
+    expect(summary).not.toContain("Retirada:");
   });
 
   it("exige nome completo como único dado textual livre", () => {
@@ -224,9 +220,9 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(migration).toMatch(/revoke all[\s\S]*from public, anon, authenticated/);
     expect(endpoint).toContain("twilio.validateRequest");
     expect(endpoint).toContain("server_prepare_whatsapp_order_message");
-    expect(endpoint).toContain("server_finish_whatsapp_order_message");
-    expect(endpoint).toContain("data: supportThreadId");
-    expect(endpoint).toMatch(/if \(!supportThreadId\) \{[\s\S]*?return await showMainMenu\(\);/);
+    expect(endpoint).toContain("server_finish_observed_whatsapp_message");
+    expect(endpoint).toContain("server_observe_whatsapp_message");
+    expect(endpoint).toContain('observedThread.automation_mode === "human"');
     expect(endpoint).not.toContain("server_begin_whatsapp_order_message");
     expect(endpoint).toContain("server_submit_whatsapp_order");
     expect(endpoint).not.toContain("console.log(body");

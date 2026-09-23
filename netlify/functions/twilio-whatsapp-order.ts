@@ -1,9 +1,10 @@
 import twilio from "twilio";
+import {whatsappHours,ordersClosedMessage,supportClosedMessage} from "./_shared/whatsapp-business-hours";
 import { env, hmacHex, normalizeBrazilPhone, serviceClient } from "./_shared/whatsapp-auth";
 import { downloadAndStoreTwilioMedia } from "./_shared/whatsapp-media";
 import {
   catalogMessage,
-  driverAddressMessage,
+  deliveryNoticeMessage,
   emptyFestivalMenuMessage,
   isFullName,
   mainMenuMessage,
@@ -12,11 +13,6 @@ import {
   optionsMessage,
   orderSummary,
   parseOption,
-  PICKUP_CLOSING,
-  PICKUP_OPENING,
-  pickupTimeOptions,
-  pickupTimesMessage,
-  pixMessage,
   quantityMessage,
   removeItemMessage,
   sauceModeMessage,
@@ -50,9 +46,6 @@ type OrderState = {
   sauceSelections?: SauceChoice[];
   payments?: BotOption[];
   payment?: BotOption;
-  pickupMethod?: "customer" | "driver";
-  pickupTime?: string;
-  pickupOptions?: string[];
   menuMode?: boolean;
   emptyCatalog?: boolean;
   removing?: boolean;
@@ -76,43 +69,6 @@ const XML_HEADERS = {
 
 const responseXml = (xml: string, status = 200) =>
   new Response(xml || twiml(), { status, headers: XML_HEADERS });
-
-const localClock = (date = new Date()) => {
-  const parts = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: "America/Fortaleza",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-  const hour = parts.find((part) => part.type === "hour")?.value || "00";
-  const minute = parts.find((part) => part.type === "minute")?.value || "00";
-  return `${hour === "24" ? "00" : hour}:${minute}`;
-};
-
-const earliestPickup = (selections: BotSelection[], catalog: Catalog) => {
-  // Retirada só à noite: nunca antes das 20h e nunca depois das 23h.
-  const now = localClock();
-  const required: string[] = [PICKUP_OPENING];
-  if (now > PICKUP_OPENING) required.push(now);
-  for (const selection of selections) {
-    const flavor = catalog.flavors.find((item) => item.id === selection.id);
-    if (!flavor) return null;
-    let accumulated = 0;
-    let found: string | null = null;
-    for (const batch of [...flavor.batches].sort((a, b) => a.available_from.localeCompare(b.available_from))) {
-      accumulated += Number(batch.quantity_free || 0);
-      if (accumulated >= selection.quantity) {
-        found = batch.available_from.slice(0, 5);
-        break;
-      }
-    }
-    if (!found) return null;
-    required.push(found);
-  }
-  const minimum = required.sort().at(-1) || null;
-  if (minimum && minimum > PICKUP_CLOSING) return null;
-  return minimum;
-};
 
 const totalSlices = (state: OrderState) =>
   (state.selections || []).reduce((sum, item) => sum + item.quantity, 0);
@@ -187,27 +143,26 @@ export default async (request: Request, context?: FunctionContext) => {
   const phoneHash = await hmacHex(hmacSecret, `phone:${phone}`);
   const storeInboundMedia = async (threadId: string) => {
     if (!hasMedia) return;
+    const count=Number(form.get("NumMedia")||"0");
+    if(!Number.isInteger(count)||count<1||count>10)throw Error("media_count");
+    for(let index=0;index<count;index+=1){
+    const sourceType=form.get(`MediaContentType${index}`)||"";
     const stored = await downloadAndStoreTwilioMedia(
       admin,
-      mediaUrl,
-      mediaContentType,
+      form.get(`MediaUrl${index}`)||"",
+      sourceType,
       env("TWILIO_ACCOUNT_SID") || "",
       authToken,
       `inbound/${threadId}`,
-      `${messageSid}.${mediaContentType.split("/").at(-1) || "bin"}`,
+      `${messageSid}-${index}.${sourceType.split("/").at(-1) || "bin"}`,
     );
-    const { error } = await admin.schema("private").from("whatsapp_support_messages").insert({
-      thread_id: threadId,
-      message_sid: `${messageSid}-media`,
-      direction: "inbound",
-      body: body || `Mídia recebida (${stored.kind})`,
-      media_kind: stored.kind,
-      media_storage_path: stored.storagePath,
-      media_content_type: stored.contentType,
-      media_filename: stored.filename,
-      media_size_bytes: stored.sizeBytes,
+    const { error } = await admin.rpc("server_store_whatsapp_inbound_media", {
+      requested_thread_id:threadId,requested_sid:`${messageSid}-media${index}`,requested_body:body || `Mídia recebida (${stored.kind})`,
+      requested_kind:stored.kind,requested_path:stored.storagePath,requested_type:stored.contentType,
+      requested_filename:stored.filename,requested_size:stored.sizeBytes,requested_bucket:"whatsapp-support-media",
     });
     if (error) throw new Error(`media_store:${error.code}`);
+    }
   };
 
   const { data: prepared, error: prepareError } = await admin.rpc("server_prepare_whatsapp_order_message", {
@@ -216,6 +171,13 @@ export default async (request: Request, context?: FunctionContext) => {
   });
   if (prepareError) return responseXml(twiml(), 503);
   if (prepared?.process === false) return responseXml(String(prepared.response_xml || twiml()));
+
+  const observed=await admin.rpc("server_observe_whatsapp_message",{
+    requested_phone_hmac:phoneHash,requested_phone_last4:phone.slice(-4),requested_message_sid:messageSid,requested_body:body,
+  });
+  if(observed.error || !observed.data?.id) return responseXml(twiml(),503);
+  const observedThread=observed.data as {id:string;automation_mode:"bot"|"human"};
+  let requestedHandoff=false;
 
   let nextConversation: { step: string; state: OrderState } | null = null;
   let clearBeforeFinish = false;
@@ -227,7 +189,7 @@ export default async (request: Request, context?: FunctionContext) => {
     const expires = nextConversation
       ? new Date(Date.now() + ttlMs).toISOString()
       : null;
-    const { error } = await admin.rpc("server_finish_whatsapp_order_message", {
+    const { data: recordedXml, error } = await admin.rpc("server_finish_observed_whatsapp_message", {
       requested_message_sid: messageSid,
       requested_phone_hmac: phoneHash,
       requested_phone_last4: phone.slice(-4),
@@ -236,9 +198,11 @@ export default async (request: Request, context?: FunctionContext) => {
       requested_state: nextConversation?.state || null,
       requested_expires_at: expires,
       requested_clear: clearBeforeFinish,
+      requested_body:message,
+      requested_handoff:requestedHandoff,
     });
-    if (error) console.error("whatsapp order completion failed", error.code);
-    return responseXml(xml, status);
+    if (error || typeof recordedXml!=="string") return responseXml(twiml(),503);
+    return responseXml(recordedXml, status);
   };
   const save = async (step: string, state: OrderState) => {
     nextConversation = { step, state };
@@ -284,7 +248,8 @@ export default async (request: Request, context?: FunctionContext) => {
 
     const showMainMenu = async () => {
       await save("choose_items", { menuMode: true });
-      return await finish(mainMenuMessage());
+      const hours=whatsappHours();
+      return await finish([mainMenuMessage(),!hours.orders?ordersClosedMessage:"",!hours.support?supportClosedMessage:""].filter(Boolean).join("\n\n"));
     };
     const handoff = async (department: SupportDepartment, note?: string) => {
       const { data: threadId, error } = await admin.rpc("server_open_whatsapp_support_thread", {
@@ -296,6 +261,7 @@ export default async (request: Request, context?: FunctionContext) => {
       });
       if (error || !threadId) throw new Error(`support:${error?.code || "open"}`);
       await storeInboundMedia(String(threadId));
+      requestedHandoff=true;
       await save("handoff", { department, supportThreadId: String(threadId) });
       const notification = notifySupport(department, String(threadId));
       if (context?.waitUntil) context.waitUntil(notification);
@@ -303,9 +269,10 @@ export default async (request: Request, context?: FunctionContext) => {
       const base = department === "festival"
         ? "Certo. Encaminhei sua conversa para a equipe do Festival de Fatias. Pode escrever sua dúvida por aqui."
         : "Certo. Encaminhei sua conversa para a equipe de orçamentos. Pode contar por aqui o que você deseja.";
-      return await finish(note ? `${note}\n\n${base}` : base);
+      return await finish([note,base,!whatsappHours().support?supportClosedMessage:""].filter(Boolean).join("\n\n"));
     };
     const startOrder = async () => {
+      if(!whatsappHours().orders) return await finish(ordersClosedMessage);
       const catalog = await loadCatalog();
       const flavors = catalog.flavors.slice(0, 20);
       if (!flavors.length) {
@@ -326,25 +293,15 @@ export default async (request: Request, context?: FunctionContext) => {
       return (state.menu || []).map((entry) => ({ ...entry, free: freeById.get(entry.id) ?? 0 }));
     };
 
-    const pickupMethodOptions: BotOption[] = [
-      { code: "customer", label: "Eu mesma(o)" },
-      { code: "driver", label: "Entregador de aplicativo" },
-    ];
-    const pickupMethodPrompt = (state: OrderState) =>
-      (state.payment?.code === "pix" ? `${pixMessage()}\n\n` : "") +
-      optionsMessage("Quem fará a retirada?", pickupMethodOptions, true);
     const summaryMessage = (state: OrderState) => {
       const base = orderSummary({
         name: state.name || "Cliente",
         selections: state.selections || [],
         sauceLabel: describeSauce(state),
         paymentLabel: state.payment?.label || "A combinar",
-        pickupMethod: state.pickupMethod || "customer",
-        pickupTime: state.pickupTime || "",
       });
-      const extras: string[] = [];
-      if (state.pickupMethod === "driver") extras.push(driverAddressMessage(state.name || "seu nome"));
-      if (state.payment?.code === "pix") extras.push(pixMessage());
+      const extras: string[] = [deliveryNoticeMessage(totalSlices(state))];
+      extras.push("Aguarde a confirmação da separação pela equipe antes de pagar. Depois enviaremos a chave Pix e as orientações por aqui.");
       return [base, ...extras].join("\n\n");
     };
 
@@ -363,10 +320,6 @@ export default async (request: Request, context?: FunctionContext) => {
           return optionsMessage("Escolha a calda para todas as fatias:", state.sauces || [], true);
         case "payment":
           return optionsMessage("Como deseja pagar?", state.payments || [], true);
-        case "pickup_method":
-          return pickupMethodPrompt(state);
-        case "pickup_time":
-          return pickupTimesMessage(state.pickupOptions || []);
         case "confirm":
           return summaryMessage(state);
         default:
@@ -374,14 +327,15 @@ export default async (request: Request, context?: FunctionContext) => {
       }
     };
 
-    // Depois da calda: Pix é a única forma, então pula a pergunta e mostra a chave.
+    // Depois da calda: Pix é a única forma, então pula a pergunta e vai direto
+    // para a confirmação (o cliente não escolhe horário nem quem retira).
     const afterSauce = async (state: OrderState, from: string) => {
       const payments = state.payments || [];
       if (!payments.length) return await handoff("festival");
       if (payments.length === 1) {
         const next = { ...state, payment: payments[0], previousStep: from };
-        await save("pickup_method", next);
-        return await finish(pickupMethodPrompt(next));
+        await save("confirm", next);
+        return await finish(summaryMessage(next));
       }
       await save("payment", { ...state, previousStep: from });
       return await finish(optionsMessage("Como deseja pagar?", payments, true));
@@ -395,18 +349,49 @@ export default async (request: Request, context?: FunctionContext) => {
 
     const command = normalizeCommand(body);
     const conversation = (prepared?.conversation || null) as Conversation;
-    if (conversation?.step === "handoff") {
-      const { data: supportThreadId, error } = await admin.rpc("server_append_whatsapp_support_message", {
-        requested_phone_hmac: phoneHash,
-        requested_message_sid: messageSid,
-        requested_body: body,
+    const receiptOrderNumber = body.match(/\bFAT-\d{8}-[A-Z0-9]+\b/i)?.[0].toUpperCase() || null;
+    if (receiptOrderNumber && !hasMedia) {
+      const linked=await admin.rpc("server_link_order_receipts", {
+        requested_phone:phone,requested_phone_hmac:phoneHash,requested_order_number:receiptOrderNumber,
       });
-      if (error) throw new Error(`support:${error.code || "append"}`);
-      if (!supportThreadId) {
-        await clear();
-        return await showMainMenu();
+      if(linked.error) throw new Error("receipt_link");
+      if(linked.data?.linked>0) return await finish(`O primeiro comprovante pendente foi vinculado ao pedido ${receiptOrderNumber}. A equipe vai conferir o pagamento.${linked.data.pending>0?" Ainda há outro comprovante pendente: envie o número do pedido correspondente ao próximo arquivo, na ordem em que você enviou.":""}`);
+    }
+    // Aceita comprovantes inclusive apos concluir a conversa e durante atendimento humano.
+    const inSupport=observedThread.automation_mode === "human" || conversation?.step === "handoff";
+    const receiptContext=!inSupport || Boolean(receiptOrderNumber) || /comprovante|paguei|pagamento|\bpix\b/i.test(body);
+    if (hasMedia && receiptContext && (mediaContentType.startsWith("image/") || mediaContentType === "application/pdf")) {
+      let receiptResult: {order_number?:string;candidates?:string[]} = {};
+      const count=Number(form.get("NumMedia") || "0");
+      if(!Number.isInteger(count) || count<1 || count>10) return responseXml(twiml("Envie até 10 arquivos por mensagem."),400);
+      for(let index=0;index<count;index+=1) {
+        const type=form.get(`MediaContentType${index}`) || "";
+        if(!["image/jpeg","image/png","image/webp","application/pdf"].includes(type))
+          return await finish("Envie o comprovante como imagem JPG, PNG, WebP ou PDF.");
       }
-      await storeInboundMedia(String(supportThreadId));
+      for(let index=0;index<count;index+=1) {
+        const type=form.get(`MediaContentType${index}`) || "";
+        const stored=await downloadAndStoreTwilioMedia(admin,form.get(`MediaUrl${index}`) || "",type,
+          env("TWILIO_ACCOUNT_SID") || "",authToken,"receipts",`${messageSid}-${index}`,"order-payment-receipts");
+        const saved=await admin.rpc("server_save_order_receipt",{
+          requested_phone:phone,requested_phone_hmac:phoneHash,requested_order_number:receiptOrderNumber,
+          requested_message_sid:index===0?messageSid:`${messageSid}-${index}`,
+          requested_storage_path:stored.storagePath,requested_content_type:stored.contentType,requested_size_bytes:stored.sizeBytes,
+        });
+        if(saved.error) throw new Error("receipt_save");
+        const logged=await admin.rpc("server_store_whatsapp_inbound_media",{
+          requested_thread_id:observedThread.id,requested_sid:`${messageSid}-file${index}`,requested_body:body || "Comprovante recebido; aguardando conferência da equipe.",
+          requested_kind:stored.kind,requested_path:stored.storagePath,requested_type:stored.contentType,
+          requested_filename:stored.filename,requested_size:stored.sizeBytes,requested_bucket:"order-payment-receipts",
+        });
+        if(logged.error) throw new Error("receipt_history");
+        receiptResult=saved.data || {};
+      }
+      if(receiptResult.order_number) return await finish(`Comprovante guardado no pedido ${receiptResult.order_number}. A equipe da Adoce vai conferir o pagamento.`);
+      return await finish(`Guardei o anexo. Para vincular o primeiro comprovante pendente ao pedido correto, envie o número completo do pedido (FAT-...). Se enviou mais de um arquivo em mensagens diferentes, identifique cada pedido na mesma ordem dos envios.${receiptResult.candidates?.length ? `\nSeus pedidos: ${receiptResult.candidates.join(", ")}` : ""} O pagamento ainda será conferido pela equipe.`);
+    }
+    if (inSupport) {
+      await storeInboundMedia(observedThread.id);
       return await finish("");
     }
     if (command === "cancelar" || command === "sair") {
@@ -420,10 +405,12 @@ export default async (request: Request, context?: FunctionContext) => {
     }
 
     if (hasMedia && !conversation) return await handoff("festival");
-    if (hasMedia && conversation && conversation.step !== "handoff")
+    if (hasMedia && conversation && conversation.step !== "handoff") {
+      await storeInboundMedia(observedThread.id);
       return await finish(
         "Recebi seu anexo, mas para continuar o pedido preciso que você responda com o número da opção. Se quiser falar com uma pessoa, digite *atendente*.",
       );
+    }
     if (!conversation) return await showMainMenu();
     if (conversation.step === "completed") {
       if (command === "1") return await startOrder();
@@ -448,6 +435,7 @@ export default async (request: Request, context?: FunctionContext) => {
       return await finish(mainMenuMessage());
     }
 
+    if(!whatsappHours().orders) return await finish(ordersClosedMessage);
     if (conversation.step === "choose_items") {
       // Estoque ao vivo: relê o catálogo a cada mensagem, nunca usa cache do estado.
       const catalog = await loadCatalog();
@@ -656,57 +644,19 @@ export default async (request: Request, context?: FunctionContext) => {
       const payment = parseOption(body, state.payments || []);
       if (!payment) return await finish(optionsMessage("Como deseja pagar?", state.payments || [], true));
       const next = { ...state, payment, previousStep: "payment" };
-      await save("pickup_method", next);
-      return await finish(pickupMethodPrompt(next));
+      await save("confirm", next);
+      return await finish(summaryMessage(next));
     }
 
-    if (conversation.step === "pickup_method") {
+    if (conversation.step === "confirm") {
       if (isBackCommand(command)) {
-        if ((state.payments || []).length > 1) return await goBack("payment", state);
         const reset = totalSlices(state) >= 2
           ? { ...state, sauceStep: "mode" as const, sauceMode: undefined, sauceSelections: undefined }
           : { ...state, sauceStep: "pick" as const, sauceMode: "uniform" as const };
         await save("sauce", { ...reset, previousStep: "name" });
         return await finish(renderStep("sauce", reset));
       }
-      if (command !== "1" && command !== "2") return await finish(pickupMethodPrompt(state));
-      const catalog = await loadCatalog();
-      const minimum = earliestPickup(state.selections || [], catalog);
-      const pickupOptions = minimum ? pickupTimeOptions(minimum) : [];
-      if (!pickupOptions.length)
-        return await handoff(
-          "festival",
-          `Não consegui montar um horário de retirada (a retirada é das ${PICKUP_OPENING} às ${PICKUP_CLOSING}).`,
-        );
-      const pickupMethod: "customer" | "driver" = command === "2" ? "driver" : "customer";
-      await save("pickup_time", { ...state, pickupMethod, pickupOptions, previousStep: "pickup_method" });
-      return await finish(
-        (pickupMethod === "driver" ? `${driverAddressMessage(state.name || "seu nome")}\n\n` : "") +
-          pickupTimesMessage(pickupOptions),
-      );
-    }
-
-    if (conversation.step === "pickup_time") {
-      if (isBackCommand(command)) return await goBack("pickup_method", state);
-      const pickupOptions = state.pickupOptions || [];
-      const selected = parseOption(body, pickupOptions.map((time) => ({ code: time, label: time })));
-      if (!selected) return await finish(pickupTimesMessage(pickupOptions));
-      const next = { ...state, pickupTime: selected.code, previousStep: "pickup_time" };
-      await save("confirm", next);
-      return await finish(summaryMessage(next));
-    }
-
-    if (conversation.step === "confirm") {
-      if (isBackCommand(command) || command === "2") {
-        const catalog = await loadCatalog();
-        const minimum = earliestPickup(state.selections || [], catalog);
-        const pickupOptions = minimum ? pickupTimeOptions(minimum) : [];
-        if (!pickupOptions.length)
-          return await handoff("festival", "O horário que você tinha escolhido não está mais disponível.");
-        await save("pickup_time", { ...state, pickupOptions, previousStep: "pickup_method" });
-        return await finish(pickupTimesMessage(pickupOptions));
-      }
-      if (command === "3" || command === "cancelar") {
+      if (command === "2" || command === "3" || command === "cancelar") {
         await clear();
         return await showMainMenu();
       }
@@ -746,8 +696,6 @@ export default async (request: Request, context?: FunctionContext) => {
         requested_customer_phone: phone,
         requested_items: requestedItems,
         requested_payment_method: state.payment?.code,
-        requested_pickup_time: state.pickupTime,
-        requested_pickup_method: state.pickupMethod,
       });
       if (error) return await finish(cleanProviderError(error.message));
       if (!data?.accepted) return await finish(cleanProviderError(String(data?.message || "pedido recusado")));
@@ -755,9 +703,10 @@ export default async (request: Request, context?: FunctionContext) => {
       return await finish([
         `Pedido *${data.order_number}* registrado com sucesso! 🎉`,
         `Total: ${Number(data.total || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
-        `Retirada: ${state.pickupTime}${state.pickupMethod === "driver" ? " (entregador de aplicativo)" : ""}`,
         "",
-        pixMessage(),
+        deliveryNoticeMessage(totalSlices(state)),
+        "",
+        "Recebemos seu pedido de reserva. Quando as fatias estiverem disponíveis, a equipe fará a separação. Aguarde a confirmação da separação e as instruções de pagamento por aqui antes de pagar.",
         "",
         "A Adoce confirmará a disponibilidade e o pagamento por aqui.",
         "",
@@ -769,6 +718,7 @@ export default async (request: Request, context?: FunctionContext) => {
     return await showMainMenu();
   } catch (error) {
     console.error("whatsapp order bot failed", error instanceof Error ? error.message.split(":")[0] : "unknown");
+    if(hasMedia) return responseXml(twiml("Não consegui guardar seu anexo agora. Por favor, envie novamente em instantes. O pagamento ainda não foi confirmado."),503);
     return await finish("Não consegui continuar o atendimento automático agora. A equipe da Adoce continuará por aqui assim que estiver disponível.", 503);
   }
 };

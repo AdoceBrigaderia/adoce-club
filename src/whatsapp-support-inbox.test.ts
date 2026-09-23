@@ -14,7 +14,7 @@ describe("conversa humana do WhatsApp", () => {
     expect(component).toContain('event_type=eq.whatsapp.support.message');
     expect(component).toContain('event.key === "Enter" && !event.shiftKey');
     expect(component).toContain("setPendingReply");
-    expect(component).toContain("Enviandoâ€¦");
+    expect(component).toContain("Enviando…");
   });
 
   it("recarrega ao voltar o foco e mantem polling leve (WebView do tablet suspende o realtime em segundo plano)", () => {

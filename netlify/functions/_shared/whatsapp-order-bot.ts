@@ -56,31 +56,29 @@ export function parseOption(value: string, options: BotOption[]) {
   return options[index - 1];
 }
 
-export function parsePickupTime(value: string, currentTime: string) {
-  const match = value.trim().match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-  if (!match) return null;
-  const time = `${match[1]}:${match[2]}`;
-  return time >= currentTime ? time : null;
-}
+// Entrega da Adoce só a partir deste total de fatias. Abaixo disso o cliente
+// retira no local ou manda um entregador de aplicativo coletar — sempre depois
+// que a loja avisa que o pedido está separado. O cliente NÃO informa horário
+// nem quem retira: é só um aviso.
+export const DELIVERY_MIN_SLICES = 5;
 
-export const PICKUP_OPENING = "20:00";
-export const PICKUP_CLOSING = "23:00";
-
-export function pickupTimeOptions(minimum: string, limit = 10) {
-  const [hour, minute] = minimum.slice(0, 5).split(":").map(Number);
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return [];
-  let totalMinutes = Math.ceil((hour * 60 + minute) / 30) * 30;
-  const options: string[] = [];
-  const [closeHour, closeMinute] = PICKUP_CLOSING.split(":").map(Number);
-  const closingMinutes = closeHour * 60 + closeMinute;
-  while (totalMinutes <= closingMinutes && options.length < limit) {
-    const optionHour = Math.floor(totalMinutes / 60);
-    const optionMinute = totalMinutes % 60;
-    options.push(`${String(optionHour).padStart(2, "0")}:${String(optionMinute).padStart(2, "0")}`);
-    totalMinutes += 30;
-  }
-  return options;
-}
+export const deliveryNoticeMessage = (totalSlices: number) =>
+  (totalSlices >= DELIVERY_MIN_SLICES
+    ? [
+        "Sobre a retirada:",
+        "",
+        `Como seu pedido tem ${totalSlices} fatias, ele pode ser entregue pela Adoce.`,
+        "Combinamos a entrega com você por aqui assim que o pedido estiver separado.",
+        "Se preferir, você também pode retirar no local ou enviar um entregador de aplicativo.",
+      ]
+    : [
+        "Sobre a retirada:",
+        "",
+        `A entrega da Adoce é só para pedidos de ${DELIVERY_MIN_SLICES} fatias ou mais.`,
+        "Para este pedido, você retira no local ou envia um entregador de aplicativo para coletar,",
+        "depois que avisarmos aqui que o pedido está separado.",
+      ]
+  ).join("\n");
 
 export const mainMenuMessage = () => [
   "Olá! Eu sou o atendimento automático da Adoce.",
@@ -192,36 +190,13 @@ export const sliceSauceMessage = (
   "Responda somente com o número da opção.",
 ].join("\n");
 
-export const pixMessage = () => [
-  "Pagamento somente via Pix.",
-  "",
-  "Chave (e-mail): pagamento@adocebrigaderia.com.br",
-  "Favorecido: Elizabeth Cristina Sampaio Nascimento",
-  "Banco: Mercado Pago",
-  "",
-  "O pagamento é confirmado pela equipe da Adoce aqui pelo WhatsApp. Nenhuma cobrança acontece antes disso.",
-].join("\n");
-
-export const driverAddressMessage = (customerName: string) => [
-  "Para o motorista chegar até nós:",
-  "",
-  "• Uber, Google Maps ou Waze: busque *Cantinho da Adoce*",
-  "• 99: ainda não aparece pelo nome — use o endereço *Rua Cento Quatro, 277 – Passaré*",
-  "",
-  `Peça a corrida com coleta nesse endereço, em nome de *${customerName}*.`,
-  "Quando o motorista estiver a caminho, avise por aqui.",
-].join("\n");
-
-export const pickupTimesMessage = (options: string[]) =>
-  optionsMessage("Escolha o horário da retirada:", options.map((time) => ({ code: time, label: time })));
+export { pixInstructions as pixMessage } from "../../../src/pix-payment";
 
 export function orderSummary(input: {
   name: string;
   selections: BotSelection[];
   sauceLabel: string;
   paymentLabel: string;
-  pickupMethod: "customer" | "driver";
-  pickupTime: string;
 }) {
   const total = input.selections.reduce((sum, item) => sum + item.price * item.quantity, 0);
   return [
@@ -230,12 +205,10 @@ export function orderSummary(input: {
     ...input.selections.map((item) => `${item.quantity}x ${item.name}`),
     `Calda: ${input.sauceLabel}`,
     `Pagamento: ${input.paymentLabel}`,
-    `Retirada: ${input.pickupMethod === "driver" ? "entregador de aplicativo" : input.name}, às ${input.pickupTime}`,
     `Total estimado: ${money(total)}`,
     "",
     "1. Registrar pedido",
-    "2. Escolher outro horário",
-    "3. Cancelar pedido",
+    "2. Cancelar pedido",
     "",
     "Responda somente com o número da opção.",
     "A cobrança só acontece depois da confirmação da Adoce.",

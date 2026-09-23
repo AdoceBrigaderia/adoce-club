@@ -19,6 +19,11 @@ export type ThermalOrder = {
     quantity: number;
     instant_order_item_sauces?: Array<{ unit_number: number; sauce_name: string }>;
   }>;
+  payments?: Array<{ method: string; amount: number }>;
+  remaining_balance?: number;
+  change_amount?: number;
+  change_pix_amount?: number;
+  change_pix_source?: string | null;
 };
 
 declare global {
@@ -93,6 +98,13 @@ export async function printThermalOrder(order: ThermalOrder, force = false) {
         presente: Boolean((item as typeof item & { is_reward?: boolean }).is_reward),
       })),
       total: Number(order.total),
+      pagamentos: order.payments?.map((payment) => ({ metodo: payment.method, valor: Number(payment.amount) })),
+      saldoRestante: Number(order.remaining_balance || 0),
+      troco: Number(order.change_amount || 0),
+      trocoPix: Number(order.change_pix_amount || 0),
+      contaTrocoPix: order.change_pix_source || undefined,
+      clubeResumo: "Com 14 carimbos, ganhe 1 fatia de presente grátis - exceto pudim.",
+      clubeUrl: "https://www.adocebrigaderia.com.br/clube/entrar",
       retirada: order.pickup_requested_time
         ? `${order.pickup_label || "Cantinho da Adoce"} · ${order.pickup_requested_time.slice(0, 5)}`
         : null,

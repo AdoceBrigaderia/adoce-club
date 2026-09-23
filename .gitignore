@@ -57,3 +57,6 @@ FONTE_OFICIAL_DIAGNOSTICO_*.txt
 
 
 
+
+# Evidências locais (cópias de banco com dados pessoais): nunca versionar
+evidence/
