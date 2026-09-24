@@ -104,6 +104,7 @@ import {
 } from "./customer-onboarding";
 import { updateCustomerName } from "./customer-profile-admin";
 import OperationAccountMenu from "./OperationAccountMenu";
+import CashDayGuard from "./CashDayGuard";
 import { operationNavigateEvent, type OperationAreaRequest, type StampSale } from "./lib/operation-navigation";
 import { describeOperationMessage, type OperationMessageKind } from "./lib/operation-feedback";
 import BalcaoAtendimento from "./BalcaoAtendimento";
@@ -4721,6 +4722,7 @@ function OperationHome({ session }: { session: Session }) {
               </div>
             </div>
           )}
+          <CashDayGuard onCashScreen={view === "orders"} onNotice={setMessage} />
           {message && (
             <div
               className={`operation-toast ${messageKind === "error" ? "is-error" : ""}`}

@@ -301,6 +301,7 @@ public class AdoceOrderService extends Service {
 
     private void sendHeartbeat() {
         pollClosingReports();
+        pollOpeningReports();
         String base = prefs.getString("url", "");
         String key = prefs.getString("key", "");
         String access = prefs.getString("access", "");
@@ -634,10 +635,60 @@ public class AdoceOrderService extends Service {
         });
     }
 
+    // Comprovante de abertura de caixa (pedido de 24/09/2026): mesmo fluxo do fechamento.
+    private void pollOpeningReports() {
+        String base = prefs.getString("url", "");
+        if (base.isEmpty() || writer == null || tokenExpiresSoon()) return;
+        Request request = new Request.Builder().url(base + "/rest/v1/cash_opening_reports?printed_at=is.null&select=id,report&order=created_at.asc&limit=20")
+            .header("apikey", prefs.getString("key", "")).header("Authorization", "Bearer " + prefs.getString("access", "")).build();
+        http.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) { }
+            @Override public void onResponse(Call call, Response response) throws java.io.IOException {
+                try (response) {
+                    if (!response.isSuccessful()) return;
+                    JSONArray rows = new JSONArray(response.body().string());
+                    for (int i = 0; i < rows.length(); i++) {
+                        JSONObject row = rows.getJSONObject(i); String id = row.getString("id");
+                        if (!printingIds.add("opening:" + id)) continue;
+                        printerExecutor.execute(() -> {
+                            try {
+                                if (!prefs.getBoolean("opening_printed_" + id, false)) {
+                                    writeReceipt(openingReceipt(row.getJSONObject("report")));
+                                    prefs.edit().putBoolean("opening_printed_" + id, true).commit();
+                                }
+                                JSONObject body = new JSONObject().put("target_report_id", id);
+                                Request ack = new Request.Builder().url(base + "/rest/v1/rpc/staff_ack_cash_opening_print")
+                                    .header("apikey", prefs.getString("key", "")).header("Authorization", "Bearer " + prefs.getString("access", ""))
+                                    .post(RequestBody.create(body.toString(), MediaType.get("application/json"))).build();
+                                try (Response acknowledged = http.newCall(ack).execute()) { }
+                                setState("abertura impressa");
+                            } catch (Exception e) { setState("impressao da abertura pendente"); }
+                            finally { printingIds.remove("opening:" + id); }
+                        });
+                    }
+                } catch (Exception e) { Log.e(TAG, "Falha ao ler abertura", e); }
+            }
+        });
+    }
+
+    private byte[] openingReceipt(JSONObject report) throws Exception {
+        List<String> lines = new ArrayList<>(); JSONObject session = report.getJSONObject("session");
+        lines.add(center("ADOCE BRIGADERIA")); lines.add(center("ABERTURA DE CAIXA")); lines.add(dashes());
+        wrap(lines, "Loja: " + report.optString("store_name", "Adoce"));
+        wrap(lines, "Caixa: " + report.optString("register_name", "Principal"));
+        wrap(lines, "Aberto por: " + report.optString("opened_by_name", "Equipe Adoce"));
+        lines.add("Abertura: " + formatDate(session.optString("opened_at"))); lines.add(dashes());
+        lines.add("DINHEIRO INICIAL NA GAVETA"); lines.add(center(cashMoney(session.optDouble("opening_float")))); lines.add(dashes());
+        wrap(lines, "Confira o valor antes da primeira venda."); lines.add("");
+        lines.add("Assinatura:"); lines.add(""); lines.add("______________________________");
+        return escPos(lines, "ABERTURA DE CAIXA");
+    }
+
     private String cashMoney(double value) { return String.format(new Locale("pt", "BR"), "R$ %.2f", value); }
     private byte[] closingReceipt(JSONObject report) throws Exception {
         List<String> lines = new ArrayList<>(); JSONObject session = report.getJSONObject("session");
         lines.add(center("ADOCE BRIGADERIA")); lines.add(center("FECHAMENTO DE CAIXA"));
+        if (report.optBoolean("auto_closed", false)) { lines.add(center("FECHAMENTO AUTOMATICO")); wrap(lines, "Dinheiro contado registrado igual ao esperado."); }
         lines.add("Abertura: " + formatDate(session.optString("opened_at")));
         lines.add("Fechamento: " + formatDate(session.optString("closed_at"))); lines.add(dashes());
         JSONArray slices = report.getJSONArray("slices"); int quantity = 0;

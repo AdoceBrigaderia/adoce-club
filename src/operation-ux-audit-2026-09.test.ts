@@ -66,3 +66,15 @@ describe("auditoria de UX da operação (23/09/2026)", () => {
     expect(paidSliceCount({})).toBe(0);
   });
 });
+
+describe("atendimento do WhatsApp (24/09/2026)", () => {
+  const inbox = read("src/WhatsAppSupportInbox.tsx");
+  it("formata o telefone completo usando só os dígitos", () => {
+    expect(inbox).toContain(String.raw`.replace(/\D/g, "").replace(/^55/, "")`);
+    expect(inbox).not.toContain('.replace(/D/g, "")');
+  });
+  it("não deixa uma busca antiga reabrir a conversa anterior", () => {
+    expect(inbox).toContain("const current = selectedRef.current;");
+    expect(inbox).not.toContain("const nextSelected = selectedId ||");
+  });
+});

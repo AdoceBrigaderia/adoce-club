@@ -8,6 +8,7 @@ import {
   normalizeBrazilPhone,
   serviceClient,
 } from "./_shared/whatsapp-auth";
+import { resolveThreadContacts } from "./_shared/whatsapp-contacts";
 
 type SupportThread = {
   id: string;
@@ -81,7 +82,13 @@ export default async (request: Request) => {
         admin.rpc("server_get_order_staff_notification_health"),
       ]);
       if (error) return json({ error: "Não foi possível carregar os atendimentos." }, 503);
-      return json({ threads: data || [], orderNotificationHealth: orderNotificationHealth || null });
+      const threads = (Array.isArray(data) ? data : []) as Array<{ id: string }>;
+      // Telefone completo e nome do cliente: falha aqui nunca derruba a lista.
+      const contacts = await resolveThreadContacts(admin, threads.map((thread) => thread.id)).catch(() => new Map());
+      return json({
+        threads: threads.map((thread) => ({ ...thread, ...(contacts.get(thread.id) || { phone_e164: null, customer_name: null }) })),
+        orderNotificationHealth: orderNotificationHealth || null,
+      });
     }
     if (!UUID.test(threadId)) return json({ error: "Atendimento inválido." }, 400);
     const { data, error } = await admin.rpc("server_get_whatsapp_support_thread", {
@@ -89,7 +96,9 @@ export default async (request: Request) => {
     });
     if (error) return json({ error: "Não foi possível carregar a conversa." }, 503);
     if (!data) return json({ error: "Conversa não encontrada." }, 404);
-    return json({ thread: await publicThread(admin, data as SupportThread) });
+    const contacts = await resolveThreadContacts(admin, [threadId], { twilioLimit: 1 }).catch(() => new Map());
+    const detail = await publicThread(admin, data as SupportThread);
+    return json({ thread: detail ? { ...detail, ...(contacts.get(threadId) || { phone_e164: null, customer_name: null }) } : null });
   }
 
   const contentType = request.headers.get("content-type") || "";

@@ -5,9 +5,19 @@ import { requireSupabase } from "./lib/supabase";
 import { productionApiOrigin } from "./lib/native-api";
 import "./whatsapp-support-inbox.css";
 
+// Telefone completo quando o servidor já identificou o cliente; senão, o final.
+const contactPhoneLabel = (item: { phone_e164?: string | null; phone_last4: string }) => {
+  const digits = (item.phone_e164 || "").replace(/\D/g, "").replace(/^55/, "");
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `Telefone final ${item.phone_last4}`;
+};
+
 type SupportThreadSummary = {
   id: string;
   phone_last4: string;
+  phone_e164?: string | null;
+  customer_name?: string | null;
   department: "festival" | "quote";
   status: "waiting" | "open" | "closed";
   automation_mode?: "bot" | "human";
@@ -120,12 +130,17 @@ export default function WhatsAppSupportInbox() {
       const nextThreads = (payload.threads || []) as SupportThreadSummary[];
       setThreads(nextThreads);
       setOrderHealth(payload.orderNotificationHealth || null);
+      // Usa sempre a conversa selecionada AGORA (ref), nunca a capturada quando
+      // esta busca começou: buscas antigas terminando depois de uma troca de
+      // conversa faziam a tela voltar sozinha para o chat anterior.
+      const current = selectedRef.current;
       const requested = new URLSearchParams(window.location.search).get("whatsapp") || "";
-      const nextSelected = selectedId || (UUID.test(requested) ? requested : "");
+      const nextSelected = current || (UUID.test(requested) ? requested : "");
       if (nextSelected && nextThreads.some((item) => item.id === nextSelected)) {
+        if (selectedRef.current !== nextSelected && selectedRef.current) return;
         selectedRef.current = nextSelected; setSelectedId(nextSelected);
         await loadThread(nextSelected);
-      } else if (selectedId && !nextThreads.some((item) => item.id === selectedId)) {
+      } else if (current && current === selectedRef.current && !nextThreads.some((item) => item.id === current)) {
         selectedRef.current = ""; setSelectedId("");
         setThread(null);
       }
@@ -135,7 +150,7 @@ export default function WhatsAppSupportInbox() {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [loadThread, selectedId, view]);
+  }, [loadThread, view]);
 
   useEffect(() => {
     void load();
@@ -164,7 +179,7 @@ export default function WhatsAppSupportInbox() {
         },
         (change) => {
           const entityId = String((change.new as { entity_id?: string }).entity_id || "");
-          if (entityId === selectedId) void loadThread(entityId).catch(() => undefined);
+          if (entityId === selectedRef.current) void loadThread(entityId).catch(() => undefined);
           else void load(true);
         },
       )
@@ -174,7 +189,7 @@ export default function WhatsAppSupportInbox() {
         }
       });
     return () => { void supabase.removeChannel(channel); };
-  }, [load, loadThread, selectedId]);
+  }, [load, loadThread]);
 
   // No tablet (app Capacitor), quando a operação fica em segundo plano o
   // WebView é suspenso e o WebSocket do realtime cai -- as mensagens que
@@ -185,7 +200,7 @@ export default function WhatsAppSupportInbox() {
     const resync = () => {
       if (document.visibilityState !== "visible") return;
       void load(true);
-      if (selectedId) void loadThread(selectedId).catch(() => undefined);
+      if (selectedRef.current) void loadThread(selectedRef.current).catch(() => undefined);
     };
     const onVisible = () => { if (document.visibilityState === "visible") resync(); };
     document.addEventListener("visibilitychange", onVisible);
@@ -196,7 +211,7 @@ export default function WhatsAppSupportInbox() {
       window.removeEventListener("focus", resync);
       window.clearInterval(interval);
     };
-  }, [load, loadThread, selectedId]);
+  }, [load, loadThread]);
 
   useEffect(() => {
     const messageList = messageListRef.current;
@@ -358,6 +373,8 @@ export default function WhatsAppSupportInbox() {
   );
   const visibleThreads = useMemo(() => threads.filter((item) =>
     !search.trim() || item.phone_last4.includes(search.trim()) ||
+    (item.phone_e164 || "").includes(search.replace(/\D/g, "") || "#") ||
+    (item.customer_name || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")) ||
     (item.last_message || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR"))
   ), [threads, search]);
 
@@ -413,7 +430,7 @@ export default function WhatsAppSupportInbox() {
           <div className="whatsapp-support-list-controls">
             <button type="button" aria-pressed={view === "active"} onClick={() => { setView("active"); setSearch(""); }}>Em atendimento</button>
             <button type="button" aria-pressed={view === "history"} onClick={() => { setView("history"); setSearch(""); }}>Histórico</button>
-            <input aria-label="Buscar conversa por final do telefone ou mensagem" placeholder="Buscar final do telefone ou mensagem" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <input aria-label="Buscar conversa por nome, telefone ou mensagem" placeholder="Buscar nome, telefone ou mensagem" value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
           {!loading && !notice && !visibleThreads.length ? (
             <p className="whatsapp-support-empty">{search ? "Nenhuma conversa corresponde à busca." : view === "history" ? "Nenhuma conversa encerrada registrada." : "Nenhum cliente aguardando agora."}</p>
@@ -427,8 +444,8 @@ export default function WhatsAppSupportInbox() {
             >
               <MessageCircle />
               <span>
-                <strong>{departmentLabel(item.department)}</strong>
-                <small>Cliente final {item.phone_last4} · {item.status === "closed" ? "Encerrada" : !item.has_customer_messages ? "Somente avisos do pedido" : item.automation_mode === "bot" ? "Com o robô" : item.assigned_staff_user_id ? "Com a equipe" : "Aguardando equipe"}</small>
+                <strong>{item.customer_name || contactPhoneLabel(item)}</strong>
+                <small>{item.customer_name ? `${contactPhoneLabel(item)} · ` : ""}{departmentLabel(item.department)} · {item.status === "closed" ? "Encerrada" : !item.has_customer_messages ? "Somente avisos do pedido" : item.automation_mode === "bot" ? "Com o robô" : item.assigned_staff_user_id ? "Com a equipe" : "Aguardando equipe"}</small>
                 <em>{item.last_message || "Nova solicitação"}</em>
               </span>
               <time>{new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(item.last_message_at))}</time>
@@ -449,8 +466,8 @@ export default function WhatsAppSupportInbox() {
                 <div>
                   <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,application/pdf" hidden onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
                   <button type="button" className="whatsapp-support-icon-button" onClick={() => fileInputRef.current?.click()} aria-label="Anexar foto, vídeo ou documento"><Paperclip /></button>
-                  <strong>{departmentLabel(thread.department)}</strong>
-                  <small>Cliente final {thread.phone_last4} · responde pelo número oficial</small>
+                  <strong>{thread.customer_name || contactPhoneLabel(thread)}</strong>
+                  <small>{thread.customer_name ? `${contactPhoneLabel(thread)} · ` : ""}{departmentLabel(thread.department)} · responde pelo número oficial</small>
                 </div>
                 {thread.status === "closed" ? <button type="button" onClick={() => void act("reopen")} disabled={busy}>
                   <RotateCcw /> Reabrir conversa
