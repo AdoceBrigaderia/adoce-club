@@ -110,6 +110,7 @@ const emptyFlavor = {
   ingredients: "",
   base_price: "16,00",
   whole_cake_price: "",
+  unit_cost: "",
   whole_cake_available: false,
   active: true,
 };
@@ -194,6 +195,7 @@ function todayInFortaleza() {
 
 export default function OperationContentAdmin({
   session,
+  role,
   initialTab = "catalog",
   initialAvailabilityFilter = "all",
   allowedTabs = ["catalog", "today", "operation"],
@@ -233,6 +235,8 @@ export default function OperationContentAdmin({
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
   const [editing, setEditing] = useState<Flavor | null>(null);
   const [creatingFlavor, setCreatingFlavor] = useState(false);
+  const canSeeCosts = role === "owner" || role === "manager";
+  const [costs, setCosts] = useState<Record<string, number>>({});
   const productFormOpen = creatingFlavor || Boolean(editing);
   const [draft, setDraft] = useState({ ...emptyFlavor });
   const [galleryFlavor, setGalleryFlavor] = useState<Flavor | null>(null);
@@ -325,6 +329,10 @@ export default function OperationContentAdmin({
       ),
     );
     setImages((imageResult.data || []) as FlavorImage[]);
+    if (canSeeCosts) {
+      const costResult = await requireSupabase().from("flavor_costs").select("flavor_id,unit_cost");
+      setCosts(Object.fromEntries(((costResult.data || []) as Array<{ flavor_id: string; unit_cost: number }>).map((row) => [row.flavor_id, Number(row.unit_cost)])));
+    }
     setAvailability((availabilityResult.data || []) as Availability[]);
     setAvailabilityBatches((batchResult.data || []) as AdminAvailabilityBatch[]);
     setChannels((channelResult.data || []) as Channel[]);
@@ -380,9 +388,14 @@ export default function OperationContentAdmin({
       active: draft.active,
     };
     const query = editing
-      ? requireSupabase().from("flavors").update(payload).eq("id", editing.id)
-      : requireSupabase().from("flavors").insert(payload);
-    const { error } = await query;
+      ? requireSupabase().from("flavors").update(payload).eq("id", editing.id).select("id").single()
+      : requireSupabase().from("flavors").insert(payload).select("id").single();
+    const { data: savedFlavor, error } = await query;
+    if (!error && canSeeCosts && savedFlavor?.id) {
+      const costValue = draft.unit_cost.trim() ? Number(draft.unit_cost.replace(/\./g, "").replace(",", ".")) : null;
+      const costResult = await requireSupabase().rpc("manager_set_flavor_cost", { target_flavor_id: savedFlavor.id, requested_unit_cost: costValue != null && Number.isFinite(costValue) ? costValue : null });
+      if (costResult.error) { setBusy(false); return setNotice(`Produto salvo, mas o custo não foi gravado: ${costResult.error.message}`); }
+    }
     setBusy(false);
     if (error) return setNotice(error.message);
     setNotice(
@@ -407,6 +420,7 @@ export default function OperationContentAdmin({
       ingredients: flavor.ingredients || "",
       base_price: flavor.base_price?.toFixed(2).replace(".", ",") || "",
       whole_cake_price: flavor.whole_cake_price?.toFixed(2).replace(".", ",") || "",
+      unit_cost: costs[flavor.id] != null ? costs[flavor.id].toFixed(2).replace(".", ",") : "",
       whole_cake_available: flavor.whole_cake_available,
       active: flavor.active,
     });
@@ -829,6 +843,15 @@ export default function OperationContentAdmin({
                   }
                 />
               </label>
+              {canSeeCosts ? <label>
+                Custo da fatia (só a gerência vê)
+                <input
+                  inputMode="decimal"
+                  value={draft.unit_cost}
+                  placeholder="Ex.: 6,90"
+                  onChange={(e) => setDraft({ ...draft, unit_cost: e.target.value })}
+                />
+              </label> : null}
               <label>
                 Preço da torta inteira G
                 <input
@@ -927,6 +950,7 @@ export default function OperationContentAdmin({
                   {flavor.short_description ||
                     "Descrição curta ainda não informada."}
                 </p>
+                {canSeeCosts && costs[flavor.id] != null ? <p>Custo da fatia: {costs[flavor.id].toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}{flavor.base_price ? ` · margem ${Math.round(((Number(flavor.base_price) - costs[flavor.id]) / Number(flavor.base_price)) * 100)}%` : ""}</p> : null}
                 {flavor.whole_cake_price && (
                   <p>
                     Torta G: {flavor.whole_cake_price.toLocaleString("pt-BR", {

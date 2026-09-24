@@ -3,6 +3,8 @@ import { Clock3, Printer, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { cashDayAction, fortalezaDateKey } from "./cash-day-cycle";
 import "./cash-day-guard.css";
+import { closingPrintJobs, type FullClosingReport } from "./lib/cash-reports";
+import { queuePrints } from "./lib/print-queue";
 
 // Ciclo diário do caixa (pedido de 24/09/2026):
 // - às 23h, na tela do Caixa, pede o fechamento (com opção de adiar 30 min);
@@ -38,8 +40,9 @@ export default function CashDayGuard({ onCashScreen, onNotice }: { onCashScreen:
     if (autoClosing.current) return;
     autoClosing.current = true;
     try {
-      const { error: closeError } = await requireSupabase().rpc("staff_auto_close_cash_with_report", { target_session_id: target.id });
+      const { data: autoReport, error: closeError } = await requireSupabase().rpc("staff_auto_close_cash_with_report", { target_session_id: target.id });
       if (closeError) throw closeError;
+      await queuePrints(closingPrintJobs(autoReport as FullClosingReport)).catch(() => undefined);
       setPromptOpen(false);
       onNotice("Caixa fechado automaticamente com o dinheiro contado igual ao esperado. O relatório foi enviado para a impressora.");
       window.dispatchEvent(new Event(cashChangedEvent));
@@ -82,8 +85,9 @@ export default function CashDayGuard({ onCashScreen, onNotice }: { onCashScreen:
     if (!counted.trim() || !Number.isFinite(value) || value < 0) { setError("Informe o dinheiro contado na gaveta."); return; }
     setBusy(true); setError("");
     try {
-      const { error: closeError } = await requireSupabase().rpc("staff_close_cash_with_report", { target_session_id: session.id, next_counted_cash: value });
+      const { data: closeReport, error: closeError } = await requireSupabase().rpc("staff_close_cash_with_report", { target_session_id: session.id, next_counted_cash: value });
       if (closeError) throw closeError;
+      await queuePrints(closingPrintJobs(closeReport as FullClosingReport)).catch(() => undefined);
       setPromptOpen(false); setCounted("");
       onNotice("Caixa fechado. O relatório de fechamento foi enviado para a impressora.");
       window.dispatchEvent(new Event(cashChangedEvent));

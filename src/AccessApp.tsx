@@ -15,6 +15,7 @@ import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
 import QRCode from "qrcode";
 import {
   AlertTriangle,
+  BarChart3,
   ArrowLeft,
   ArrowRight,
   Archive,
@@ -131,6 +132,7 @@ const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin")
 const OperationDashboard = lazy(() => import("./OperationDashboard"));
 const OperationCommerceSettings = lazy(() => import("./OperationCommerceSettings"));
 const StaffProfileAdmin = lazy(() => import("./StaffProfileAdmin"));
+const OperationManagement = lazy(() => import("./OperationManagement"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 const passkeysEnabled = import.meta.env.VITE_ENABLE_PASSKEYS === "true";
@@ -165,7 +167,7 @@ function readClubOrderInviteDraft() {
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "dashboard" | "orders" | "products" | "attend" | "settings";
+type OperationView = "dashboard" | "orders" | "products" | "attend" | "settings" | "management";
 type OperationCommercialTab = "sales" | "requests" | "catalog";
 type OperationNavigationLocation = {
   view: OperationView;
@@ -2742,6 +2744,7 @@ function OperationHome({ session }: { session: Session }) {
     const path = location.pathname;
     if (path.includes("/operacao/clientes")) return "attend";
     if (path.includes("/operacao/configuracoes")) return "settings";
+    if (path.includes("/operacao/gestao")) return "management";
     if (path.includes("/operacao/produtos")) return "products";
     if (path.includes("/operacao/pedidos") || path.includes("/operacao/caixa")) return "orders";
     return "dashboard";
@@ -3397,6 +3400,7 @@ function OperationHome({ session }: { session: Session }) {
       attend: "/operacao/clientes",
       products: "/operacao/produtos",
       settings: "/operacao/configuracoes",
+      management: "/operacao/gestao",
     };
     return paths[nextView];
   }, []);
@@ -3421,6 +3425,7 @@ function OperationHome({ session }: { session: Session }) {
       orders: "/operacao/caixa",
       products: "/operacao/produtos",
       settings: "/operacao/configuracoes",
+      management: "/operacao/gestao",
     };
     window.history.replaceState(null, "", viewPaths[next]);
     setSelected(null);
@@ -3522,6 +3527,9 @@ function OperationHome({ session }: { session: Session }) {
       },
     },
     { view: "attend", label: "Clientes", shortLabel: "Clientes", icon: Users, open: () => void openView("attend") },
+    ...(canManageOperation
+      ? [{ view: "management" as const, label: "Gestão", shortLabel: "Gestão", icon: BarChart3, open: () => void openView("management") }]
+      : []),
     ...(canManageOperation
       ? [{ view: "settings" as const, label: "Configurações", shortLabel: "Ajustes", icon: Settings2, open: () => void openView("settings") }]
       : []),
@@ -4611,6 +4619,11 @@ function OperationHome({ session }: { session: Session }) {
                 onTabChange={openCommercial}
                 allowedTabs={["sales", "requests"]}
               />
+            </Suspense>
+          )}
+          {view === "management" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando a gestão…</p>}>
+              <OperationManagement />
             </Suspense>
           )}
           {view === "settings" && (role === "owner" || role === "manager") && (

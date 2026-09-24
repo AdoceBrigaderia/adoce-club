@@ -40,7 +40,8 @@ describe("ciclo diário do caixa", () => {
     expect(migration).toContain("create table if not exists public.cash_opening_reports");
     expect(migration).toContain("function public.staff_auto_close_cash_with_report");
     expect(migration).toContain("counted_cash = round(expected, 2)");
-    expect(tablet).toContain("pollOpeningReports();");
+    expect(tablet).toContain("pollPrintJobs();");
+    expect(tablet).toContain("escPosMarked(lines)");
     expect(tablet).toContain("FECHAMENTO AUTOMATICO");
   });
 });

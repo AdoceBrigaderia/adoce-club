@@ -300,8 +300,9 @@ public class AdoceOrderService extends Service {
     }
 
     private void sendHeartbeat() {
-        pollClosingReports();
-        pollOpeningReports();
+        // Abertura e fechamento agora chegam formatados pela fila print_jobs
+        // (mesmo layout da tela). Os pollers antigos ficam só como referência.
+        pollPrintJobs();
         String base = prefs.getString("url", "");
         String key = prefs.getString("key", "");
         String access = prefs.getString("access", "");
@@ -633,6 +634,70 @@ public class AdoceOrderService extends Service {
                 } catch (Exception e) { Log.e(TAG, "Falha ao ler fechamento", e); }
             }
         });
+    }
+
+    // Fila genérica de impressão (pedido de 24/09/2026): o site manda cupons já
+    // formatados em 32 colunas; aqui só imprime. Só pega trabalhos das últimas 12h
+    // para não despejar um acúmulo antigo se o tablet ficou dias desligado.
+    private void pollPrintJobs() {
+        String base = prefs.getString("url", "");
+        if (base.isEmpty() || writer == null || tokenExpiresSoon()) return;
+        String since = Instant.now().minusSeconds(12 * 3600).toString();
+        Request request = new Request.Builder().url(base + "/rest/v1/print_jobs?printed_at=is.null&created_at=gte." + since + "&select=id,title,lines&order=created_at.asc&limit=10")
+            .header("apikey", prefs.getString("key", "")).header("Authorization", "Bearer " + prefs.getString("access", "")).build();
+        http.newCall(request).enqueue(new Callback() {
+            @Override public void onFailure(Call call, java.io.IOException e) { }
+            @Override public void onResponse(Call call, Response response) throws java.io.IOException {
+                try (response) {
+                    if (!response.isSuccessful()) return;
+                    JSONArray rows = new JSONArray(response.body().string());
+                    for (int i = 0; i < rows.length(); i++) {
+                        JSONObject row = rows.getJSONObject(i); String id = row.getString("id");
+                        if (!printingIds.add("job:" + id)) continue;
+                        printerExecutor.execute(() -> {
+                            try {
+                                if (!prefs.getBoolean("job_printed_" + id, false)) {
+                                    JSONArray raw = row.getJSONArray("lines"); List<String> lines = new ArrayList<>();
+                                    for (int j = 0; j < raw.length(); j++) lines.add(raw.getString(j));
+                                    writeReceipt(escPosMarked(lines));
+                                    prefs.edit().putBoolean("job_printed_" + id, true).commit();
+                                }
+                                JSONObject body = new JSONObject().put("target_job_id", id);
+                                Request ack = new Request.Builder().url(base + "/rest/v1/rpc/staff_ack_print_job")
+                                    .header("apikey", prefs.getString("key", "")).header("Authorization", "Bearer " + prefs.getString("access", ""))
+                                    .post(RequestBody.create(body.toString(), MediaType.get("application/json"))).build();
+                                try (Response acknowledged = http.newCall(ack).execute()) { }
+                                setState("relatorio impresso");
+                            } catch (Exception e) { setState("impressao de relatorio pendente"); }
+                            finally { printingIds.remove("job:" + id); }
+                        });
+                    }
+                } catch (Exception e) { Log.e(TAG, "Falha ao ler fila de impressao", e); }
+            }
+        });
+    }
+
+    // "#H texto" = destaque (negrito, dupla altura, centralizado); "#B texto" = negrito.
+    private byte[] escPosMarked(List<String> lines) {
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out.write(new byte[]{0x1b,0x40,0x1b,0x74,0x03});
+            Charset charset; try { charset = Charset.forName("IBM860"); } catch (Exception e) { charset = StandardCharsets.US_ASCII; }
+            for (String line : lines) {
+                if (line.startsWith("#H ")) {
+                    out.write(new byte[]{0x1b,0x45,0x01,0x1d,0x21,0x11,0x1b,0x61,0x01});
+                    out.write(line.substring(3).trim().getBytes(charset)); out.write(0x0a);
+                    out.write(new byte[]{0x1d,0x21,0x00,0x1b,0x45,0x00,0x1b,0x61,0x00});
+                } else if (line.startsWith("#B ")) {
+                    out.write(new byte[]{0x1b,0x45,0x01});
+                    out.write(line.substring(3).getBytes(charset)); out.write(0x0a);
+                    out.write(new byte[]{0x1b,0x45,0x00});
+                } else {
+                    out.write(line.getBytes(charset)); out.write(0x0a);
+                }
+            }
+            out.write(new byte[]{0x1b,0x64,0x04,0x1d,0x56,0x42,0x00}); return out.toByteArray();
+        } catch (Exception e) { return new byte[0]; }
     }
 
     // Comprovante de abertura de caixa (pedido de 24/09/2026): mesmo fluxo do fechamento.
