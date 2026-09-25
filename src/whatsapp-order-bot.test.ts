@@ -135,7 +135,7 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(sauceModeMessage(6)).toContain("2. Quero escolher a calda de cada fatia");
     expect(sliceSauceMessage(2, 5, "Brigadeiro", [{ code: "c", label: "Chocolate" }]))
       .toContain("Calda da fatia 2 de 5 — *Brigadeiro*");
-    expect(pixMessage()).toContain("pagamentos@adocebrigaderia.com.br");
+    expect(pixMessage()).toContain("pagamento@adocebrigaderia.com.br");
     expect(pixMessage()).toContain("comprovante");
   });
 

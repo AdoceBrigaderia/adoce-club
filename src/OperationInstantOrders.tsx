@@ -1,5 +1,5 @@
 import OrderCommunication from "./OrderCommunication";
-import { ADOCE_PIX_KEY } from "./pix-payment";
+import { DEFAULT_PIX_KEY } from "./pix-payment";
 import { dispatchOrderNotifications } from "./order-notification-dispatch";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clock3, Gift, Heart, MessageCircle, PackageCheck, Pencil, Plus, Printer, Search, ShoppingCart, Trash2, X } from "lucide-react";
@@ -116,6 +116,7 @@ export default function OperationInstantOrders() {
   const [rewardExistingUnit, setRewardExistingUnit] = useState("");
   const [loyalty, setLoyalty] = useState<LoyaltyContext | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [pixKey, setPixKey] = useState(DEFAULT_PIX_KEY);
   const [recoveryMethod, setRecoveryMethod] = useState("pix");
   const [directFinishOpen, setDirectFinishOpen] = useState(false);
   // window.prompt() dentro do WebView do tablet e um dialogo nativo do
@@ -165,6 +166,7 @@ export default function OperationInstantOrders() {
       setOrderSauces((sauceData || []) as OrderSauce[]);
       const activeMethods = ((settingsData?.payment_methods || []) as PaymentMethod[]).filter((method) => method.active);
       setPaymentMethods(activeMethods);
+      setPixKey(String((settingsData as { pix_key?: string } | null)?.pix_key || DEFAULT_PIX_KEY));
       setRecoveryMethod((current) => activeMethods.some((method) => method.code === current) ? current : (activeMethods[0]?.code || ""));
     } catch (error) {
       // Sem isto, uma falha de rede (comum no wifi do balcao) fazia o
@@ -651,7 +653,7 @@ export default function OperationInstantOrders() {
             <button type="button" onClick={() => void finalizeDirectly()} disabled={busy || !recoveryMethod}><Check /> {busy ? "Finalizando..." : "Confirmar e finalizar"}</button>
           </div>
         </section> : null}
-        {selected.payment_method_code === "pix" ? <div className="instant-order-pix-key"><strong>Chave Pix da Adoce</strong><p>{ADOCE_PIX_KEY}</p><small>{selected.payment_status === "approved" ? "Pagamento conferido e confirmado pela equipe." : selected.separation_confirmed_at ? "Separação confirmada. Confira abaixo o envio da cobrança." : "A cobrança será enviada pelo WhatsApp oficial após confirmar a separação."}</small></div> : <label>Link de pagamento<input type="text" value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Cole o link ou a mensagem copiada do Mercado Pago" /><small className="payment-link-help">Pode colar a mensagem inteira. A operação localizará e enviará somente o link.</small></label>}
+        {selected.payment_method_code === "pix" ? <div className="instant-order-pix-key"><strong>Chave Pix da Adoce</strong><p>{pixKey}</p><small>{selected.payment_status === "approved" ? "Pagamento conferido e confirmado pela equipe." : selected.separation_confirmed_at ? "Separação confirmada. Confira abaixo o envio da cobrança." : "A cobrança será enviada pelo WhatsApp oficial após confirmar a separação."}</small></div> : <label>Link de pagamento<input type="text" value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Cole o link ou a mensagem copiada do Mercado Pago" /><small className="payment-link-help">Pode colar a mensagem inteira. A operação localizará e enviará somente o link.</small></label>}
         <OrderCommunication key={selected.id} orderId={selected.id} />
         <label>Anotações internas<textarea value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} /></label>
         <div className="instant-order-operation-actions">

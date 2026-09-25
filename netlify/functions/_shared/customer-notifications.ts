@@ -4,6 +4,9 @@ import {orderStageMessage,type StageOrder} from "./order-stage-message";
 
 export async function deliverCustomerNotices(admin:NonNullable<ReturnType<typeof serviceClient>>,orderId:string) {
   let sent=0;
+  // Chave Pix configurada em Configurações → Loja e pagamentos.
+  const pixKeyResult=await admin.rpc("server_get_pix_key");
+  const pixKey=typeof pixKeyResult.data==="string"&&pixKeyResult.data.trim()?pixKeyResult.data.trim():undefined;
   for(let index=0;index<12;index+=1) {
     const claim=await admin.rpc("server_claim_order_customer_notice",{requested_order_id:orderId});
     if(claim.error) throw Error("notice_claim");
@@ -37,12 +40,12 @@ export async function deliverCustomerNotices(admin:NonNullable<ReturnType<typeof
         });
         if(saved.error) throw Error("notice_history");
       };
-      messageBody=orderStageMessage(notice.snapshot);
+      messageBody=orderStageMessage(notice.snapshot,pixKey);
       await recordHistory(`[Aguardando envio ao WhatsApp]\n${messageBody}`);
       const withinWindow=Boolean(incoming?.dateSent && Date.now()-incoming.dateSent.getTime()<24*60*60*1000);
       const template=env("TWILIO_CUSTOMER_ORDER_STAGE_CONTENT_SID");
       if(!withinWindow&&!template) {await recordHistory(`[Não enviado: modelo aprovado necessário fora da janela de atendimento]\n${messageBody}`);await finish("failed",null,"template_required");break;}
-      const body=orderStageMessage(notice.snapshot);
+      const body=orderStageMessage(notice.snapshot,pixKey);
       const callback=`https://www.adocebrigaderia.com.br/api/twilio/customer-order-status?notice_id=${notice.id}&attempt=${notice.attempt}`;
       sendStarted=true;
       const message=await client.messages.create({from,to,statusCallback:callback,

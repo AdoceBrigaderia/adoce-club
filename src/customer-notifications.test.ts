@@ -22,7 +22,7 @@ afterEach(()=>vi.useRealTimers());
 describe("envio oficial das etapas",()=>{
   it("usa o remetente oficial e o telefone do cliente, nunca o operador",async()=>{
     await deliverCustomerNotices({rpc:mock.rpc} as never,"order");
-    expect(mock.create).toHaveBeenCalledWith(expect.objectContaining({from:"whatsapp:+5585000000000",to:"whatsapp:+5585999990000",body:expect.stringContaining("pagamentos@adocebrigaderia.com.br"),statusCallback:expect.stringContaining("attempt=1")}));
+    expect(mock.create).toHaveBeenCalledWith(expect.objectContaining({from:"whatsapp:+5585000000000",to:"whatsapp:+5585999990000",body:expect.stringContaining("pagamento@adocebrigaderia.com.br"),statusCallback:expect.stringContaining("attempt=1")}));
     expect(mock.rpc).toHaveBeenCalledWith("server_finish_order_customer_notice",expect.objectContaining({requested_status:"accepted",requested_sid:"SMaccepted",requested_attempt:1}));
   });
   it("fora da janela não tenta texto livre sem modelo aprovado",async()=>{
@@ -44,5 +44,14 @@ describe("envio oficial das etapas",()=>{
     expect(history).toHaveLength(2);
     expect(history[0][1].requested_body).toContain("Aguardando envio");
     expect(history[1][1].requested_source_sid).toBe("SMaccepted");
+  });
+});
+
+describe("chave Pix configurável", () => {
+  it("usa a chave cadastrada em Configurações nas mensagens automáticas", async () => {
+    const { orderStageMessage } = await import("../netlify/functions/_shared/order-stage-message");
+    const message = orderStageMessage({ customer_name: "Ana", order_number: "FAT-1", status: "awaiting_payment", total: 16, payment_method_code: "pix", payment_url: null, pickup_label: "Adoce", pickup_address: "Rua" }, "financeiro@adoce.com.br");
+    expect(message).toContain("Chave (e-mail): financeiro@adoce.com.br");
+    expect(message).not.toContain("pagamento@adocebrigaderia.com.br");
   });
 });

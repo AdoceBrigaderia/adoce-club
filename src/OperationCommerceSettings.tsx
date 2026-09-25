@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CreditCard, MessageCircle, Save, Settings2, Timer } from "lucide-react";
+import { CreditCard, MessageCircle, QrCode, Save, Settings2, Timer } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import "./operation-commerce-tools.css";
 
@@ -12,6 +12,7 @@ type CommerceSettings = {
   automatic_checkout_minimum: number;
   reservation_minutes: number;
   order_whatsapp_number: string;
+  pix_key: string;
   payment_methods: PaymentMethod[];
 };
 
@@ -41,9 +42,11 @@ export default function OperationCommerceSettings() {
     const whatsappResult = await requireSupabase().rpc("staff_update_order_whatsapp_number", {
       next_order_whatsapp_number: settings.order_whatsapp_number,
     });
+    if (whatsappResult.error) { setBusy(false); return setNotice(whatsappResult.error.message); }
+    const pixResult = await requireSupabase().rpc("manager_set_pix_key", { requested_pix_key: settings.pix_key });
     setBusy(false);
-    if (whatsappResult.error) return setNotice(whatsappResult.error.message);
-    setSettings({ ...(data as CommerceSettings), order_whatsapp_number: whatsappResult.data as string });
+    if (pixResult.error) return setNotice(pixResult.error.message);
+    setSettings({ ...(data as CommerceSettings), order_whatsapp_number: whatsappResult.data as string, pix_key: pixResult.data as string });
     setNotice("Configurações salvas. Os próximos pedidos já seguirão estas regras.");
   };
 
@@ -61,6 +64,10 @@ export default function OperationCommerceSettings() {
       <section className="commerce-tool-card">
         <header><MessageCircle /><div><small>Atendimento</small><h3>WhatsApp dos pedidos</h3></div></header>
         <label>Número com DDD<input inputMode="tel" value={settings.order_whatsapp_number || ""} onChange={(event) => setSettings({ ...settings, order_whatsapp_number: event.target.value })} placeholder="(85) 99999-9999" /><small>O carrinho e as solicitações enviam o cliente para este número.</small></label>
+      </section>
+      <section className="commerce-tool-card">
+        <header><QrCode /><div><small>Pix</small><h3>Chave Pix da Adoce</h3></div></header>
+        <label>Chave Pix<input value={settings.pix_key || ""} onChange={(event) => setSettings({ ...settings, pix_key: event.target.value })} placeholder="pagamento@adocebrigaderia.com.br" autoComplete="off" /><small>Vai automaticamente nas mensagens do WhatsApp (pedido confirmado), no Caixa e no painel do pedido. Confira antes de salvar.</small></label>
       </section>
       <section className="commerce-tool-card">
         <header><CreditCard /><div><small>Recebimentos</small><h3>Meios de pagamento e taxas</h3></div></header>
