@@ -1,10 +1,11 @@
-export const paymentLabels: Record<string, string> = { cash: "Dinheiro", pix: "Pix", credit_card: "Crédito", debit_card: "Débito" };
+export const paymentLabels: Record<string, string> = { cash: "Dinheiro", pix: "Pix", credit_card: "Crédito", debit_card: "Débito", payroll: "Desconto em folha" };
 export function splitChange(total: number, pix: number) {
   if (!Number.isFinite(pix) || pix < 0 || pix > total) throw new Error("O troco por Pix deve estar entre zero e o troco total.");
   return { cash: Math.round((total - pix) * 100) / 100, pix: Math.round(pix * 100) / 100 };
 }
 export const cashMoney = (value: number) => `R$ ${Number(value).toFixed(2).replace(".", ",")}`;
-export const validateDeferredSale = (name: string) => name.trim().split(/\s+/).filter(part => part.length > 1).length >= 2 ? "" : "Informe nome e sobrenome do cliente.";
+// Basta o primeiro nome (ex.: "Myrna"); o sobrenome ajuda, mas não é obrigatório.
+export const validateDeferredSale = (name: string) => name.trim().split(/\s+/).some(part => part.length > 1) ? "" : "Informe o nome do cliente.";
 export type ClosingReport = {
   session: { id: string; opening_float: number; counted_cash?: number; expected_cash?: number; cash_difference?: number };
   slices: Array<{ name: string; quantity: number }>;

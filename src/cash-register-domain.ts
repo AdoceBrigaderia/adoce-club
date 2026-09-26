@@ -1,7 +1,7 @@
 export type CashFlavor = { id: string; shortName: string; unitPrice: number; stockUnits?: number };
 export type CashLine = CashFlavor & { flavorId: string; quantity: number; sauce: string | null };
 export type Discount = { kind: "none" | "amount" | "percent"; value: number };
-export type Payment = { method: "cash" | "pix" | "credit_card" | "debit_card"; amount: number };
+export type Payment = { method: "cash" | "pix" | "credit_card" | "debit_card" | "payroll"; amount: number };
 const cents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 export function addLine(lines: CashLine[], flavor: CashFlavor, sauce?: string | null): CashLine[] { const key = `${flavor.id}:${sauce ?? ""}`; const index = lines.findIndex((line) => `${line.flavorId}:${line.sauce ?? ""}` === key); if (index < 0) return [...lines, { ...flavor, flavorId: flavor.id, quantity: 1, sauce: sauce ?? null }]; return lines.map((line, i) => i === index ? { ...line, quantity: line.quantity + 1 } : line); }
 export function removeLine(lines: CashLine[], flavorId: string, sauce?: string | null): CashLine[] { const index = lines.findIndex((line) => line.flavorId === flavorId && (sauce === undefined || line.sauce === sauce)); if (index < 0) return lines; const line = lines[index]; if (line.quantity <= 1) return lines.filter((_, i) => i !== index); return lines.map((item, i) => i === index ? { ...item, quantity: item.quantity - 1 } : item); }

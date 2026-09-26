@@ -54,7 +54,7 @@ export const dateOnly = (value?: string | null) =>
 export const cashNumber = (value: number | string | null | undefined) => `Nº ${String(value ?? "-").padStart(4, "0")}`;
 
 export const methodLabel = (code: string) =>
-  ({ cash: "Dinheiro", pix: "Pix", credit_card: "Crédito", debit_card: "Débito" } as Record<string, string>)[code] || code;
+  ({ cash: "Dinheiro", pix: "Pix", credit_card: "Crédito", debit_card: "Débito", payroll: "Desconto em folha" } as Record<string, string>)[code] || code;
 
 export const channelLabel = (code: string) =>
   ({ operation: "Balcão / operação", site: "Site", whatsapp: "WhatsApp" } as Record<string, string>)[code] || code;

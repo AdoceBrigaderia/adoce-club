@@ -58,6 +58,14 @@ describe("cupons térmicos do caixa", () => {
     expect(closingPrintJobs(report)).toHaveLength(3);
   });
 
+  it("desconto em folha fica fora do total recebido e aparece em Outros", () => {
+    const withPayroll = { ...report, summary: session(2, { payments: [{ method: "pix", amount: 100, fee: 0 }, { method: "payroll", amount: 32, fee: 0 }], received: 132, fees: 0 }) };
+    const text = printable(closingReceipt(withPayroll)).join("\n");
+    expect(text).toContain(pair("TOTAL RECEBIDO", "R$ 100,00")[0]);
+    expect(text).toContain(pair("A descontar em folha", "R$ 32,00")[0]);
+    expect(fits(closingReceipt(withPayroll))).toEqual([]);
+  });
+
   it("marca o fechamento automático", () => {
     expect(printable(closingReceipt({ ...report, auto_closed: true })).join("\n")).toContain("FECHAMENTO AUTOMATICO");
   });

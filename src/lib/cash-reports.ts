@@ -63,7 +63,7 @@ function paymentLines(payments: SessionSummary["payments"]) {
     const amount = payments.filter((p) => p.method === code).reduce((sum, p) => sum + n(p.amount), 0);
     lines.push(...pair(methodLabel(code), money(amount)));
   }
-  for (const other of payments.filter((p) => !PAYMENT_ORDER.includes(p.method))) lines.push(...pair(methodLabel(other.method), money(other.amount)));
+  for (const other of payments.filter((p) => !PAYMENT_ORDER.includes(p.method) && p.method !== "payroll")) lines.push(...pair(methodLabel(other.method), money(other.amount)));
   return lines;
 }
 
@@ -104,6 +104,8 @@ export function closingReceipt(report: FullClosingReport): string[] {
   const potential = stock.reduce((sum, row) => sum + n(row.initial) * n(row.price), 0);
   const difference = n(d.difference);
   const ticket = s.sales_count ? n(s.revenue) / s.sales_count : 0;
+  // Desconto em folha é venda, mas o dinheiro não entra: fica fora do total recebido.
+  const payroll = s.payments.filter((p) => p.method === "payroll").reduce((sum, p) => sum + n(p.amount), 0);
   return footer([
     ...header("FECHAMENTO DE CAIXA", `CAIXA ${cashNumber(s.number)}`),
     ...(report.auto_closed ? ["#B " + center("FECHAMENTO AUTOMATICO"), ...wrap("Dinheiro contado registrado igual ao esperado.")] : []),
@@ -123,9 +125,9 @@ export function closingReceipt(report: FullClosingReport): string[] {
     dashes(),
     title("2. Recebimentos por forma"),
     ...paymentLines(s.payments),
-    `#B ${pair("TOTAL RECEBIDO", money(s.received))[0]}`,
+    `#B ${pair("TOTAL RECEBIDO", money(n(s.received) - payroll))[0]}`,
     ...pair("(-) Taxas estimadas", money(s.fees)),
-    `#B ${pair("= LÍQUIDO", money(n(s.received) - n(s.fees)))[0]}`,
+    `#B ${pair("= LÍQUIDO", money(n(s.received) - payroll - n(s.fees)))[0]}`,
     dashes(),
     title("3. Fatias (totais)"),
     ...(report.stock_initial_known ? pair("No início do caixa", initial) : wrap("Início: caixa aberto antes do registro de estoque.")),
@@ -150,6 +152,7 @@ export function closingReceipt(report: FullClosingReport): string[] {
     ...pair("Troco devolvido por Pix", money(s.pix_change)),
     " (não sai da gaveta)",
     ...pair(`A receber (fiado): ${n(s.deferred_count)}`, money(s.deferred_value)),
+    ...(payroll ? [...pair("A descontar em folha", money(payroll)), " (não entra no caixa)"] : []),
     dashes(),
     title("6. Canais"),
     ...(s.channels.length ? s.channels.flatMap((c) => pair(channelLabel(c.channel), c.count)) : ["Nenhuma venda"]),
@@ -228,7 +231,7 @@ export function dayReceipt(report: FullClosingReport): string[] {
     `#B ${pair("RECEITA DO DIA", money(revenue))[0]}`,
     ...PAYMENT_ORDER.flatMap((code) => pair(methodLabel(code), money(methodTotal(code)))),
     ...pair("(-) Taxas estimadas", money(fees)),
-    `#B ${pair("= LÍQUIDO", money(received - fees))[0]}`,
+    `#B ${pair("= LÍQUIDO", money(received - methodTotal("payroll") - fees))[0]}`,
     dashes(),
     ...pair("Fatias vendidas", sum((s) => s.slices_sold)),
     ...pair("Perdas", sum((s) => s.losses)),
@@ -236,6 +239,7 @@ export function dayReceipt(report: FullClosingReport): string[] {
     dashes(),
     ...pair("Diferença de caixa", signedMoney(sum((s) => n(s.drawer.difference)))),
     ...pair("A receber (fiado)", money(sum((s) => s.deferred_value))),
+    ...(methodTotal("payroll") ? pair("A descontar em folha", money(methodTotal("payroll"))) : []),
     ...pair("Despesas em dinheiro", money(sum((s) => s.drawer.cash_expenses))),
     ...pair("Sangrias", money(sum((s) => s.drawer.withdrawals))),
     ...pair("Suprimentos", money(sum((s) => s.drawer.supplies))),
