@@ -1,16 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { deliverAccessLink, generateAccessLink } from "./_shared/access-link";
+import { CounterCustomerError, findOrCreateCounterCustomer } from "./_shared/counter-customer";
 import { allowedOrigin, env, json, normalizeBrazilPhone } from "./_shared/whatsapp-auth";
 
 const allowedRoles = new Set(["owner", "manager", "attendant"]);
-
-// Antes eram os 6 últimos dígitos de um único uint32 (~1 milhão de espaço).
-// Mesma ideia de _shared, mas só dígitos — o balcão lê em voz alta pro
-// cliente decorar até trocar no primeiro acesso.
-const generateTemporaryPassword = () => {
-  const digits = crypto.getRandomValues(new Uint32Array(8));
-  return Array.from(digits, (value) => String(value % 10)).join("");
-};
 
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -60,83 +53,25 @@ export default async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: existing } = await admin
-    .from("profiles")
-    .select("id,full_name,phone_e164")
-    .eq("phone_e164", phone)
-    .maybeSingle();
-  if (existing?.id) {
-    const { data: membership } = await admin
-      .from("account_memberships")
-      .select("account_id")
-      .eq("profile_id", existing.id)
-      .eq("active", true)
-      .eq("is_primary", true)
-      .maybeSingle();
+  let customer;
+  try {
+    customer = await findOrCreateCounterCustomer(admin, userData.user.id, fullName, phone);
+  } catch (error) {
+    if (error instanceof CounterCustomerError) return json({ error: error.message }, error.status);
+    throw error;
+  }
+  if (customer.existing) {
     return json({
-      profileId: existing.id,
-      accountId: membership?.account_id || null,
-      fullName: existing.full_name,
-      phone: existing.phone_e164,
+      profileId: customer.profileId,
+      accountId: customer.accountId,
+      fullName: customer.fullName,
+      phone: customer.phone,
       existing: true,
     });
   }
-
-  const fallbackEmail = `${phone.replace(/\D/g, "")}@membro.adocebrigaderia.com.br`;
-  const temporaryPassword = generateTemporaryPassword();
-
-  const { data: createdData, error: createError } = await admin.auth.admin.createUser({
-    email: fallbackEmail,
-    email_confirm: true,
-    phone,
-    phone_confirm: true,
-    password: temporaryPassword,
-    user_metadata: { full_name: fullName, created_at_counter: true },
-  });
-  const createdUser = createdData?.user;
-  if (createError || !createdUser) {
-    // "already registered" quase sempre é o mesmo telefone/e-mail em conta
-    // encerrada (soft-deleted) — a mensagem genérica anterior escondia isso
-    // do atendente, que só via "não foi possível criar" sem saber o motivo.
-    const message = /already registered|already exists/i.test(createError?.message || "")
-      ? "Este telefone já teve um cadastro encerrado. Fale com a Adoce para reativar em vez de criar outro."
-      : "Não foi possível criar o cadastro.";
-    return json({ error: message }, 409);
-  }
-
-  const profileId = createdUser.id;
-  const now = new Date().toISOString();
-  await admin
-    .from("profiles")
-    .update({
-      full_name: fullName,
-      phone_e164: phone,
-      auth_upgraded_at: now,
-      must_change_password: true,
-      updated_at: now,
-    })
-    .eq("id", profileId);
-
-  await admin.from("consent_events").insert([
-    { profile_id: profileId, consent_type: "club_terms", granted: true, document_version: "1.0", source: "operation_counter" },
-    { profile_id: profileId, consent_type: "privacy", granted: true, document_version: "1.0", source: "operation_counter" },
-  ]);
-
-  const { data: membership } = await admin
-    .from("account_memberships")
-    .select("account_id")
-    .eq("profile_id", profileId)
-    .eq("active", true)
-    .eq("is_primary", true)
-    .maybeSingle();
-
-  await admin.from("audit_events").insert({
-    actor_user_id: userData.user.id,
-    action: "customer.created_at_counter",
-    entity_type: "profile",
-    entity_id: profileId,
-    payload: { phone_suffix: phone.slice(-4), source: "operation_counter" },
-  });
+  const { profileId, fallbackEmail } = customer;
+  const temporaryPassword = customer.temporaryPassword || "";
+  const membership = { account_id: customer.accountId };
 
   const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
   let loginUrl = `${siteUrl}/clube/entrar`;

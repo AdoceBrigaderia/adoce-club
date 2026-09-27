@@ -43,6 +43,7 @@ export type FullClosingReport = {
   stock_initial_known?: boolean;
   day?: { date: string; sessions: SessionSummary[] } | null;
   auto_closed?: boolean;
+  session?: { reopen_count?: number | null };
 };
 
 export type OpeningReport = {
@@ -109,6 +110,7 @@ export function closingReceipt(report: FullClosingReport): string[] {
   return footer([
     ...header("FECHAMENTO DE CAIXA", `CAIXA ${cashNumber(s.number)}`),
     ...(report.auto_closed ? ["#B " + center("FECHAMENTO AUTOMATICO"), ...wrap("Dinheiro contado registrado igual ao esperado.")] : []),
+    ...(n(report.session?.reopen_count) ? wrap(`Caixa reaberto ${n(report.session?.reopen_count)}x no dia. Este relatório substitui o anterior.`) : []),
     ...wrap(`Loja: ${report.store_name || "Adoce"}`),
     ...wrap(`Caixa: ${report.register_name || "Principal"}`),
     ...wrap(`Aberto: ${dateTime(s.opened_at)} ${s.opened_by_name}`),

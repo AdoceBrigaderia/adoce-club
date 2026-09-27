@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Eye, Printer, RefreshCw, X } from "lucide-react";
+import { Download, Eye, Printer, RefreshCw, RotateCcw, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { fortalezaDateKey } from "./cash-day-cycle";
 import { closingPrintJobs, type FullClosingReport } from "./lib/cash-reports";
@@ -102,6 +102,20 @@ export default function OperationManagement() {
       setNotice(error instanceof Error ? error.message : "Não foi possível reimprimir.");
     }
   };
+  // Reabertura: só no mesmo dia do fechamento (o banco confere de novo e guarda o histórico).
+  const [reopening, setReopening] = useState<{ id: string; number: number } | null>(null);
+  const [reopenReason, setReopenReason] = useState("");
+  const reopenSession = async () => {
+    if (!reopening) return;
+    setBusy(true);
+    const { error } = await requireSupabase().rpc("manager_reopen_cash_session", { target_session_id: reopening.id, requested_reason: reopenReason });
+    setBusy(false);
+    if (error) { setNotice(error.message); setReopening(null); return; }
+    setNotice(`Caixa ${cashNumber(reopening.number)} reaberto. Faça os lançamentos no Caixa e feche de novo para imprimir o relatório atualizado.`);
+    setReopening(null); setReopenReason("");
+    window.dispatchEvent(new Event("adoce-cash-changed"));
+    void load();
+  };
   const exportCsv = () => {
     if (!report) return;
     const blob = new Blob([managementCsv(report)], { type: "text/csv;charset=utf-8" });
@@ -180,7 +194,7 @@ export default function OperationManagement() {
                 </div>
                 <div className="mg-card"><h3>Vendas por horário</h3><p className="mg-sub">{peak && peak.count ? `Pico às ${peak.hour}h (${peak.count} vendas)` : "Número de vendas por hora"}</p><VBars data={hourlyData} label="Vendas por horário" format={(v) => `${v} vendas`} /></div>
               </div>
-              <SessionsTable report={report} onReprint={reprintSession} />
+              <SessionsTable report={report} onReprint={reprintSession} onReopen={(id, number) => { setReopenReason(""); setReopening({ id, number }); }} />
             </>
           ) : null}
 
@@ -214,7 +228,7 @@ export default function OperationManagement() {
             </div>
           ) : null}
 
-          {tab === "caixas" ? <SessionsTable report={report} onReprint={reprintSession} full /> : null}
+          {tab === "caixas" ? <SessionsTable report={report} onReprint={reprintSession} onReopen={(id, number) => { setReopenReason(""); setReopening({ id, number }); }} full /> : null}
 
           {tab === "despesas" ? (
             <div className="mg-grid-2">
@@ -283,11 +297,26 @@ export default function OperationManagement() {
           </div>
         </div>
       ) : null}
+
+      {reopening ? (
+        <div className="mg-preview-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget && !busy) setReopening(null); }}>
+          <div className="mg-preview" role="dialog" aria-modal="true" aria-labelledby="mg-reopen-title">
+            <button type="button" className="mg-close" onClick={() => setReopening(null)} aria-label="Fechar" disabled={busy}><X /></button>
+            <h3 id="mg-reopen-title">Reabrir o caixa {cashNumber(reopening.number)}</h3>
+            <p className="mg-sub">O caixa volta a ficar aberto para corrigir informações ou lançar vendas. O fechamento anterior fica guardado no histórico. Depois, feche o caixa de novo para imprimir o relatório atualizado.</p>
+            <label className="mg-field">Motivo da reabertura
+              <input autoFocus value={reopenReason} onChange={(event) => setReopenReason(event.target.value)} placeholder="Ex.: lançar venda esquecida" maxLength={500} />
+            </label>
+            <button type="button" className="mg-btn primary" disabled={busy || reopenReason.trim().length < 3} onClick={() => void reopenSession()}><RotateCcw /> {busy ? "Reabrindo…" : "Reabrir caixa"}</button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
 
-function SessionsTable({ report, onReprint, full = false }: { report: ManagementReport; onReprint: (id: string) => void; full?: boolean }) {
+function SessionsTable({ report, onReprint, onReopen, full = false }: { report: ManagementReport; onReprint: (id: string) => void; onReopen: (id: string, number: number) => void; full?: boolean }) {
+  const today = fortalezaDateKey(new Date());
   return (
     <div className="mg-card">
       <h3>Caixas do período</h3><p className="mg-sub">Cada caixa tem número único e sequencial</p>
@@ -308,7 +337,7 @@ function SessionsTable({ report, onReprint, full = false }: { report: Management
                   <td className="num">{money(s.drawer.expected)}</td>
                   <td className="num">{s.drawer.counted == null ? "—" : money(s.drawer.counted)}</td>
                   <td className="num">{s.status !== "closed" ? "—" : <span className={`mg-badge ${diff === 0 ? "good" : "bad"}`}>{diff === 0 ? "OK" : signedMoney(diff)}</span>}</td>
-                  <td>{s.status === "closed" ? <button type="button" className="mg-link" onClick={() => onReprint(s.id)}><Printer /> Reimprimir</button> : null}</td>
+                  <td>{s.status === "closed" ? <><button type="button" className="mg-link" onClick={() => onReprint(s.id)}><Printer /> Reimprimir</button>{s.closed_at && fortalezaDateKey(new Date(s.closed_at)) === today ? <button type="button" className="mg-link" onClick={() => onReopen(s.id, s.number)}><RotateCcw /> Reabrir</button> : null}</> : null}</td>
                 </tr>
               );
             })}</tbody>

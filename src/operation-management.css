@@ -97,3 +97,8 @@
   .mg-hrow { grid-template-columns: 96px minmax(0, 1fr) 76px; font-size: 13px; }
   .mg-seg button { padding: 0 10px; }
 }
+
+/* Reabertura de caixa: campo do motivo dentro do diálogo */
+.mg-field { display: grid; gap: 6px; margin: 12px 0; font-weight: 600; }
+.mg-field input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--mg-line, #e5d9cf); border-radius: 10px; font: inherit; font-weight: 400; }
+.mg-table td .mg-link + .mg-link { margin-left: 10px; }

@@ -12,7 +12,7 @@ import { queuePrints } from "./lib/print-queue";
 // - caixa esquecido aberto de outro dia é fechado da mesma forma no primeiro acesso.
 // Os relatórios de abertura e fechamento são impressos pelo tablet.
 
-type OpenSession = { id: string; opened_at: string };
+type OpenSession = { id: string; opened_at: string; reopened_at?: string | null };
 export const cashChangedEvent = "adoce-cash-changed";
 const snoozeKey = (sessionId: string) => `adoce-cash-close-snooze:${sessionId}`;
 
@@ -27,7 +27,7 @@ export default function CashDayGuard({ onCashScreen, onNotice }: { onCashScreen:
   const loadSession = useCallback(async () => {
     const { data } = await requireSupabase()
       .from("cash_sessions")
-      .select("id,opened_at")
+      .select("id,opened_at,reopened_at")
       .eq("status", "open")
       .order("opened_at", { ascending: true })
       .limit(1);
@@ -59,7 +59,8 @@ export default function CashDayGuard({ onCashScreen, onNotice }: { onCashScreen:
     if (!current) { setPromptOpen(false); return; }
     let snoozedUntil = 0;
     try { snoozedUntil = Number(window.localStorage.getItem(snoozeKey(current.id)) || 0); } catch { snoozedUntil = 0; }
-    const action = cashDayAction({ openedAt: current.opened_at, now: new Date(), snoozedUntil });
+    // Caixa reaberto conta o dia pela reabertura (senão fecharia sozinho logo após reabrir).
+    const action = cashDayAction({ openedAt: current.reopened_at || current.opened_at, now: new Date(), snoozedUntil });
     if (action === "auto-close") await autoClose(current);
     else if (action === "prompt-close") setPromptOpen(true);
   }, [autoClose, loadSession]);

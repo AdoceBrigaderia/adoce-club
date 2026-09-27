@@ -317,3 +317,26 @@ export const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,
   );
+
+// Balcão (Caixa/Atendimento): proprietário, gerente e atendimento podem lançar
+// carimbos e cadastrar clientes. O Atendimento de conversas segue restrito acima.
+export async function authorizeCounterStaffRequest(
+  request: Request,
+  admin: SupabaseClient,
+): Promise<{ actorUserId: string | null; accessToken: string; errorResponse: Response | null }> {
+  const authorization = request.headers.get("authorization") || "";
+  const accessToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  if (!accessToken) return { actorUserId: null, accessToken, errorResponse: json({ error: "Sessão operacional obrigatória." }, 401) };
+  const { data: userData, error: userError } = await admin.auth.getUser(accessToken);
+  if (userError || !userData.user) return { actorUserId: null, accessToken, errorResponse: json({ error: "Sessão inválida ou expirada." }, 401) };
+  const { data: staff, error: staffError } = await admin
+    .from("staff_members")
+    .select("role,active")
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+  if (staffError) return { actorUserId: null, accessToken, errorResponse: json({ error: "Não foi possível validar a permissão." }, 503) };
+  if (!staff?.active || !["owner", "manager", "attendant"].includes(staff.role)) {
+    return { actorUserId: null, accessToken, errorResponse: json({ error: "Seu perfil não pode lançar carimbos." }, 403) };
+  }
+  return { actorUserId: userData.user.id, accessToken, errorResponse: null };
+}

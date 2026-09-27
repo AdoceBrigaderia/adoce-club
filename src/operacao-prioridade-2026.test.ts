@@ -75,10 +75,12 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
 
   it("envia senha temporária para o cliente cadastrado no balcão entrar no portal", () => {
     const endpoint = source("../netlify/functions/staff-create-customer.ts");
+    // A criação da conta foi para um módulo comum (também usado no fechamento da venda).
+    const counterCustomer = source("../netlify/functions/_shared/counter-customer.ts");
     const access = source("./AccessApp.tsx");
     expect(endpoint).toContain("temporaryPassword");
-    expect(endpoint).toContain("auth_upgraded_at");
-    expect(endpoint).toContain("must_change_password: true");
+    expect(counterCustomer).toContain("auth_upgraded_at");
+    expect(counterCustomer).toContain("must_change_password: true");
     expect(access).toContain("acessoDoBalcao");
     // Nao existe mais link wa.me/<cliente> aqui nem na funcao: abrir esse deep
     // link mandaria a mensagem pelo WhatsApp pessoal do atendente, nao pelo
