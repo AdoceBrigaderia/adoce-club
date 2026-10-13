@@ -1,4 +1,4 @@
-const CACHE = "clube-adoce-v4";
+const CACHE = "clube-adoce-v5";
 const SHELL = [
   "/site/logo.webp",
   "/manifest-clube.webmanifest",
@@ -49,14 +49,14 @@ self.addEventListener("push", event => {
       badge: "/pwa/operacao/icon-192.png",
       tag: payload.tag || "adoce-operation-alert",
       renotify: Boolean(payload.urgent),
-      data: { url: payload.url || "/#operacao" },
+      data: { url: payload.url || "/operacao" },
     },
   ));
 });
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const targetUrl = new URL(event.notification.data?.url || "/#operacao", self.location.origin).href;
+  const targetUrl = new URL(event.notification.data?.url || "/operacao", self.location.origin).href;
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     const existing = windows.find(client => new URL(client.url).origin === self.location.origin);

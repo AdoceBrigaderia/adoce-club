@@ -108,7 +108,7 @@ export default function RequestQuoteDocument({ data }: { data: QuoteData }) {
           <span>{data.customerPhone}</span>
         </div>
         <div>
-          <small>Data e horário do evento</small>
+          <small>Data e horário da encomenda</small>
           <strong>{capitalize(longDate(data.desiredStart))}</strong>
           <span>{data.serviceLocation || "Local a combinar"}</span>
         </div>

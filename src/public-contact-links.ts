@@ -14,6 +14,7 @@ export function shouldShowPublicContactDock(hostname: string, hash: string) {
   const normalizedHash = hash.toLowerCase();
 
   if (host.startsWith("operacao.")) return false;
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/operacao")) return false;
 
   return ![
     "#operacao",

@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/generate-docs.mjs && node scripts/publish-docs.mjs && npm run build"
+  command = "node scripts/generate-docs.mjs && npm run build"
   publish = "dist"
 
 [functions]
@@ -26,8 +26,13 @@
 
 [[redirects]]
   from = "/documentacao"
-  to = "/documentacao.html"
-  status = 200
+  to = "/"
+  status = 301
+
+[[redirects]]
+  from = "/documentacao.html"
+  to = "/"
+  status = 301
 
 [[redirects]]
   from = "/404"

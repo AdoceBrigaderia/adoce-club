@@ -32,8 +32,6 @@
 .public-member-bar { margin-left: auto; display: flex; align-items: center; gap: 9px; }
 .public-member-greeting { color: inherit; text-decoration: none; font-size: .78rem; white-space: nowrap; }
 .public-member-greeting strong { color: var(--public-coral); }
-.public-member-qr { min-height: 48px; padding: 0 14px; display: inline-flex; align-items: center; gap: 7px; color: inherit; text-decoration: none; border: 1px solid currentColor; border-radius: 14px; font-size: .72rem; font-weight: 850; white-space: nowrap; }
-.public-member-qr svg { width: 19px; color: var(--public-coral); }
 .public-header nav a > svg { width: 16px; vertical-align: middle; }
 .public-kicker { margin: 0 0 16px; color: var(--public-coral); font-size: .65rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; }
 .public-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
@@ -195,8 +193,6 @@
   .public-member-shortcut { margin-left: 0; min-height: 42px; padding: 0 9px; border-radius: 12px; }
   .public-member-shortcut strong { font-size: .72rem; }
   .public-member-shortcut small { font-size: .55rem; }
-  .public-member-qr { width: 42px; min-height: 42px; padding: 0; justify-content: center; border-radius: 12px; }
-  .public-member-qr span { display: none; }
   .public-header nav { display: none; position: absolute; top: 72px; left: 0; right: 0; padding: 16px; align-items: stretch; background: rgba(28,12,8,.98); color: white; border-bottom: 1px solid rgba(255,255,255,.12); }
   .public-header nav.open { display: grid; }
   .public-header nav a { padding: 14px 8px; font-size: .82rem; border-bottom: 1px solid rgba(255,255,255,.12); }

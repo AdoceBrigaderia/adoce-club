@@ -8,11 +8,14 @@ const instant = readFileSync("src/OperationInstantOrders.tsx", "utf8");
 const access = readFileSync("src/AccessApp.tsx", "utf8");
 
 describe("operação em 360 px", () => {
-  it("faz o menu Mais ocupar a viewport dinâmica e rolar até o fim", () => {
-    expect(mobile).toContain("min-height: 100dvh");
-    expect(mobile).toContain("padding: 20px 20px calc(72px + env(safe-area-inset-bottom, 0px))");
-    expect(mobile).toContain("overflow-y: auto");
-    expect(mobile).toContain("grid-template-columns: 24px minmax(0, 1fr)");
+  it("usa uma casca única: barra inferior no celular e menu superior a partir de 768 px", () => {
+    const shell = readFileSync("src/operation-shell.css", "utf8").replace(/\r\n/g, "\n");
+    expect(shell).toContain("@media (min-width: 768px)");
+    expect(shell).toContain(".operation-home .operation-mobile-tabbar {\n    display: none !important;");
+    expect(shell).toContain(".operation-home .operation-shell > aside {\n  display: none !important;");
+    // A folha pública não pode mais esconder botões nem o menu da operação.
+    expect(mobile).not.toContain(".operation-home > header > div > button:not(.operation-mobile-nav-toggle)");
+    expect(mobile).not.toContain(".operation-home .operation-shell > aside {");
   });
 
   it("transforma tabelas financeiras em cartões e preserva Líquido", () => {

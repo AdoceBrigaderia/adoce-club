@@ -12,15 +12,6 @@ describe("experiência 2026 das telas do cliente", () => {
     expect(styles).not.toContain(".operation-home");
   });
 
-  it("transforma o QR pessoal em uma janela protegida e acessível", () => {
-    expect(access).toContain('className="club-qr-backdrop"');
-    expect(access).toContain('role="dialog"');
-    expect(access).toContain('aria-modal="true"');
-    expect(access).toContain('event.key === "Escape"');
-    expect(access).toContain('event.key !== "Tab"');
-    expect(styles).toContain("body.club-modal-open");
-  });
-
   it("permite mostrar a senha também durante criação e recuperação", () => {
     expect(access).toContain("showSecurityPassword");
     expect(access).toContain('type={showSecurityPassword ? "text" : "password"}');
@@ -31,7 +22,7 @@ describe("experiência 2026 das telas do cliente", () => {
     expect(access).toContain("<Heart /> Início");
     expect(access).toContain("<CakeSlice /> Sabores");
     expect(access).toContain("<Settings2 /> Preferências");
-    expect(styles).toContain("grid-template-columns: repeat(5, minmax(0, 1fr))");
+    expect(styles).toContain("grid-template-columns: repeat(4, minmax(0, 1fr))");
   });
 
   it("abre o Clube pelo benefício e reúne configurações em preferências", () => {

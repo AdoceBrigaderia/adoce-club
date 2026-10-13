@@ -29,39 +29,29 @@ const catalogo: Produto[] = [
   produto({ id: "tg", nome: "Torta G", preco: 195, ordem: 3, resumo: "De 30 a 35 fatias." }),
   produto({ id: "dt", segmento: "sweets", nome: "Docinhos tradicionais", preco: 35, sufixo: "a partir de", minimo: 25, prazoDiasUteis: 1, fotoUrl: "/f.webp" }),
   produto({ id: "de", segmento: "sweets", nome: "Docinhos especiais", preco: 45, sufixo: "a partir de", minimo: 25, prazoDiasUteis: 1, fotoUrl: "/f.webp" }),
-  produto({ id: "t1", segmento: "events", nome: "Tabuleiro de doces - 100 colheres", preco: 320 }),
-  produto({ id: "kf", segmento: "events", nome: "Kit Festa na Mesa", preco: 220, fotoUrl: "/f.webp" }),
-  produto({ id: "e1", segmento: "school", nome: "Kit Alegria na Mochila", preco: 390, sufixo: "15 crianças", minimo: 15, prazoDiasUteis: 5 }),
-  produto({ id: "d1", segmento: "rentals", nome: "Kit Comemore", preco: 50 }),
 ];
 
-describe("os cinco segmentos têm o mesmo peso", () => {
-  // "enquanto a Beth não falar que vamos encerrar com as Festas, Escola e
-  //  Decoração, isso precisa fazer parte"
-  it("festas, escola e decoração estão na lista principal", () => {
+describe("os segmentos ativos do catálogo", () => {
+  it("mostra somente tortas e docinhos", () => {
     const chaves = SEGMENTOS.map((s) => s.chave);
-    expect(chaves).toContain("events");
-    expect(chaves).toContain("school");
-    expect(chaves).toContain("rentals");
-    expect(chaves).toHaveLength(5);
+    expect(chaves).toEqual(["cakes", "sweets"]);
   });
 
   it("cada segmento tem rota própria, para trocar sem voltar à home", () => {
     // "a página de tortas deve ter acesso direto aos docinhos"
     for (const s of SEGMENTOS) {
-      expect(s.rota.startsWith("#encomendas/")).toBe(true);
+      expect(s.rota.startsWith("/encomendas/")).toBe(true);
       expect(segmentoDaRota(s.rota)).toBe(s.chave);
     }
   });
 
   it("rota desconhecida não escolhe segmento por engano", () => {
-    expect(segmentoDaRota("#clube")).toBeNull();
+    expect(segmentoDaRota("/clube")).toBeNull();
   });
 
   it("os nomes são os que o cliente entende", () => {
     expect(tituloDoSegmento("cakes")).toBe("Tortas");
-    expect(tituloDoSegmento("school")).toBe("Adoce na Escola");
-    expect(tituloDoSegmento("rentals")).toBe("Decoração");
+    expect(tituloDoSegmento("sweets")).toBe("Docinhos");
   });
 });
 
@@ -79,9 +69,6 @@ describe("preço", () => {
     expect(precoPorExtenso(produto({ preco: 35, sufixo: "a partir de" }))).toBe("a partir de R$ 35");
   });
 
-  it("escola sai com a quantidade de crianças", () => {
-    expect(precoPorExtenso(produto({ preco: 390, sufixo: "15 crianças" }))).toBe("R$ 390 para 15 crianças");
-  });
 });
 
 describe("prazo", () => {
@@ -119,7 +106,6 @@ describe("listagem", () => {
 
   it("mostra a partir de quanto sai cada segmento", () => {
     expect(menorPrecoDoSegmento(catalogo, "cakes")).toBe(115);
-    expect(menorPrecoDoSegmento(catalogo, "events")).toBe(220);
     expect(menorPrecoDoSegmento(catalogo, "sweets")).toBe(35);
   });
 
@@ -128,17 +114,17 @@ describe("listagem", () => {
     expect(segmentosComProduto(so).map((s) => s.chave)).toEqual(["cakes"]);
   });
 
-  it("com o catálogo real, os cinco aparecem", () => {
-    expect(segmentosComProduto(catalogo)).toHaveLength(5);
+  it("com produtos antigos no banco, só aparecem as linhas ativas", () => {
+    expect(segmentosComProduto(catalogo).map((segmento) => segmento.chave)).toEqual(["cakes", "sweets"]);
   });
 });
 
 describe("mensagem de interesse", () => {
   it("cita o produto, o mínimo e o preço", () => {
-    const texto = mensagemDeInteresse(catalogo.find((p) => p.id === "e1")!);
-    expect(texto).toContain("Kit Alegria na Mochila");
-    expect(texto).toContain("Mínimo de 15");
-    expect(texto).toContain("R$ 390 para 15 crianças");
+    const texto = mensagemDeInteresse(catalogo.find((p) => p.id === "dt")!);
+    expect(texto).toContain("Docinhos tradicionais");
+    expect(texto).toContain("Mínimo de 25");
+    expect(texto).toContain("a partir de R$ 35");
   });
 
   it("não manda link — cliente sem dado móvel não abre", () => {

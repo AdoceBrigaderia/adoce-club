@@ -8,7 +8,7 @@ status: Em validação
 
 ## Entrada no Clube Adoce
 
-1. O cliente acessa um link ou QR oficial.
+1. O cliente acessa um link oficial.
 2. Informa nome, telefone e dados opcionais.
 3. Aceita termos do clube e política de privacidade; marketing permanece opcional e separado.
 4. Confirma o telefone.
@@ -16,7 +16,7 @@ status: Em validação
 6. A ação principal oferece **Adicionar à Apple Wallet** ou **Adicionar à Google Wallet**.
 7. App/web aparece como alternativa: “Continuar sem adicionar à carteira”.
 
-Em computador ou aparelho incompatível, a experiência pode exibir um QR para continuar no celular e também permitir o acesso web.
+Em computador ou aparelho incompatível, a experiência permite o acesso web.
 
 Na tela de entrada, clientes também podem escolher **Continuar com Google** ou **Continuar com Facebook**. Essas opções são adicionais: celular com senha e código por e-mail continuam disponíveis. O retorno da autorização abre diretamente a área do Clube no mesmo site.
 
@@ -24,16 +24,15 @@ Na tela de entrada, clientes também podem escolher **Continuar com Google** ou 
 
 Depois do primeiro acesso, o cliente pode escolher **Manter conectado**. Quando essa opção estiver ativa, a sessão permanece no aparelho até a própria pessoa escolher **Sair**.
 
-Ao retornar ao endereço principal da Adoce, a página reconhece a sessão e mostra o cartão resumido com os carimbos atuais, sem exigir que o cliente passe novamente por “Entrar no Clube”. O acesso ao cartão completo, ao QR e às preferências parte da própria página inicial.
+Ao retornar ao endereço principal da Adoce, a página reconhece a sessão e mostra o cartão resumido com os carimbos atuais, sem exigir que o cliente passe novamente por “Entrar no Clube”. O acesso ao cartão completo, e às preferências parte da própria página inicial.
 
-Na área autenticada, o primeiro conteúdo é sempre **Meus carimbos**, com o progresso de 14 posições e a distância até a fatia grátis. QR, indicação e sabores vêm logo depois. Dados pessoais, comunicações, instalação, ajuda, cartão em grupo e saída ficam reunidos em **Preferências e configurações**.
+Na área autenticada, o primeiro conteúdo é sempre **Meus carimbos**, com o progresso de 14 posições e a distância até a fatia grátis. Indicação e sabores vêm logo depois. Dados pessoais, comunicações, instalação, ajuda, cartão em grupo e saída ficam reunidos em **Preferências e configurações**.
 
 ## Wallet primeiro
 
 O passe Clube Adoce deve mostrar, de forma resumida:
 
 - nome do cliente ou nome do grupo;
-- QR individual;
 - progresso atual do Meu Cartão;
 - quantidade de prêmios disponíveis;
 - resumo do Espalhe Doçura;
@@ -113,13 +112,13 @@ Ao compartilhar, o WhatsApp abre com uma mensagem curta e o link pessoal. Depois
 1. Convidado abre o link.
 2. Entra ou cria sua conta pessoal.
 3. Confirma que deseja vincular-se ao grupo identificado.
-4. Recebe seu QR e passe próprios.
+4. Recebe seu acesso e passe próprios.
 
 Convites devem expirar, ser revogáveis e nunca conter credenciais.
 
-## Atendimento com QR
+## Atendimento no Clube
 
-1. Atendente lê o QR individual ou busca por telefone.
+1. Atendente identifica o cliente por nome ou telefone.
 2. O sistema mostra cliente, grupo, status e prêmios.
 3. O atendente informa a compra ou seleciona um prêmio.
 4. Uma tela de confirmação resume o efeito da operação.
@@ -131,7 +130,7 @@ Convites devem expirar, ser revogáveis e nunca conter credenciais.
 - O cliente inicia pelo telefone confirmado.
 - Um código temporário valida a posse do número.
 - Troca de telefone exige verificação adicional.
-- Perda do aparelho permite revogar o QR e o passe antigos.
+- Perda do aparelho permite revogar a sessão e o passe antigos.
 - O saldo pertence à conta ou grupo, não ao dispositivo.
 
 ## Acessibilidade e confiança

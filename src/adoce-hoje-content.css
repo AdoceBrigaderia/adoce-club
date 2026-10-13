@@ -79,7 +79,7 @@
 .today-gallery-modal {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  z-index: 600;
   background: rgba(35, 12, 7, 0.82);
   display: grid;
   place-items: center;
@@ -104,9 +104,10 @@
   color: #805346;
 }
 .today-gallery-close {
-  position: absolute;
-  right: 18px;
-  top: 18px;
+  position: sticky;
+  float: right;
+  top: 0;
+  z-index: 2;
   width: 42px;
   height: 42px;
   display: grid;
@@ -117,6 +118,11 @@
   color: white;
   cursor: pointer;
 }
+
+body:has(.today-gallery-modal) .public-mobile-nav,
+body:has(.today-gallery-modal) .public-contact-dock,
+body:has(.cake-detail-backdrop) .public-mobile-nav,
+body:has(.cake-detail-backdrop) .public-contact-dock { display: none !important; }
 .today-gallery-photos {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

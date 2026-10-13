@@ -27,7 +27,7 @@
     <link rel="apple-touch-icon" href="/pwa/clube/apple-touch-icon.png" />
     <script>
       (() => {
-        const operation = location.hash.startsWith("#operacao");
+        const operation = location.pathname.startsWith("/operacao");
         document.getElementById("app-manifest").href = operation
           ? "/manifest-operacao.webmanifest"
           : "/manifest-clube.webmanifest";

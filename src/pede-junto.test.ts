@@ -9,25 +9,28 @@ const room = (total: number): PedeJuntoRoom => ({
 });
 
 describe("Pede Junto Adoce", () => {
-  it("libera a entrega na quinta fatia sem criar limite máximo", () => {
+  it("libera o envio na quinta fatia sem criar limite máximo", () => {
     expect(progressCopy(4).tone).toBe("building");
     expect(progressCopy(5).tone).toBe("unlocked");
     expect(progressCopy(9).message).toContain("continua aberto");
     expect(progressCopy(10).tone).toBe("celebration");
     expect(progressCopy(27).message).toContain("ainda cabe mais gente");
+    expect(progressCopy(5).message).not.toContain("entrega grátis");
   });
 
   it("explica no convite que cada pessoa paga o próprio pedido", () => {
     const message = buildPedeJuntoWhatsAppMessage(room(12), "https://adocebrigaderia.com.br/#pede-junto");
     expect(message).toContain("12 fatias");
-    expect(message).toContain("grupo continua aberto");
+    expect(message).toContain("continua aberto");
     expect(message).toContain("Cada um escolhe e paga o seu");
+    expect(message).toContain("por Pix");
+    expect(message).not.toContain("entrega grátis");
   });
 
   it("encerra a comunicação do grupo depois da entrega", () => {
     const delivered = { ...room(12), status: "completed" as const };
     const copy = roomProgressCopy(delivered);
-    expect(copy.title).toBe("12 fatias entregues");
+    expect(copy.title).toBe("12 fatias no pedido concluído");
     expect(copy.message).toContain("grupo está encerrado");
     expect(copy.message).not.toContain("continua aberto");
   });

@@ -1,0 +1,51 @@
+const {chromium}=require('C:/Users/RubensBezerra/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),assert=require('assert/strict');
+const price={purchase_price:10,purchased_quantity:1000,purchase_unit:'g',useful_quantity:null,data_status:'validated',effective_at:'2026-10-11'};
+const item=(id,name,kind='ingredient',unit='g')=>({id,name,item_kind:kind,consumption_unit:unit,purchase_unit:unit,internal_code:id,active:true,data_status:'validated',reference_quantity:unit==='g'?1000:10,reference_unit:unit,reference_package_name:'pacote',price:{...price,purchase_unit:unit}});
+const w={items:[item('sugar','Açúcar'),item('box','Caixa','packaging','unit'),item('unused','Extra sem uso')],flavors:[{id:'f1',name:'Chocolate',active:true,base_price:18},{id:'f2',name:'Morango',active:true,base_price:18}],recipes:[{id:'cake',name:'Chocolate',flavor_id:'f1',recipe_kind:'final_product',active:true},{id:'mass',name:'Massa',flavor_id:null,recipe_kind:'intermediate',active:true},{id:'bad',name:'Morango',flavor_id:'f2',recipe_kind:'final_product',active:true}],versions:[{id:'cake-v',recipe_id:'cake',version_number:1,version_status:'validated',size_code:'G',yield_quantity:13,yield_unit:'slice'},{id:'mass-v',recipe_id:'mass',version_number:1,version_status:'validated',size_code:null,yield_quantity:500,yield_unit:'g'},{id:'bad-v',recipe_id:'bad',version_number:1,version_status:'draft',size_code:'G',yield_quantity:13,yield_unit:'slice'}],components:[{id:'a',recipe_version_id:'cake-v',component_kind:'recipe_version',child_recipe_version_id:'mass-v',quantity:500,unit:'g',placement:'composition'},{id:'b',recipe_version_id:'mass-v',component_kind:'item',item_id:'sugar',quantity:500,unit:'g',placement:'composition'},{id:'c',recipe_version_id:'cake-v',component_kind:'item',item_id:'box',quantity:13,unit:'unit',placement:'Descartáveis por fatia'}],prices:[]};
+(async()=>{const browser=await chromium.launch({headless:true});const reports=[];try{
+ for(const [surface,width,height] of [['desktop',1440,900],['tablet',1024,768],['mobile',390,844]]){
+  let plan={cakes:{},daily:{},extras:{},stock:{},selected:{}},fail=false,prints=[];const plans={"2026-10-12":plan};const errors=[];const context=await browser.newContext({viewport:{width,height}});
+  await context.route('**/rest/v1/**',async route=>{const endpoint=new URL(route.request().url()).pathname.split('/').pop();let data=[];let status=200;
+   if(endpoint==='manager_get_costing_workspace_with_times')data=w;
+   if(endpoint==='manager_get_costing_margin_settings')data={payment_fee_percent:1,reference_sales_total:4494,reference_fees_total:44.86};
+   if(endpoint==='manager_get_costing_purchase_catalog')data={package_types:[],content_units:[]};
+   if(endpoint==='manager_get_shopping_week'){const p=route.request().postDataJSON();data=plans[p.requested_week]||{cakes:{},daily:{},extras:{},stock:{},selected:{}};}
+   if(endpoint==='manager_update_shopping_week'){if(fail){status=400;data={message:'Falha simulada'};}else{const p=route.request().postDataJSON();const current=plans[p.requested_week]||{cakes:{},daily:{},extras:{},stock:{},selected:{}};current[p.requested_group][p.requested_key]=p.requested_value;plans[p.requested_week]=current;data=current;}}
+   if(endpoint==='manager_copy_shopping_week'){const p=route.request().postDataJSON();const old=plans[p.source_week];data=JSON.parse(JSON.stringify(old));data.daily=Object.fromEntries(Object.entries(old.daily).map(([key,value])=>{const [d,f]=key.split('|');const v=new Date(d+'T12:00:00Z');v.setUTCDate(v.getUTCDate()+7);return [v.toISOString().slice(0,10)+'|'+f,value];}));data.stock={};plans[p.target_week]=data;}
+   if(endpoint==='staff_queue_print_job'){prints.push(route.request().postDataJSON());data=true;}
+   await route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
+  });
+  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('http://localhost:4186/entregas/qa-compras-20261011.html');
+  await page.getByRole('button',{name:'Planejar compras',exact:true}).click();
+  await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();
+  await page.getByLabel('Selecionar semana').selectOption('2026-10-12');await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();await page.getByLabel('Chocolate em 12/10',{exact:true}).fill('3');await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();await page.getByLabel('Chocolate em 13/10',{exact:true}).fill('2');
+  await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();
+  assert.equal(plan.daily['2026-10-12|f1'],3);assert.equal(plan.daily['2026-10-13|f1'],2);
+  await page.locator('.adoce-shopping-total strong').getByText('5',{exact:true}).waitFor();
+  assert.equal(await page.locator('.adoce-shopping-flavors input[type=checkbox]').count(),2);
+  await page.getByLabel('Estoque atual (kg)').fill('0.7');
+  await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();
+  const sugar=page.locator('tbody tr').filter({has:page.getByText('Açúcar',{exact:true})});
+  await sugar.getByText('1,8 kg',{exact:true}).waitFor();
+  await sugar.getByText('2 pacote',{exact:true}).waitFor();
+  await page.getByLabel('Adicionar item extra').selectOption('unused');
+  await page.getByLabel('Quantidade extra (g)').fill('100');
+  await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();
+  await page.getByRole('button',{name:'Imprimir lista de compras',exact:true}).click();
+  await page.getByText(/Lista enviada à fila/).waitFor();assert(prints[0].requested_lines.includes('Total: 5 tortas'));assert(prints[0].requested_lines.some(line=>line.startsWith('Comprar: 1,8 kg')));assert(prints[0].requested_lines.every(l=>l.length<=32));
+  assert.equal(prints[0].requested_lines[0],'#L ADOCE');assert(!prints[0].requested_lines.some(line=>line.includes('Última compra:')));await page.getByRole('button',{name:'Imprimir cardápio da semana',exact:true}).click();await page.getByText(/Cardápio enviado à fila/).waitFor();assert(prints[1].requested_lines.includes('CARDÁPIO DA SEMANA'));assert(!prints[1].requested_lines.some(l=>l.includes('Estoque')));await page.screenshot({path:`entregas/compras-semanal-${surface}-20261011.png`,fullPage:true});await page.getByRole('button',{name:'Próxima semana',exact:true}).click();await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();await page.getByRole('button',{name:'Copiar semana anterior como modelo'}).click();await page.getByText(/Modelo copiado e salvo/).waitFor();assert.equal(await page.getByLabel('Chocolate em 19/10',{exact:true}).inputValue(),'3');assert.equal(await page.getByLabel('Estoque atual (kg)').first().inputValue(),'');await page.getByRole('button',{name:'Semana anterior',exact:true}).click();await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();
+  await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));const rect=await page.locator('.adoce-shopping-total').boundingBox();assert(rect.x>=0&&rect.x+rect.width<=width&&rect.y>=0&&rect.y+rect.height<=height);
+  const second=await context.newPage();await second.goto('http://localhost:4186/entregas/qa-compras-20261011.html');await second.getByRole('button',{name:'Planejar compras',exact:true}).click();await second.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();await second.getByLabel('Selecionar semana').selectOption('2026-10-12');await second.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();assert.equal(await second.getByLabel('Chocolate em 12/10',{exact:true}).inputValue(),'3');
+  await page.getByLabel('Chocolate em 12/10',{exact:true}).fill('6');await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();await second.getByLabel('Chocolate em 12/10',{exact:true}).filter({visible:true}).waitFor();await second.waitForFunction(()=>document.querySelector('.adoce-shopping-total strong')?.textContent==='8',{},{timeout:10000});await second.close();
+  fail=true;await page.getByLabel('Chocolate em 12/10',{exact:true}).fill('7');await page.getByText(/Alteração ainda não salva/).waitFor();await page.getByRole('button',{name:'Insumos e embalagens',exact:true}).click();await page.getByRole('button',{name:'Planejar compras',exact:true}).click();await page.getByText(/Alteração ainda não salva/).waitFor();fail=false;await page.getByRole('button',{name:'Tentar novamente / atualizar'}).click();await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();assert.equal(plan.daily['2026-10-12|f1'],7);
+  await page.getByLabel('Morango em 12/10',{exact:true}).fill('1');await page.getByText('Planejamento salvo e sincronizado',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Imprimir lista de compras',exact:true}).isDisabled(),true);
+  await page.getByRole('button',{name:'Insumos e embalagens',exact:true}).click();await page.getByLabel('Filtrar').selectOption('unused');assert.equal(await page.locator('.adoce-items-table tbody tr').filter({visible:true}).count(),1);await page.getByLabel('Filtrar').selectOption('all');assert(await page.locator('td[data-label="Composição das tortas"]').filter({hasText:'Chocolate'}).count()>=2);
+  await page.getByRole('button',{name:'Fichas por sabor',exact:true}).click();assert((await page.locator('.adoce-items-table tbody tr').filter({visible:true}).first().textContent()).includes('Morango'));assert.equal(await page.locator('.adoce-sheet-incomplete').count(),1);
+  await page.screenshot({path:`entregas/fichas-pendentes-${surface}-20261011.png`,fullPage:true});
+  await page.getByRole('button',{name:'Preparações',exact:true}).click();await page.getByText('Tortas: Chocolate',{exact:true}).waitFor();
+  assert.deepEqual(errors,[]);reports.push({surface,sync:true,stock:true,thermal:true,weekly:true,copy:true,menu:true,filters:true,consoleErrors:errors});await context.close();
+ }
+ fs.writeFileSync('entregas/qa-compras-semanal-20261011.json',JSON.stringify(reports,null,2));console.log(JSON.stringify(reports));
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exit(1)});

@@ -46,7 +46,6 @@ type SubmitResult = {
 };
 
 type OrderSauce = { id: string; name: string };
-type CheckoutPaymentMethod = { code: string; label: string };
 type LoyaltyPreview = {
   recognized: boolean;
   current_progress?: number;
@@ -96,11 +95,7 @@ export default function InstantOrderPanel({
   const [rewardFlavorId, setRewardFlavorId] = useState("");
   const [rewardSauceId, setRewardSauceId] = useState("");
   const [showClubInvite, setShowClubInvite] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<CheckoutPaymentMethod[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState("pix");
-  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
-  const [paymentMethodsError, setPaymentMethodsError] = useState("");
-  const [checkoutConfigAttempt, setCheckoutConfigAttempt] = useState(0);
+  const paymentMethod = "pix";
   const [pickupMethod, setPickupMethod] = useState<"customer" | "driver">("customer");
   const [pickupTime, setPickupTime] = useState("");
   const operationKey = useRef(crypto.randomUUID());
@@ -136,39 +131,21 @@ export default function InstantOrderPanel({
   useEffect(() => {
     if (!open) return;
     let active = true;
-    setPaymentMethodsLoading(true);
-    setPaymentMethodsError("");
-    void Promise.all([
-      requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name"),
-      requireSupabase().rpc("get_checkout_payment_methods"),
-    ]).then(([sauceResult, paymentResult]) => {
+    void requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name").then((sauceResult) => {
       if (!active) return;
       setSauces((sauceResult.data || []) as OrderSauce[]);
-      if (paymentResult.error) {
-        setPaymentMethods([]);
-        setPaymentMethod("");
-        setPaymentMethodsError("Não foi possível carregar as formas de pagamento.");
-        return;
-      }
-      const availableMethods = (paymentResult.data || []) as CheckoutPaymentMethod[];
-      setPaymentMethods(availableMethods);
-      setPaymentMethod((current) => availableMethods.some((method) => method.code === current) ? current : (availableMethods[0]?.code || ""));
-      if (!availableMethods.length) setPaymentMethodsError("Nenhuma forma de pagamento está disponível no momento.");
-    }).catch(() => {
-      if (!active) return;
-      setPaymentMethods([]);
-      setPaymentMethod("");
-      setPaymentMethodsError("Não foi possível carregar as formas de pagamento.");
-    }).finally(() => {
-      if (active) setPaymentMethodsLoading(false);
     });
     return () => { active = false; };
-  }, [checkoutConfigAttempt, open]);
+  }, [open]);
 
   const totalQuantity = useMemo(
     () => Object.values(quantities).reduce((sum, quantity) => sum + quantity, 0),
     [quantities],
   );
+  const specialFlavors = flavors.filter((flavor) => flavor.price !== 16);
+  const priceIntroduction = specialFlavors.length
+    ? `As fatias tradicionais custam R$ 16,00. ${specialFlavors.map((flavor) => `${flavor.name} custa ${money(flavor.price)}`).join("; ")}.`
+    : "Cada fatia custa R$ 16,00.";
   const total = useMemo(
     () => flavors.reduce((sum, flavor) => sum + (quantities[flavor.id] || 0) * flavor.price, 0),
     [flavors, quantities],
@@ -267,9 +244,6 @@ export default function InstantOrderPanel({
     if (!totalQuantity) return setNotice("Escolha pelo menos uma fatia para continuar."), false;
     if (!hasFirstAndLastName(name)) return setNotice("Informe seu nome e sobrenome para identificarmos o pedido."), false;
     if (phone.replace(/\D/g, "").length < 10) return setNotice("Informe um WhatsApp válido com DDD."), false;
-    if (paymentMethodsLoading) return setNotice("Aguarde o carregamento das formas de pagamento."), false;
-    if (paymentMethodsError) return setNotice("Tente carregar novamente as formas de pagamento para continuar."), false;
-    if (!paymentMethod) return setNotice("Escolha como deseja pagar."), false;
     if (!pickupTime) return setNotice("Escolha o horário desejado para a retirada."), false;
     if (pickupMinimum && pickupTime < pickupMinimum) {
       return setNotice(`Escolha um horário a partir das ${pickupMinimum.replace(":00", "h")} para retirar o pedido completo.`), false;
@@ -282,7 +256,6 @@ export default function InstantOrderPanel({
   const submit = async () => {
     if (!allSaucesChosen) return setNotice("Escolha uma opção de calda para cada fatia.");
     if (!rewardChoiceReady) return setNotice("Escolha o sabor e a calda da sua fatia-presente.");
-    if (!paymentMethod) return setNotice("Escolha como deseja pagar.");
     if (!pickupTime) return setNotice("Escolha o horário desejado para a retirada.");
     if (pickupMinimum && pickupTime < pickupMinimum) {
       return setNotice(`Escolha um horário a partir das ${pickupMinimum.replace(":00", "h")} para retirar o pedido completo.`);
@@ -381,8 +354,6 @@ export default function InstantOrderPanel({
     setRewardFlavorId("");
     setRewardSauceId("");
     setShowClubInvite(false);
-    setPaymentMethod("");
-    setPaymentMethodsError("");
     setPickupMethod("customer");
     setPickupTime("");
     operationKey.current = crypto.randomUUID();
@@ -392,7 +363,7 @@ export default function InstantOrderPanel({
 
   const joinClub = () => {
     sessionStorage.setItem("adoce-club-order-invite", JSON.stringify({ name: name.trim(), phone }));
-    window.location.href = "/#cadastro";
+    window.location.href = "/cadastro";
   };
 
   if (!open) return null;
@@ -434,13 +405,14 @@ export default function InstantOrderPanel({
           <header>
             <span><ShoppingBag /> Retirada de fatias</span>
             <h2 id="instant-order-title">Monte seu pedido</h2>
-            <p>Escolha as quantidades. A Adoce confere tudo e continua o atendimento pelo seu WhatsApp.</p>
+            <p>Oi! Que bom ter você por aqui 🍰 Já conhece as fatias da Adoce? {priceIntroduction} Não fazemos entregas. Seu pedido pode ser retirado aqui por você ou por um motorista de aplicativo que você solicitar.</p>
           </header>
+          <label className="instant-order-name">Para começar, qual é seu nome e sobrenome?<input required minLength={5} autoComplete="name" placeholder="Nome e sobrenome" value={name} onChange={(event) => setName(event.target.value)} /></label>
           {!flavors.length ? <div className="instant-order-empty">
             <ShoppingBag />
             <strong>Seu carrinho está vazio</strong>
             <p>Quando houver fatias disponíveis, escolha os sabores e volte aqui para concluir.</p>
-            <a href="/#adoce-hoje" onClick={onClose}>Ver sabores</a>
+            <a href="/adoce-hoje" onClick={onClose}>Ver sabores</a>
           </div> : <div className="instant-order-flavors">
             {flavors.map((flavor) => {
               const quantity = quantities[flavor.id] || 0;
@@ -459,19 +431,17 @@ export default function InstantOrderPanel({
           </div>}
           {flavors.length ? <form onSubmit={continueToSauces}>
             <div className="instant-order-total"><span>{totalQuantity} fatia(s){wantsReward ? " + 1 presente" : ""}</span><strong>{money(displayTotal)}</strong></div>
-            <label>Nome e sobrenome<input required minLength={5} autoComplete="name" placeholder="Ex.: Rubens Bezerra" value={name} onChange={(event) => setName(event.target.value)} /></label>
             <label>WhatsApp com DDD<input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} /></label>
             {phone.replace(/\D/g, "").length >= 10 ? <div className={`instant-order-club-preview ${loyaltyPreview?.recognized ? "recognized" : ""}`} aria-live="polite">
               {checkingClub ? <><Heart /><span><strong>Consultando seu Clube Adoce...</strong><small>Só um instante.</small></span></> : loyaltyPreview?.recognized ? <><Heart /><span><strong>Seu Clube Adoce foi reconhecido</strong><small>Você tem {loyaltyPreview.current_progress} de 14 carimbos. Após o pagamento deste pedido, ficará com {loyaltyPreview.projected_progress} de 14.</small>{loyaltyPreview.will_unlock_reward ? <em><Gift /> Esta compra completa seu cartão e libera uma fatia-presente.</em> : null}</span></> : <><Heart /><span><strong>Cada fatia confirmada vale um carimbo</strong><small>Se este WhatsApp estiver no Clube Adoce, os carimbos serão vinculados automaticamente após o pagamento.</small></span></>}
             </div> : null}
             {loyaltyPreview?.recognized && Number(loyaltyPreview.reward_choices || 0) > 0 ? <label className="instant-order-reward-choice"><input type="checkbox" checked={wantsReward} onChange={(event) => { setWantsReward(event.target.checked); if (!event.target.checked) { setRewardFlavorId(""); setRewardSauceId(""); } }} /><span><Gift /><span><strong>Quero receber minha fatia-presente neste pedido</strong><small>Você escolhe o sabor e a calda na próxima etapa. Ela só será resgatada após o pagamento.</small></span></span></label> : null}
-            <label>Como deseja pagar?<select required value={paymentMethod} disabled={paymentMethodsLoading || Boolean(paymentMethodsError)} onChange={(event) => setPaymentMethod(event.target.value)}><option value="">{paymentMethodsLoading ? "Carregando formas de pagamento..." : "Escolha a forma de pagamento"}</option>{paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.label}</option>)}</select><small>A cobrança só acontece depois que a Adoce confirmar a disponibilidade.</small></label>
-            {paymentMethodsError ? <div className="instant-order-payment-error" role="alert"><span>{paymentMethodsError} Tente novamente para continuar.</span><button type="button" onClick={() => setCheckoutConfigAttempt((attempt) => attempt + 1)}>Tentar novamente</button></div> : null}
+            <p className="instant-order-payment-note"><strong>Pagamento por Pix.</strong> Enviaremos as orientações depois que a Adoce confirmar a disponibilidade.</p>
             <fieldset className="instant-order-pickup-choice"><legend>Quem fará a retirada?</legend><label><input type="radio" name="pickup-method" checked={pickupMethod === "customer"} onChange={() => setPickupMethod("customer")} /> Eu mesma(o)</label><label><input type="radio" name="pickup-method" checked={pickupMethod === "driver"} onChange={() => setPickupMethod("driver")} /> Entregador de aplicativo</label></fieldset>
             <label>Observação <small>(opcional)</small><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Alguma informação importante para a Adoce" /></label>
             <label>Horário desejado para retirada<input type="time" value={pickupTime} onChange={(event) => setPickupTime(event.target.value)} />{pickupMinimum ? <small>Seu pedido completo pode ser retirado a partir das {pickupMinimum.replace(":00", "h")}.</small> : pickupWindows?.length ? <small>{pickupWindowHint(pickupWindows)}</small> : null}</label>
             {notice ? <p className="instant-order-notice" role="alert">{notice}</p> : null}
-            <button className="instant-order-submit" disabled={!totalQuantity || paymentMethodsLoading || Boolean(paymentMethodsError) || !paymentMethod}>{needsSauceStep ? "Escolher caldas e enviar" : "Enviar pedido"}</button>
+            <button className="instant-order-submit" disabled={!totalQuantity}>{needsSauceStep ? "Escolher caldas e enviar" : "Enviar pedido"}</button>
             <small className="instant-order-explanation">Nenhum pagamento será solicitado antes da confirmação da disponibilidade.</small>
           </form> : null}
         </> : !result && step === "sauces" ? <section className="instant-order-sauces">

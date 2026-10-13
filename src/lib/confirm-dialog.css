@@ -1,0 +1,77 @@
+.adoce-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(40, 20, 12, 0.55);
+}
+
+.adoce-confirm {
+  width: min(440px, 100%);
+  padding: 24px;
+  display: grid;
+  gap: 12px;
+  border-radius: 20px;
+  background: #fffaf5;
+  color: #2d120d;
+  box-shadow: 0 24px 60px rgba(40, 20, 12, 0.3);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.adoce-confirm h2 {
+  margin: 0;
+  font: 700 1.35rem/1.2 "Playfair Display", Georgia, serif;
+}
+
+.adoce-confirm p {
+  margin: 0;
+  color: #4d342c;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.adoce-confirm > div {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.adoce-confirm button {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 1px solid #dcc7ba;
+  border-radius: 12px;
+  background: #fff;
+  color: #432115;
+  font: 700 15px Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.adoce-confirm button.is-primary {
+  border-color: #3b271b;
+  background: #3b271b;
+  color: #fff;
+}
+
+.adoce-confirm button.is-destructive {
+  border-color: #9f2a35;
+  background: #9f2a35;
+  color: #fff;
+}
+
+.adoce-confirm button:focus-visible {
+  outline: 3px solid rgba(199, 52, 63, 0.45);
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .adoce-confirm > div > button {
+    flex: 1 1 0;
+  }
+}
+
+.adoce-confirm p { white-space: pre-line; }

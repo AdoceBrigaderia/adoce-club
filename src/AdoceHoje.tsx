@@ -12,12 +12,11 @@ import {
   Megaphone,
   Search,
   ShoppingBag,
-  Sparkles,
   Store,
   X,
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
-import GroupOrderArtwork from "./GroupOrderArtwork";
+import { isPriceOnRequest } from "./consultation-pricing";
 import { serviceStatusMessage } from "./service-status";
 import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
 import { trackPublicEvent } from "./analytics";
@@ -36,11 +35,13 @@ import "./adoce-hoje-content.css";
 import "./today-promotions.css";
 import "./today-availability-compact.css";
 
-type Availability = "all" | "available" | "traditional" | "premium" | "fruited" | "other";
+type Availability = "all" | "available";
 type Flavor = {
   id: string;
   name: string;
   note: string;
+  description?: string;
+  ingredients?: string;
   price: number;
   image: string;
   available: boolean;
@@ -337,10 +338,10 @@ const fallback: Flavor[] = [
     id: "kinder",
     name: "Kinder Bueno",
     note: "Chocolate cremoso com Kinder Bueno.",
-    price: 20,
+    price: 16,
     image: "/adoce-hoje/kinder-bueno.webp",
     available: false,
-    premium: true,
+    premium: false,
   },
   {
     id: "ninho",
@@ -508,7 +509,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
         supabase
           .from("flavors")
           .select(
-            "id,name,category,short_description,description,image_path,base_price,whole_cake_price,whole_cake_image_path,whole_cake_available",
+            "id,name,category,short_description,description,ingredients,image_path,base_price,whole_cake_price,whole_cake_image_path,whole_cake_available",
           )
           .eq("active", true)
           .order("name"),
@@ -568,6 +569,8 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                 item.short_description ||
                 item.description ||
                 "Feita com carinho em cada camada.",
+              description: item.description || "",
+              ingredients: item.ingredients || "",
               price: Number(item.base_price || 0),
               image: item.image_path || "/adoce-hoje/sabores-hoje.webp",
               available: Boolean(
@@ -607,13 +610,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
       sortFlavorsByAvailability(flavors.filter((flavor) => {
         const normalizedName = flavor.name.toLocaleLowerCase("pt-BR");
         const matchesSearch = normalizedName.includes(searchQuery.trim().toLocaleLowerCase("pt-BR"));
-        const fruited = /(morango|uva|lim[aã]o|abacaxi|coco|maracuj[aá]|fruta)/i.test(flavor.name);
-        const matchesFilter = filter === "all"
-          || (filter === "available" && flavor.available)
-          || (filter === "traditional" && !flavor.premium)
-          || (filter === "premium" && flavor.premium)
-          || (filter === "fruited" && fruited)
-          || (filter === "other" && !fruited && !flavor.premium);
+        const matchesFilter = filter === "all" || (filter === "available" && flavor.available);
         return matchesSearch && matchesFilter;
       })),
     [flavors, filter, searchQuery],
@@ -670,7 +667,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
   // horario de reserva online, que fica aberto o dia inteiro.
   const pickupWindows = pickupWindowsForDay(businessHours, getFortalezaNow().weekday);
   const instantOrderFlavors = useMemo(() => flavors
-    .filter((flavor) => flavor.available && flavor.price > 0)
+    .filter((flavor) => flavor.available && flavor.price > 0 && !isPriceOnRequest(flavor.name))
     .map((flavor) => ({
       id: flavor.id,
       name: flavor.name,
@@ -692,7 +689,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
   useEffect(() => {
     if (!openCartOnLoad || cartAutoOpened.current) return;
     cartAutoOpened.current = true;
-    const requestedFlavorId = new URLSearchParams(location.hash.split("?")[1] || "").get("flavor");
+    const requestedFlavorId = new URLSearchParams(location.search || location.hash.split("?")[1] || "").get("flavor");
     setInitialOrderFlavorId(requestedFlavorId);
     setInstantOrderOpen(true);
     trackPublicEvent("instant_order_open", { source: "cart" });
@@ -855,36 +852,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
 
         </div>
       </section>
-      <section className="today-group-order" aria-labelledby="pede-junto-adoce">
-        <GroupOrderArtwork />
-        <div>
-          <p className="today-kicker">Pede Junto Adoce</p>
-          <h2 id="pede-junto-adoce">
-            Cada um escolhe e paga a sua. Com 5, a entrega é grátis.
-          </h2>
-          <p>
-            No trabalho, condomínio, faculdade ou clínica: compartilhe a sala,
-            chegue a cinco fatias e continue adicionando quantas quiser.
-          </p>
-          <ul>
-            <li>
-              <Check /> Sabores identificados no pacote
-            </li>
-            <li>
-              <Check /> Cada pessoa recebe o próprio link de pagamento
-            </li>
-            <li>
-              <Check /> Entrega por motorista de aplicativo
-            </li>
-          </ul>
-          <a
-            className="today-primary"
-            href="/#pede-junto"
-          >
-            <MessageCircle /> Abrir meu Pede Junto
-          </a>
-        </div>
-      </section>
       {promotions.length > 0 && (
         <section
           className="today-active-promotions"
@@ -921,13 +888,13 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
         <div className="today-catalog-intro">
           <p className="today-kicker">Catálogo Adoce</p>
           <h1>Fatias</h1>
-          <a className="today-menu-link" href="/#cardapio-fatias"><CalendarDays /> Ver cardápio semanal</a>
+          <a className="today-menu-link" href="/cardapio-fatias"><CalendarDays /> Ver cardápio semanal</a>
         </div>
-        <div className="today-category-filters" aria-label="Categorias do cardápio">
-          <button className={filter === "all" || filter === "available" ? "active" : ""} onClick={() => setFilter("all")}>Hoje</button>
-          <button className={filter === "traditional" ? "active" : ""} onClick={() => setFilter("traditional")}>Tradicionais</button>
-          <button className={filter === "premium" ? "active" : ""} onClick={() => setFilter("premium")}>Premium</button>
+        <div className="today-category-filters" aria-label="Disponibilidade do cardápio">
+          <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Todos os sabores</button>
+          <button className={filter === "available" ? "active" : ""} onClick={() => setFilter("available")}>Disponíveis hoje</button>
         </div>
+        <a className="today-whatsapp-invite" href={orderLink()} target="_blank" rel="noreferrer"><MessageCircle /> Converse com a Adoce no WhatsApp</a>
         <label className="today-search"><Search /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar sabor..." /></label>
         <div className="today-card-grid">
           {visible.map((flavor) => (
@@ -948,7 +915,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
               {!flavor.available ? <button className="today-unavailable-prompt" type="button" onClick={() => setAlertFlavor(flavor)}>
                 <strong>Indisponível no momento</strong><span>Quer receber um aviso quando voltar?</span>
               </button> : null}
-              <button className="today-card-image product-image-trigger" type="button" onClick={() => setViewedImage({ src: flavor.image, alt: `Fatia ${flavor.name}` })} aria-label={`Ampliar foto de ${flavor.name}`}>
+              <button className="today-card-image product-image-trigger" type="button" onClick={() => setSelectedFlavor(flavor)} aria-label={`Conhecer o sabor ${flavor.name}`}>
                 <img
                   src={flavor.image}
                   alt={`Fatia ${flavor.name}`}
@@ -961,11 +928,6 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                 >
                   <Heart />{flavor.status === "preorder_only" ? <strong>Hoje às 19h30</strong> : null}
                 </span> : null}
-                {flavor.premium && (
-                  <span className="today-premium">
-                    <Sparkles /> Premium
-                  </span>
-                )}
                 {flavor.illustrative && (
                   <span className="today-illustrative">Imagem ilustrativa</span>
                 )}
@@ -1002,7 +964,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                   ) : null}
                   <h3>{flavor.name}</h3>
                   <p>{flavor.note}</p>
-                  <strong className="today-card-price">{flavor.price ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}` : "Consulte"}</strong>
+                  <strong className="today-card-price">{isPriceOnRequest(flavor.name) ? "Valor a consultar" : flavor.price ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}` : "Consulte"}</strong>
                 </div>
               </div>
               {flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
@@ -1014,15 +976,9 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                   <Bell /> <span>Avise quando voltar</span>
                 </button>
               )}
-              {(flavor.photos?.length || 0) > 1 && (
-                <button
-                  className="today-gallery-link"
-                  type="button"
-                  onClick={() => setSelectedFlavor(flavor)}
-                >
-                  Conhecer o produto
-                </button>
-              )}
+              <button className="today-gallery-link" type="button" onClick={() => setSelectedFlavor(flavor)}>
+                Conhecer o sabor
+              </button>
             </article>
           ))}
         </div>
@@ -1069,9 +1025,9 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
         <ShoppingBag />
         <div>
           <p className="today-kicker">Celebrações e produtos</p>
-          <h2>Procurando tortas, docinhos ou uma experiência para seu evento?</h2>
+          <h2>Procurando tortas ou docinhos para encomendar?</h2>
         </div>
-        <a className="today-primary" href="/#encomendas">
+        <a className="today-primary" href="/encomendas">
           Ver celebrações e produtos
         </a>
       </section>
@@ -1082,7 +1038,7 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
           <h2>Nossa produção artesanal segue uma política de pedidos.</h2>
           <p>Veja quais produtos podem ser encomendados em cada dia da semana.</p>
         </div>
-        <a className="today-secondary" href="/#politica-de-pedidos">
+        <a className="today-secondary" href="/politica-de-pedidos">
           Conferir política de pedidos
         </a>
       </section>
@@ -1198,9 +1154,11 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
             <p className="today-kicker">Galeria do sabor</p>
             <h2>{selectedFlavor.name}</h2>
             <p>{selectedFlavor.note}</p>
-            <p className="today-gallery-price"><strong>{selectedFlavor.price ? `R$ ${selectedFlavor.price.toFixed(2).replace(".", ",")}` : "Consulte o valor"}</strong></p>
+            {selectedFlavor.description && selectedFlavor.description !== selectedFlavor.note ? <p className="today-flavor-description">{selectedFlavor.description}</p> : null}
+            {selectedFlavor.ingredients ? <p className="today-flavor-ingredients"><strong>Ingredientes:</strong> {selectedFlavor.ingredients}</p> : null}
+            <p className="today-gallery-price"><strong>{isPriceOnRequest(selectedFlavor.name) ? "Valor a consultar" : selectedFlavor.price ? `R$ ${selectedFlavor.price.toFixed(2).replace(".", ",")}` : "Consulte o valor"}</strong></p>
             <div className="today-gallery-photos">
-              {(selectedFlavor.photos || []).map((photo) => (
+              {(selectedFlavor.photos?.length ? selectedFlavor.photos : [{ id: selectedFlavor.id, image_path: selectedFlavor.image, alt_text: selectedFlavor.name, image_role: "cover" as const }]).map((photo) => (
                 <figure key={photo.id}>
                   <button className="product-image-trigger" type="button" onClick={() => setViewedImage({ src: photo.image_path, alt: photo.alt_text || selectedFlavor.name })} aria-label={`Ampliar ${photo.alt_text || selectedFlavor.name}`}>
                     <img src={photo.image_path} alt={photo.alt_text || selectedFlavor.name} />

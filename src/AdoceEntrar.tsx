@@ -104,7 +104,7 @@ export default function AdoceEntrar({ onEntrou }: { onEntrou?: () => void }) {
         );
       }
       onEntrou?.();
-      location.hash = "#clube";
+      location.assign("/clube");
     } catch {
       setAviso("Esse código não confere. Confira no WhatsApp ou peça outro.");
     } finally {

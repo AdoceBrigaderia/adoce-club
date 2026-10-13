@@ -14,9 +14,9 @@ describe("navegação pública Mobile First", () => {
     for (const label of ["Início", "Cardápio", "Pedidos", "Conta"]) {
       expect(mobileNav).toContain(label);
     }
-    for (const destination of ["#inicio", "#adoce-hoje", "#carrinho", "#minha-conta"]) {
+    for (const destination of ["/", "/adoce-hoje", "/carrinho", "/minha-conta"]) {
       expect(mobileNav).toContain(destination);
-      if (destination !== "#inicio") expect(app).toContain(destination);
+      if (destination !== "/") expect(app).toContain(`#${destination.slice(1)}`);
     }
     expect(mobileNav).toContain("public-shell-nav");
     expect(app).toContain("<PublicHeader />");
@@ -30,7 +30,7 @@ describe("navegação pública Mobile First", () => {
   });
 
   it("mantém a política de pedidos em uma página dedicada", () => {
-    expect(app).toContain('startsWith("#politica-de-pedidos")');
+    expect(app).toContain('routeHash.startsWith("#politica-de-pedidos")');
     expect(orderPolicy).toContain("Segunda a quarta-feira");
     expect(orderPolicy).toContain("Quinta a sábado");
     expect(orderPolicy).toContain("Domingos");
@@ -38,8 +38,8 @@ describe("navegação pública Mobile First", () => {
   });
 
   it("leva os produtos reais e a ação principal para o início da experiência", () => {
-    expect(landing).toContain('className="home-reference-card slices" href="/#adoce-hoje"');
-    expect(landing).toContain('className="home-reference-card cakes" href="/#encomendas"');
+    expect(landing).toContain('className="home-reference-card slices" href="/adoce-hoje"');
+    expect(landing).toContain('className="home-reference-card cakes" href="/encomendas"');
     expect(landing).toContain("/adoce-hoje/chocolatudo.webp");
     expect(landing).toContain("Fazer meu pedido");
     expect(landing).toContain("Ver fatias disponíveis");
@@ -57,8 +57,8 @@ describe("operação móvel", () => {
 
 describe("acesso direto assistido", () => {
   it("gera URL do próprio site para a tela que valida o código", () => {
-    expect(accessFunction).toContain("#acesso-direto?");
-    expect(accessFunction).toContain("directParams.toString()");
+    expect(accessFunction).toContain('`${siteUrl}/acesso-direto`');
+    expect(accessFunction).not.toContain('directParams.toString()');
     expect(app).toContain("#acesso-direto");
   });
 });

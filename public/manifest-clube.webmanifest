@@ -3,7 +3,7 @@
   "short_name": "Clube Adoce",
   "id": "/clube-adoce",
   "description": "Seu cartão fidelidade, prêmios, indicações e novidades da Adoce.",
-  "start_url": "/#entrar",
+  "start_url": "/entrar",
   "scope": "/",
   "display": "standalone",
   "background_color": "#fff7ed",

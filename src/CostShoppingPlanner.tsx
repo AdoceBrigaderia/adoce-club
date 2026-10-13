@@ -1,0 +1,74 @@
+import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { planDemand, shoppingQuantity, shoppingReceipt, displayShoppingQuantity, type PlanWorkspace, type PlanInvoice } from "./lib/purchase-planner";
+import { useShoppingPlanSync } from "./lib/shopping-plan-sync";
+import { queuePrint } from "./lib/print-queue";
+import ShoppingWeekTable from "./ShoppingWeekTable";
+import TabletShoppingList from "./TabletShoppingList";
+import PurchaseWeeklyReport from "./PurchaseWeeklyReport";
+import ThermalShoppingPreview, {brandedThermalLines} from "./ThermalShoppingPreview";
+import {weekStart,localShoppingDate,weekDates,shiftDate,shortShoppingDate,weeklyTotals,weeklyMenuReceipt,shoppingWeekOptions} from "./lib/shopping-week";
+
+export default function CostShoppingPlanner({ workspace, invoices, flavors, active = true }: { active?: boolean; workspace: PlanWorkspace; invoices: PlanInvoice[]; flavors: { id: string; name: string; active: boolean }[] }) {
+ const [week,setWeek]=useState(()=>weekStart(localShoppingDate()));
+ const weeks=useMemo(()=>shoppingWeekOptions(week),[week]);
+ const {plan,ready,saving,status,change,retry,copyPrevious}=useShoppingPlanSync(week);
+ const {extras,stock,selected}=plan;
+ const cakes=useMemo(()=>weeklyTotals(plan,week),[plan,week]);
+ const [search,setSearch]=useState("");
+ const [sort,setSort]=useState("name");
+ const [extraId,setExtraId]=useState("");
+ const [printing,setPrinting]=useState(false);
+ const [tabletMode,setTabletMode]=useState(false);
+ const [reportMode,setReportMode]=useState(false);
+ const [printNotice,setPrintNotice]=useState("");
+ const demand=useMemo(()=>planDemand(workspace,cakes),[workspace,cakes]);
+ const combined=useMemo(()=>planDemand(workspace,cakes,extras),[workspace,cakes,extras]);
+ const total=Object.values(cakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
+ const items=workspace.items.filter(item=>item.active||extras[item.id]>0).sort((a,b)=>sort==="code"?a.internal_code.localeCompare(b.internal_code,"pt-BR",{numeric:true}):sort==="quantity"?(demand.quantities[b.id]||0)-(demand.quantities[a.id]||0):a.name.localeCompare(b.name,"pt-BR"));
+ const rows=items.filter(item=>(demand.quantities[item.id]>0&&selected[item.id]!==false)||extras[item.id]>0).map(item=>({item,...shoppingQuantity(item,(selected[item.id]!==false?demand.quantities[item.id]||0:0)+(extras[item.id]||0),stock[item.id]||0,invoices)}));
+ const lines=shoppingReceipt(total,rows);
+ lines.splice(1,0,`Semana: ${shortShoppingDate(week)} a ${shortShoppingDate(shiftDate(week,6))}`);
+ const menuLines=weeklyMenuReceipt(week,plan,flavors);
+ const hasMenu=weekDates(week).some(date=>Object.entries(plan.daily).some(([key,value])=>key.startsWith(date+"|")&&value>0));
+ const print=async(menu=false)=>{
+  setPrinting(true);setPrintNotice("");
+  try{await queuePrint(menu?"Cardápio da semana":"Lista de compras",brandedThermalLines(menu?menuLines:lines));setPrintNotice(`${menu?"Cardápio enviado":"Lista enviada"} à fila da impressora térmica. O tablet precisa estar conectado e atualizado para imprimir a logo.`);}
+  catch{setPrintNotice("Não foi possível enviar a impressão. Confira a conexão e tente novamente.");}
+  finally{setPrinting(false);}
+ };
+ const stockField=(id:string,unit:string)=>{
+  const factor=unit==="g"||unit==="ml"?1000:1;
+  return <label>Estoque atual ({unit==="g"?"kg":unit==="ml"?"l":unit==="unit"?"unidades":unit})<input disabled={!ready} type="number" min="0" step="any" inputMode="decimal" value={stock[id]?stock[id]/factor:""} placeholder="0" onChange={event=>{const value=Number(event.target.value);if(Number.isFinite(value)&&value>=0)change("stock",id,value*factor);}} /></label>;
+ };
+ return <section className="adoce-preparation-list adoce-shopping-planner">
+  <h4>Planejamento das compras da semana</h4><p>Marque os dias de cada sabor: cada dia selecionado vale uma torta G. O total da semana é calculado automaticamente. O estoque informado é descontado antes de calcular os pacotes.</p>
+  <p role="status">{status}</p><button type="button" onClick={retry}>Tentar novamente / atualizar</button>
+  <button type="button" disabled={!ready} onClick={()=>{setTabletMode(current=>!current);setReportMode(false);}}>{tabletMode?'Voltar ao planejamento':'Modo compras no tablet'}</button>
+  <button type="button" onClick={()=>{setReportMode(current=>!current);setTabletMode(false);}}>{reportMode?'Voltar ao planejamento':'Comprado por semana'}</button>
+  {tabletMode&&combined.errors.length>0&&<div className="adoce-cost-pending" role="alert"><strong>Lista incompleta: revise as fichas antes de comprar.</strong><ul>{combined.errors.map(error=><li key={error}>{error}</li>)}</ul></div>}
+  {reportMode?<PurchaseWeeklyReport invoices={invoices} items={workspace.items}/>:tabletMode?<TabletShoppingList rows={rows} plan={plan} disabled={!ready} onChange={change} onBack={()=>setTabletMode(false)}/>:<>
+  <div className="adoce-items-filters"><label>Ordenar itens<select value={sort} onChange={event=>setSort(event.target.value)}><option value="name">Nome A–Z</option><option value="code">Código</option><option value="quantity">Maior quantidade necessária</option></select></label></div>
+  <div className="adoce-shopping-week-controls"><label>Selecionar semana<select value={week} disabled={saving} onChange={event=>setWeek(event.target.value)}>{[...new Set(weeks.map(option=>option.group))].map(group=><optgroup label={group} key={group}>{weeks.filter(option=>option.group===group).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>)}</select></label><button type="button" disabled={saving} onClick={()=>setWeek(shiftDate(week,-7))}>Semana anterior</button><button type="button" disabled={saving} onClick={()=>setWeek(weekStart(localShoppingDate()))}>Semana vigente</button><button type="button" disabled={saving} onClick={()=>setWeek(shiftDate(week,7))}>Próxima semana</button><button type="button" disabled={!ready||saving||total>0} onClick={()=>void copyPrevious(shiftDate(week,-7))}>Copiar semana anterior como modelo</button></div>
+  <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
+  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change}/>
+  <button type="button" disabled={!ready||printing||!hasMenu||menuLines.length>=600} onClick={()=>void print(true)}>Imprimir cardápio da semana</button>
+  <details><summary>Prévia do cardápio da semana</summary><ThermalShoppingPreview lines={menuLines}/></details>
+
+  {combined.errors.length>0&&<div className="adoce-cost-pending" role="alert"><strong>Planejamento incompleto · resolva antes de imprimir</strong><ul>{combined.errors.map(error=><li key={error}>{error}</li>)}</ul></div>}
+  <h4>Selecionar itens das tortas</h4><label>Buscar item ou código<input type="search" value={search} onChange={event=>setSearch(event.target.value)} /></label>
+  <div className="adoce-section-actions"><button disabled={!ready} type="button" onClick={()=>items.filter(item=>demand.quantities[item.id]>0).forEach(item=>change("selected",item.id,true))}>Selecionar necessários</button><button disabled={!ready} type="button" onClick={()=>items.filter(item=>demand.quantities[item.id]>0).forEach(item=>change("selected",item.id,false))}>Desmarcar necessários</button></div>
+  <div className="adoce-shopping-flavors">{items.filter(item=>demand.quantities[item.id]>0&&`${item.name} ${item.internal_code}`.toLocaleLowerCase("pt-BR").includes(search.toLocaleLowerCase("pt-BR"))).map(item=><div key={item.id}><label><input disabled={!ready} type="checkbox" checked={selected[item.id]!==false} onChange={event=>change("selected",item.id,event.target.checked)} />{item.name}</label><small>Necessário: {displayShoppingQuantity(demand.quantities[item.id],item.consumption_unit)}</small>{stockField(item.id,item.consumption_unit)}</div>)}</div>
+  {!Object.values(demand.quantities).some(value=>value>0)&&<p>Informe as tortas para ver somente os itens da composição.</p>}
+  <h4>Itens extras</h4><label>Adicionar item extra<select disabled={!ready} value={extraId} onChange={event=>setExtraId(event.target.value)}><option value="">Escolha um item no menu</option>{items.filter(item=>item.active).map(item=><option key={item.id} value={item.id}>{item.name} · {item.internal_code}</option>)}</select></label>
+  {items.filter(item=>item.id===extraId||extras[item.id]>0).map(item=><div className="adoce-shopping-extra" key={item.id}><strong>{item.name}{!item.active && " · produto excluído"}</strong><label>Quantidade extra ({item.consumption_unit==="unit"?"unidades":item.consumption_unit})<input disabled={!ready} type="number" min="0" step="any" inputMode="decimal" value={extras[item.id]||""} placeholder="0" onChange={event=>{const value=Number(event.target.value);if(Number.isFinite(value)&&value>=0)change("extras",item.id,value);}} /></label>{!demand.quantities[item.id]&&stockField(item.id,item.consumption_unit)}<button disabled={!ready} type="button" onClick={()=>{change("extras",item.id,0);setExtraId("");}}>Remover extra</button></div>)}
+  <h4>Relatório de compras · {total} tortas</h4><p>Pacotes completos arredondados para cima, conforme a embalagem de referência cadastrada; na ausência, usa a última compra.</p>
+  <button type="button" disabled={!ready||printing||!rows.length||combined.errors.length>0||lines.length>=600} onClick={()=>void print()}>{printing?"Enviando…":"Imprimir lista de compras"}</button>
+  {lines.length>=600 && <p role="alert">A lista excede o limite de impressão. Reduza a seleção para imprimir.</p>}
+  {printNotice&&<p role="status">{printNotice}</p>}
+  <div className="adoce-items-table-scroll"><table className="adoce-items-table"><thead><tr>{["Produto","Necessário","Estoque atual","Comprar","Pacotes"].map(title=><th key={title}>{title}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.item.id}><td data-label="Produto">{row.item.name}</td><td data-label="Necessário">{displayShoppingQuantity(row.required,row.item.consumption_unit)}</td><td data-label="Estoque atual">{displayShoppingQuantity(row.stock,row.item.consumption_unit)}</td><td data-label="Comprar"><strong>{displayShoppingQuantity(row.buy,row.item.consumption_unit)}</strong></td><td data-label="Pacotes">{row.packages==null?"Embalagem não cadastrada":`${row.packages} ${row.packageName}`}</td></tr>)}</tbody></table></div>
+  <details><summary>Prévia da lista térmica</summary><ThermalShoppingPreview lines={lines}/></details>
+  </>}
+  {active && createPortal(<div className="adoce-shopping-total" role="status" aria-live="polite"><strong>{total}</strong><span>tortas na semana</span></div>,document.body)}
+ </section>;
+}

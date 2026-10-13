@@ -114,3 +114,5 @@ export const twiml = (message = "") =>
   message
     ? `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${xmlEscape(message)}</Message></Response>`
     : '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+
+export { pixInstructions as pixMessage } from "../../../src/pix-payment";

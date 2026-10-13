@@ -1,12 +1,6 @@
 // Encomendas — uma tela para tudo que se pede com antecedencia.
 //
-// Substitui cinco rotas e tres componentes diferentes que faziam a mesma
-// coisa. Os cinco segmentos ficam lado a lado, no mesmo peso, e trocar entre
-// eles nao volta para a home — era a reclamacao de que "a pagina de tortas
-// deve ter acesso direto aos docinhos".
-//
-// Festas, Escola e Decoracao entram aqui como iguais. Decisao do Rubens em
-// 10/08: so saem quando a Beth disser que encerrou.
+// Tortas e docinhos ficam lado a lado e podem ser alternados sem voltar à home.
 //
 // Produto sem foto continua aparecendo, com um lugar digno em vez de quadrado
 // quebrado — hoje 12 dos 15 produtos nao tem imagem, e esconde-los faria o

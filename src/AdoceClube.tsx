@@ -146,14 +146,14 @@ export default function AdoceClube() {
   }
 
   if (!estado) {
-    const porta = decidirPorta({ sessao: false, tokenDoCartao: null, membro: null, tokenNaUrl: null });
+    const porta = decidirPorta({ sessao: false, membro: null, tokenNaUrl: null });
     return (
       <main className="adoce-clube">
         <div className="ac-convite">
           <img src="/site/logo.webp" alt="" aria-hidden="true" />
           <h1>{porta.titulo}</h1>
           <p>{porta.mensagem}</p>
-          <a className="ac-principal" href="#entrar">Entrar no Clube</a>
+          <a className="ac-principal" href="/entrar">Entrar no Clube</a>
         </div>
       </main>
     );
@@ -162,12 +162,11 @@ export default function AdoceClube() {
   const faltam = TOTAL_CLUBE - estado.clube;
   const porta = decidirPorta({
     sessao: true,
-    tokenDoCartao: null,
     membro: { primeiroNome: estado.primeiroNome, carimbos: estado.clube },
     tokenNaUrl: null,
   });
 
-  if (location.hash.startsWith("#indicar")) {
+  if (location.pathname.startsWith("/indicar") || location.hash.startsWith("#indicar")) {
     return <CompartilheDocura cartao={{ codigo: estado.codigo, primeiroNome: estado.primeiroNome, indicacoes: estado.indicacoesLista }} />;
   }
 
@@ -188,7 +187,7 @@ export default function AdoceClube() {
             Você tem {estado.presentes} {estado.presentes === 1 ? "presente guardado" : "presentes guardados"}
           </p>
           <p className="ac-presente-texto">Use quando quiser. Ele espera por você, sem prazo.</p>
-          <a className="ac-principal" href="#adoce-hoje">Escolher minha fatia-presente</a>
+          <a className="ac-principal" href="/adoce-hoje">Escolher minha fatia-presente</a>
         </section>
       )}
 
@@ -211,9 +210,9 @@ export default function AdoceClube() {
       />
 
       <div className="ac-acoes">
-        <a className="ac-principal" href="#adoce-hoje">Pedir fatias de hoje</a>
-        <a className="ac-secundario" href="#indicar">Convidar alguém</a>
-        <a className="ac-texto" href="#minha-conta">Preferências e QR</a>
+        <a className="ac-principal" href="/adoce-hoje">Pedir fatias de hoje</a>
+        <a className="ac-secundario" href="/indicar">Convidar alguém</a>
+        <a className="ac-texto" href="/minha-conta">Preferências do Clube</a>
       </div>
 
       {estado.codigo && (

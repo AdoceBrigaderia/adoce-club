@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { CreditCard, MessageCircle, Save, Settings2, Timer } from "lucide-react";
+import { CreditCard, MessageCircle, QrCode, Save, Settings2, Timer } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
-import OperationVisualSettings from "./OperationVisualSettings";
 import "./operation-commerce-tools.css";
 
 type PaymentMethod = {
@@ -14,19 +12,13 @@ type CommerceSettings = {
   automatic_checkout_minimum: number;
   reservation_minutes: number;
   order_whatsapp_number: string;
+  pix_key: string;
   payment_methods: PaymentMethod[];
 };
 
-export default function OperationCommerceSettings({
-  session,
-  onOpenFlavorImages,
-  onOpenProductImages,
-}: {
-  session: Session;
-  onOpenFlavorImages?: () => void;
-  onOpenProductImages?: () => void;
-}) {
+export default function OperationCommerceSettings({ area = "store" }: { area?: "store" | "orders" }) {
   const [settings, setSettings] = useState<CommerceSettings | null>(null);
+  const [savedSettings, setSavedSettings] = useState<CommerceSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const load = useCallback(async () => {
@@ -35,11 +27,21 @@ export default function OperationCommerceSettings({
     setBusy(false);
     if (error) { setBusy(false); return setNotice(error.message); }
     setSettings(data as CommerceSettings);
+    setSavedSettings(data as CommerceSettings);
   }, []);
   useEffect(() => { void load(); }, [load]);
 
   const save = async () => {
     if (!settings) return;
+    const changed: string[] = [];
+    if (savedSettings) {
+      if (settings.automatic_checkout_enabled !== savedSettings.automatic_checkout_enabled) changed.push("reserva automática");
+      if (settings.automatic_checkout_minimum !== savedSettings.automatic_checkout_minimum) changed.push("quantidade mínima");
+      if (settings.reservation_minutes !== savedSettings.reservation_minutes) changed.push("prazo de pagamento");
+      if (settings.order_whatsapp_number !== savedSettings.order_whatsapp_number) changed.push("WhatsApp dos pedidos");
+      if (settings.pix_key !== savedSettings.pix_key) changed.push("chave Pix");
+      if (JSON.stringify(settings.payment_methods) !== JSON.stringify(savedSettings.payment_methods)) changed.push("meios de pagamento e taxas");
+    }
     setBusy(true);
     const { data, error } = await requireSupabase().rpc("staff_update_commerce_settings", {
       next_automatic_checkout_enabled: settings.automatic_checkout_enabled,
@@ -51,28 +53,36 @@ export default function OperationCommerceSettings({
     const whatsappResult = await requireSupabase().rpc("staff_update_order_whatsapp_number", {
       next_order_whatsapp_number: settings.order_whatsapp_number,
     });
+    if (whatsappResult.error) { setBusy(false); return setNotice(whatsappResult.error.message); }
+    const pixResult = await requireSupabase().rpc("manager_set_pix_key", { requested_pix_key: settings.pix_key });
     setBusy(false);
-    if (whatsappResult.error) return setNotice(whatsappResult.error.message);
-    setSettings({ ...(data as CommerceSettings), order_whatsapp_number: whatsappResult.data as string });
-    setNotice("Configurações salvas. Os próximos pedidos já seguirão estas regras.");
+    if (pixResult.error) return setNotice(pixResult.error.message);
+    const next = { ...(data as CommerceSettings), order_whatsapp_number: whatsappResult.data as string, pix_key: pixResult.data as string };
+    setSettings(next);
+    setSavedSettings(next);
+    setNotice(changed.length ? `Salvo: ${changed.join(", ")}.` : "Nenhuma alteração para salvar.");
   };
 
   if (!settings) return <section className="commerce-tool-card"><p>{busy ? "Carregando configurações…" : notice}</p></section>;
   return <section className="commerce-settings-page">
-    <header className="commerce-tool-heading"><div><small>Regras da operação</small><h2>Configurações globais</h2><p>Um único lugar para controlar prazos, pagamento e taxas.</p></div><Settings2 /></header>
+    <header className="commerce-tool-heading"><div><small>{area === "orders" ? "Pedidos online" : "Loja e pagamentos"}</small><h2>{area === "orders" ? "Reserva e prazo de pagamento" : "Atendimento, pagamentos e taxas"}</h2><p>As alterações valem para os próximos pedidos. Salve no botão ao final desta seção.</p></div><Settings2 /></header>
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
     <div className="commerce-settings-grid">
-      <section className="commerce-tool-card">
+      {area === "orders" ? <section className="commerce-tool-card">
         <header><Timer /><div><small>Pedidos on-line</small><h3>Reserva e confirmação</h3></div></header>
         <label className="commerce-check"><input type="checkbox" checked={settings.automatic_checkout_enabled} onChange={(event) => setSettings({ ...settings, automatic_checkout_enabled: event.target.checked })} /><span><strong>Reserva automática</strong><small>Reserva o estoque quando o pedido alcançar o mínimo definido.</small></span></label>
-        <label>Quantidade mínima<input type="number" min="1" max="30" value={settings.automatic_checkout_minimum} onChange={(event) => setSettings({ ...settings, automatic_checkout_minimum: Number(event.target.value) })} /></label>
+        {settings.automatic_checkout_enabled ? <label>Quantidade mínima<input type="number" min="1" max="30" value={settings.automatic_checkout_minimum} onChange={(event) => setSettings({ ...settings, automatic_checkout_minimum: Number(event.target.value) })} /></label> : <p className="commerce-setting-hint">Ative a reserva automática para definir uma quantidade mínima.</p>}
         <label>Prazo para pagamento, em minutos<input type="number" min="5" max="240" value={settings.reservation_minutes} onChange={(event) => setSettings({ ...settings, reservation_minutes: Number(event.target.value) })} /><small>Entre 5 minutos e 4 horas. Vale para os próximos pedidos.</small></label>
-      </section>
-      <section className="commerce-tool-card">
+      </section> : null}
+      {area === "store" ? <section className="commerce-tool-card">
         <header><MessageCircle /><div><small>Atendimento</small><h3>WhatsApp dos pedidos</h3></div></header>
         <label>Número com DDD<input inputMode="tel" value={settings.order_whatsapp_number || ""} onChange={(event) => setSettings({ ...settings, order_whatsapp_number: event.target.value })} placeholder="(85) 99999-9999" /><small>O carrinho e as solicitações enviam o cliente para este número.</small></label>
-      </section>
-      <section className="commerce-tool-card">
+      </section> : null}
+      {area === "store" ? <section className="commerce-tool-card">
+        <header><QrCode /><div><small>Pix</small><h3>Chave Pix da Adoce</h3></div></header>
+        <label>Chave Pix<input value={settings.pix_key || ""} onChange={(event) => setSettings({ ...settings, pix_key: event.target.value })} placeholder="pagamento@adocebrigaderia.com.br" autoComplete="off" /><small>Vai automaticamente nas mensagens do WhatsApp (pedido confirmado), no Caixa e no painel do pedido. Confira antes de salvar.</small></label>
+      </section> : null}
+      {area === "store" ? <section className="commerce-tool-card">
         <header><CreditCard /><div><small>Recebimentos</small><h3>Meios de pagamento e taxas</h3></div></header>
         <div className="payment-method-settings">
           {settings.payment_methods.map((method, index) => <article key={method.code}>
@@ -81,13 +91,8 @@ export default function OperationCommerceSettings({
             <label>Taxa fixa<input type="number" min="0" step="0.01" value={method.fee_fixed} onChange={(event) => setSettings({ ...settings, payment_methods: settings.payment_methods.map((item, itemIndex) => itemIndex === index ? { ...item, fee_fixed: Number(event.target.value) } : item) })} /></label>
           </article>)}
         </div>
-      </section>
+      </section> : null}
     </div>
     <button className="commerce-primary-action" type="button" onClick={() => void save()} disabled={busy}><Save /> Salvar configurações</button>
-    <OperationVisualSettings
-      session={session}
-      onOpenFlavorImages={onOpenFlavorImages}
-      onOpenProductImages={onOpenProductImages}
-    />
   </section>;
 }

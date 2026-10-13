@@ -7,7 +7,7 @@ const slides = [
   {
     eyebrow: "Site oficial Adoce Brigaderia",
     title: <>A doçura ganhou um <em>novo endereço.</em></>,
-    text: "Clube Adoce, Festival de Fatias, encomendas e eventos — tudo em um só lugar.",
+    text: "Clube Adoce, Festival de Fatias e encomendas — tudo em um só lugar.",
     icon: Sparkles,
   },
   {
@@ -23,9 +23,9 @@ const slides = [
     icon: CakeSlice,
   },
   {
-    eyebrow: "Encomendas & eventos",
+    eyebrow: "Encomendas",
     title: <>Seu momento já pode entrar <em>na nossa agenda.</em></>,
-    text: "Tortas, docinhos, Adoce na Escola, festas e decoração para celebrar.",
+    text: "Tortas e docinhos feitos para encomendar.",
     icon: CalendarDays,
   },
   {
@@ -42,7 +42,7 @@ export default function LaunchCampaign({ format, slide = 1 }: { format: LaunchFo
   const headline = format === "carousel" ? current.title : <>Nosso site oficial <em>está no ar.</em></>;
   const description = format === "carousel"
     ? current.text
-    : "Clube Adoce, Festival de Fatias, encomendas e eventos — tudo em um só lugar.";
+    : "Clube Adoce, Festival de Fatias e encomendas — tudo em um só lugar.";
 
   return (
     <main className={`launch-art launch-${format} launch-slide-${slide}`}>
@@ -58,7 +58,7 @@ export default function LaunchCampaign({ format, slide = 1 }: { format: LaunchFo
           <Icon />
           <h1>{headline}</h1>
           <h2>{description}</h2>
-          {format !== "carousel" ? <div className="launch-pills"><span>Clube digital</span><span>Fatias do dia</span><span>Encomendas</span><span>Eventos</span></div> : null}
+          {format !== "carousel" ? <div className="launch-pills"><span>Clube digital</span><span>Fatias do dia</span><span>Encomendas</span></div> : null}
         </div>
         <div className="launch-cake"><img src="/site/hero-cake.webp" alt="" /><Heart /></div>
       </section>

@@ -8,16 +8,16 @@ status: Implementado localmente; migraÃ§Ã£o, homologaÃ§Ã£o externa e ati
 
 ## Objetivo
 
-Permitir que um cliente monte e registre um pedido de fatias pelo WhatsApp oficial da Adoce sem criar um segundo motor comercial. O canal conversacional usa o mesmo catÃ¡logo, estoque por fornada, caldas, formas de pagamento e RPC transacional do checkout pÃºblico.
+Permitir que um cliente monte e registre um pedido de fatias pelo WhatsApp oficial da Adoce sem criar um segundo motor comercial. O canal conversacional usa o mesmo catÃ¡logo, estoque por fornada, caldas e RPC transacional do checkout pÃºblico. Pedidos online aceitam somente Pix.
 
 O bot nÃ£o cobra, nÃ£o confirma disponibilidade fora da transaÃ§Ã£o e nÃ£o substitui a equipe. O cliente pode digitar `ATENDENTE`, `CANCELAR` ou `MENU` a qualquer momento.
 
 ## Jornada
 
-1. A mensagem recebida abre a janela de atendimento do WhatsApp e inicia o menu.
-2. O bot lista somente sabores com quantidade livre no dia.
+1. A mensagem recebida abre a janela de atendimento do WhatsApp. O bot saÃºda, informa o preÃ§o vigente das fatias regulares, nÃ£o oferece automaticamente a Torta de Pudim por ter valor a consultar, explica que nÃ£o hÃ¡ entrega e pergunta nome e sobrenome.
+2. Depois da identificaÃ§Ã£o, o bot lista somente sabores com quantidade livre no dia.
 3. O cliente informa itens no formato `1x2, 3x1`.
-4. O bot coleta nome e sobrenome, calda, forma de pagamento, responsÃ¡vel pela retirada e horÃ¡rio.
+4. O bot coleta calda, responsÃ¡vel pela retirada e horÃ¡rio; informa que o pagamento Ã© por Pix apÃ³s confirmaÃ§Ã£o.
 5. Antes da confirmaÃ§Ã£o, o bot mostra itens, total estimado e retirada.
 6. Ao receber `SIM`, o servidor consulta novamente a disponibilidade e chama `server_submit_whatsapp_order`, que delega para `submit_instant_order_v7`.
 7. A transaÃ§Ã£o reserva estoque, aplica idempotÃªncia, grava o pedido e devolve o nÃºmero oficial.

@@ -60,19 +60,17 @@ export default function PedeJuntoPagamento({
   return (
     <main className="pj">
       <nav className="pj-barra" aria-label="Navegação">
-        <a className="pj-voltar" href="#inicio">
+        <a className="pj-voltar" href="/">
           <ArrowLeft aria-hidden="true" /> Início
         </a>
-        <a className="pj-atalho" href="#adoce-hoje">O que tem hoje</a>
+        <a className="pj-atalho" href="/adoce-hoje">O que tem hoje</a>
       </nav>
 
       <header className="pj-capa">
         <p className="pj-legenda">Pede Junto</p>
         <h1>{grupo.nome}</h1>
         <p className="pj-resumo">{resumoParaOrganizador(grupo)}</p>
-        {grupo.entregaGratis ? (
-          <p className="pj-selo">Entrega grátis liberada 💗</p>
-        ) : null}
+        <p className="pj-selo">Retirada por vocês ou por motorista de aplicativo solicitado pelo grupo 💗</p>
       </header>
 
       {/* O que EU tenho que fazer, antes de qualquer outra coisa na tela. */}
@@ -155,7 +153,7 @@ export default function PedeJuntoPagamento({
 
       <nav className="pj-rodape" aria-label="Para onde ir agora">
         <a className="pj-principal" href="#sabores">Ver todos os sabores</a>
-        <a className="pj-secundario" href="#inicio">Voltar ao início</a>
+        <a className="pj-secundario" href="/">Voltar ao início</a>
       </nav>
     </main>
   );

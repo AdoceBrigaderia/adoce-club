@@ -102,7 +102,7 @@ export default async (request: Request) => {
       type: "magiclink",
       email: profile.email,
       options: {
-        redirectTo: `${(env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "")}/#minha-conta`,
+        redirectTo: `${(env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "")}/minha-conta`,
       },
     });
   const accessCode = linkData?.properties?.email_otp;
@@ -110,8 +110,7 @@ export default async (request: Request) => {
     return json({ error: "Não foi possível gerar o código de acesso." }, 502);
   }
   const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-  const directParams = new URLSearchParams({ email: profile.email, code: accessCode });
-  const loginUrl = `${siteUrl}/#acesso-direto?${directParams.toString()}`;
+  const loginUrl = `${siteUrl}/acesso-direto`;
 
   const { error: auditError } = await adminClient.from("audit_events").insert({
     actor_user_id: userData.user.id,
@@ -121,7 +120,7 @@ export default async (request: Request) => {
     payload: {
       phone_suffix: profile.phone_e164?.replace(/\D/g, "").slice(-4) || null,
       delivery_options: profile.phone_e164 ? ["copy", "whatsapp"] : ["copy"],
-      direct_login_link: true,
+      direct_login_link: false,
     },
   });
   if (auditError) {

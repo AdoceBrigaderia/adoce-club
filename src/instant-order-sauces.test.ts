@@ -31,8 +31,8 @@ describe("caldas individuais no pedido de fatias", () => {
     expect(manualSale).toContain('from("order_sauces")');
     expect(manualSale).toContain("Escolha a calda");
     expect(manualSale).toContain('sauce_id: sauceChoices');
-    expect(operation).toContain("Reenviar link pelo WhatsApp");
-    expect(operation).toContain("Confirmar e enviar cobrança");
+    expect(operation).toContain("OrderCommunication");
+    expect(operation).toContain("Confirmar separação e enviar cobrança");
   });
 
   it("protege as tabelas e mantém somente leitura pública das caldas ativas", () => {

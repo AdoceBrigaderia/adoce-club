@@ -35,37 +35,37 @@ export const SITE_VISUAL_ASSETS: SiteVisualAssetDefinition[] = [
 
 export type SiteVisualPageLink = { label: string; url: string };
 
-const publicPage = (label: string, route = ""): SiteVisualPageLink => ({
+const publicPage = (label: string, route = "/"): SiteVisualPageLink => ({
   label,
-  url: `https://www.adocebrigaderia.com.br/${route}`,
+  url: `https://www.adocebrigaderia.com.br${route}`,
 });
 
 export const SITE_VISUAL_PAGE_LINKS: Record<string, SiteVisualPageLink[]> = {
   "/site/logo.webp": [
     publicPage("Página inicial"),
-    publicPage("Adoce Hoje", "#adoce-hoje"),
-    publicPage("Clube Adoce", "#clube"),
-    publicPage("Adoce Operação", "#operacao"),
+    publicPage("Adoce Hoje", "/adoce-hoje"),
+    publicPage("Clube Adoce", "/clube"),
+    publicPage("Adoce Operação", "/operacao"),
   ],
   "/site/trufado-de-ninho-home-20260803.png": [publicPage("Página inicial")],
   "/site/beth-fundadora.png": [publicPage("Página inicial")],
   "/site/clube-cartao-destaque-v2.webp": [publicPage("Página inicial")],
-  "/site/clube-aprovado-mobile-claro.png": [publicPage("Página inicial"), publicPage("Clube Adoce", "#clube")],
-  "/site/clube-aprovado-mobile-escuro.png": [publicPage("Clube Adoce", "#clube")],
-  "/site/clube-aprovado-desktop.png": [publicPage("Clube Adoce", "#clube")],
-  "/site/clube-convite-pedido.webp": [publicPage("Adoce Hoje — após enviar um pedido", "#adoce-hoje")],
-  "/site/pede-junto-pacotes.webp": [publicPage("Página inicial"), publicPage("Pede Junto Adoce", "#pede-junto")],
-  "/site/pede-junto-trabalho.webp": [publicPage("Pede Junto Adoce", "#pede-junto")],
-  "/site/pede-junto-condominio.webp": [publicPage("Pede Junto Adoce", "#pede-junto")],
-  "/site/pede-junto-faculdade.webp": [publicPage("Pede Junto Adoce", "#pede-junto")],
-  "/site/pede-junto-clinica.webp": [publicPage("Pede Junto Adoce", "#pede-junto")],
-  "/site/adoce-hoje-retirada-ilustracao.webp": [publicPage("Adoce Hoje", "#adoce-hoje")],
-  "/site/adoce-hoje-barraquinha-ilustracao.webp": [publicPage("Adoce Hoje", "#adoce-hoje")],
+  "/site/clube-aprovado-mobile-claro.png": [publicPage("Página inicial"), publicPage("Clube Adoce", "/clube")],
+  "/site/clube-aprovado-mobile-escuro.png": [publicPage("Clube Adoce", "/clube")],
+  "/site/clube-aprovado-desktop.png": [publicPage("Clube Adoce", "/clube")],
+  "/site/clube-convite-pedido.webp": [publicPage("Adoce Hoje — após enviar um pedido", "/adoce-hoje")],
+  "/site/pede-junto-pacotes.webp": [publicPage("Página inicial"), publicPage("Pede Junto Adoce", "/pede-junto")],
+  "/site/pede-junto-trabalho.webp": [publicPage("Pede Junto Adoce", "/pede-junto")],
+  "/site/pede-junto-condominio.webp": [publicPage("Pede Junto Adoce", "/pede-junto")],
+  "/site/pede-junto-faculdade.webp": [publicPage("Pede Junto Adoce", "/pede-junto")],
+  "/site/pede-junto-clinica.webp": [publicPage("Pede Junto Adoce", "/pede-junto")],
+  "/site/adoce-hoje-retirada-ilustracao.webp": [publicPage("Adoce Hoje", "/adoce-hoje")],
+  "/site/adoce-hoje-barraquinha-ilustracao.webp": [publicPage("Adoce Hoje", "/adoce-hoje")],
   "/site/adoce-hoje-exemplo-desktop.png": [publicPage("Página inicial")],
   "/site/adoce-hoje-exemplo-mobile.png": [publicPage("Página inicial")],
-  "/site/politica-de-pedidos.jpeg": [publicPage("Política de pedidos", "#politica-de-pedidos")],
-  "/site/hero-cake.webp": [publicPage("Entrar no Clube Adoce", "#entrar")],
-  "/adoce-hoje/sabores-hoje.webp": [publicPage("Adoce Hoje", "#adoce-hoje")],
+  "/site/politica-de-pedidos.jpeg": [publicPage("Política de pedidos", "/politica-de-pedidos")],
+  "/site/hero-cake.webp": [publicPage("Entrar no Clube Adoce", "/entrar")],
+  "/adoce-hoje/sabores-hoje.webp": [publicPage("Adoce Hoje", "/adoce-hoje")],
 };
 
 export const siteVisualAssetKeys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));

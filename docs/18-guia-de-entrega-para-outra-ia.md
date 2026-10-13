@@ -49,3 +49,12 @@ status: Norma oficial
 - Não confundir prévia com produção.
 - Não editar manualmente o HTML consolidado.
 - Não colocar linguagem, métricas ou rotinas da equipe no site público.
+
+
+### 08/10/2026 — fonte única determinada pelo proprietário
+
+Todo desenvolvimento, teste, revisão e publicação deste site deve usar exclusivamente `D:\AdoceOnLine`. É proibido criar outra cópia completa, pasta de release, réplica ou worktree para atualizar o produto. Histórico deve ser preservado no Git da pasta principal. A pasta `android` é um componente do mesmo produto, não outra fonte de desenvolvimento.
+
+Os comandos de desenvolvimento, testes, verificação, compilação e publicação verificam o caminho canônico antes de continuar. Cópias completas internas e cópias irmãs do mesmo projeto no volume da fonte oficial bloqueiam a validação. Uma marca de desativação não autoriza manter fonte paralela: compare o conteúdo, incorpore o que for válido ao Git principal e remova a cópia física.
+
+Em 13/10/2026, as cópias inventariadas foram comparadas e removidas. Qualquer agente que precise preservar uma tentativa deve usar commit ou branch no repositório principal, sem criar outro checkout, pasta de release ou worktree.

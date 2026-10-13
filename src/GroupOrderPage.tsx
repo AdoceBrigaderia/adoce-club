@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { navigateRoute } from "./route-paths";
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,6 +38,8 @@ import {
 } from "./pede-junto";
 import "./public-site.css";
 import "./pede-junto.css";
+
+const hasFirstAndLastName = (value: string) => value.trim().split(/\s+/).filter((part) => part.length >= 2).length >= 2;
 
 type DialogMode = "create" | "enter" | "join" | null;
 
@@ -183,6 +186,7 @@ export default function GroupOrderPage() {
 
   const createGroup = async (event: FormEvent) => {
     event.preventDefault();
+    if (!hasFirstAndLastName(createForm.name)) return setNotice("Informe seu nome e sobrenome para começar.");
     if (!isSupabaseConfigured) return setNotice("O serviço está temporariamente indisponível.");
     setBusy(true);
     setNotice("");
@@ -190,8 +194,8 @@ export default function GroupOrderPage() {
       group_name: createForm.groupName,
       organizer_name: createForm.name,
       organizer_phone: createForm.phone,
-      delivery_address: createForm.address,
-      delivery_reference: createForm.reference || null,
+      delivery_address: "Retirada no Cantinho Adoce",
+      delivery_reference: null,
     });
     setBusy(false);
     if (error) return setNotice(error.message);
@@ -215,7 +219,7 @@ export default function GroupOrderPage() {
     setDialog(null);
     setCreatingAnotherOrder(false);
     setSelectionOpen(true);
-    window.location.hash = `pede-junto?grupo=${encodeURIComponent(result.public_code)}&convite=${encodeURIComponent(result.invitation_token)}`;
+    navigateRoute(`/pede-junto?grupo=${encodeURIComponent(result.public_code)}&convite=${encodeURIComponent(result.invitation_token)}`);
     window.setTimeout(
       () => document.querySelector("#sala-pede-junto")?.scrollIntoView({ behavior: "smooth" }),
       80,
@@ -224,6 +228,7 @@ export default function GroupOrderPage() {
 
   const joinGroup = async (event: FormEvent) => {
     event.preventDefault();
+    if (!hasFirstAndLastName(joinForm.name)) return setNotice("Informe seu nome e sobrenome para entrar no pedido.");
     if (!code || !invitationToken) return;
     setBusy(true);
     setNotice("");
@@ -258,7 +263,7 @@ export default function GroupOrderPage() {
         ? parsePedeJuntoHash(new URL(value).hash)
         : parsePedeJuntoHash(`#pede-junto?${value.replace(/^.*\?/, "")}`);
       if (!parsed.code || !parsed.invitationToken) throw new Error();
-      window.location.hash = `pede-junto?grupo=${encodeURIComponent(parsed.code)}&convite=${encodeURIComponent(parsed.invitationToken)}`;
+      navigateRoute(`/pede-junto?grupo=${encodeURIComponent(parsed.code)}&convite=${encodeURIComponent(parsed.invitationToken)}`);
       window.location.reload();
     } catch {
       setNotice("Cole o link completo que você recebeu pelo WhatsApp.");
@@ -333,7 +338,7 @@ export default function GroupOrderPage() {
     : "";
   const progress = room
     ? roomProgressCopy(room)
-    : { title: "0 de 5 fatias", message: "Faltam 5 para liberar a entrega grátis.", tone: "building" as const };
+    : { title: "0 de 5 fatias", message: "Faltam 5 para enviar o pedido compartilhado.", tone: "building" as const };
   const viewer = room?.participants.find((participant) => participant.is_viewer);
   const isOrganizer = Boolean(access?.organizerToken);
   const canEdit = room?.status === "open" && Boolean(access?.participantToken);
@@ -354,7 +359,7 @@ export default function GroupOrderPage() {
         groupName: `Novo pedido · ${room.name}`.slice(0, 60),
         name: viewer?.name || room.organizer_name,
         phone: current.phone,
-        address: room.delivery_address,
+        address: "Retirada no Cantinho Adoce",
         reference: room.delivery_reference || "",
       }));
     }
@@ -371,11 +376,12 @@ export default function GroupOrderPage() {
 
       <section className="pede-junto-hero" id="inicio-pede-junto">
         <div className="pede-junto-hero-copy">
-          <a className="public-back on-dark" href="/#inicio"><ArrowLeft /> Voltar à Adoce</a>
+          <a className="public-back on-dark" href="/"><ArrowLeft /> Voltar à Adoce</a>
           <p className="pede-junto-kicker">Pede Junto Adoce</p>
-          <h1>Uma fatia custa R$ 16. <em>A entrega pode custar R$ 0.</em></h1>
-          <p>Você escolhe só a sua. Junte cinco fatias ou mais no mesmo endereço e a entrega fica por conta da Adoce.</p>
-          <strong className="pede-junto-unlock"><PartyPopper /> 5 fatias = entrega grátis</strong>
+          <h1>Fatias tradicionais a R$ 16. <em>Cada pessoa escolhe a sua.</em></h1>
+          {flavors.some((flavor) => flavor.base_price !== 16) ? <p>{flavors.filter((flavor) => flavor.base_price !== 16).map((flavor) => `${flavor.name}: ${money(flavor.base_price)}`).join(" · ")}</p> : null}
+          <p>Não fazemos entregas. O pedido do grupo é retirado aqui por uma pessoa de vocês ou por um motorista de aplicativo que vocês solicitarem.</p>
+          <strong className="pede-junto-unlock"><PartyPopper /> Pagamento individual por Pix</strong>
           <div className="pede-junto-hero-actions">
             <button onClick={() => openCreateDialog()}>Começar com a minha fatia <ArrowRight /></button>
             <button className="secondary" onClick={() => setDialog("enter")}>Entrar pelo convite <Link2 /></button>
@@ -389,11 +395,11 @@ export default function GroupOrderPage() {
       <section className="pede-junto-invite-band">
         <div>
           <h2>{room && !groupIsOpen ? "Bora de novo?" : "Bora de fatia?"}</h2>
-          <p>{room && !groupIsOpen ? <>Um novo pedido merece um <em>novo grupo.</em></> : <>Falta pouco pra nossa entrega ficar <em>grátis.</em></>}</p>
+          <p>{room && !groupIsOpen ? <>Um novo pedido merece um <em>novo grupo.</em></> : <>Cada um escolhe sua <em>fatia.</em></>}</p>
         </div>
         <div>
-          <strong>{room && !groupIsOpen ? "Outro pedido começa limpo, sem misturar o que já foi entregue." : "Cada um escolhe. Cada um paga o seu."}</strong>
-          <p>{room && !groupIsOpen ? "Você pode aproveitar o nome e o endereço anteriores, mas cada participante fará uma nova escolha." : "Sem vaquinha e sem uma pessoa pagar pelo grupo inteiro. Todo mundo recebe junto."}</p>
+          <strong>{room && !groupIsOpen ? "Outro pedido começa limpo, sem misturar o que já foi concluído." : "Cada um escolhe. Cada um paga o seu."}</strong>
+          <p>{room && !groupIsOpen ? "Você pode aproveitar o nome anterior, mas cada participante fará uma nova escolha." : "Sem vaquinha: cada um paga suas fatias por Pix. A retirada é combinada pelo grupo."}</p>
           <button onClick={() => room && groupIsOpen ? window.open(whatsappShare, "_blank") : openCreateDialog(Boolean(room))}>
             {room && !groupIsOpen ? <Plus /> : <MessageCircle />} {room && groupIsOpen ? "Convidar no WhatsApp" : room ? "Abrir novo grupo" : "Criar e convidar"}
           </button>
@@ -404,16 +410,16 @@ export default function GroupOrderPage() {
         {room ? (
           <div className="pede-junto-room-shell">
             <aside className="pede-junto-room-story">
-              <p>{room.status === "completed" ? <>Pedido entregue,<br />do jeitinho<br />Adoce.</> : <>Seu grupo,<br />tudo junto<br />num só lugar.</>}</p>
+              <p>{room.status === "completed" ? <>Pedido concluído,<br />do jeitinho<br />Adoce.</> : <>Seu grupo,<br />tudo junto<br />num só lugar.</>}</p>
               <Heart />
-              <small>{room.status === "open" ? "Ao chegar a cinco, a entrega é grátis. Depois disso, o grupo continua aberto." : room.status === "completed" ? "Este pedido terminou, mas o histórico continua aqui para você conferir." : "Este grupo já foi encerrado e não recebe novos participantes ou fatias."}</small>
+              <small>{room.status === "open" ? "Com cinco fatias, o grupo pode enviar o pedido. Depois disso, continua aberto até o organizador encerrar." : room.status === "completed" ? "Este pedido terminou, mas o histórico continua aqui para você conferir." : "Este grupo já foi encerrado e não recebe novos participantes ou fatias."}</small>
             </aside>
             <article className={`pede-junto-room ${progress.tone}`}>
               <header>
                 <div>
                   <small>{pedeJuntoStatuses[room.status]}</small>
                   <h2>{room.name}</h2>
-                  <p><MapPin /> {room.delivery_address}</p>
+                  <p><MapPin /> Retirada no Cantinho Adoce</p>
                 </div>
                 <span className="pede-junto-code">#{room.public_code}</span>
               </header>
@@ -429,9 +435,6 @@ export default function GroupOrderPage() {
                 ))}
                 {room.total_slices >= 5 ? <span className="more"><InfinityIcon /></span> : null}
               </div>
-              {room.free_delivery ? (
-                <div className="pede-junto-free"><PartyPopper /><span><strong>{room.status === "completed" ? "Entrega grátis aproveitada!" : "Entrega grátis liberada!"}</strong><small>{room.status === "open" ? "Continue chamando: quanto mais fatias, mais doce fica." : room.status === "completed" ? "Pedido entregue e benefício concluído com sucesso." : "Benefício garantido neste pedido."}</small></span></div>
-              ) : null}
               <div className="pede-junto-participants">
                 {room.participants.map((participant) => {
                   const amount = participant.items.reduce((sum, item) => sum + item.quantity, 0);
@@ -477,8 +480,8 @@ export default function GroupOrderPage() {
             </article>
             <aside className="pede-junto-room-rules">
               <Heart />
-              <strong>Regra da entrega grátis</strong>
-              <p>Mínimo de cinco fatias no mesmo endereço. O grupo pode continuar crescendo sem limite.</p>
+              <strong>Como retirar</strong>
+              <p>Uma pessoa do grupo retira no Cantinho Adoce ou vocês solicitam um motorista de aplicativo. Não fazemos entregas.</p>
               {availableTotal > 0 ? <small>{availableTotal} {availableTotal === 1 ? "fatia cadastrada" : "fatias cadastradas"} hoje.</small> : null}
             </aside>
           </div>
@@ -487,14 +490,14 @@ export default function GroupOrderPage() {
             <div>
               <small>Sala compartilhada</small>
               <h2>O grupo cresce até vocês decidirem encerrar.</h2>
-              <p>Na quinta fatia, a entrega grátis é desbloqueada. A sexta, a décima e todas as próximas continuam entrando normalmente.</p>
+              <p>Com cinco fatias, o grupo pode enviar o pedido. As próximas fatias continuam entrando normalmente.</p>
               <button onClick={() => openCreateDialog()}>Abrir meu Pede Junto <ArrowRight /></button>
             </div>
             <div className="pede-junto-milestones">
               {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => <span className={item <= 5 ? "filled" : ""} key={item}>{item}</span>)}
               <span className="more"><InfinityIcon /></span>
             </div>
-            <strong><PartyPopper /> A quinta libera. As próximas deixam o grupo ainda melhor.</strong>
+            <strong><PartyPopper /> A quinta permite enviar. As próximas deixam o grupo ainda melhor.</strong>
           </div>
         )}
         {notice ? <div className="pede-junto-notice" role="status">{notice}</div> : null}
@@ -507,7 +510,7 @@ export default function GroupOrderPage() {
           <li><Link2 /><strong>Compartilhe o convite</strong><p>O link abre a mesma sala para todo mundo no WhatsApp.</p></li>
           <li><ShoppingBag /><strong>Cada pessoa escolhe</strong><p>As escolhas ficam separadas pelo nome de cada participante.</p></li>
           <li><WalletCards /><strong>Cada um paga o seu</strong><p>Ninguém precisa adiantar ou cobrar o pagamento do grupo.</p></li>
-          <li><PartyPopper /><strong>Com cinco, é grátis</strong><p>A meta libera a entrega e o grupo segue aberto para receber mais.</p></li>
+          <li><PartyPopper /><strong>Com cinco, pode enviar</strong><p>O grupo segue aberto até o organizador encerrar.</p></li>
         </ol>
       </section>
 
@@ -527,7 +530,7 @@ export default function GroupOrderPage() {
 
       <section className="pede-junto-final">
         <div><Sparkles /><h2>Quem vai entrar na próxima fatia?</h2></div>
-        <strong>Chama +1.<br />Adoça +1.<br /><em>Entrega grátis.</em></strong>
+        <strong>Chama +1.<br />Adoça +1.<br /><em>Retira junto.</em></strong>
         <button onClick={() => openCreateDialog()}>Abrir meu Pede Junto <ArrowRight /></button>
       </section>
 
@@ -539,11 +542,11 @@ export default function GroupOrderPage() {
               <form onSubmit={createGroup}>
                 <small>{creatingAnotherOrder ? "Novo pedido · novo grupo" : "Pede Junto Adoce"}</small>
                 <h2 id="pede-junto-dialog-title">{creatingAnotherOrder ? "Vamos adoçar de novo?" : "Comece com a sua fatia."}</h2>
-                <p>{creatingAnotherOrder ? "Aproveitamos o nome e o endereço para facilitar. Participantes e fatias começam do zero." : "Você cria a sala, compartilha o link e decide quando encerrar."}</p>
+                <p>{creatingAnotherOrder ? "Aproveitamos o nome para facilitar. Participantes e fatias começam do zero." : "Você cria a sala, compartilha o link e decide quando encerrar."}</p>
+                <label>Seu nome e sobrenome<input required autoComplete="name" value={createForm.name} onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })} /></label>
                 <label>Nome do grupo<input required minLength={3} maxLength={60} value={createForm.groupName} onChange={(event) => setCreateForm({ ...createForm, groupName: event.target.value })} placeholder="Ex.: Intervalo da firma" /></label>
-                <div><label>Seu nome<input required value={createForm.name} onChange={(event) => setCreateForm({ ...createForm, name: event.target.value })} /></label><label>Seu WhatsApp<input required inputMode="tel" value={createForm.phone} onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })} placeholder="(85) 99999-9999" /></label></div>
-                <label>Endereço único da entrega<input required minLength={8} value={createForm.address} onChange={(event) => setCreateForm({ ...createForm, address: event.target.value })} placeholder="Rua, número, bairro e Fortaleza" /></label>
-                <label>Referência ou bloco <span>(opcional)</span><input value={createForm.reference} onChange={(event) => setCreateForm({ ...createForm, reference: event.target.value })} /></label>
+                <label>Seu WhatsApp<input required inputMode="tel" value={createForm.phone} onChange={(event) => setCreateForm({ ...createForm, phone: event.target.value })} placeholder="(85) 99999-9999" /></label>
+                <p>Retirada no Cantinho Adoce por você, outra pessoa do grupo ou motorista de aplicativo solicitado por vocês.</p>
                 <button disabled={busy}>{busy ? "Criando..." : "Criar minha sala"}<ArrowRight /></button>
               </form>
             ) : dialog === "enter" ? (
@@ -551,7 +554,7 @@ export default function GroupOrderPage() {
                 <small>Recebeu um convite?</small>
                 <h2 id="pede-junto-dialog-title">Entre no mesmo grupo.</h2>
                 <p>Cole o link enviado pelo organizador no WhatsApp.</p>
-                <label>Link do convite<input required value={inviteInput} onChange={(event) => setInviteInput(event.target.value)} placeholder="https://adocebrigaderia.com.br/#pede-junto?..." /></label>
+                <label>Link do convite<input required value={inviteInput} onChange={(event) => setInviteInput(event.target.value)} placeholder="https://adocebrigaderia.com.br/pede-junto?..." /></label>
                 <button>Abrir o grupo <ArrowRight /></button>
               </form>
             ) : (
@@ -559,7 +562,7 @@ export default function GroupOrderPage() {
                 <small>{room?.name}</small>
                 <h2 id="pede-junto-dialog-title">Agora escolha a sua.</h2>
                 <p>Cada pessoa entra com o próprio nome e paga apenas suas fatias.</p>
-                <label>Seu nome<input required value={joinForm.name} onChange={(event) => setJoinForm({ ...joinForm, name: event.target.value })} /></label>
+                <label>Seu nome e sobrenome<input required autoComplete="name" value={joinForm.name} onChange={(event) => setJoinForm({ ...joinForm, name: event.target.value })} /></label>
                 <label>Seu WhatsApp<input required inputMode="tel" value={joinForm.phone} onChange={(event) => setJoinForm({ ...joinForm, phone: event.target.value })} placeholder="(85) 99999-9999" /></label>
                 <button disabled={busy}>{busy ? "Entrando..." : "Entrar e escolher"}<ArrowRight /></button>
               </form>

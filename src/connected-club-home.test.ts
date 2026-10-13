@@ -18,17 +18,16 @@ describe("Clube conectado na página inicial", () => {
     expect(landing).not.toContain("<PublicHeader");
     expect(header).toContain("public-member-greeting");
     expect(header).toContain("progress} de 14 carimbos");
-    expect(header).toContain('`${accountHref}?view=qr`');
+    expect(header).not.toContain('view=qr');
   });
 
-  it("oferece cartão, QR e preferências sem voltar ao login", () => {
+  it("oferece cartão e preferências sem voltar ao login", () => {
     const summary = source("./ConnectedClubSummary.tsx");
     const header = source("./PublicHeader.tsx");
 
-    expect(summary).toContain('href="/#minha-conta"');
-    expect(summary).toContain('href="/#minha-conta?view=qr"');
-    expect(summary).toContain('href="/#minha-conta?view=profile"');
-    expect(header).toContain("Abrir meu QR Code");
+    expect(summary).toContain('href="/minha-conta"');
+    expect(summary).not.toContain('view=qr');
+    expect(summary).toContain('href="/minha-conta?view=profile"');
     expect(header).toContain("Abrir menu");
   });
 

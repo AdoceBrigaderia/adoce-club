@@ -47,7 +47,7 @@ export const DIRECTOR_PHASE_CONTEXT: Record<string, { title: string; purpose: st
   },
   "Fase 9": {
     title: "Encomendas",
-    purpose: "Amplia o sistema para tortas, docinhos e eventos somente depois que a venda imediata estiver estável.",
+    purpose: "Amplia o sistema para tortas e docinhos somente depois que a venda imediata estiver estável.",
   },
 };
 
@@ -131,7 +131,7 @@ const ALL_DIRECTOR_DECISIONS: DirectorDecision[] = [
   ["D53", "Impressão", "Qual mensagem original irá no rodapé?", "Escolher 3 a 5 mensagens curtas para alternar.", "Rubens e Beth", "Média", "Fase 7"],
   ["D54", "Impressão", "O comprovante terá preço ou apenas itens?", "Mostrar itens, quantidades, valores, total e status do pagamento.", "Rubens e Beth", "Alta", "Fase 7"],
   ["D55", "Impressão", "Quem poderá reimprimir?", "Operador pode reimprimir, sempre com registro e marca de 2ª VIA.", "Rubens", "Média", "Fase 7"],
-  ["D56", "Encomendas", "Quais linhas entram primeiro no novo fluxo de encomendas?", "Manter tortas e docinhos; eventos e escola entram após validar agenda e orçamento.", "Rubens e Beth", "Alta", "Fase 9"],
+  ["D56", "Encomendas", "Quais linhas entram no fluxo de encomendas?", "Manter tortas e docinhos.", "Rubens e Beth", "Alta", "Fase 9"],
   ["D57", "Encomendas", "Qual percentual de sinal será exigido?", "Definir por categoria; sugestão inicial de 50% quando aplicável.", "Rubens e Beth", "Crítica", "Fase 9"],
   ["D58", "Encomendas", "Quanto tempo um orçamento ficará válido?", "Definir validade visível e sem reservar data indefinidamente.", "Rubens", "Alta", "Fase 9"],
   ["D59", "Fidelidade", "Quando os carimbos serão concedidos?", "Somente após pagamento aprovado e venda concluída.", "Rubens e Beth", "Crítica", "Fase 4"],
@@ -197,7 +197,7 @@ const CURRENT_DECISION_COPY: Record<string, Pick<DirectorDecision, "question" | 
   },
   D34: {
     question: "Compras online no cartão poderão ser parceladas? A partir de qual valor?",
-    recommendation: "Não parcelar fatias de retirada imediata. Definir parcelamento e valor mínimo somente para encomendas e eventos.",
+    recommendation: "Não parcelar fatias de retirada imediata. Definir parcelamento e valor mínimo somente para encomendas.",
   },
   D36: {
     question: "Qual política de cancelamento e estorno será mostrada antes do pagamento?",
@@ -236,7 +236,7 @@ const CURRENT_DECISION_COPY: Record<string, Pick<DirectorDecision, "question" | 
     recommendation: "Escolher de 3 a 5 mensagens alegres e originais para alternar nas impressões.",
   },
   D57: {
-    question: "Qual sinal será exigido para tortas, docinhos, escola, eventos e decoração?",
+    question: "Qual sinal será exigido para tortas e docinhos?",
     recommendation: "Definir o percentual por categoria; usar 50% apenas onde fizer sentido para cobrir materiais e reservar agenda.",
   },
   D58: {

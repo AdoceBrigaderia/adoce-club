@@ -1,17 +1,14 @@
-import { Menu, QrCode, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import type { ConnectedClubSummary } from "./ConnectedClubSummary";
 import { useConnectedClubSummary } from "./ConnectedClubSummary";
 
 const publicLinks = [
-  ["Início", "/#inicio"],
-  ["Fatias", "/#adoce-hoje"],
-  ["Cardápio de fatias", "/#cardapio-fatias"],
-  ["Tortas", "/#encomendas"],
-  ["Docinhos", "/#docinhos"],
-  ["Eventos", "/#eventos"],
-  ["Adoce na Escola", "/#adoce-na-escola"],
-  ["Aluguel de decoração", "/#aluguel-decoracao"],
+  ["Início", "/"],
+  ["Fatias", "/adoce-hoje"],
+  ["Cardápio de fatias", "/cardapio-fatias"],
+  ["Tortas", "/encomendas"],
+  ["Docinhos", "/docinhos"],
 ] as const;
 
 export default function PublicHeader({
@@ -25,7 +22,7 @@ export default function PublicHeader({
   const member = clubSummary === undefined ? detectedClubSummary : clubSummary;
   const firstName = member?.firstName || "Cliente";
   const progress = member?.progress || 0;
-  const accountHref = member ? "/#minha-conta" : "/#entrar";
+  const accountHref = member ? "/minha-conta" : "/entrar";
 
   return (
     <header className="public-header public-shell-header">
@@ -33,7 +30,7 @@ export default function PublicHeader({
         <span>Olá,</span> <strong>{firstName}!</strong>
       </a>
 
-      <a className="public-brand" href="/#inicio" aria-label="Adoce Brigaderia — início">
+      <a className="public-brand" href="/" aria-label="Adoce Brigaderia — início">
         <img src="/site/logo.webp" alt="Adoce Brigaderia" />
       </a>
 
@@ -41,9 +38,6 @@ export default function PublicHeader({
         {member ? <div className="public-member-status" aria-label={`${progress} de 14 carimbos`}>
           <a className="public-member-progress" href={accountHref}>
             <strong>{progress} de 14</strong>
-          </a>
-          <a className="public-member-qr" href={`${accountHref}?view=qr`} aria-label="Abrir meu QR Code">
-            <QrCode />
           </a>
         </div> : null}
         <button

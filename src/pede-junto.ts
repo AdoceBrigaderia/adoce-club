@@ -65,20 +65,20 @@ export function progressCopy(total: number, minimum = 5) {
     const missing = minimum - total;
     return {
       title: `${total} de ${minimum} fatias`,
-      message: `Falta${missing === 1 ? "" : "m"} só ${missing} para liberar a entrega grátis.`,
+      message: `Falta${missing === 1 ? "" : "m"} ${missing} para enviar o pedido compartilhado.`,
       tone: "building" as const,
     };
   }
   if (total < 10) {
     return {
       title: `${total} fatias no grupo`,
-      message: "Entrega grátis liberada — o grupo continua aberto!",
+      message: "O grupo já pode enviar o pedido e continua aberto!",
       tone: "unlocked" as const,
     };
   }
   return {
     title: `${total} fatias no grupo`,
-    message: "Grupo gigante! A entrega já é grátis e ainda cabe mais gente.",
+    message: "O grupo já pode enviar o pedido e ainda cabe mais gente.",
     tone: "celebration" as const,
   };
 }
@@ -89,7 +89,7 @@ export function roomProgressCopy(room: PedeJuntoRoom) {
   }
   if (room.status === "completed") {
     return {
-      title: `${room.total_slices} fatias entregues`,
+      title: `${room.total_slices} fatias no pedido concluído`,
       message: "Pedido concluído — este grupo está encerrado.",
       tone: "celebration" as const,
     };
@@ -111,7 +111,7 @@ export function roomProgressCopy(room: PedeJuntoRoom) {
   return {
     title: `${room.total_slices} fatias no pedido`,
     message: "O grupo foi encerrado e este pedido está sendo cuidado pela Adoce.",
-    tone: room.free_delivery ? "unlocked" as const : "building" as const,
+    tone: "building" as const,
   };
 }
 
@@ -122,7 +122,7 @@ export function money(value: number) {
   }).format(value);
 }
 
-export function parsePedeJuntoHash(hash = window.location.hash) {
+export function parsePedeJuntoHash(hash = `${window.location.pathname}${window.location.search}${window.location.hash}`) {
   const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
   const params = new URLSearchParams(query);
   return {
@@ -132,8 +132,9 @@ export function parsePedeJuntoHash(hash = window.location.hash) {
 }
 
 export function pedeJuntoInviteUrl(code: string, invitationToken: string) {
-  const url = new URL(window.location.origin + window.location.pathname);
-  url.hash = `pede-junto?grupo=${encodeURIComponent(code)}&convite=${encodeURIComponent(invitationToken)}`;
+  const url = new URL("/pede-junto", window.location.origin);
+  url.searchParams.set("grupo", code);
+  url.searchParams.set("convite", invitationToken);
   return url.toString();
 }
 
@@ -151,13 +152,13 @@ export function savePedeJuntoAccess(code: string, access: StoredPedeJuntoAccess)
 }
 
 export function buildPedeJuntoWhatsAppMessage(room: PedeJuntoRoom, inviteUrl: string) {
-  const progress = room.free_delivery
-    ? `Já temos ${room.total_slices} fatias e a entrega grátis está liberada — mas o grupo continua aberto!`
-    : `Estamos com ${room.total_slices} de ${room.minimum_slices} fatias para liberar a entrega grátis.`;
+  const progress = room.total_slices >= room.minimum_slices
+    ? `Já temos ${room.total_slices} fatias e o grupo pode enviar o pedido — mas continua aberto!`
+    : `Estamos com ${room.total_slices} de ${room.minimum_slices} fatias para enviar o pedido compartilhado.`;
   return [
     "Bora de fatia? 🍰",
     progress,
-    "Cada um escolhe e paga o seu. Todo mundo recebe junto no mesmo endereço.",
+    "Cada um escolhe e paga o seu por Pix. A retirada é feita por uma pessoa do grupo ou por motorista de aplicativo solicitado por vocês.",
     `Entre no grupo “${room.name}”:`,
     inviteUrl,
   ].join("\n\n");
@@ -170,7 +171,7 @@ export const pedeJuntoStatuses: Record<PedeJuntoRoom["status"], string> = {
   awaiting_payment: "Aguardando pagamentos",
   preparing: "Em preparação",
   ready: "Pronto para sair",
-  completed: "Entregue",
+  completed: "Concluído",
   cancelled: "Cancelado",
   expired: "Prazo encerrado",
 };

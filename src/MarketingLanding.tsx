@@ -5,7 +5,7 @@ import {
   Heart,
   Leaf,
   ShoppingBag,
-  QrCode,
+  Search,
 } from "lucide-react";
 import { useConnectedClubSummary } from "./ConnectedClubSummary";
 import "./public-site.css";
@@ -44,18 +44,18 @@ export default function MarketingLanding() {
       </section>
 
       <section className="home-reference-actions" aria-label="Ações principais">
-        <a className="home-reference-order" href="/#adoce-hoje">
+        <a className="home-reference-order" href="/adoce-hoje">
           <span><ShoppingBag /></span>
           <strong>Fazer meu pedido</strong>
           <ArrowRight />
         </a>
-        <a className="home-reference-flavors" href="/#adoce-hoje">
+        <a className="home-reference-flavors" href="/adoce-hoje">
           Ver fatias disponíveis <ArrowRight />
         </a>
       </section>
 
       <section className="home-reference-commercial" aria-label="Catálogo Adoce">
-        <a className="home-reference-card cakes" href="/#encomendas">
+        <a className="home-reference-card cakes" href="/encomendas">
           <span className="home-reference-card-icon"><CakeSlice /></span>
           <div>
             <h2>Tortas incríveis</h2>
@@ -64,7 +64,7 @@ export default function MarketingLanding() {
           <span className="home-reference-card-arrow"><ArrowRight /></span>
         </a>
 
-        <a className="home-reference-card slices" href="/#adoce-hoje">
+        <a className="home-reference-card slices" href="/adoce-hoje">
           <span className="home-reference-card-icon"><Gift /></span>
           <img src="/adoce-hoje/chocolatudo.webp" alt="Fatia generosa da Adoce" />
           <div>
@@ -100,14 +100,14 @@ export default function MarketingLanding() {
         <div className="home-reference-club-benefits" aria-label="Como funciona o Clube Adoce">
           <article><Heart /><p><strong>Acumule</strong><span>1 fatia = 1 carimbo</span></p></article>
           <article><Gift /><p><strong>Resgate</strong><span>14 carimbos = 1 fatia</span></p></article>
-          <article><QrCode /><p><strong>Apresente</strong><span>Seu QR no atendimento</span></p></article>
+          <article><Search /><p><strong>Identifique-se</strong><span>Informe seu nome no atendimento</span></p></article>
         </div>
 
         <div className="home-reference-club-actions">
-          <a className="primary" href={summary ? "/#minha-conta" : "/#cadastro"}>
+          <a className="primary" href={summary ? "/minha-conta" : "/cadastro"}>
             {summary ? "Abrir meu Clube" : "Quero entrar no Clube"} <ArrowRight />
           </a>
-          {!summary && <a className="secondary" href="/#entrar">Já faço parte</a>}
+          {!summary && <a className="secondary" href="/entrar">Já faço parte</a>}
         </div>
       </section>
     </main>

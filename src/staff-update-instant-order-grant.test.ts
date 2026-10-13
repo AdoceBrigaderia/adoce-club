@@ -5,7 +5,7 @@ const operation = readFileSync("src/OperationInstantOrders.tsx", "utf8");
 const migration = readFileSync(
   "supabase/migrations/20260815192217_restore_staff_update_instant_order_grant.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("atualização de pedidos imediatos pela equipe", () => {
   it("mantém cancelamento e mudanças de etapa ligados à RPC protegida", () => {

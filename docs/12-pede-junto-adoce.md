@@ -1,40 +1,44 @@
 ---
 title: Pede Junto Adoce
 description: Regras, experiência, estoque, pagamento individual, operação e materiais de divulgação do pedido compartilhado de fatias.
-status: Publicado e validado no domínio principal
+status: Histórico; retirada do fluxo atual em 07/10/2026, pendente de publicação
 ---
 
 # Pede Junto Adoce
 
+## Encerramento do recurso
+
+Em 07/10/2026 foi decidida a retirada do Pede Junto. A interface pública e a operação deixam de oferecer criação, participação e processamento de novos grupos. Links antigos levam ao Adoce Hoje. Os registros existentes permanecem no histórico interno para consulta e auditoria. A desativação efetiva em produção depende da publicação da interface e da migração de permissões. As seções abaixo documentam o funcionamento anterior e não representam uma oferta vigente.
+
 ## Proposta
 
-Pede Junto Adoce substitui a experiência anterior de compra em grupo. Uma pessoa abre uma sala para um único endereço e compartilha o convite. Cada participante entra com o próprio nome e WhatsApp, escolhe seus sabores e quantidades e, depois da separação, recebe o próprio link de pagamento.
+Pede Junto Adoce substitui a experiência anterior de compra em grupo. Uma pessoa abre uma sala e compartilha o convite. Cada participante informa nome e sobrenome e WhatsApp, escolhe seus sabores e quantidades e, depois da separação, recebe as orientações de pagamento por Pix. A retirada é feita por uma pessoa do grupo ou por motorista de aplicativo solicitado pelo grupo. A Adoce não faz entregas.
 
 A promessa central é: **cada um escolhe, cada um paga o seu e todo mundo recebe junto**.
 
-## Entrega grátis e crescimento do grupo
+## Quantidade mínima e crescimento do grupo
 
-- A entrega grátis é liberada quando o grupo soma cinco fatias no mesmo endereço.
-- A quinta fatia libera o benefício, mas não fecha o grupo.
+- O grupo pode ser enviado quando soma cinco fatias.
+- A quinta fatia libera o envio, mas não fecha o grupo.
 - A sexta, a décima e todas as fatias seguintes continuam entrando normalmente.
 - Não existe limite máximo do grupo; o limite técnico de 50 fatias por participante protege a interface contra erro sem limitar o total coletivo.
 - Somente o organizador encerra a sala e envia o pedido para conferência da Adoce.
 
 ## Jornada do cliente
 
-1. O organizador informa nome do grupo, nome, WhatsApp e endereço único da entrega.
+1. O organizador informa nome e sobrenome, nome do grupo e WhatsApp.
 2. Escolhe uma ou mais fatias e compartilha o link pelo WhatsApp.
 3. Cada convidado entra na mesma sala, identifica-se e escolhe seus sabores.
-4. A sala mostra a quantidade coletiva e celebra quando a entrega grátis é liberada.
+4. A sala mostra a quantidade coletiva e informa quando o grupo já pode enviar o pedido.
 5. O grupo permanece aberto para receber mais participantes e fatias.
 6. O organizador encerra e envia o grupo para a Adoce.
 7. A equipe confere e reserva o estoque disponível.
-8. Cada participante recebe seu link individual de pagamento.
-9. A operação acompanha pagamentos, preparação, retirada ou entrega e conclusão.
-10. Quando o pedido fica **Entregue**, a sala deixa de oferecer convite ou entrada de novas pessoas.
+8. Cada participante recebe as orientações individuais para pagar por Pix.
+9. A operação acompanha pagamentos, preparação, retirada e conclusão.
+10. Quando o pedido fica **Concluído**, a sala deixa de oferecer convite ou entrada de novas pessoas.
 11. O histórico do pedido permanece visível e a ação principal passa a ser **Abrir novo grupo para outro pedido**.
 
-O novo grupo reutiliza apenas nome do organizador e endereço como conveniência. Ele recebe código próprio e começa sem participantes, fatias ou pagamentos do pedido anterior.
+O novo grupo reutiliza apenas o nome do organizador como conveniência. Ele recebe código próprio e começa sem participantes, fatias ou pagamentos do pedido anterior.
 
 ## Estoque e divergências
 
@@ -44,7 +48,7 @@ Se houver divergência, o grupo permanece salvo e a equipe pode remover apenas a
 
 ## Pagamento individual
 
-Na primeira versão, a equipe gera links individuais no Mercado Pago e os cola na área operacional. O participante só enxerga o próprio link. O WhatsApp informa que a fatia foi separada e que o link tem prazo de pagamento.
+O pagamento online é somente por Pix. A equipe só pode compartilhar links individuais configurados exclusivamente para Pix. O participante só enxerga o próprio link. O WhatsApp informa que a fatia foi separada e que o link tem prazo de pagamento. Até que o provedor dos links seja verificado para Pix exclusivo, o aceite desse caminho permanece pendente.
 
 Uma integração automática com o Mercado Pago deve ser adicionada em etapa posterior, depois da configuração segura das credenciais, dos webhooks e da conciliação de pagamentos.
 
@@ -53,10 +57,10 @@ Uma integração automática com o Mercado Pago deve ser adicionada em etapa pos
 A área interna apresenta:
 
 - grupos ativos e quantidade total de fatias;
-- indicador de entrega grátis liberada;
-- endereço, organizador e prazo da sala;
+- indicador de quantidade mínima para envio;
+- organizador e prazo da sala;
 - participantes, itens e valor individual;
-- campo para o link individual do Mercado Pago;
+- campo para o link individual de Pix;
 - envio da cobrança por WhatsApp;
 - confirmação de pagamento;
 - remoção de participante ou reserva divergente;

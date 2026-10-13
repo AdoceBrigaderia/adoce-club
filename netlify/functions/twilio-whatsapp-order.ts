@@ -1,3 +1,4 @@
+import { downloadAndStoreTwilioMedia } from "./_shared/whatsapp-media";
 import twilio from "twilio";
 import { env, hmacHex, normalizeBrazilPhone, serviceClient } from "./_shared/whatsapp-auth";
 import {
@@ -21,7 +22,6 @@ type Catalog = {
   service_date: string;
   flavors: CatalogFlavor[];
   sauces: BotOption[];
-  payment_methods: BotOption[];
 };
 type Conversation = { step: string; state: OrderState } | null;
 type OrderState = {
@@ -31,8 +31,6 @@ type OrderState = {
   name?: string;
   sauces?: BotOption[];
   sauce?: BotOption;
-  payments?: BotOption[];
-  payment?: BotOption;
   pickupMethod?: "customer" | "driver";
   pickupTime?: string;
 };
@@ -125,6 +123,107 @@ export default async (request: Request) => {
   if (!admin) return responseXml(twiml(), 503);
   const phoneHash = await hmacHex(hmacSecret, `phone:${phone}`);
 
+
+  const mediaUrl = form.get("MediaUrl0") || "";
+  const mediaContentType = form.get("MediaContentType0") || "";
+  const hasMedia = Number(form.get("NumMedia") || "0") > 0 && Boolean(mediaUrl);
+  if (hasMedia) {
+      const storeInboundMedia = async (threadId: string) => {
+    if (!hasMedia) return;
+    const count=Number(form.get("NumMedia")||"0");
+    if(!Number.isInteger(count)||count<1||count>10)throw Error("media_count");
+    for(let index=0;index<count;index+=1){
+    const sourceType=form.get(`MediaContentType${index}`)||"";
+    const stored = await downloadAndStoreTwilioMedia(
+      admin,
+      form.get(`MediaUrl${index}`)||"",
+      sourceType,
+      env("TWILIO_ACCOUNT_SID") || "",
+      authToken,
+      `inbound/${threadId}`,
+      `${messageSid}-${index}.${sourceType.split("/").at(-1) || "bin"}`,
+    );
+    const { error } = await admin.rpc("server_store_whatsapp_inbound_media", {
+      requested_thread_id:threadId,requested_sid:`${messageSid}-media${index}`,requested_body:body || `Mídia recebida (${stored.kind})`,
+      requested_kind:stored.kind,requested_path:stored.storagePath,requested_type:stored.contentType,
+      requested_filename:stored.filename,requested_size:stored.sizeBytes,requested_bucket:"whatsapp-support-media",
+    });
+    if (error) throw new Error(`media_store:${error.code}`);
+    }
+  };
+
+
+    try {
+      const { data: prepared, error: prepareError } = await admin.rpc("server_prepare_whatsapp_order_message", {
+        requested_message_sid: messageSid, requested_phone_hmac: phoneHash,
+      });
+      if (prepareError || !prepared?.allowed) return responseXml(twiml(), 503);
+      if (prepared.process === false) return responseXml(String(prepared.response_xml || twiml()));
+      const observed = await admin.rpc("server_observe_whatsapp_message", {
+        requested_phone_hmac: phoneHash, requested_phone_last4: phone.slice(-4), requested_message_sid: messageSid, requested_body: body,
+      });
+      if (observed.error || !observed.data?.id) return responseXml(twiml(), 503);
+      const observedThread = observed.data as { id: string; automation_mode: "bot" | "human" };
+      const conversation = prepared.conversation as Conversation;
+      const finish = async (message: string) => {
+        const { data: xml, error } = await admin.rpc("server_finish_observed_whatsapp_message", {
+          requested_message_sid: messageSid, requested_phone_hmac: phoneHash, requested_phone_last4: phone.slice(-4),
+          requested_response_xml: twiml(message), requested_step: null, requested_state: null, requested_expires_at: null,
+          requested_clear: false, requested_body: message, requested_handoff: false,
+        });
+        return responseXml(typeof xml === "string" && !error ? xml : twiml(), error ? 503 : 200);
+      };
+          const receiptOrderNumber = body.match(/\bFAT-\d{8}-[A-Z0-9]+\b/i)?.[0].toUpperCase() || null;
+    if (receiptOrderNumber && !hasMedia) {
+      const linked=await admin.rpc("server_link_order_receipts", {
+        requested_phone:phone,requested_phone_hmac:phoneHash,requested_order_number:receiptOrderNumber,
+      });
+      if(linked.error) throw new Error("receipt_link");
+      if(linked.data?.linked>0) return await finish(`O primeiro comprovante pendente foi vinculado ao pedido ${receiptOrderNumber}. A equipe vai conferir o pagamento.${linked.data.pending>0?" Ainda há outro comprovante pendente: envie o número do pedido correspondente ao próximo arquivo, na ordem em que você enviou.":""}`);
+    }
+    // Aceita comprovantes inclusive apos concluir a conversa e durante atendimento humano.
+    const inSupport=observedThread.automation_mode === "human" || conversation?.step === "handoff";
+    const receiptContext=!inSupport || Boolean(receiptOrderNumber) || /comprovante|paguei|pagamento|\bpix\b/i.test(body);
+    if (hasMedia && receiptContext && (mediaContentType.startsWith("image/") || mediaContentType === "application/pdf")) {
+      let receiptResult: {order_number?:string;candidates?:string[]} = {};
+      const count=Number(form.get("NumMedia") || "0");
+      if(!Number.isInteger(count) || count<1 || count>10) return responseXml(twiml("Envie até 10 arquivos por mensagem."),400);
+      for(let index=0;index<count;index+=1) {
+        const type=form.get(`MediaContentType${index}`) || "";
+        if(!["image/jpeg","image/png","image/webp","application/pdf"].includes(type))
+          return await finish("Envie o comprovante como imagem JPG, PNG, WebP ou PDF.");
+      }
+      for(let index=0;index<count;index+=1) {
+        const type=form.get(`MediaContentType${index}`) || "";
+        const stored=await downloadAndStoreTwilioMedia(admin,form.get(`MediaUrl${index}`) || "",type,
+          env("TWILIO_ACCOUNT_SID") || "",authToken,"receipts",`${messageSid}-${index}`,"order-payment-receipts");
+        const saved=await admin.rpc("server_save_order_receipt",{
+          requested_phone:phone,requested_phone_hmac:phoneHash,requested_order_number:receiptOrderNumber,
+          requested_message_sid:index===0?messageSid:`${messageSid}-${index}`,
+          requested_storage_path:stored.storagePath,requested_content_type:stored.contentType,requested_size_bytes:stored.sizeBytes,
+        });
+        if(saved.error) throw new Error("receipt_save");
+        const logged=await admin.rpc("server_store_whatsapp_inbound_media",{
+          requested_thread_id:observedThread.id,requested_sid:`${messageSid}-file${index}`,requested_body:body || "Comprovante recebido; aguardando conferência da equipe.",
+          requested_kind:stored.kind,requested_path:stored.storagePath,requested_type:stored.contentType,
+          requested_filename:stored.filename,requested_size:stored.sizeBytes,requested_bucket:"order-payment-receipts",
+        });
+        if(logged.error) throw new Error("receipt_history");
+        receiptResult=saved.data || {};
+      }
+      if(receiptResult.order_number) return await finish(`Comprovante guardado no pedido ${receiptResult.order_number}. A equipe da Adoce vai conferir o pagamento.`);
+      return await finish(`Guardei o anexo. Para vincular o primeiro comprovante pendente ao pedido correto, envie o número completo do pedido (FAT-...). Se enviou mais de um arquivo em mensagens diferentes, identifique cada pedido na mesma ordem dos envios.${receiptResult.candidates?.length ? `\nSeus pedidos: ${receiptResult.candidates.join(", ")}` : ""} O pagamento ainda será conferido pela equipe.`);
+    }
+    if (inSupport) {
+      await storeInboundMedia(observedThread.id);
+      return await finish("");
+    }
+
+      await storeInboundMedia(observedThread.id);
+      return await finish("");
+    } catch { return responseXml(twiml(), 503); }
+  }
+
   const { data: claim, error: claimError } = await admin.rpc("server_begin_whatsapp_order_message", {
     requested_message_sid: messageSid,
     requested_phone_hmac: phoneHash,
@@ -186,20 +285,30 @@ export default async (request: Request) => {
       return await finish("Certo. Vou pausar a automaÃ§Ã£o. A equipe da Adoce continuarÃ¡ por aqui assim que estiver disponÃ­vel.");
     }
 
-    const startMenu = async () => {
+    const startMenu = async (name: string) => {
       const catalog = await loadCatalog();
       const flavors = catalog.flavors.slice(0, 20);
       if (!flavors.length) {
         await save("handoff", {});
         return await finish("NÃ£o hÃ¡ fatias disponÃ­veis para pedido automÃ¡tico agora. Digite *ATENDENTE* para falar com a Adoce.");
       }
-      await save("choose_items", { flavors });
+      await save("choose_items", { flavors, name });
       return await finish(catalogMessage(flavors));
+    };
+
+    const startConversation = async () => {
+      const catalog = await loadCatalog();
+      const specialFlavors = catalog.flavors.filter((flavor) => flavor.price !== 16);
+      const priceIntroduction = specialFlavors.length
+        ? `As fatias tradicionais custam R$ 16,00. ${specialFlavors.map((flavor) => `${flavor.name} custa ${Number(flavor.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`).join("; ")}.`
+        : "Cada fatia custa R$ 16,00.";
+      await save("name", {});
+      return await finish(`Oi! Que bom ter você por aqui 🍰\n\nJá conhece as fatias da Adoce? ${priceIntroduction}\n\nNão fazemos entregas. Seu pedido pode ser retirado aqui por você ou por um motorista de aplicativo que você solicitar.\n\nPara começar, qual é seu nome e sobrenome?`);
     };
 
     if (command === "menu" || command === "pedido" || command === "pedir" || command === "comprar") {
       await clear();
-      return await startMenu();
+      return await startConversation();
     }
 
     const { data: loaded, error: conversationError } = await admin.rpc(
@@ -208,33 +317,30 @@ export default async (request: Request) => {
     );
     if (conversationError) throw new Error(`conversation:${conversationError.code}`);
     const conversation = (loaded || null) as Conversation;
-    if (!conversation) return await startMenu();
+    if (!conversation) return await startConversation();
     if (conversation.step === "handoff")
       return await finish("A automaÃ§Ã£o estÃ¡ pausada para este atendimento. Envie *MENU* para recomeÃ§ar.");
     if (conversation.step === "completed")
       return await finish("Seu pedido anterior jÃ¡ foi registrado. Envie *MENU* para fazer outro pedido.");
 
     const state = conversation.state || {};
+    if (conversation.step === "name") {
+      if (!isFullName(body)) return await finish("Informe seu nome e sobrenome. Exemplo: *Maria da Silva*.");
+      return await startMenu(body.trim());
+    }
     if (conversation.step === "choose_items") {
       const flavors = state.flavors || [];
       const parsed = parseItemSelection(body, flavors);
       if ("error" in parsed) return await finish(`${parsed.error}\n\n${catalogMessage(flavors)}`);
       const next = { ...state, selections: parsed.selections, operationKey: crypto.randomUUID() };
-      await save("name", next);
-      return await finish("Qual Ã© seu *nome e sobrenome*?");
-    }
-
-    if (conversation.step === "name") {
-      if (!isFullName(body)) return await finish("Informe seu nome e sobrenome. Exemplo: *Maria da Silva*.");
       const catalog = await loadCatalog();
-      const next = { ...state, name: body.trim(), sauces: catalog.sauces, payments: catalog.payment_methods };
+      const nextWithSauces = { ...next, sauces: catalog.sauces };
       if (catalog.sauces.length) {
-        await save("sauce", next);
+        await save("sauce", nextWithSauces);
         return await finish(`${optionsMessage("Escolha uma calda para todas as fatias:", catalog.sauces)}\n${catalog.sauces.length + 1}. Sem calda`);
       }
-      if (!catalog.payment_methods.length) return await finish("Nenhuma forma de pagamento estÃ¡ disponÃ­vel. Digite *ATENDENTE*.");
-      await save("payment", { ...next, sauce: { code: "", label: "Sem calda" } });
-      return await finish(optionsMessage("Como deseja pagar?", catalog.payment_methods));
+      await save("pickup_method", { ...nextWithSauces, sauce: { code: "", label: "Sem calda" } });
+      return await finish("O pagamento é por *Pix*, após a confirmação da disponibilidade.\n\nQuem fará a retirada?\n\n1. Eu mesma(o)\n2. Motorista de aplicativo que eu solicitar");
     }
 
     if (conversation.step === "sauce") {
@@ -245,17 +351,13 @@ export default async (request: Request) => {
         : parseOption(body, sauces);
       if (!sauce)
         return await finish(`${optionsMessage("Escolha uma das caldas:", sauces)}\n${sauces.length + 1}. Sem calda`);
-      const payments = state.payments || [];
-      if (!payments.length) return await finish("Nenhuma forma de pagamento estÃ¡ disponÃ­vel. Digite *ATENDENTE*.");
-      await save("payment", { ...state, sauce });
-      return await finish(optionsMessage("Como deseja pagar?", payments));
+      await save("pickup_method", { ...state, sauce });
+      return await finish("O pagamento é por *Pix*, após a confirmação da disponibilidade.\n\nQuem fará a retirada?\n\n1. Eu mesma(o)\n2. Motorista de aplicativo que eu solicitar");
     }
 
     if (conversation.step === "payment") {
-      const payment = parseOption(body, state.payments || []);
-      if (!payment) return await finish(optionsMessage("Escolha a forma de pagamento pelo nÃºmero:", state.payments || []));
-      await save("pickup_method", { ...state, payment });
-      return await finish("Quem farÃ¡ a retirada?\n\n1. Eu mesma(o)\n2. Entregador de aplicativo");
+      await save("pickup_method", state);
+      return await finish("O pagamento é por *Pix*. Quem fará a retirada?\n\n1. Eu mesma(o)\n2. Motorista de aplicativo que eu solicitar");
     }
 
     if (conversation.step === "pickup_method") {
@@ -280,7 +382,7 @@ export default async (request: Request) => {
         name: next.name || "Cliente",
         selections: next.selections || [],
         sauceLabel: next.sauce?.label || "Sem calda",
-        paymentLabel: next.payment?.label || "A combinar",
+        paymentLabel: "Pix",
         pickupMethod: next.pickupMethod || "customer",
         pickupTime,
       }));
@@ -309,7 +411,7 @@ export default async (request: Request) => {
         requested_customer_name: state.name,
         requested_customer_phone: phone,
         requested_items: requestedItems,
-        requested_payment_method: state.payment?.code,
+        requested_payment_method: "pix",
         requested_pickup_time: state.pickupTime,
         requested_pickup_method: state.pickupMethod,
       });
@@ -325,7 +427,7 @@ export default async (request: Request) => {
       ].join("\n"));
     }
 
-    return await startMenu();
+    return await startConversation();
   } catch (error) {
     console.error("whatsapp order bot failed", error instanceof Error ? error.message.split(":")[0] : "unknown");
     return await finish("NÃ£o consegui continuar agora. Envie *MENU* para tentar novamente ou *ATENDENTE*.", 503);

@@ -4,9 +4,11 @@ import { describe, expect, it } from "vitest";
 const read = (file: string) => readFileSync(new URL(file, import.meta.url), "utf8");
 
 describe("paginas publicas para busca", () => {
-  it("mantem o fallback de rotas sem engolir documentacao e 404 explicita", () => {
+  it("mantem o fallback de rotas e retira a documentacao antiga do site", () => {
     const netlify = read("../netlify.toml").replace(/\r\n/g, "\n");
-    expect(netlify).toContain('from = "/documentacao"');
+    expect(netlify).toContain('from = "/documentacao"\n  to = "/"\n  status = 301');
+    expect(netlify).toContain('from = "/documentacao.html"\n  to = "/"\n  status = 301');
+    expect(netlify).not.toContain("publish-docs.mjs");
     expect(netlify).toContain('from = "/404"');
     expect(netlify).toContain('from = "/*"\n  to = "/index.html"\n  status = 200');
   });

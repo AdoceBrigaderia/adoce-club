@@ -30,14 +30,14 @@ export default function SliceMenuPage() {
       <div className="slice-menu-facts" aria-label="Informações do cardápio">
         <article><ShoppingBag /><div><strong>Apenas pedidos on-line</strong><span>Terça a sábado · 9h às 16h</span></div></article>
         <article><Store /><div><strong>Cantinho Adoce</strong><span>Venha escolher sua fatia ou peça on-line · Terça a sábado · 17h às 22h</span></div></article>
-        <article><Heart /><div><strong>Valores das fatias</strong><span>Tradicionais R$ 16 · Premium R$ 20</span></div></article>
+        <article><Heart /><div><strong>Valores das fatias</strong><span>Demais sabores R$ 16 · Torta de Pudim: valor a consultar</span></div></article>
       </div>
       <div className="slice-menu-heading"><div><p>Sabores do dia</p><h2>Um destaque para cada dia</h2></div><span>Consulte a produção e faça sua reserva com antecedência.</span></div>
       <div className="slice-daily-grid">{menuDays.map(item => <article key={item.day}><button className="product-image-trigger" type="button" onClick={() => setViewedImage({ src: item.image, alt: `Fatia ${item.daily}` })}><img src={item.image} alt={`Fatia ${item.daily}`} /></button><div><span>{item.day}</span><strong>{item.daily}</strong><small><Star /> Sabor do dia</small></div></article>)}</div>
       <section className="slice-menu-order">
         <div><p>Como pedir</p><h2>Escolha, consulte e combine sua retirada.</h2></div>
         <ol><li><span>1</span>Escolha o sabor e o dia.</li><li><span>2</span>Monte o pedido pelo site.</li><li><span>3</span>Confirme a disponibilidade e a retirada.</li></ol>
-        <div className="slice-menu-channels"><a href="/#adoce-hoje"><ShoppingBag /> Montar pedido</a><span><Camera /> Instagram</span><span><MessageCircle /> App 99</span></div>
+        <div className="slice-menu-channels"><a href="/adoce-hoje"><ShoppingBag /> Montar pedido</a><span><Camera /> Instagram</span><span><MessageCircle /> App 99</span></div>
         <p className="slice-menu-note"><Clock3 /> Pedidos on-line: terça a sábado, das 9h às 16h.</p>
       </section>
       <ProductImageViewer image={viewedImage} images={viewerImages} onClose={() => setViewedImage(null)} />

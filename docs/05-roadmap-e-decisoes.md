@@ -24,7 +24,7 @@ A base precisa nascer preparada para grupos, duas trilhas de fidelidade e prêmi
 - Cliente individual e Cartão em Grupo.
 - Livro imutável de movimentações.
 - Progresso, prêmios acumuláveis e cartões completados.
-- Área de atendimento com QR real, busca, compra e resgate.
+- Área de atendimento com busca, compra e resgate.
 - Administração de funcionários e auditoria.
 
 **Critério de saída:** dois dispositivos diferentes enxergam o mesmo saldo e uma operação concorrente nunca duplica carimbos.
@@ -110,6 +110,10 @@ online mostra somente essas pendências atuais para Rubens e Beth.
 - Samsung Wallet.
 - Níveis pagos, assinatura ou marketplace.
 - Gamificação sem relação direta com compra, indicação ou relacionamento aprovado.
+
+## Decisão de retirada em 07/10/2026
+
+Rubens autorizou expressamente a retirada completa de Festas e eventos, Adoce na Escola, Decoração e da funcionalidade de QR Code do site público, do Clube Adoce e da Adoce Operação, com publicação imediata após validação. O motivo informado foi a decisão de não trabalhar mais com essas ofertas e de não utilizar QR Code. Os registros históricos de pedidos e clientes permanecem preservados para auditoria.
 
 ## Controle de alterações
 

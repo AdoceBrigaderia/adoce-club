@@ -1,4 +1,4 @@
-import { ArrowRight, Gift, Heart, QrCode, ShieldCheck } from "lucide-react";
+import { ArrowRight, Gift, Heart, Search, ShieldCheck } from "lucide-react";
 import { ConnectedHomeClubCard, useConnectedClubSummary } from "./ConnectedClubSummary";
 import { decidirPorta } from "./identidade-do-clube";
 import "./public-site.css";
@@ -8,7 +8,6 @@ export default function ClubExperience() {
   const { summary } = useConnectedClubSummary();
   const porta = decidirPorta({
     sessao: Boolean(summary),
-    tokenDoCartao: null,
     membro: summary ? { primeiroNome: summary.firstName, carimbos: summary.progress } : null,
     tokenNaUrl: null,
   });
@@ -38,13 +37,13 @@ export default function ClubExperience() {
       <section className="app-club-benefits">
         <article><Heart /><strong>Acumule</strong><span>1 fatia = 1 carimbo</span></article>
         <article><Gift /><strong>Resgate</strong><span>14 carimbos = 1 fatia</span></article>
-        <article><QrCode /><strong>Apresente</strong><span>Seu QR no atendimento</span></article>
+        <article><Search /><strong>Identifique-se</strong><span>Informe seu nome no atendimento</span></article>
       </section>
 
       {porta.porta === "convite" ? (
         <section className="app-club-access">
-          <a className="app-button primary" href="/#cadastro">Quero entrar no Clube <ArrowRight /></a>
-          <a className="app-button secondary" href="/#entrar">Já faço parte</a>
+          <a className="app-button primary" href="/cadastro">Quero entrar no Clube <ArrowRight /></a>
+          <a className="app-button secondary" href="/entrar">Já faço parte</a>
           <small><ShieldCheck /> Seus dados ficam protegidos.</small>
         </section>
       ) : null}

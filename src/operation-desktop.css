@@ -1,0 +1,50 @@
+/* Organização de desktop; navegação permanece em operation-shell.css. */
+@media (min-width: 1280px) {
+  .operation-home .operation-dashboard-v4 {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+    grid-template-areas: "heading heading" "heroes status" "priority whatsapp" "metrics metrics" "shortcuts printer";
+    gap: 20px;
+  }
+  .operation-home .operation-dashboard-v4:has(> .operation-dashboard-notice) {
+    grid-template-areas: "heading heading" "notice notice" "heroes status" "priority whatsapp" "metrics metrics" "shortcuts printer";
+  }
+  .operation-home .operation-dashboard-heading { grid-area: heading; }
+  .operation-home .operation-dashboard-notice { grid-area: notice; }
+  .operation-home .operation-dashboard-heroes { grid-area: heroes; }
+  .operation-home .operation-dashboard-v4 .operation-device-status { grid-area: status; margin: 0; align-content: center; }
+  .operation-home .operation-dashboard-priority { grid-area: priority; margin: 0; }
+  .operation-home .operation-dashboard-whatsapp { grid-area: whatsapp; margin: 0; }
+  .operation-home .operation-dashboard-metrics { grid-area: metrics; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .operation-home .operation-dashboard-shortcuts { grid-area: shortcuts; margin: 0; }
+  .operation-home .operation-dashboard-v4 > .native-printer-settings { grid-area: printer; margin: 0; align-content: center; }
+  .operation-home .operation-dashboard-heroes button { min-height: 126px; }
+  .operation-home .operation-management { max-width: none; }
+  .operation-home .operation-management .mg-grid-2 { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+  .operation-home .operation-management .mg-kpis { gap: 16px; }
+  .operation-home .operation-management .mg-card { padding: 22px; }
+  .operation-home .operation-management .mg-grid-2 .mg-card { min-height: 260px; }
+  .operation-home .content-admin { max-width: none; width: 100%; min-width: 0; }
+  .operation-home .content-admin .admin-product-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .operation-home .cash-register-layout { grid-template-columns: minmax(0, 1fr) 360px; }
+  .operation-home .cash-register-flavors { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .operation-home .cash-register-cart { top: calc(var(--op-sticky-top) + 16px); }
+  .operation-home .balcao { max-width: none; width: 100%; }
+  .operation-home .bal-busca { max-width: 760px; }
+  .operation-home .bal-lista { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .operation-home .bal-novo { max-width: 760px; }
+  .operation-home .commerce-settings-grid { gap: 20px; }
+  .operation-home .commerce-settings-grid .commerce-tool-card { padding: 24px; }
+  .operation-home .commerce-settings-grid .commerce-tool-card > label { max-width: 680px; }
+}
+@media (min-width: 1600px) {
+  .operation-home .operation-dashboard-metrics { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .operation-home .commerce-settings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .operation-home .commerce-settings-grid > .commerce-tool-card:last-child { grid-column: 1 / -1; }
+  .operation-home .payment-method-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
+}
+@media (min-width: 2400px) {
+  .operation-home .operation-dashboard-v4 { gap: 24px; }
+  .operation-home .operation-dashboard-metrics button { min-height: 130px; }
+  .operation-home .operation-dashboard-shortcuts button { min-height: 125px; }
+}

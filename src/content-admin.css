@@ -654,3 +654,39 @@
 }
 /* Filtro acionável usado pelos alertas de estoque da Central da operação. */
 .availability-filter{display:flex;gap:8px;overflow-x:auto;margin:18px 0 8px}.availability-filter button{border:1px solid var(--access-line);border-radius:999px;background:#fffaf5;color:#76564c;padding:9px 13px;white-space:nowrap;font-size:.68rem;font-weight:850;cursor:pointer}.availability-filter button.active{border-color:var(--access-chocolate);background:var(--access-chocolate);color:white}.availability-filter button.active.warning{border-color:#a75c31;background:#a75c31}.availability-filter-notice{margin:0 0 12px;padding:10px 12px;border-left:3px solid #a75c31;background:#fff4e8;color:#81523e;font-size:.68rem}.availability-filter-empty{min-height:170px;display:grid;place-items:center;align-content:center;gap:7px;text-align:center;color:#557661}.availability-filter-empty svg{width:26px}.availability-filter-empty small{color:#86675e}
+
+/* Auditoria 23/09/2026 — Produtos e Produção de hoje.
+   Lista primeiro, busca, formulário só quando pedido, lotes recolhidos,
+   textos e botões em tamanho de uso no balcão. */
+.content-admin .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.admin-list-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 4px 0 14px; }
+.admin-search { flex: 1 1 260px; display: block; }
+.admin-search input { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid #e0c3b2; border-radius: 12px; background: #fff; color: #35130d; font: 500 16px Inter, system-ui, sans-serif; }
+.admin-list-toolbar .admin-primary { min-height: 48px; margin: 0; }
+.admin-list-count { margin: 0 0 10px; color: #6f5249; font-size: 14px; }
+.availability-search { margin: 8px 0 10px; }
+.availability-summary { margin: 0 0 10px; color: #4d342c; font: 600 15px Inter, system-ui, sans-serif; }
+
+.availability-list article { grid-template-columns: auto minmax(160px, 1fr) minmax(170px, 210px) minmax(220px, 1.2fr); padding: 0.7rem 0; }
+.availability-list small { font-size: 13px; color: #6f5249; }
+.availability-list select { min-height: 44px; font-size: 15px; }
+details.availability-batches > summary { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px solid #e7cdbd; border-radius: 10px; background: #fffaf5; color: #6a382d; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; }
+details.availability-batches[open] > summary { margin-bottom: 8px; }
+.availability-batch-row label { font-size: 12px; }
+.availability-batch-row input { min-height: 44px; font-size: 15px; }
+.availability-batch-row > button { min-height: 44px; min-width: 44px; }
+.availability-batch-row { grid-template-columns: minmax(112px,1fr) minmax(88px,.7fr) auto 44px 44px; }
+.availability-batch-total { font-size: 13px; }
+
+@media (max-width: 767px) {
+  .availability-list article { grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; }
+  .availability-list select,
+  .availability-batches { grid-column: 1 / -1; }
+  .content-admin .admin-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .admin-product-grid .product-thumb { height: 110px; max-height: 110px; overflow: hidden; }
+  .admin-product-grid .product-thumb img { height: 110px; object-fit: cover; }
+  .admin-product-grid article h3 { font-size: 1.1rem; }
+  .admin-product-grid article p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; }
+  .admin-product-grid .product-actions { flex-wrap: wrap; }
+  .admin-product-grid .product-actions button { flex: 1 1 100%; min-height: 44px; }
+}

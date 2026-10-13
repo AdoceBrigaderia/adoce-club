@@ -68,14 +68,15 @@ describe("o organizador acompanha, não cobra", () => {
     expect(resumoParaOrganizador(grupo())).toContain("não precisa cobrar ninguém");
   });
 
-  it("com o grupo aberto, mostra quanto falta para a entrega grátis", () => {
+  it("com o grupo aberto, mostra quanto falta para enviar", () => {
     const texto = resumoParaOrganizador(grupo({ fechado: false, totalDeFatias: 3 }));
     expect(texto).toContain("faltam 2");
+    expect(texto).not.toContain("entrega grátis");
   });
 
   it("cinco fatias é o mínimo, não o teto — ainda cabe mais gente", () => {
     const texto = resumoParaOrganizador(grupo({ fechado: false, totalDeFatias: 11 }));
-    expect(texto).toContain("Ainda cabe mais gente");
+    expect(texto).toContain("ainda cabe mais gente");
   });
 
   it("quando todos acertaram, a mensagem fecha o assunto", () => {

@@ -14,11 +14,11 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
   return (
     <main className="legal-page">
       <header>
-        <a className="legal-brand" href="/#inicio">
+        <a className="legal-brand" href="/">
           <img src="/site/logo.webp" alt="Adoce Brigaderia" />
           <strong>Adoce Brigaderia</strong>
         </a>
-        <a href="/#inicio"><ArrowLeft /> Voltar ao site</a>
+        <a href="/"><ArrowLeft /> Voltar ao site</a>
       </header>
       <article>
         <span>{privacy ? "Privacidade e dados pessoais" : "Clube Adoce"}</span>
@@ -82,7 +82,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <p>
               Dados e imagens identificáveis de crianças somente serão tratados com
               autorização específica do responsável e conforme o melhor interesse da
-              criança. Solicitações do Adoce na Escola devem ser feitas por um adulto.
+              criança.
             </p>
             <h2>Contato</h2>
             <p>
@@ -102,7 +102,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <h2>Carimbos e recompensa</h2>
             <ul>
               <li>Cada fatia tradicional ou premium paga gera um carimbo.</li>
-              <li>Encomendas, tortas inteiras, docinhos e eventos não geram carimbos.</li>
+              <li>Encomendas, tortas inteiras e docinhos não geram carimbos.</li>
               <li>Ao completar 14 carimbos, o participante recebe uma fatia tradicional grátis.</li>
               <li>Uma fatia premium pode ser escolhida mediante pagamento da diferença vigente.</li>
               <li>A recompensa fica guardada e um novo cartão começa a acumular normalmente.</li>

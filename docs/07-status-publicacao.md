@@ -6,6 +6,10 @@ status: Produção em evolução
 
 # Status da publicação
 
+## Correção de rota identificada em 07/10/2026
+
+O endereço atual esperado para a equipe é `https://www.adocebrigaderia.com.br/operacao`, sem `#`. A verificação anterior do domínio mostrou que `/operacao` entregava a página inicial do site público. A correção de rotas foi implementada e validada automaticamente; a prévia hospedada foi conferida em computador, celular e tablet na tela de entrada da Operação, além das entradas públicas e do Clube. A validação autenticada da navegação interna e a conferência do domínio oficial após a publicação continuam necessárias. A tabela histórica de 18/07/2026 abaixo registra o endereço usado naquela data e não deve ser tratada como orientação atual.
+
 ## Segunda prioridade emergencial — cadastro rápido no Clube Adoce
 
 O cadastro de um novo cliente foi reduzido para duas etapas: preencher nome, e-mail, WhatsApp e uma senha; depois, confirmar o código recebido por e-mail. Após a confirmação, o acesso definitivo é criado automaticamente e o cartão abre sem uma terceira tela de configuração.
@@ -114,6 +118,18 @@ A operação recebeu os recursos para administrar produtos, várias fotos por sa
 
 ## Regra de publicação
 
+### 08/10/2026 — regressão de custos: diagnóstico e recuperação local
+
+A publicação `6ac682cbf7959b00a1aa902b`, realizada em 07/10/2026 às 14h35 (Brasília), contém o módulo simplificado de custos: consulta `manager_get_costing_technical_workspace`, sem o fluxo de notas fiscais e sem a lista de preparações cadastradas. O módulo completo permaneceu em `Clube Adoce Release WhatsApp 20260901`, cuja configuração aponta para o mesmo site Netlify da pasta principal. A divergência entre cópias permitiu publicar uma versão funcionalmente anterior. Os metadados indicam publicação por CLI e não identificam um commit; não permitem atribuir, por si, a execução a uma pessoa ou recuperar o diretório exato usado.
+
+A consulta somente de leitura ao banco de produção em 08/10/2026 confirmou 27 preparações ativas, nenhuma preparação arquivada, 82 versões de receitas, 46 insumos, 5 fornecedores e 11 notas fiscais. Esses registros não foram excluídos pela recuperação. As funções necessárias à versão completa continuam presentes, com execução negada ao papel anônimo.
+
+O módulo completo e suas dependências foram recuperados na pasta principal, preservando uma cópia dos arquivos anteriores. A compilação agora executa `scripts/verify-operation-release.mjs`, que bloqueia o pacote quando faltam referências obrigatórias de preparações, tempos, insumos, fornecedores, notas, edição e histórico. A verificação percorre apenas os arquivos alcançáveis pelo ponto de entrada; arquivos antigos soltos não podem satisfazer o bloqueio. Testes reproduzem a versão simplificada, a ausência de cada referência e a presença de um pacote antigo desconectado.
+
+Essa barreira identifica a perda estrutural observada neste incidente; não comprova o funcionamento completo dos fluxos nem substitui homologação autenticada. A pasta principal `D:\AdoceOnLine` deve concentrar o código mantido e os comandos de publicação deste produto. Cópias de release não devem ser usadas como fontes independentes para publicar no mesmo site. Uma publicação direta que contorne a compilação também contorna essa barreira.
+
+Estado: recuperação local com validação automatizada; publicação de produção e validação visual autenticada em computador, celular e tablet ainda pendentes. Não houve alteração de dados nem nova publicação durante o diagnóstico.
+
 Novos recursos só devem ser apresentados ao público como disponíveis depois de passarem por validação funcional no ambiente de produção. Funcionalidades ainda em construção devem permanecer identificadas como próximas etapas, sem induzir o cliente a acreditar que já estão liberadas.
 
 ### 20/07/2026 — reforço de identidade e segurança em validação
@@ -131,3 +147,20 @@ A revisão comercial foi publicada no domínio principal e conferida em telas de
 ### 19/07/2026 — catálogo, agenda e CRM
 
 Foi publicada a base de produção para pedidos por encomenda, produtos e preços administráveis, recheios e adicionais com acréscimos, pré-reservas de 48 horas, conflitos de agenda, bloqueios manuais, histórico de solicitações, notas e tarefas de relacionamento. A página pública separa o Festival de Fatias das encomendas e eventos. O acesso assistido da operação passou a gerar link direto de autenticação, mantendo o código como alternativa. Também foi exportado o kit visual completo para o anúncio oficial do site em Instagram, Facebook e WhatsApp.
+
+
+### 08/10/2026 — consolidação ampliada da Operação
+
+Além de custos, foram reunidos na pasta principal os fluxos de caixa, gestão, histórico, comunicação e suporte que estavam divergentes na cópia de release. As regras públicas mais recentes de rotas por caminho, Pix e retirada foram preservadas. Alterações ainda não instaladas da integração financeira de notas fiscais permanecem separadas como migração e registro de diferenças, sem instalação em produção.
+
+A pasta de trabalho `D:\AdoceOnLine-NF` foi removida. A exclusão das demais pastas foi rejeitada pela revisão automática, que retornou apenas "blocked by policy". Vinte e duas cópias tiveram seus comandos desativados e vínculos locais de publicação retirados enquanto aguardam remoção física. Foi preparado `scripts/remover-copias-adoce.ps1`, com lista explícita e conferência dos caminhos, para executar a remoção já autorizada. O banco e os arquivos de dados da réplica foram preservados em arquivo privado dentro de `.git`, sem outra aplicação executável. Não houve nova publicação nem alteração do banco de produção.
+
+### 13/10/2026 — fonte física única e reconstrução conferida
+
+O inventário encontrou a fonte oficial, cópias de release, uma cópia externa completa, projetos antigos incorporados à pasta principal e artefatos de homologação. A cópia completa era de 06/10/2026 e continha módulos anteriores à Operação atual; nenhum código exclusivo válido ficou fora da fonte oficial. As cópias inventariadas, builds, APKs e capturas temporárias foram removidos. O projeto Android permanece dentro de `D:\AdoceOnLine` como parte do mesmo produto.
+
+O verificador de fonte única passou a detectar também cópias irmãs completas no mesmo volume, além de cópias internas e execução fora do caminho canônico. A regra está fixada em `AGENTS.md`, neste guia e em teste automatizado. O código consolidado passou por 926 testes, verificação de tipos, build e verificação dos recursos obrigatórios da Operação.
+
+No Supabase de produção, a edição de fichas no mesmo registro está ativa, não há referência de preparação presa a versão antiga e nenhuma tabela do esquema público está sem RLS. Os horários da migração remota diferem dos nomes locais porque as alterações foram registradas pelo ambiente de produção; a conferência foi feita pelo efeito real no banco. Alertas históricos dos consultores permanecem documentados e não foram alterados sem uma tarefa específica de segurança.
+
+Antes da publicação desta consolidação, a produção apontava para o deploy `6ace29214895d942402da280`, de 13/10/2026, cujo arquivo JavaScript principal não correspondia ao build consolidado. O estado final da publicação deve ser registrado abaixo somente depois da comparação do ativo servido pelo domínio com o ativo gerado nesta fonte.

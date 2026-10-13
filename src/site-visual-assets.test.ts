@@ -16,7 +16,7 @@ describe("central de imagens institucionais", () => {
       expect(["stretch", "cover", "contain"]).toContain(asset.fitMode);
       expect(SITE_VISUAL_PAGE_LINKS[asset.key]?.length).toBeGreaterThan(0);
       SITE_VISUAL_PAGE_LINKS[asset.key].forEach((destination) => {
-        expect(destination.url).toMatch(/^https:\/\/www\.adocebrigaderia\.com\.br\/(#[-a-z]+)?$/);
+        expect(destination.url).toMatch(/^https:\/\/www\.adocebrigaderia\.com\.br\/(?:[-a-z]+)?$/);
       });
     });
   });

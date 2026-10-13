@@ -113,7 +113,7 @@ export default function CadastroRapido({
           <p><strong>{repetido.nome}</strong> já está cadastrado com esse WhatsApp.</p>
           {onAbrirExistente ? (
             <button type="button" onClick={() => onAbrirExistente(repetido.id)}>
-              Abrir e carimbar
+              Abrir cadastro
             </button>
           ) : null}
         </div>

@@ -21,13 +21,34 @@ describe("acesso da operação com senha", () => {
     expect(app).toContain('aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}');
   });
 
+  it("recupera a senha da equipe somente pelo WhatsApp", () => {
+    const app = source("./AccessApp.tsx");
+    const passwordForm = app.slice(
+      app.indexOf('!registering && loginMode === "password"'),
+      app.indexOf('!registering && loginMode === "forgot"'),
+    );
+    expect(passwordForm).toContain('setLoginMode("forgot")');
+    expect(passwordForm).toContain("Esqueci a senha");
+    expect(app).toContain("await requestPasswordReset({ phone })");
+    expect(app).toContain("Enviar código pelo WhatsApp");
+    expect(app).not.toContain("Entrar com código enviado por e-mail");
+  });
+
+  it("oferece saída no menu do operador com aviso antes de interromper o tablet", () => {
+    const app = source("./AccessApp.tsx");
+    expect(app).toContain("signOutOperation");
+    expect(app).toContain("Sair da operação");
+    expect(app).toContain("novos pedidos deixam de ser recebidos e impressos");
+    expect(app).toContain("onSignOut={() => void signOutOperation()}");
+  });
+
   it("autentica pelo endpoint protegido sem expor o e-mail interno", () => {
     const auth = source("./services/auth.ts");
     const endpoint = source("../netlify/functions/staff-phone-login.ts");
     expect(auth).toContain('fetch("/api/staff-phone-login"');
     expect(endpoint).toContain('.eq("phone_e164", phone)');
     expect(endpoint).toContain('.from("staff_members")');
-    expect(endpoint).toContain('const configured = env("SITE_URL")');
+    expect(endpoint).toContain('allowedOrigin(request)');
     expect(endpoint).toContain('"Celular ou senha incorretos."');
   });
 

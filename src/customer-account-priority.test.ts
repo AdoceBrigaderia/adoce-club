@@ -15,20 +15,18 @@ describe("prioridade da Minha conta", () => {
     expect(profile).not.toContain("club-account-heading");
   });
 
-  it("oferece QR Code e pedido online em atalhos equivalentes", () => {
+  it("mostra pedido online entre as ações principais", () => {
     expect(profile).toContain('aria-label="Ações principais da conta"');
-    expect(profile).toContain("Gerar QR Code");
     expect(profile).toContain("Fazer pedido online");
-    expect(profile).toContain('onClick={() => void openCustomerQr()}');
-    expect(profile).toContain('href="/#adoce-hoje"');
-    expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
+    expect(profile).toContain('href="/adoce-hoje"');
+    expect(styles).toContain("grid-template-columns: minmax(0, 1fr)");
   });
 
   it("avisa quando existe fatia grátis disponível para resgate", () => {
     expect(profile).toContain("snapshot.rewards > 0");
     expect(profile).toContain("fatia grátis disponível");
     expect(profile).toContain("fatias grátis disponíveis");
-    expect(profile).toContain("Apresente seu QR Code para resgatar no atendimento.");
+    expect(profile).toContain("Informe seu Código do Membro no atendimento para resgatar.");
     expect(styles).toContain(".club-account-reward-ready");
   });
 });

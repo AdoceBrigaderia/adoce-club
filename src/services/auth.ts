@@ -314,6 +314,10 @@ export async function resetUserPasswordByManager(
     reset?: boolean;
     fullName?: string;
     temporaryPassword?: string;
+    loginUrl?: string;
+    whatsappSent?: boolean;
+    whatsappStatus?: string;
+    whatsappError?: string;
     mustChangePassword?: boolean;
     error?: string;
   };

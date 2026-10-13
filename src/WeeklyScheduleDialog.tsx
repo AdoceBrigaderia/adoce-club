@@ -219,7 +219,7 @@ export default function WeeklyScheduleDialog({
   const onlineLink =
     whatsappBase +
     encodeURIComponent(
-      `Olá, Adoce! Vi a agenda da semana e quero conhecer os sabores disponíveis para retirada em ${dayTitle(selectedDate)}.`,
+      `Olá, Adoce! Vi a programação da semana e quero conhecer os sabores disponíveis para retirada em ${dayTitle(selectedDate)}.`,
     );
   const reservationText = selectedItems
     .filter((item) => (quantities[item.id] || 0) > 0)
@@ -358,7 +358,7 @@ export default function WeeklyScheduleDialog({
           className="weekly-schedule-close"
           type="button"
           onClick={onClose}
-          aria-label="Fechar agenda"
+          aria-label="Fechar programação"
           ref={closeButtonRef}
         >
           <X />

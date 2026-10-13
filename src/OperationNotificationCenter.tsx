@@ -23,7 +23,7 @@ const previewItems: OperationNotification[] = [
     priority: "important",
     title: "Novo cadastro no Clube Adoce",
     message: "A cliente concluiu o cadastro e já pode usar o cartão.",
-    action_url: "#operacao/membros",
+    action_url: "/operacao/clientes",
     created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
   },
   {
@@ -32,7 +32,7 @@ const previewItems: OperationNotification[] = [
     priority: "urgent",
     title: "Novo pedido para retirada",
     message: "Confira os itens e confirme a separação com a cliente.",
-    action_url: "#operacao/pedidos",
+    action_url: "/operacao/pedidos",
     created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
   },
 ];

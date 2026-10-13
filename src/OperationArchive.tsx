@@ -73,6 +73,13 @@ const cancellationNote = (notes: string | null | undefined) => {
   return matches.at(-1)?.[1]?.trim() || "Cancelamento registrado pela equipe.";
 };
 
+const maskPhoneInText = (value: string) => value.replace(/\+?\d[\d\s().-]{7,}\d/g, (phone) => {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 8 ? `(**) *****-${digits.slice(-4)}` : phone;
+});
+
+const recordsPerPage = 40;
+
 export default function OperationArchive() {
   const [records, setRecords] = useState<ArchiveRecord[]>([]);
   const [staffNames, setStaffNames] = useState<Record<string, string>>({});
@@ -82,6 +89,7 @@ export default function OperationArchive() {
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -215,6 +223,10 @@ export default function OperationArchive() {
       && (!to || record.orderedAt.slice(0, 10) <= to)
       && (!term || `${record.title} ${record.subtitle} ${record.reason}`.toLocaleLowerCase("pt-BR").includes(term)));
   }, [category, from, records, search, to]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / recordsPerPage));
+  const visibleRecords = filtered.slice((page - 1) * recordsPerPage, page * recordsPerPage);
+  useEffect(() => { setPage(1); }, [category, from, search, to]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
 
   const icon = (recordCategory: ArchiveRecord["category"]) => {
     if (recordCategory === "orders") return <ShoppingBag />;
@@ -243,12 +255,17 @@ export default function OperationArchive() {
     </div>
     {notice ? <p className="operation-archive-notice" role="alert">{notice}</p> : null}
     <div className="operation-archive-list">
-      {filtered.map((record) => <article key={record.id}>
+      {visibleRecords.map((record) => <article key={record.id}>
         <div className="operation-archive-icon">{icon(record.category)}</div>
-        <div className="operation-archive-copy"><small>{categoryLabels[record.category]}</small><strong>{record.title}</strong><span>{record.subtitle}</span><p><b>Motivo:</b> {record.reason}</p></div>
+        <div className="operation-archive-copy"><small>{categoryLabels[record.category]}</small><strong>{record.title}</strong><span>{maskPhoneInText(record.subtitle)}</span><p><b>Motivo:</b> {record.reason}</p></div>
         <div className="operation-archive-meta"><b>{statusLabels[record.status] || record.status}</b><time>Pedido em {dateTime(record.orderedAt)}</time><small>Atualizado em {dateTime(record.occurredAt)}</small><small>Responsável: {record.actorId ? staffNames[record.actorId] || "Equipe Adoce" : "Sistema"}</small></div>
       </article>)}
       {!busy && !filtered.length ? <div className="operation-archive-empty"><Archive /><strong>Nenhum registro neste filtro.</strong><span>As listas operacionais continuam limpas e somente itens encerrados aparecem aqui.</span></div> : null}
     </div>
+    {filtered.length > recordsPerPage ? <nav className="operation-archive-pagination" aria-label="Páginas do histórico">
+      <button type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1}>Anterior</button>
+      <span>Página {page} de {totalPages} · {filtered.length} registros</span>
+      <button type="button" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page === totalPages}>Próxima</button>
+    </nav> : null}
   </section>;
 }

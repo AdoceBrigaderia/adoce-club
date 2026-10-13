@@ -14,7 +14,7 @@
 //    produzimos pro festival"
 //   "nao vai atrapalhar se for pedido com antecendendia de pelo menos 3 dias
 //    uteis"
-//   "o dia que tiver reserva de Adoce na escola, nao pode ter mais nenhuma
+//   "o dia que tiver reserva de reserva exclusiva, nao pode ter mais nenhuma
 //    outra coisa agendado"
 //
 // Producao fixa do festival, ja embutida no teto de 5:
@@ -32,8 +32,8 @@ export type Agenda = {
   tortasAgendadas: number;
   /** Docinhos ja aceitos para o dia. */
   docinhosAgendados: number;
-  /** Adoce na Escola bloqueia o dia inteiro. */
-  escolaReservada: boolean;
+  /** Uma reserva exclusiva bloqueia o dia inteiro. */
+  reservaExclusiva: boolean;
   /** Dia fechado por decisao da Adoce: feriado, manutencao, descanso. */
   bloqueado?: boolean;
 };
@@ -116,10 +116,10 @@ export function avaliarEncomenda(
     motivos.push("A Adoce não está atendendo encomendas neste dia.");
   }
 
-  // Adoce na Escola toma o dia inteiro. Nao e limite, e exclusividade.
-  if (agenda.escolaReservada) {
+  // Reserva exclusiva ocupa o dia inteiro. Nao e limite, e exclusividade.
+  if (agenda.reservaExclusiva) {
     cabe = false;
-    motivos.push("Este dia já está reservado para a Adoce na Escola.");
+    motivos.push("Este dia já possui uma reserva exclusiva.");
   }
 
   if (pedido.tortas > 0 && pedido.tortas > tortasLivres) {

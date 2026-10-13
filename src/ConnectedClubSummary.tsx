@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { Heart, QrCode, Settings2 } from "lucide-react";
+import { Heart, Settings2 } from "lucide-react";
 import { requireSupabase, supabase as configuredSupabase } from "./lib/supabase";
 
 export type ConnectedClubSummary = {
@@ -122,9 +122,8 @@ export function ConnectedHomeClubCard({ summary }: { summary: ConnectedClubSumma
           : `Faltam ${remaining} carimbo${remaining === 1 ? "" : "s"} para sua fatia grátis.`}
       </p>
       <div className="public-connected-club-actions">
-        <a href="/#minha-conta"><Heart /> Abrir meu cartão</a>
-        <a href="/#minha-conta?view=qr"><QrCode /> Meu QR</a>
-        <a href="/#minha-conta?view=profile"><Settings2 /> Preferências</a>
+        <a href="/minha-conta"><Heart /> Abrir meu cartão</a>
+        <a href="/minha-conta?view=profile"><Settings2 /> Preferências</a>
       </div>
     </aside>
   );

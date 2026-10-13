@@ -28,8 +28,9 @@ describe("prévia segura do Clube no pedido de fatias", () => {
   });
 
   it("envia uma mensagem afetiva após a confirmação do pagamento", () => {
-    expect(operation).toContain("É um prazer presentear clientes fiéis como você");
-    expect(operation).toContain("Você completou seu cartão do Clube Adoce");
+    const messages=readFileSync("netlify/functions/_shared/order-stage-message.ts","utf8");
+    expect(messages).toContain("Muito obrigada pela preferência!");
+    expect(operation).not.toContain("openOperationWhatsApp");
     expect(operation).toContain("stamps_added");
     expect(operation).toContain("reward_redeemed");
   });

@@ -20,7 +20,7 @@ describe("instant order payment links", () => {
 
   it("mantém a confirmação direta visível e mostra falhas dentro do painel", () => {
     expect(operationSource).toContain('ref={directFinishRef}');
-    expect(operationSource).toContain('Finalizando...');
+    expect(operationSource).toContain('Confirmando...');
     expect(operationSource).toContain('className="instant-order-direct-error"');
     expect(operationSource).toContain('Não foi possível finalizar:');
     expect(operationStyles).toContain('.operation-home:has(.instant-order-operation-layer) > .operation-mobile-tabbar');

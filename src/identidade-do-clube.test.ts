@@ -3,14 +3,13 @@ import {
   decidirPorta,
   podeOferecerCadastro,
   rotaLimpaDepoisDoLogin,
-  tokenDoCartaoNaRota,
   tipoDoLinkDeAcesso,
   tokenDoMagicLink,
   type Reconhecimento,
 } from "./identidade-do-clube";
 
 function situacao(o: Partial<Reconhecimento> = {}): Reconhecimento {
-  return { sessao: false, tokenDoCartao: null, membro: null, tokenNaUrl: null, ...o };
+  return { sessao: false, membro: null, tokenNaUrl: null, ...o };
 }
 
 const membro = { primeiroNome: "Annaliza", carimbos: 6 };
@@ -20,7 +19,6 @@ describe("o loop que o Rubens encontrou em 10/08", () => {
   it("quem o site reconhece NUNCA recebe convite para cadastrar", () => {
     const casos = [
       situacao({ sessao: true }),
-      situacao({ tokenDoCartao: "abc12345" }),
       situacao({ membro }),
       situacao({ membro, tokenNaUrl: "eyJ" }),
     ];
@@ -76,24 +74,6 @@ describe("Magic Link", () => {
     // Havia 7 registros com o token completo do cliente em site_analytics_events.
     expect(rotaLimpaDepoisDoLogin).toBe("#clube");
     expect(rotaLimpaDepoisDoLogin).not.toContain("access_token");
-  });
-});
-
-describe("QR impresso na sacola", () => {
-  it("abre o cartão sem senha, sem e-mail, sem nada", () => {
-    // É o único caminho que serve para quem está sem dado móvel:
-    // o papel já está na mão dele.
-    const d = decidirPorta(situacao({ tokenDoCartao: "Zx9-abc_123" }));
-    expect(d.porta).toBe("cartao");
-  });
-
-  it("lê o token da rota", () => {
-    expect(tokenDoCartaoNaRota("#cartao/Zx9-abc_123")).toBe("Zx9-abc_123");
-  });
-
-  it("recusa rota que não é de cartão", () => {
-    expect(tokenDoCartaoNaRota("#clube")).toBeNull();
-    expect(tokenDoCartaoNaRota("#cartao/curto")).toBeNull();
   });
 });
 

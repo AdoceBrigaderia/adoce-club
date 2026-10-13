@@ -17,11 +17,7 @@ Este capítulo indica onde cada função pertence. O estado atual deve ser confi
 | Início | Descoberta, desejo, produtos, história, benefícios e contato |
 | Fatias | Disponibilidade, sabores futuros, retirada, Cantinho Adoce e pedido imediato |
 | Cardápio de Fatias | Sabores do dia e da semana, preços, horários e acesso à montagem do pedido |
-| Tortas e docinhos | Catálogo Adoce, galeria de Tortas por tamanho, valores e pré-reserva |
-| Eventos | Tabuleiro de doces e Mini Festas |
-| Adoce na Escola | Produtos destinados à escola |
-| Aluguel de decoração | Peças e propostas de locação |
-| Pede Junto Adoce | Grupo, participantes, entrega grátis e evolução |
+| Tortas e docinhos | Tortas somente por encomenda, tamanhos com valores e referência de fatias, sabores com fotos e detalhes; docinhos com catálogo e pré-reserva |
 | Clube Adoce | Cadastro, acesso, carimbos, prêmios e indicações |
 
 ## Adoce Operação
@@ -30,14 +26,14 @@ Este capítulo indica onde cada função pertence. O estado atual deve ser confi
 |---|---|
 | Início | Alertas, atalhos e resumo operacional |
 | Clientes e Clube | Busca, ficha, carimbos, prêmios, conta e histórico |
-| Caixa e pedidos | Pedido imediato, venda manual, pagamento, separação e retirada |
+| Pedidos | Venda local, pedidos online, identificação do cliente, pagamento, separação e retirada |
+| Compras e Estoque | Notas, insumos, preparações, fichas e planejamento; estoque físico de insumos ainda não controlado |
 | Encomendas e agenda | Pré-reservas, solicitações, compromissos e bloqueios |
-| Pede Junto | Grupos, participantes, pagamento, estoque, conclusão e arquivo |
 | Financeiro | Vendas, meios de pagamento, taxas e valor líquido |
 | Produtos e serviços | Catálogo, preços, opções, categorias, fotos e galerias |
 | Disponibilidade, horários e site | Sabores, estoque futuro, caldas, horários e conteúdos diários |
 | Configurações globais | Prazos, checkout, pagamentos e imagens institucionais |
-| Histórico e arquivados | Cancelados, excluídos, expirados e registros preservados |
+| Histórico e arquivados | Cancelados, excluídos, expirados e registros preservados, incluindo grupos antigos do Pede Junto |
 | Equipe | Acessos e papéis |
 
 ## Fontes de verdade

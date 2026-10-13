@@ -1,17 +1,22 @@
+import OrderCommunication from "./OrderCommunication";
+import { DEFAULT_PIX_KEY } from "./pix-payment";
+import { dispatchOrderNotifications } from "./order-notification-dispatch";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Clock3, Gift, Heart, MessageCircle, PackageCheck, Pencil, Plus, Printer, Search, ShoppingCart, Trash2, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { formatarDataHora } from "./lib/datas";
 import { formatarTelefoneBR, nomeLegivel } from "./lib/contato";
-import { openOperationWhatsApp, operationWhatsAppUrl } from "./operation-whatsapp";
-import OperationManualSale from "./OperationManualSale";
+
 import "./operation-instant-orders.css";
 import "./operation-instant-orders-enhancements.css";
 import "./operation-print.css";
 import { printOperation } from "./lib/operation-print";
 import { printThermalOrder } from "./lib/thermal-printer";
+import { Capacitor } from "@capacitor/core";
 import PedidoNaEsteira from "./PedidoNaEsteira";
 import type { Pedido } from "./jornada-do-pedido";
+import { canStartPreparation, canReceivePayment, canCancelOrder, canApplyExistingOrderReward } from "./order-actions";
+import { confirmAction } from "./lib/confirm-dialog";
 
 type InstantOrderStatus = "awaiting_confirmation" | "reserved" | "awaiting_payment" | "paid" | "preparing" | "ready" | "completed" | "cancelled" | "expired";
 type InstantOrder = {
@@ -21,6 +26,10 @@ type InstantOrder = {
   customer_phone: string;
   status: InstantOrderStatus;
   payment_status: string;
+  sales_channel?: string;
+  paid_at?: string | null;
+  separation_confirmed_at?: string | null;
+  updated_at?: string;
   payment_method_code: string | null;
   payment_method_label: string | null;
   checkout_mode: string;
@@ -58,7 +67,7 @@ type LoyaltyContext = {
 
 const labels: Record<InstantOrderStatus, string> = {
   awaiting_confirmation: "Conferir disponibilidade",
-  reserved: "Reservado",
+  reserved: "Reserva registrada",
   awaiting_payment: "Aguardando pagamento",
   paid: "Pago",
   preparing: "Em separação",
@@ -84,8 +93,9 @@ export const buildInstantOrderEditPayload = (units: EditUnit[]) => {
 };
 const operationalSteps: Array<{ status: InstantOrderStatus; label: string }> = [
   { status: "awaiting_confirmation", label: "Recebido" },
-  { status: "awaiting_payment", label: "Cobrança enviada" },
+  { status: "reserved", label: "Reserva registrada" },
   { status: "preparing", label: "Em separação" },
+  { status: "awaiting_payment", label: "Separação confirmada" },
   { status: "ready", label: "Aguardando retirada" },
   { status: "completed", label: "Entregue" },
 ];
@@ -108,44 +118,83 @@ export default function OperationInstantOrders() {
   const [rewardExistingUnit, setRewardExistingUnit] = useState("");
   const [loyalty, setLoyalty] = useState<LoyaltyContext | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [pixKey, setPixKey] = useState(DEFAULT_PIX_KEY);
   const [recoveryMethod, setRecoveryMethod] = useState("pix");
   const [directFinishOpen, setDirectFinishOpen] = useState(false);
-  const [view, setView] = useState<"active" | "expired">("active");
+  // window.prompt() dentro do WebView do tablet e um dialogo nativo do
+  // sistema, fora do controle do app -- comportamento inconsistente entre
+  // aparelhos e versoes de Android, sem como estilizar nem garantir que
+  // sempre aparece. Um formulario proprio, no mesmo padrao ja usado pelo
+  // "Registrar como pago", tira essa incerteza.
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [view, setView] = useState<"active" | "expired" | "finished">("active");
+  // Os números do topo filtram a fila (antes eram só informativos).
+  const [statusFilter, setStatusFilter] = useState<"all" | "awaiting_confirmation" | "awaiting_payment" | "ready">("all");
+  const showStatus = (next: typeof statusFilter) => { setView("active"); setStatusFilter((current) => (current === next && next !== "all" ? "all" : next)); };
+  const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
   const directFinishRef = useRef<HTMLElement>(null);
 
-  const load = useCallback(async () => {
-    setBusy(true);
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
-    const [{ data, error }, { data: flavorData, error: flavorError }, { data: availabilityData, error: availabilityError }, { data: settingsData, error: settingsError }, { data: sauceData, error: sauceError }] = await Promise.all([
-      requireSupabase().from("instant_orders")
-        .select("*,instant_order_items(id,flavor_id,flavor_name,quantity,unit_price,status,is_reward,reward_id,instant_order_item_sauces(id,unit_number,sauce_id,sauce_name))")
-        .order("created_at", { ascending: false }).limit(300),
-      requireSupabase().from("flavors").select("id,name,base_price").eq("active", true).order("name"),
-      requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", today),
-      requireSupabase().rpc("staff_get_commerce_settings"),
-      requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name"),
-    ]);
-    setBusy(false);
-    if (error || flavorError || availabilityError || settingsError || sauceError) return setNotice((error || flavorError || availabilityError || settingsError || sauceError)?.message || "Não foi possível atualizar a tela.");
-    setOrders((data || []) as InstantOrder[]);
-    const mappedFlavors = (flavorData || []).map((flavor) => {
-      const availability = availabilityData?.find((item) => item.flavor_id === flavor.id);
-      return {
-        id: flavor.id,
-        name: flavor.name,
-        base_price: Number(flavor.base_price || 0),
-        remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0)),
-      };
-    });
-    setAllFlavors(mappedFlavors);
-    setRewardFlavors(mappedFlavors.filter((flavor) => flavor.remaining > 0));
-    setOrderSauces((sauceData || []) as OrderSauce[]);
-    const activeMethods = ((settingsData?.payment_methods || []) as PaymentMethod[]).filter((method) => method.active);
-    setPaymentMethods(activeMethods);
-    setRecoveryMethod((current) => activeMethods.some((method) => method.code === current) ? current : (activeMethods[0]?.code || ""));
+  const load = useCallback(async (background = false) => {
+    if (!background) setBusy(true);
+    try {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
+      const [{ data, error }, { data: flavorData, error: flavorError }, { data: availabilityData, error: availabilityError }, { data: settingsData, error: settingsError }, { data: sauceData, error: sauceError }] = await Promise.all([
+        requireSupabase().from("instant_orders")
+          .select("*,instant_order_items(id,flavor_id,flavor_name,quantity,unit_price,status,is_reward,reward_id,instant_order_item_sauces(id,unit_number,sauce_id,sauce_name))")
+          .order("created_at", { ascending: false }).limit(300),
+        requireSupabase().from("flavors").select("id,name,base_price").eq("active", true).order("name"),
+        requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", today),
+        requireSupabase().rpc("staff_get_commerce_settings"),
+        requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name"),
+      ]);
+      if (error || flavorError || availabilityError || settingsError || sauceError) {
+        setNotice((error || flavorError || availabilityError || settingsError || sauceError)?.message || "Não foi possível atualizar a tela.");
+        return;
+      }
+      setOrders((data || []) as InstantOrder[]);
+      setSelected((current) => current ? ((data || []) as InstantOrder[]).find((order) => order.id === current.id) || current : null);
+      const mappedFlavors = (flavorData || []).map((flavor) => {
+        const availability = availabilityData?.find((item) => item.flavor_id === flavor.id);
+        return {
+          id: flavor.id,
+          name: flavor.name,
+          base_price: Number(flavor.base_price || 0),
+          remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0)),
+        };
+      });
+      setAllFlavors(mappedFlavors);
+      setRewardFlavors(mappedFlavors.filter((flavor) => flavor.remaining > 0));
+      setOrderSauces((sauceData || []) as OrderSauce[]);
+      const activeMethods = ((settingsData?.payment_methods || []) as PaymentMethod[]).filter((method) => method.active);
+      setPaymentMethods(activeMethods);
+      setPixKey(String((settingsData as { pix_key?: string } | null)?.pix_key || DEFAULT_PIX_KEY));
+      setRecoveryMethod((current) => activeMethods.some((method) => method.code === current) ? current : (activeMethods[0]?.code || ""));
+    } catch (error) {
+      // Sem isto, uma falha de rede (comum no wifi do balcao) fazia o
+      // Promise.all rejeitar sem nenhum aviso: a tela ficava com dados
+      // velhos -- por exemplo mostrando um pedido ja cancelado como se
+      // ainda estivesse aberto -- e ninguem via mensagem de erro nenhuma.
+      setNotice(`Não foi possível atualizar a tela: ${error instanceof Error ? error.message : "falha de conexão."} Toque em Atualizar para tentar de novo.`);
+    } finally {
+      if (!background) setBusy(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === "visible") void load(true); };
+    const interval = window.setInterval(refresh, 15000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [load]);
   useEffect(() => {
     if (!directFinishOpen) return;
     window.requestAnimationFrame(() => directFinishRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -155,13 +204,13 @@ export default function OperationInstantOrders() {
     const channel = supabase.channel("operation-instant-orders")
       .on("postgres_changes", { event: "*", schema: "public", table: "instant_orders" }, async (change) => {
         void load();
-        if (change.eventType !== "INSERT") return;
+        if (change.eventType !== "INSERT" || Capacitor.isNativePlatform()) return;
         const id = String((change.new as { id?: string }).id || "");
         if (!id) return;
         const { data } = await supabase.from("instant_orders")
           .select("*,instant_order_items(id,flavor_name,quantity,instant_order_item_sauces(unit_number,sauce_name))")
           .eq("id", id).single();
-        if (!data) return;
+        if (!data || data.sales_channel === "operation") return;
         const result = await printThermalOrder(data as InstantOrder);
         setNotice(result === "printed" ? `${data.order_number}: comanda impressa automaticamente.` : `${data.order_number}: comanda aguardando o aplicativo Android da impressora.`);
       })
@@ -191,6 +240,8 @@ export default function OperationInstantOrders() {
     setLoyalty(null);
     setNotice("");
     setDirectFinishOpen(false);
+    setCancelOpen(false);
+    setCancelReason("");
     setEditOpen(false);
     setEditUnits([]);
     setRewardMode("existing");
@@ -214,6 +265,8 @@ export default function OperationInstantOrders() {
 
   const setRewardItem = async () => {
     if (!selected) return;
+    if (!canApplyExistingOrderReward(selected.status, selected.payment_status, selected.paid_at)) return setNotice("A fidelidade precisa ser definida antes do pagamento.");
+    if (rewardMode === "add" && selected.status === "preparing") return setNotice("Durante a separação, escolha uma fatia já existente no pedido.");
     if (rewardMode === "add" && !rewardFlavorId) return setNotice("Escolha o sabor da fatia premiada.");
     if (rewardMode === "existing" && !rewardExistingUnit) return setNotice("Escolha qual fatia do pedido será premiada.");
     setBusy(true);
@@ -271,20 +324,30 @@ export default function OperationInstantOrders() {
 
   const persistStatus = async (order: InstantOrder, status: InstantOrderStatus, reason = "", paymentLink = extractPaymentLink()) => {
     setBusy(true);
-    const { error } = await requireSupabase().rpc("staff_update_instant_order", {
-      target_order_id: order.id,
-      next_status: status,
-      next_payment_url: paymentLink || null,
-      next_payment_expires_at: status === "awaiting_payment" ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
-      next_internal_notes: internalNotes,
-      next_cancellation_reason: reason || null,
-    });
-    setBusy(false);
-    if (error) {
-      setNotice(error.message);
+    try {
+      const { error } = await requireSupabase().rpc("staff_update_instant_order", {
+        target_order_id: order.id,
+        next_status: status,
+        next_payment_url: paymentLink || null,
+        next_payment_expires_at: status === "awaiting_payment" ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+        next_internal_notes: internalNotes,
+        next_cancellation_reason: reason || null,
+      });
+      if (error) {
+        setNotice(error.message);
+        return false;
+      }
+      void dispatchOrderNotifications(order.id);
+      return true;
+    } catch (error) {
+      // Falha de rede aqui (fetch rejeitando em vez de devolver {error}) fazia
+      // a promessa estourar sem aviso -- o atendente nao via nada, mesmo
+      // quando a acao as vezes ainda chegava a acontecer no servidor.
+      setNotice(`Não foi possível confirmar a alteração: ${error instanceof Error ? error.message : "falha de conexão."} Confira no site antes de repetir.`);
       return false;
+    } finally {
+      setBusy(false);
     }
-    return true;
   };
 
   const update = async (status: InstantOrderStatus, reason = "", paymentLink = extractPaymentLink()) => {
@@ -305,67 +368,21 @@ export default function OperationInstantOrders() {
     }
   };
 
-  const sendPaymentLink = async (confirmReservation: boolean) => {
+  const sendPaymentLink = async () => {
     if (!selected) return;
-    const cleanPaymentLink = extractPaymentLink();
-    if (!validPaymentUrl(cleanPaymentLink)) {
-      setNotice("Não encontrei um link de pagamento válido. Cole o texto ou o link gerado pelo Mercado Pago.");
-      return;
+    const cleanPaymentLink = selected.payment_method_code === "pix" ? "" : extractPaymentLink();
+    if (selected.payment_method_code !== "pix" && !validPaymentUrl(cleanPaymentLink)) {
+      setNotice("Cole um link válido para este meio de pagamento."); return;
     }
-    setPaymentUrl(cleanPaymentLink);
-    const order = selected;
-    const whatsapp = window.open("about:blank", "_blank");
-    if (confirmReservation && !(await update("awaiting_payment", "", cleanPaymentLink))) {
-      whatsapp?.close();
-      return;
-    }
-    const firstName = order.customer_name.trim().split(/\s+/)[0];
-    const message = `Olá, ${firstName}! 💗 Confirmamos a disponibilidade e reservamos as fatias do pedido ${order.order_number}. Para concluir, faça o pagamento em até 15 minutos por este link: ${cleanPaymentLink} Assim que o pagamento for confirmado, começamos a separação.`;
-    openOperationWhatsApp(order.customer_phone, message, whatsapp);
-  };
-
-  const updateAndNotify = async (status: InstantOrderStatus, message: (order: InstantOrder) => string) => {
-    if (!selected) return;
-    const order = selected;
-    const whatsapp = window.open("about:blank", "_blank");
-    if (!(await update(status))) {
-      whatsapp?.close();
-      return;
-    }
-    openOperationWhatsApp(order.customer_phone, message(order), whatsapp);
-  };
-
-  const confirmPaymentAndPrepare = async () => {
-    if (!selected) return;
-    const order = selected;
-    const whatsapp = window.open("about:blank", "_blank");
     setBusy(true);
-    const { data, error } = await requireSupabase().rpc("staff_confirm_instant_order_payment", {
-      target_order_id: order.id,
-      next_internal_notes: internalNotes,
-    });
-    setBusy(false);
-    if (error || !(await persistStatus(order, "preparing"))) {
-      if (error) setNotice(error.message);
-      whatsapp?.close();
-      return;
-    }
-    setSelected(null);
-    const stampsAdded = Number(data?.stamps_added || 0);
-    const newRewards = Number(data?.new_rewards || 0);
-    const rewardRedeemed = Boolean(data?.reward_redeemed);
-    setNotice(`${order.order_number}: pagamento confirmado e pedido em separação.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}`);
-    await load();
-    const firstName = order.customer_name.trim().split(/\s+/)[0];
-    const loyaltyMessage = rewardRedeemed
-      ? ` E tem um carinho especial: sua fatia-presente do Clube Adoce também já está sendo separada com o pedido. É um prazer presentear clientes fiéis como você! 💝`
-      : newRewards > 0
-        ? ` Você completou seu cartão do Clube Adoce e conquistou uma fatia-presente! 💝 Ela ficou disponível para combinarmos seu resgate.`
-        : stampsAdded > 0
-          ? ` Também confirmamos ${stampsAdded} novo(s) carimbo(s) no seu Clube Adoce. Obrigado por escolher a gente mais uma vez! 💗`
-          : "";
-    const message = `Olá, ${firstName}! 💗 Recebemos o pagamento do pedido ${order.order_number} e já iniciamos a separação das suas fatias.${loyaltyMessage} Avisaremos assim que estiver tudo pronto para retirada.`;
-    openOperationWhatsApp(order.customer_phone, message, whatsapp);
+    try {
+      const result=await requireSupabase().rpc("staff_confirm_instant_order_separation",{target_order_id:selected.id,next_payment_url:cleanPaymentLink||null,next_internal_notes:internalNotes});
+      if(result.error){setNotice(result.error.message);return;}
+      void dispatchOrderNotifications(selected.id);
+      setNotice("Separação confirmada. Acompanhe o envio da cobrança no histórico do WhatsApp oficial.");
+      await refreshOpenOrder(selected.id);
+    } catch {setNotice("Não foi possível confirmar a separação. Atualize antes de repetir.");}
+    finally{setBusy(false);}
   };
 
   const reopenExpired = async () => {
@@ -397,16 +414,16 @@ export default function OperationInstantOrders() {
     setSelected(null); await load();
   };
 
-  const finalizeDirectly = async () => {
+  const finalizeDirectly = async (paymentMethod = recoveryMethod) => {
     if (!selected) return;
-    if (!recoveryMethod) return setNotice("Escolha como esta venda foi paga.");
+    if (!paymentMethod) return setNotice("Escolha como esta venda foi paga.");
     const order = selected;
     setBusy(true);
     setNotice("");
     try {
       const { data, error } = await requireSupabase().rpc("staff_finalize_instant_order_direct", {
         target_order_id: order.id,
-        requested_payment_method: recoveryMethod,
+        requested_payment_method: paymentMethod,
         next_internal_notes: internalNotes || null,
       });
       if (error) {
@@ -415,7 +432,8 @@ export default function OperationInstantOrders() {
       }
       const stampsAdded = Number(data?.stamps_added || 0);
       const rewardRedeemed = Boolean(data?.reward_redeemed);
-      setNotice(`${order.order_number} foi finalizado. Pagamento, estoque e financeiro foram atualizados.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}`);
+      void dispatchOrderNotifications(order.id);
+      setNotice(`${order.order_number}: ${data?.ready_for_pickup ? "pagamento confirmado e pedido liberado para retirada. Confira no histórico o envio da mensagem para a cliente" : "venda finalizada"}. Pagamento, estoque e financeiro foram atualizados.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}`);
       setDirectFinishOpen(false);
       setSelected(null);
       await load();
@@ -429,9 +447,57 @@ export default function OperationInstantOrders() {
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("pt-BR");
     return orders
-      .filter((order) => view === "expired" ? order.status === "expired" : !["completed", "cancelled", "expired"].includes(order.status))
+      .filter((order) => view !== "active" || statusFilter === "all" || order.status === statusFilter)
+      .filter((order) => view === "expired" ? order.status === "expired" : view === "finished" ? ["completed", "cancelled"].includes(order.status) : !["completed", "cancelled", "expired"].includes(order.status))
       .filter((order) => !term || `${order.order_number} ${order.customer_name} ${order.customer_phone}`.toLocaleLowerCase("pt-BR").includes(term));
-  }, [orders, search, view]);
+  }, [orders, search, view, statusFilter]);
+  const printSelected = async () => {
+    const targets = orders.filter((order) => selectedPrintIds.includes(order.id));
+    if (!targets.length) return setNotice("Selecione ao menos um pedido para reimprimir.");
+    setBusy(true);
+    try {
+      if (Capacitor.isNativePlatform()) {
+        // Dentro do app do tablet o proprio dispositivo e a impressora:
+        // imprime direto, sem precisar de comando remoto.
+        for (const order of targets) await printThermalOrder(order, true);
+        setNotice(`${targets.length} pedido(s) enviado(s) para a fila de impressão do tablet.`);
+      } else {
+        // Num navegador comum (portal de operacao) nao ha impressora local
+        // pareada de verdade -- manda o comando pro tablet reimprimir estas
+        // comandas especificas pelo mesmo canal em tempo real do pedido novo.
+        const { error } = await requireSupabase().rpc("server_request_order_reprint", {
+          target_order_ids: targets.map((order) => order.id),
+        });
+        if (error) throw error;
+        setNotice(`Comando de reimpressão enviado ao tablet para ${targets.length} pedido(s).`);
+      }
+    } catch (error) {
+      setNotice(`Falha ao reimprimir: ${error instanceof Error ? error.message : "impressora indisponível."}`);
+    }
+    setBusy(false);
+    setSelectedPrintIds([]);
+  };
+
+  // Este botao nunca tinha tratamento de erro nenhum: se a impressao
+  // falhasse por qualquer motivo (Bluetooth desligado, impressora fora de
+  // alcance, plugin nativo rejeitando a chamada), a promessa rejeitava sem
+  // ninguem ver nada -- o atendente so via "nao aconteceu nada".
+  const printSingleThermal = async (order: InstantOrder) => {
+    setBusy(true);
+    try {
+      const result = await printThermalOrder(order, true);
+      if (result === "queued_for_android" && !Capacitor.isNativePlatform()) {
+        printOperation("thermal");
+      } else if (result === "queued_for_android") {
+        setNotice("A impressora não respondeu — o pedido ficou na fila do tablet e será impresso quando ela reconectar.");
+      } else {
+        setNotice(`${order.order_number}: cupom enviado para a impressora.`);
+      }
+    } catch (error) {
+      setNotice(`Falha ao imprimir: ${error instanceof Error ? error.message : "impressora indisponível."}`);
+    }
+    setBusy(false);
+  };
   const active = orders.filter((order) => !["completed", "cancelled", "expired"].includes(order.status));
   const rewardExistingOptions = selected?.instant_order_items
     .filter((item) => !item.is_reward)
@@ -443,19 +509,21 @@ export default function OperationInstantOrders() {
 
   return <section className="operation-instant-orders">
     <p className="instant-order-subheading">Pedidos enviados pelo site e reservas de estoque em uma fila única.</p>
-    <div className="instant-order-metrics">
-      <span><strong>{active.length}</strong><small>em andamento</small></span>
-      <span><strong>{orders.filter((order) => order.status === "awaiting_confirmation").length}</strong><small>para conferir</small></span>
-      <span><strong>{orders.filter((order) => order.status === "awaiting_payment").length}</strong><small>aguardando pagamento</small></span>
-      <span><strong>{orders.filter((order) => order.status === "ready").length}</strong><small>prontos</small></span>
+    <div className="instant-order-metrics" role="group" aria-label="Filtrar pedidos por etapa">
+      <button type="button" aria-pressed={view === "active" && statusFilter === "all"} className={view === "active" && statusFilter === "all" ? "active" : ""} onClick={() => showStatus("all")}><strong>{active.length}</strong><small>em andamento</small></button>
+      <button type="button" aria-pressed={statusFilter === "awaiting_confirmation"} className={statusFilter === "awaiting_confirmation" ? "active" : ""} onClick={() => showStatus("awaiting_confirmation")}><strong>{orders.filter((order) => order.status === "awaiting_confirmation").length}</strong><small>para conferir</small></button>
+      <button type="button" aria-pressed={statusFilter === "awaiting_payment"} className={statusFilter === "awaiting_payment" ? "active" : ""} onClick={() => showStatus("awaiting_payment")}><strong>{orders.filter((order) => order.status === "awaiting_payment").length}</strong><small>aguardando pagamento</small></button>
+      <button type="button" aria-pressed={statusFilter === "ready"} className={statusFilter === "ready" ? "active" : ""} onClick={() => showStatus("ready")}><strong>{orders.filter((order) => order.status === "ready").length}</strong><small>prontos</small></button>
     </div>
-    <OperationManualSale onCreated={() => void load()} />
+
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
     <div className="instant-order-view-switch">
-      <button className={view === "active" ? "active" : ""} onClick={() => setView("active")}>Em andamento</button>
-      <button className={view === "expired" ? "active" : ""} onClick={() => setView("expired")}>Prazo encerrado ({orders.filter((order) => order.status === "expired").length})</button>
+      <button className={view === "active" ? "active" : ""} onClick={() => { setView("active"); setStatusFilter("all"); }}>Em andamento</button>
+      <button className={view === "expired" ? "active" : ""} onClick={() => { setView("expired"); setStatusFilter("all"); }}>Prazo encerrado ({orders.filter((order) => order.status === "expired").length})</button>
+      <button className={view === "finished" ? "active" : ""} onClick={() => { setView("finished"); setSelectedPrintIds([]); }}>Finalizados e reimpressão ({orders.filter((order) => ["completed", "cancelled"].includes(order.status)).length})</button>
     </div>
-    <label className="instant-order-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar número, cliente ou celular" /></label>
+    {view === "finished" ? <div className="instant-order-reprint-toolbar"><span>Selecione as comandas que deseja reimprimir.</span><button type="button" onClick={() => void printSelected()} disabled={busy || !selectedPrintIds.length}><Printer /> Reimprimir selecionados ({selectedPrintIds.length})</button></div> : null}
+    <label className="instant-order-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar número, cliente ou celular" aria-label="Buscar pedido por número, cliente ou celular" /></label>
     <div className="instant-order-operation-list">
       {filtered.map((order) => {
         const pedido: Pedido = {
@@ -475,9 +543,9 @@ export default function OperationInstantOrders() {
             : null,
           pago: order.payment_status === "approved",
         };
-        return <PedidoNaEsteira key={order.id} pedido={pedido} criadoEm={order.created_at} onAbrir={() => openOrder(order)} />;
+        return <div key={order.id} className="instant-order-row-with-select">{view === "finished" ? <label className="instant-order-reprint-select"><input type="checkbox" checked={selectedPrintIds.includes(order.id)} onChange={() => setSelectedPrintIds((current) => current.includes(order.id) ? current.filter((id) => id !== order.id) : [...current, order.id])} aria-label={`Selecionar ${order.order_number} para reimprimir`} /><span>Reimprimir</span></label> : null}<PedidoNaEsteira avisosOficiais pedido={pedido} criadoEm={order.created_at} atualizadoEm={order.updated_at} onAbrir={() => openOrder(order)} /></div>;
       })}
-      {!filtered.length ? <div className="operation-empty"><ShoppingCart /><p>Nenhum pedido de retirada encontrado.</p></div> : null}
+      {!filtered.length ? <div className="operation-empty"><ShoppingCart /><p>{statusFilter !== "all" && view === "active" ? "Nenhum pedido nesta etapa agora." : "Nenhum pedido de retirada encontrado."}</p></div> : null}
     </div>
     {selected ? <div className="instant-order-operation-layer">
       <button className="instant-order-operation-backdrop" aria-label="Fechar" onClick={() => setSelected(null)} />
@@ -485,11 +553,12 @@ export default function OperationInstantOrders() {
         <button className="drawer-close" onClick={() => setSelected(null)} aria-label="Fechar"><X /></button>
         <div className="thermal-receipt-brand"><img src="/site/logo.webp" alt="Adoce Brigaderia" /><strong>ADOCE BRIGADERIA</strong></div>
         <small>{selected.order_number}</small><h2>{nomeLegivel(selected.customer_name)}</h2>
+        {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
         <div className="operation-print-actions">
-          <button type="button" className="drawer-print" onClick={async () => { const result = await printThermalOrder(selected, true); if (result === "queued_for_android") printOperation("thermal"); }}><Printer /> Imprimir cupom 58 mm</button>
+          <button type="button" className="drawer-print" disabled={busy} onClick={() => void printSingleThermal(selected)}><Printer /> Imprimir cupom 58 mm</button>
           <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
         </div>
-        <p><a href={operationWhatsAppUrl(selected.customer_phone, `Olá! Estamos falando sobre o pedido ${selected.order_number} da Adoce.`)} target="_blank" rel="noreferrer">{formatarTelefoneBR(selected.customer_phone)}</a> · {labels[selected.status]}</p>
+        <p>{formatarTelefoneBR(selected.customer_phone)} · {labels[selected.status]}</p>
         <p><strong>Pedido em</strong> {formatarDataHora(selected.created_at)}{selected.pickup_label ? <> · <strong>Retirada</strong> {selected.pickup_label}</> : null}{selected.pickup_requested_time ? <> · <strong>Horário</strong> {selected.pickup_requested_time.slice(0, 5)} · {selected.pickup_method === "driver" ? "entregador de aplicativo" : "cliente"}</> : null}</p>
         {selected.customer_notes ? <p className="thermal-pickup-note">{selected.customer_notes}</p> : null}
         <ol className="instant-order-status-track" aria-label="Andamento do pedido">
@@ -512,11 +581,11 @@ export default function OperationInstantOrders() {
             {!loyalty.will_unlock_reward && Number(loyalty.available_rewards || 0) > 0 ? <strong className="instant-order-reward-alert"><Gift /> Esta cliente já possui uma fatia premiada disponível.</strong> : null}
           </div> : <div><small>Clube Adoce</small><h3>Cliente ainda não reconhecida</h3><p>{loyalty.message}</p></div>}
         </section> : null}
-        {loyalty?.recognized && Number(loyalty.reward_choices || 0) > 0 && ["awaiting_confirmation", "reserved", "awaiting_payment"].includes(selected.status) ? <section className="instant-order-reward-picker">
+        {loyalty?.recognized && Number(loyalty.reward_choices || 0) > 0 && canApplyExistingOrderReward(selected.status, selected.payment_status, selected.paid_at) ? <section className="instant-order-reward-picker">
           <div><Gift /><span><small>Fatia premiada</small><strong>Escolha como aplicar o prêmio neste pedido</strong></span></div>
           <select aria-label="Como aplicar a fatia premiada" value={rewardMode} onChange={(event) => { setRewardMode(event.target.value as "add" | "existing"); setRewardExistingUnit(""); }}>
             <option value="existing">Marcar uma fatia já escolhida</option>
-            <option value="add">Adicionar uma nova fatia ao pedido</option>
+            {selected.status !== "preparing" ? <option value="add">Adicionar uma nova fatia ao pedido</option> : null}
           </select>
           {rewardMode === "existing" ? <select aria-label="Fatia existente que será premiada" value={rewardExistingUnit} onChange={(event) => setRewardExistingUnit(event.target.value)}>
             <option value="">Selecione uma fatia deste pedido</option>
@@ -557,11 +626,11 @@ export default function OperationInstantOrders() {
         {selected.status === "expired" ? <section className="expired-recovery-box">
           <small>Venda com prazo encerrado</small><h3>O que aconteceu com este pedido?</h3><p>Você pode reabrir para continuar o atendimento ou registrar que ele já foi pago e entregue.</p>
           <label>Forma de pagamento<select value={recoveryMethod} onChange={(event) => setRecoveryMethod(event.target.value)}>{paymentMethods.map((method) => <option key={method.code} value={method.code}>{method.label}</option>)}</select></label>
-          <div className="expired-recovery-actions"><button onClick={() => void reopenExpired()} disabled={busy}>Reabrir e continuar atendimento</button><button onClick={() => void finalizeExpired(false)} disabled={busy}>Registrar como pago e entregue</button><button onClick={() => { if (window.confirm("Use esta opção somente se a venda realmente aconteceu. O estoque será conciliado e o ajuste ficará registrado.")) void finalizeExpired(true); }} disabled={busy}>Concluir com ajuste de estoque</button></div>
+          <div className="expired-recovery-actions"><button onClick={() => void reopenExpired()} disabled={busy}>Reabrir e continuar atendimento</button><button onClick={() => setCancelOpen(true)} disabled={busy}><Trash2 /> Excluir da fila</button><button onClick={() => void finalizeExpired(false)} disabled={busy}>Registrar como pago e entregue</button><button onClick={() => { void confirmAction("Use esta opção somente se a venda realmente aconteceu. O estoque será conciliado e o ajuste ficará registrado.", { confirmLabel: "Concluir com ajuste" }).then((ok) => { if (ok) void finalizeExpired(true); }); }} disabled={busy}>Concluir com ajuste de estoque</button></div>
         </section> : null}
         {directFinishOpen && !["completed", "cancelled", "expired"].includes(selected.status) ? <section ref={directFinishRef} className="instant-order-direct-finish">
-          <small>Venda concluída fora do site</small>
-          <h3>Confirmar pagamento e finalizar</h3>
+          <small>Pagamento informado pela equipe</small>
+          <h3>Confirmar pagamento e liberar retirada</h3>
           <label>Como a cliente pagou?
             <select value={recoveryMethod} onChange={(event) => setRecoveryMethod(event.target.value)}>
               <option value="">Escolha a forma de pagamento</option>
@@ -571,22 +640,35 @@ export default function OperationInstantOrders() {
           {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
           <div>
             <button type="button" className="secondary" onClick={() => setDirectFinishOpen(false)} disabled={busy}>Voltar</button>
-            <button type="button" onClick={() => void finalizeDirectly()} disabled={busy || !recoveryMethod}><Check /> {busy ? "Finalizando..." : "Confirmar e finalizar"}</button>
+            <button type="button" onClick={() => void finalizeDirectly()} disabled={busy || !recoveryMethod}><Check /> {busy ? "Confirmando..." : "Confirmar pagamento e avisar cliente"}</button>
           </div>
         </section> : null}
-        <label>Link de pagamento<input type="text" value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Cole o link ou a mensagem copiada do Mercado Pago" /><small className="payment-link-help">Pode colar a mensagem inteira. A operação localizará e enviará somente o link.</small></label>
+        {selected.payment_method_code === "pix" ? <div className="instant-order-pix-key"><strong>Chave Pix da Adoce</strong><p>{pixKey}</p><small>{selected.payment_status === "approved" ? "Pagamento conferido e confirmado pela equipe." : selected.separation_confirmed_at ? "Separação confirmada. Confira abaixo o envio da cobrança." : "Se ainda não pagou, envie a cobrança. Se já pagou, confirme o pagamento e libere a retirada."}</small></div> : <label>Link de pagamento<input type="text" value={paymentUrl} onChange={(event) => setPaymentUrl(event.target.value)} placeholder="Cole o link ou a mensagem copiada do Mercado Pago" /><small className="payment-link-help">Pode colar a mensagem inteira. A operação localizará e enviará somente o link.</small></label>}
+        <OrderCommunication key={selected.id} orderId={selected.id} />
         <label>Anotações internas<textarea value={internalNotes} onChange={(event) => setInternalNotes(event.target.value)} /></label>
         <div className="instant-order-operation-actions">
-          {selected.status === "awaiting_confirmation" ? <button onClick={() => void sendPaymentLink(true)} disabled={busy}><MessageCircle /> Confirmar e enviar cobrança</button> : null}
-          {["reserved", "awaiting_payment"].includes(selected.status) && paymentUrl ? <button className="payment-send" onClick={() => void sendPaymentLink(false)} disabled={busy}><MessageCircle /> Reenviar link pelo WhatsApp</button> : null}
-          {["reserved", "awaiting_payment"].includes(selected.status) ? <button onClick={() => void confirmPaymentAndPrepare()} disabled={busy}><PackageCheck /> Pagamento recebido: iniciar separação e avisar</button> : null}
-          {selected.status === "paid" ? <button onClick={() => void updateAndNotify("preparing", (order) => `Olá, ${order.customer_name.split(/\s+/)[0]}! 💗 O pagamento do pedido ${order.order_number} foi confirmado e suas fatias já estão em separação. Avisaremos assim que estiver tudo pronto.`)} disabled={busy}><PackageCheck /> Iniciar separação e avisar</button> : null}
-          {selected.status === "preparing" ? <button onClick={() => void updateAndNotify("ready", (order) => `Olá, ${order.customer_name.split(/\s+/)[0]}! Seu pedido ${order.order_number} está separado e pronto para retirada. 📍 ${order.pickup_label}: ${order.pickup_address}`)} disabled={busy}><PackageCheck /> Pedido pronto e avisar retirada</button> : null}
+          {selected.status === "awaiting_confirmation" ? <button onClick={() => void update("reserved")} disabled={busy}><PackageCheck /> Registrar reserva no estoque</button> : null}
+          {(["reserved", "preparing"].includes(selected.status) || (selected.status === "awaiting_payment" && !selected.separation_confirmed_at)) && selected.payment_status !== "approved" ? <button className="payment-flow payment-charge" onClick={() => void sendPaymentLink()} disabled={busy}><MessageCircle /><span><strong>Ainda não pagou</strong><small>Confirmar separação e enviar cobrança</small></span></button> : null}
+          {selected.status === "reserved" ? <button onClick={() => void update("preparing")} disabled={busy}><PackageCheck /> Iniciar separação</button> : null}
+          {["paid", "preparing"].includes(selected.status) && selected.payment_status === "approved" ? <button onClick={() => void update("ready")} disabled={busy}><PackageCheck /> Liberar para retirada e avisar</button> : null}
           {selected.status === "ready" ? <button onClick={() => void update("completed")} disabled={busy}><Check /> Marcar como entregue</button> : null}
-          {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="direct-finish" onClick={() => setDirectFinishOpen(true)} disabled={busy}><Check /> Registrar como pago e finalizar</button> : null}
-          {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="cancel" onClick={() => { const reason = window.prompt("Informe ao menos 5 caracteres explicando o cancelamento:")?.trim() || ""; if (reason.length >= 5) void update("cancelled", reason); }} disabled={busy}><X /> Cancelar pedido</button> : null}
+          {!["completed", "cancelled", "expired"].includes(selected.status) && (selected.payment_status !== "approved" || selected.sales_channel === "operation") ? <button className="direct-finish payment-flow" onClick={() => { if (selected.sales_channel !== "operation") { void finalizeDirectly(selected.payment_method_code || "pix"); } else { setRecoveryMethod(selected.payment_method_code || "pix"); setDirectFinishOpen(true); } }} disabled={busy}><Check /> {selected.sales_channel === "operation" ? "Registrar como pago e finalizar" : <span><strong>Já pagou</strong><small>Confirmar pagamento e liberar retirada</small></span>}</button> : null}
+          {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="cancel" onClick={() => setCancelOpen(true)} disabled={busy}><X /> Cancelar pedido</button> : null}
         </div>
-        <a href={operationWhatsAppUrl(selected.customer_phone, `Olá, ${selected.customer_name.split(" ")[0]}! Estamos falando sobre o pedido ${selected.order_number} da Adoce.`)} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente no WhatsApp Business</a>
+        {cancelOpen && canCancelOrder(selected.status) ? <section className="instant-order-direct-finish">
+          <small>Cancelamento</small>
+          <h3>Por que este pedido está sendo cancelado?</h3>
+          {selected.status === "expired" ? <p>O pedido sairá desta fila e ficará no histórico de cancelados, com o motivo registrado.</p> : null}
+          <label>Motivo (mínimo 5 caracteres)
+            <textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: cliente desistiu, sabor esgotou, pedido duplicado..." autoFocus />
+          </label>
+          {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
+          <div>
+            <button type="button" className="secondary" onClick={() => { setCancelOpen(false); setCancelReason(""); }} disabled={busy}>Voltar</button>
+            <button type="button" className="cancel" onClick={() => void update("cancelled", cancelReason.trim())} disabled={busy || cancelReason.trim().length < 5}><X /> {busy ? "Cancelando..." : "Confirmar cancelamento"}</button>
+          </div>
+        </section> : null}
+        <p>Para conversar com o cliente, use o atendimento do WhatsApp oficial na área Hoje.</p>
         {selected.reserved_until ? <p className="instant-order-reservation"><Clock3 /> Reserva até {dateTime(selected.reserved_until)}</p> : null}
       </aside>
     </div> : null}

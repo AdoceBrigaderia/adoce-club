@@ -42,13 +42,15 @@ describe("Cartão Clube Adoce em grupo", () => {
     expect(migration).toContain("group.account_merged");
     expect(migration).toContain("update public.ledger_entries set track_id");
     expect(migration).toContain("'member_code', p.member_code");
-    expect(access).toContain("Cada pessoa mantém seu próprio acesso, Código do Membro e QR");
+    expect(access).toContain("Cada pessoa mantém seu próprio acesso e Código do Membro");
   });
 });
 
 describe("catálogo administrável e ordenado", () => {
-  it("usa foto e preço próprios para a torta G sem preço fixo no cliente", () => {
+  it("usa o preço comum da torta G e preserva a exceção da Torta de Pudim", () => {
     expect(admin).toContain("whole_cake_price");
+    expect(admin).toContain('cakeGPrice');
+    expect(admin).toContain('isPriceOnRequest(draft.name)');
     expect(admin).toContain('"whole_cake"');
     expect(today).toContain("flavor.wholeCakePrice");
     expect(today).not.toContain("pessoas por R$ 195,00");

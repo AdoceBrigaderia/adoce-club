@@ -2,8 +2,20 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const access = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
+const quick = readFileSync(new URL("./CadastroRapido.tsx", import.meta.url), "utf8");
 
 describe("cadastro rápido do Clube Adoce", () => {
+  it("abre automaticamente o perfil existente sem lançar carimbo", () => {
+    const saveStart = access.indexOf("const salvarCadastroBalcao");
+    const saveEnd = access.indexOf("if (authorized === null)", saveStart);
+    const flow = access.slice(saveStart, saveEnd);
+    expect(flow).toContain("if (created.existing)");
+    expect(flow).toContain('rpc("staff_search_customers"');
+    expect(flow).toContain("await openCustomer(existing)");
+    expect(flow.indexOf("if (created.existing)")).toBeLessThan(flow.indexOf("await carimbarBalcao"));
+    expect(quick).toContain("Abrir cadastro");
+    expect(quick).not.toContain("Abrir e carimbar");
+  });
   it("reúne os dados e a senha antes do único código de confirmação", () => {
     expect(access).toContain("Criar meu cartão");
     expect(access).toContain('autoComplete="new-password"');
@@ -15,7 +27,7 @@ describe("cadastro rápido do Clube Adoce", () => {
   it("cria o acesso definitivo e abre o cartão logo depois do código", () => {
     const verifyPosition = access.indexOf("const result = await verifyEmailCode(email, code)");
     const upgradePosition = access.indexOf("await upgradeCustomerSecurity(accessToken, phone, password)");
-    const cardPosition = access.indexOf('location.hash = "clube"', upgradePosition);
+    const cardPosition = access.indexOf('navigateRoute("/clube")', upgradePosition);
 
     expect(verifyPosition).toBeGreaterThan(-1);
     expect(upgradePosition).toBeGreaterThan(verifyPosition);

@@ -29,13 +29,11 @@ describe("fluxo operacional de pedidos", () => {
     expect(requestIsPastDue({ status: "confirmed", expires_at: "2026-07-20T10:00:00Z" }, Date.parse("2026-07-21T10:00:00Z"))).toBe(false);
   });
 
-  it("separa abertura anônima do formulário de solicitação recebida e abre os atendimentos reais", () => {
-    expect(source).toContain("formulários abertos");
-    expect(source).toContain("Anônimo, não gera atendimento");
-    expect(source).toContain("solicitações recebidas");
-    expect(source).toContain("showRecentWebsiteRequests");
-    expect(source).toContain('request.source === "website"');
-    expect(source).toContain("Inclui atendimentos ativos, concluídos, cancelados ou expirados.");
+  it("mostra a origem e abre os pedidos reais no mesmo fluxo", () => {
+    expect(source).toContain("const sourceLabels");
+    expect(source).toContain("sourceLabels[selectedRequest.source]");
+    expect(source).toContain("const openRequest = (request: ServiceRequest)");
+    expect(source).not.toContain("showRecentWebsiteRequests");
   });
 
   it("permite consultar pedidos encerrados e reabri-los pelo mesmo fluxo", () => {

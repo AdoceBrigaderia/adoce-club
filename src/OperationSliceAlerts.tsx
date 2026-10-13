@@ -20,7 +20,7 @@ export default function OperationSliceAlerts() {
   const waiting = items.length - queued.length;
   const send = async (item: AlertRow) => {
     const flavorName = item.flavors?.name || "sua fatia favorita";
-    const cartUrl = `${location.origin}${location.pathname}#carrinho?flavor=${encodeURIComponent(item.flavor_id)}`;
+    const cartUrl = `${location.origin}/pedido?flavor=${encodeURIComponent(item.flavor_id)}`;
     const message = `Olá, ${item.first_name}! A fatia ${flavorName} já está disponível para retirada no Cantinho Adoce. Escolha a calda e finalize seu pedido aqui: ${cartUrl}`;
     window.open(`https://wa.me/${item.phone_e164.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
     const { error } = await requireSupabase().from("slice_availability_alerts").update({ status: "sent", sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", item.id).eq("status", "queued");
@@ -33,4 +33,3 @@ export default function OperationSliceAlerts() {
     {queued.length ? <div>{queued.map((item) => <article key={item.id}><span><strong>{item.first_name} {item.last_name}</strong><small>{item.flavors?.name || "Fatia"}</small></span><button type="button" onClick={() => void send(item)}><MessageCircle /> Abrir mensagem pronta</button></article>)}</div> : <div className="operation-slice-alerts-empty"><Check /><span>Nenhum aviso pronto para envio.</span></div>}
   </section>;
 }
-

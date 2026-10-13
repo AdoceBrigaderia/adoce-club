@@ -1,8 +1,12 @@
+import { Capacitor } from "@capacitor/core";
+import { installNativeApiFetch } from "./lib/native-api";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import PublicContactDock from "./PublicContactDock";
+import PersistentTableHeaders from "./PersistentTableHeaders";
 import SiteVisualOverrides from "./SiteVisualOverrides";
+import { navigateRoute, normalizeLegacyRoute, pathFromLegacyHash } from "./route-paths";
 import "./styles.css";
 import "./theme.css";
 import "./public-visual-2026.css";
@@ -17,12 +21,6 @@ import "./catalogo-de-sabores.css";
 import "./adoce-tokens.css";
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
-const publicPathRoutes: Record<string, string> = {
-  "/encomendas": "#encomendas",
-  "/festas": "#eventos",
-  "/clube": "#clube",
-};
-
 // Links antigos enviados por WhatsApp continuam validos. A forma antiga abre
 // o novo endereco canonico, sem tocar nas rotas privadas do Clube/Operacao.
 if (window.location.hash === "#sabores") {
@@ -31,10 +29,25 @@ if (window.location.hash === "#sabores") {
   const legacyFlavor = window.location.hash.match(/^#sabores(?:\/|\?(?:slug|sabor)=)([^&/]+)\/?$/i);
   if (legacyFlavor) {
     window.location.replace(`/sabores/${encodeURIComponent(decodeURIComponent(legacyFlavor[1]))}`);
-  } else if (!window.location.hash && publicPathRoutes[normalizedPath]) {
-    window.history.replaceState(null, "", `${window.location.pathname}${publicPathRoutes[normalizedPath]}`);
-  }
+  } else normalizeLegacyRoute();
 }
+
+window.addEventListener("hashchange", () => {
+  if (normalizeLegacyRoute()) window.dispatchEvent(new Event("adoce-routechange"));
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const anchor = target.closest<HTMLAnchorElement>("a[href]");
+  if (!anchor || anchor.hasAttribute("download") || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  const url = new URL(anchor.href);
+  if (url.origin !== location.origin) return;
+  const path = pathFromLegacyHash(url.hash);
+  if (!path) return;
+  event.preventDefault();
+  navigateRoute(path);
+});
 
 window.addEventListener("vite:preloadError", (event) => {
   event.preventDefault();
@@ -49,10 +62,16 @@ window.addEventListener("vite:preloadError", (event) => {
 // o conteudo pre-renderizado; assim o mesmo documento serve ao Google e a quem
 // navega sem JavaScript.
 if (!document.querySelector("[data-seo-static-page]") || normalizedPath === "/sabores") {
-  ReactDOM.createRoot(document.getElementById("root")!).render(
+  installNativeApiFetch();
+if (Capacitor.isNativePlatform() && window.location.pathname === "/") {
+  window.history.replaceState(null, "", "/operacao");
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <SiteVisualOverrides>
         <App />
+        <PersistentTableHeaders />
         <PublicContactDock />
       </SiteVisualOverrides>
     </React.StrictMode>,

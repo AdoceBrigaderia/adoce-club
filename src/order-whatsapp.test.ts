@@ -33,3 +33,10 @@ describe("fechamento do pedido pelo WhatsApp", () => {
     expect(decodeURIComponent(url.split("?text=")[1])).toBe(message);
   });
 });
+
+it("informa disponibilidade sem inventar horario combinado de retirada", () => {
+ const result=buildOrderWhatsAppMessage({orderNumber:"TEST",customerName:"Teste",items:[{name:"Black Velvet",sauce:"Chocolate"}],total:16,pickupTime:"",availableFrom:"17:30",pickupMethod:"customer"});
+ expect(result).toContain("Disponibilidade: a partir das 17h30");
+ expect(result).toContain("aguardar confirmação da separação e liberação pela equipe");
+ expect(result).not.toContain("Retirada: hoje às");
+});

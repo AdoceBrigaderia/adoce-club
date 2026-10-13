@@ -6,7 +6,7 @@
 body:has(.public-app-shell) {
   padding-top: var(--public-shell-top);
   padding-bottom: var(--public-shell-bottom);
-  overflow-x: hidden;
+  overflow-x: clip;
   background: #fffaf7;
 }
 
@@ -102,21 +102,6 @@ body:has(.public-app-shell) {
   gap: 5px;
 }
 
-.public-shell-header .public-member-qr {
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  display: grid;
-  place-items: center;
-  color: #341810;
-  border: 1px solid rgba(103, 46, 36, .08);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, .8);
-  box-shadow: 0 6px 16px rgba(90, 39, 31, .07);
-}
-
-.public-shell-header .public-member-qr svg { width: 24px; height: 24px; }
-
 .public-shell-header .public-member-progress {
   color: #341810;
   text-decoration: none;
@@ -206,8 +191,6 @@ body:has(.public-app-shell) {
   .public-shell-header .public-menu { width: 48px; height: 48px; }
   .public-shell-header .public-menu svg { width: 28px; height: 28px; }
   .public-shell-header .public-brand { width: 74px; height: 74px; }
-  .public-shell-header .public-member-qr { width: 46px; height: 46px; flex-basis: 46px; }
-  .public-shell-header .public-member-qr svg { width: 28px; height: 28px; }
 }
 
 @media (min-width: 768px) {

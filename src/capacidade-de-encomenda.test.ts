@@ -31,7 +31,7 @@ function agenda(overrides: Partial<Agenda> = {}): Agenda {
   return {
     tortasAgendadas: 0,
     docinhosAgendados: 0,
-    escolaReservada: false,
+    reservaExclusiva: false,
     ...overrides,
   };
 }
@@ -111,18 +111,18 @@ describe("docinhos", () => {
   });
 });
 
-describe("Adoce na Escola toma o dia inteiro", () => {
-  // "o dia que tiver reserva de Adoce na escola, não pode ter mais nenhuma
+describe("Reserva exclusiva ocupa o dia inteiro", () => {
+  // "o dia que tiver reserva de reserva exclusiva, não pode ter mais nenhuma
   //  outra coisa agendado"
   it("bloqueia até um pedido pequeno", () => {
     const veredito = avaliarEncomenda(
       { tortas: 1, docinhos: 0 },
       QUARTA,
-      agenda({ escolaReservada: true }),
+      agenda({ reservaExclusiva: true }),
       HOJE,
     );
     expect(veredito.cabe).toBe(false);
-    expect(veredito.motivos.join(" ")).toContain("Adoce na Escola");
+    expect(veredito.motivos.join(" ")).toContain("reserva exclusiva");
   });
 });
 
@@ -196,12 +196,12 @@ describe("próxima data possível", () => {
     expect(data && data.getUTCDay()).not.toBe(6);
   });
 
-  it("pula dia com Adoce na Escola", () => {
-    const escola = dia("2026-08-19");
+  it("pula dia com reserva exclusiva", () => {
+    const dataReservada = dia("2026-08-19");
     const data = proximaDataPossivel(
       { tortas: 1, docinhos: 0 },
-      escola,
-      (d) => agenda({ escolaReservada: d.getUTCDate() === 19 }),
+      dataReservada,
+      (d) => agenda({ reservaExclusiva: d.getUTCDate() === 19 }),
       HOJE,
     );
     expect(data?.getUTCDate()).not.toBe(19);

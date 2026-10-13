@@ -38,6 +38,9 @@ export default function PublicContactDock() {
 
   return (
     <nav ref={dockRef} className="public-contact-dock" aria-label="Canais de contato da Adoce">
+      <a className="public-whatsapp-direct" href={publicContactLinks.whatsappPrimary} target="_blank" rel="noreferrer">
+        <FaWhatsapp aria-hidden="true" /> <span>Converse com a Adoce</span>
+      </a>
       {open ? (
         <div className="public-contact-menu" id="public-contact-menu">
           <header>

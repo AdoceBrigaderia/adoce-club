@@ -30,7 +30,7 @@ const productionHosts = new Set([
 export function publicAnalyticsEnabled() {
   if (typeof window === "undefined" || !supabase) return false;
   if (!productionHosts.has(window.location.hostname.toLowerCase())) return false;
-  if (window.location.hash.startsWith("#operacao")) return false;
+  if (window.location.pathname.startsWith("/operacao") || window.location.hash.startsWith("#operacao")) return false;
   if (window.localStorage.getItem("adoce-analytics") === "denied") return false;
   return window.navigator.doNotTrack !== "1";
 }

@@ -1,22 +1,6 @@
-// O catalogo de encomendas — tortas, docinhos, festas, escola e decoracao.
-//
-// Hoje existem tres componentes diferentes para a mesma tarefa (pedir alguma
-// coisa) e cinco rotas separadas, cada uma de uma safra. Festas, Escola e
-// Decoracao ficaram escondidas num link discreto embaixo das outras.
-//
-// Decisao do Rubens em 10/08: "enquanto a Beth nao falar que vamos encerrar
-// com as Festas, Escola e Decoracao, isso precisa fazer parte" — com peso
-// visual igual ao de Tortas e Docinhos.
-//
-// Aqui e uma tela so, com os cinco segmentos lado a lado. Trocar de segmento
-// nao volta para a home: era a reclamacao de que "a pagina de tortas deve ter
-// acesso direto aos docinhos".
-//
-// Os dados sao reais, conferidos no banco de producao em 10/08/2026:
-// Torta P 115 · M 155 · G 195 · docinhos a partir de 35 · tabuleiros 320 a 550
-// · escola 390 a 950 · decoracao 50 e 100.
+// Catálogo de encomendas atualmente oferecidas: tortas e docinhos.
 
-export type Segmento = "cakes" | "sweets" | "events" | "school" | "rentals";
+export type Segmento = "cakes" | "sweets";
 
 export type Produto = {
   id: string;
@@ -39,11 +23,8 @@ export const SEGMENTOS: Array<{
   chamada: string;
   rota: string;
 }> = [
-  { chave: "cakes", titulo: "Tortas", chamada: "Inteiras, por encomenda", rota: "#encomendas/tortas" },
-  { chave: "sweets", titulo: "Docinhos", chamada: "Em pacotes de 25, 50 ou 100", rota: "#encomendas/docinhos" },
-  { chave: "events", titulo: "Festas e eventos", chamada: "Tabuleiros e kits", rota: "#encomendas/festas" },
-  { chave: "school", titulo: "Adoce na Escola", chamada: "Comemorar na sala", rota: "#encomendas/escola" },
-  { chave: "rentals", titulo: "Decoração", chamada: "Para alugar e montar", rota: "#encomendas/decoracao" },
+  { chave: "cakes", titulo: "Tortas", chamada: "Inteiras, por encomenda", rota: "/encomendas/tortas" },
+  { chave: "sweets", titulo: "Docinhos", chamada: "Em pacotes de 25, 50 ou 100", rota: "/encomendas/docinhos" },
 ];
 
 export const tituloDoSegmento = (s: Segmento) =>

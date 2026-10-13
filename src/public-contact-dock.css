@@ -8,6 +8,10 @@
   gap: 10px;
 }
 
+.public-whatsapp-direct{display:inline-flex;align-items:center;gap:9px;min-height:48px;padding:0 16px;border-radius:999px;background:#188c55;color:#fff;text-decoration:none;font-size:.8rem;font-weight:800;box-shadow:0 10px 25px rgba(22,80,48,.25)}
+.public-whatsapp-direct svg{width:20px;height:20px}
+@media(max-width:640px){.public-whatsapp-direct{min-height:44px;padding:0 13px;font-size:.72rem}.public-contact-dock{bottom:calc(86px + env(safe-area-inset-bottom))}}
+
 body:has(.instant-order-layer) .public-contact-dock {
   display: none;
 }
@@ -181,4 +185,9 @@ body:has(.instant-order-layer) .public-contact-dock {
   .public-contact-menu a {
     transition: none;
   }
+}
+
+@media (max-width: 700px) {
+  .public-contact-dock { bottom: calc(86px + env(safe-area-inset-bottom)); }
+  .public-contact-trigger { display: none; }
 }

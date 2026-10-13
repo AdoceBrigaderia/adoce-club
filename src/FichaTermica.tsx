@@ -12,8 +12,6 @@
 //    e tudo preto no branco, e a hierarquia vem de tamanho e espaco.
 //  - As linhas tracejadas sao caractere, nao borda. Borda fina some no papel.
 
-import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import type { QuoteData } from "./RequestQuoteDocument";
 import { parsePreferences } from "./RequestQuoteDocument";
 import { formatarDataHora, quando } from "./lib/datas";
@@ -45,25 +43,14 @@ const telefoneBonito = (valor: string) => {
 
 export default function FichaTermica({
   data,
-  linkDoClube = "https://www.adocebrigaderia.com.br/#clube",
+  linkDoClube = "https://www.adocebrigaderia.com.br/clube",
   instagram = "@_adocebrigaderia_",
 }: {
   data: QuoteData;
   linkDoClube?: string;
   instagram?: string;
 }) {
-  const [qr, setQr] = useState<string>("");
   const itens = parsePreferences(data.preferences);
-
-  useEffect(() => {
-    let vivo = true;
-    // margin 0 e escala alta: em papel termico, QR pequeno com borda larga
-    // simplesmente nao le.
-    QRCode.toDataURL(linkDoClube, { margin: 0, scale: 6, errorCorrectionLevel: "M" })
-      .then((url) => { if (vivo) setQr(url); })
-      .catch(() => { if (vivo) setQr(""); });
-    return () => { vivo = false; };
-  }, [linkDoClube]);
 
   const total = itens.reduce((soma, item) => soma + (item.quantity || 0), 0)
     || data.quantity;
@@ -150,12 +137,7 @@ export default function FichaTermica({
           seu momento com a gente.
         </p>
         <p className="f-insta">{instagram}</p>
-        {qr ? (
-          <>
-            <img className="f-qr" src={qr} alt="" aria-hidden="true" />
-            <p className="f-qr-legenda">Entre no Clube Adoce</p>
-          </>
-        ) : null}
+        <p className="f-clube-link">Clube Adoce: {linkDoClube}</p>
         <p className="f-emissao">impresso {quando(new Date().toISOString())}</p>
       </footer>
     </article>

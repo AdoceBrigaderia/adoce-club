@@ -2,6 +2,15 @@
 
 Os arquivos Markdown listados em `docs/documentation-manifest.json` são a fonte oficial da documentação.
 
+## Fonte única obrigatória — decisão do proprietário em 08/10/2026
+
+- Toda atualização deste site deve acontecer exclusivamente em `D:\AdoceOnLine`.
+- Nunca criar outra pasta de projeto, cópia de release, réplica, checkout ou worktree para atualizar, testar, revisar, homologar ou publicar este site.
+- Trabalhar diretamente na pasta principal e preservar suas alterações existentes. Diretórios internos normais, como `src`, `supabase`, `public` e `android`, são componentes do mesmo projeto; não podem conter outro aplicativo completo.
+- Não usar cópias antigas como fonte independente. Histórico e recuperação usam o Git da pasta principal.
+- Antes de desenvolvimento, testes, compilação ou publicação, executar a verificação de fonte única prevista nos comandos do projeto.
+- Não contornar os bloqueios de fonte única e de recursos operacionais. Publicação em produção continua exigindo autorização explícita.
+
 ## Antes de alterar qualquer coisa
 
 1. Leia este arquivo e `docs/documentation-manifest.json`.

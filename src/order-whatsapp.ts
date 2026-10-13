@@ -14,6 +14,7 @@ export type WhatsAppOrderMessageInput = {
   items: WhatsAppOrderItem[];
   total: number;
   pickupTime: string;
+  availableFrom?: string;
   pickupMethod: "customer" | "driver";
   location?: string;
 };
@@ -47,6 +48,7 @@ export function buildOrderWhatsAppMessage({
   items,
   total,
   pickupTime,
+  availableFrom,
   pickupMethod,
   location = "Cantinho Adoce",
 }: WhatsAppOrderMessageInput) {
@@ -67,7 +69,8 @@ export function buildOrderWhatsAppMessage({
     `Total: ${quantity} ${items.length === 1 ? "fatia" : "fatias"}`,
     `Valor: ${money(total)}`,
     "",
-    `Retirada: hoje às ${displayPickupTime(pickupTime)}`,
+    ...(availableFrom ? [`Disponibilidade: a partir das ${displayPickupTime(availableFrom)}`] : []),
+    pickupTime ? `Retirada: hoje às ${displayPickupTime(pickupTime)}` : "Retirada: aguardar confirmação da separação e liberação pela equipe",
     `Local: ${location}`,
     `Retirada por: ${pickupMethod === "driver" ? "entregador de aplicativo" : "cliente"}`,
   ].join("\n").trim();

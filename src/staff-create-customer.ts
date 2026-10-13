@@ -7,7 +7,9 @@ export type StaffCreatedCustomer = {
   temporaryPassword?: string;
   loginUrl?: string;
   accessMessage?: string;
-  whatsappUrl?: string;
+  whatsappSent?: boolean;
+  whatsappStatus?: string;
+  whatsappError?: string;
 };
 
 export async function createStaffCustomer(

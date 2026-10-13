@@ -3,26 +3,17 @@ import { describe, expect, it } from "vitest";
 
 describe("formas de pagamento do pedido público", () => {
   const panel = readFileSync("src/InstantOrderPanel.tsx", "utf8");
-  const migration = readFileSync(
-    "supabase/migrations/20260815135747_restore_public_checkout_payment_methods.sql",
-    "utf8",
-  );
+  const migration = readFileSync("supabase/migrations/20261007030625_online_orders_pix_only.sql", "utf8");
 
-  it("restaura somente a consulta pública dos meios de pagamento", () => {
-    expect(migration).toContain(
-      "revoke all on function public.get_checkout_payment_methods() from public",
-    );
-    expect(migration).toContain(
-      "grant execute on function public.get_checkout_payment_methods() to anon, authenticated",
-    );
+  it("limita a escolha online no banco e preserva os meios internos", () => {
+    expect(migration).toContain("where method.code = 'pix' and method.active and method.customer_selectable");
+    expect(migration).toContain("target.sales_channel in ('site', 'pede_junto')");
+    expect(migration).toContain("requested_method_code is distinct from 'pix'");
   });
 
-  it("não deixa a falha da consulta bloquear o cliente silenciosamente", () => {
-    expect(panel).toContain("if (paymentResult.error)");
-    expect(panel).toContain("Não foi possível carregar as formas de pagamento.");
-    expect(panel).toContain("Tentar novamente");
-    expect(panel).toContain("disabled={paymentMethodsLoading || Boolean(paymentMethodsError)}");
-    expect(panel).toContain("if (paymentMethodsError) return setNotice");
-    expect(panel).toContain("disabled={!totalQuantity || paymentMethodsLoading || Boolean(paymentMethodsError) || !paymentMethod}");
+  it("mostra Pix sem oferecer outro meio no pedido individual", () => {
+    expect(panel).toContain('const paymentMethod = "pix"');
+    expect(panel).toContain("Pagamento por Pix.");
+    expect(panel).not.toContain("Como deseja pagar?");
   });
 });

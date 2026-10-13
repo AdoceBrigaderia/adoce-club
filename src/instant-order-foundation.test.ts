@@ -33,32 +33,36 @@ describe("fundação segura dos pedidos imediatos", () => {
   });
 
   it("oferece fila operacional e abre a rota direta de vendas", () => {
-    expect(operationQueue).toContain("Confirmar e enviar cobrança");
-    expect(operationQueue).toContain("Iniciar separação e avisar");
-    expect(operationQueue).toContain("Pedido pronto e avisar retirada");
-    expect(operationQueue).toContain("Pagamento recebido: iniciar separação e avisar");
-    expect(operationQueue).toContain("Confirmamos a disponibilidade e reservamos as fatias");
+    expect(operationQueue).toContain("Confirmar separação e enviar cobrança");
+    expect(operationQueue).toContain("Iniciar separação");
+    expect(operationQueue).toContain("Liberar para retirada e avisar");
+    expect(operationQueue).toContain("Já pagou");
+    expect(operationQueue).toContain("Confirmar pagamento e liberar retirada");
+    expect(operationQueue).not.toContain("window.open");
     expect(operationQueue).toContain("instant-order-status-track");
     expect(styles).toContain("grid-template-columns: repeat(5, minmax(0, 1fr))");
     expect(styles).toContain("overflow: visible");
     expect(operationQueue).toContain("Marcar como entregue");
-    expect(accessApp).toContain('location.hash.includes("vendas")');
+    expect(accessApp).toContain('sales: "/operacao/caixa"');
+    expect(accessApp).toContain('new URLSearchParams(location.search).get("tipo")');
+    expect(accessApp).toContain('allowedTabs={["sales", "requests", "settings"]}');
   });
 
-  it("registra pedidos recebidos no WhatsApp antes de tratá-los como venda concluída", () => {
-    expect(manualEntry).toContain("Registrar pedido recebido no WhatsApp");
-    expect(manualEntry).toContain('mode === "order"');
-    expect(manualEntry).toContain('rpc("staff_submit_instant_order_v5"');
-    expect(manualEntry).toContain("entrou na fila para conferência");
-    expect(manualEntry).toContain("Mensagens recebidas diretamente no WhatsApp não entram sozinhas na fila");
+  it("mostra pedidos online abaixo da venda local e mantém o WhatsApp oficial separado", () => {
+    expect(manualEntry).toContain("Pedidos (local e online)");
+    expect(manualEntry).toContain("Pedidos online");
+    expect(manualEntry).toContain("<OperationInstantOrders />");
+    expect(manualEntry).toContain("WhatsApp oficial");
+    expect(manualEntry).not.toContain("WhatsApp particular");
   });
 
   it("baixa venda manual pelo caixa ou pela fila de conciliacao, nunca pela funcao aposentada", () => {
-    expect(manualEntry).toContain('rpc("staff_create_manual_sale_in_cash_v2"');
-    expect(manualEntry).toContain('rpc("manager_create_manual_sale_for_reconciliation"');
-    expect(manualEntry).toContain('rpc("staff_open_cash_session"');
+    expect(manualEntry).toContain('rpc("staff_create_manual_sale_in_cash_v6"');
+    // Abertura de caixa obrigatória (24/09/2026): não há mais venda sem caixa aberto.
+    expect(manualEntry).not.toContain('rpc("manager_create_manual_sale_for_reconciliation"');
+    expect(manualEntry).toContain('rpc("staff_open_cash_with_report"');
     expect(manualEntry).not.toContain('rpc("staff_create_manual_sale",');
-    expect(manualEntry).toContain("Baixar venda e enviar para conciliação");
+    expect(manualEntry).toContain("Cancelar pedido");
   });
 
   it("faz os botões de pedido do Adoce Hoje registrarem a solicitação antes do WhatsApp", () => {

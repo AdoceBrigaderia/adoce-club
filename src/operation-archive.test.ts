@@ -5,6 +5,7 @@ const archive = readFileSync(new URL("./OperationArchive.tsx", import.meta.url),
 const commercial = readFileSync(new URL("./OperationCommercialAdmin.tsx", import.meta.url), "utf8");
 const instantOrders = readFileSync(new URL("./OperationInstantOrders.tsx", import.meta.url), "utf8");
 const access = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
+const management = readFileSync(new URL("./OperationManagement.tsx", import.meta.url), "utf8");
 
 describe("histórico separado das filas operacionais", () => {
   it("reúne os registros encerrados em uma área própria", () => {
@@ -15,7 +16,10 @@ describe("histórico separado das filas operacionais", () => {
     expect(archive).toContain('category: "customers"');
     expect(archive).toContain("Responsável:");
     expect(archive).toContain("Motivo:");
-    expect(access).toContain('<Archive /> Histórico');
+    expect(access).not.toContain('label: "Histórico"');
+    expect(access).toContain('/operacao/historico');
+    expect(management).toContain('["historico", "Histórico"]');
+    expect(management).toContain("<OperationArchive />");
   });
 
   it("mantém encerrados fora da fila ativa, mas permite consultá-los por filtro", () => {

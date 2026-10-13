@@ -8,6 +8,7 @@ type FlavorRow = {
   name: string;
   category: string | null;
   description: string;
+  ingredients: string | null;
   short_description: string;
   image_path: string | null;
   base_price: number;
@@ -30,7 +31,7 @@ export default function FlavorCatalogRoute() {
       const supabase = requireSupabase();
       const today = todayInFortaleza();
       const [flavorResult, summaryResult, availabilityResult, menuResult] = await Promise.all([
-        supabase.from("flavors").select("id,name,category,description,short_description,image_path,base_price,whole_cake_available,whole_cake_price,whole_cake_image_path").eq("active", true).order("name"),
+        supabase.from("flavors").select("id,name,category,description,ingredients,short_description,image_path,base_price,whole_cake_available,whole_cake_price,whole_cake_image_path").eq("active", true).order("name"),
         supabase.from("flavor_summaries").select("flavor_id,resumo"),
         supabase.from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", today),
         supabase.from("weekly_service_menu").select("flavor_id,service_date").gte("service_date", today).order("service_date"),
@@ -58,7 +59,7 @@ export default function FlavorCatalogRoute() {
           nome: flavor.name,
           resumo: summaries.get(flavor.id) || flavor.short_description || "Feito à mão pela Adoce.",
           descricao: flavor.description || "",
-          ingredientes: "",
+          ingredientes: flavor.ingredients || "",
           preco: Number(flavor.base_price),
           fotoFatia: flavor.image_path,
           fotoTorta: flavor.whole_cake_image_path,
@@ -77,5 +78,5 @@ export default function FlavorCatalogRoute() {
 
   if (error) return <main className="sabores"><p className="sab-resumo" role="alert">{error}</p></main>;
   if (!sabores.length) return <main className="sabores"><p className="sab-resumo">Abrindo os sabores…</p></main>;
-  return <CatalogoDeSabores sabores={sabores} onReservar={() => { location.hash = "adoce-hoje"; }} />;
+  return <CatalogoDeSabores sabores={sabores} onReservar={() => { location.assign("/adoce-hoje"); }} />;
 }

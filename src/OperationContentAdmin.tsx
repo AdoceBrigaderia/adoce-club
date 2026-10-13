@@ -1,13 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { confirmAction } from "./lib/confirm-dialog";
 import type { Session } from "@supabase/supabase-js";
 import {
-  Bell,
-  CalendarClock,
   Check,
   Clock3,
   Eye,
   ImagePlus,
-  Megaphone,
   PackageOpen,
   Pencil,
   Plus,
@@ -17,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
+import { isPriceOnRequest } from "./consultation-pricing";
 import {
   PRODUCT_IMAGE_LIMIT,
   uploadEditedProductImage,
@@ -27,14 +26,15 @@ import ImageEditor, { PRODUCT_IMAGE_PRESET } from "./ImageEditor";
 import ClipboardImageInput from "./ClipboardImageInput";
 import WeeklyMenuAdmin from "./WeeklyMenuAdmin";
 import OperationSliceAlerts from "./OperationSliceAlerts";
+import ShoppingBatchSuggestions from "./ShoppingBatchSuggestions";
 import { currentLocalTime, normalizeTime, type AvailabilityBatch } from "./availability-batches";
 import "./content-admin.css";
 
-export type AdminTab =
-  "catalog" | "today" | "operation" | "promotions" | "notifications";
+export type AdminTab = "catalog" | "today" | "operation";
 type Flavor = {
   id: string;
   name: string;
+  short_name: string | null;
   category: "traditional" | "premium";
   short_description: string | null;
   description: string | null;
@@ -103,33 +103,15 @@ type BusinessHourException = {
   closes_at: string | null;
   message: string | null;
 };
-type Promotion = {
-  id: string;
-  title: string;
-  body: string;
-  starts_at: string;
-  ends_at: string | null;
-  active: boolean;
-};
-type NotificationCampaign = {
-  id: string;
-  title: string;
-  body: string;
-  topic: string;
-  channels: string[];
-  status: string;
-  scheduled_at: string | null;
-  created_at: string;
-};
-
 const emptyFlavor = {
   name: "",
+  short_name: "",
   category: "traditional" as "traditional" | "premium",
   short_description: "",
   description: "",
   ingredients: "",
   base_price: "16.00",
-  whole_cake_price: "",
+  unit_cost: "",
   whole_cake_available: false,
   active: true,
 };
@@ -142,11 +124,16 @@ const availabilityLabels: Record<AvailabilityStatus, string> = {
   unavailable: "Indisponível",
 };
 const week = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const normalizeSearch = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+const matchesText = (flavor: { name: string; short_name?: string | null }, term: string) => {
+  const wanted = normalizeSearch(term);
+  return !wanted || normalizeSearch(`${flavor.name} ${flavor.short_name || ""}`).includes(wanted);
+};
 
 const scheduleChannelHints: Record<string, string> = {
   online_orders: "Pedidos de fatias feitos on-line para retirada na Adoce.",
   in_person: "Atendimento presencial no Cantinho da Adoce.",
-  preorders: "Encomendas de tortas, docinhos, escola e eventos.",
+  preorders: "Encomendas de tortas e docinhos.",
   store: "Canal antigo, sem atendimento ao público no endereço de produção.",
 };
 
@@ -209,16 +196,21 @@ function todayInFortaleza() {
 
 export default function OperationContentAdmin({
   session,
+  role,
   initialTab = "catalog",
   initialAvailabilityFilter = "all",
+  allowedTabs = ["catalog", "today", "operation"],
 }: {
   session: Session;
   role: string;
   initialTab?: AdminTab;
   initialAvailabilityFilter?: "all" | "low";
+  allowedTabs?: AdminTab[];
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "low">(initialAvailabilityFilter);
+  const [productSearch, setProductSearch] = useState("");
+  const [availabilitySearch, setAvailabilitySearch] = useState("");
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
@@ -235,16 +227,28 @@ export default function OperationContentAdmin({
     }).map((item) => item.flavor_id)),
     [availability],
   );
-  const visibleAvailabilityFlavors = availabilityFilter === "low"
+  const visibleAvailabilityFlavors = (availabilityFilter === "low"
     ? sortedAvailabilityFlavors.filter((flavor) => lowStockFlavorIds.has(flavor.id))
-    : sortedAvailabilityFlavors;
+    : sortedAvailabilityFlavors
+  ).filter((flavor) => matchesText(flavor, availabilitySearch));
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
-  const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [campaigns, setCampaigns] = useState<NotificationCampaign[]>([]);
   const [editing, setEditing] = useState<Flavor | null>(null);
+  const [creatingFlavor, setCreatingFlavor] = useState(false);
+  const editorPanelRef = useRef<HTMLElement>(null);
+  const scrolledForEditing = useRef<string | null>(null);
+  const canSeeCosts = role === "owner" || role === "manager";
+  const [costs, setCosts] = useState<Record<string, number>>({});
+  const productFormOpen = creatingFlavor || Boolean(editing);
+  useEffect(() => {
+    if (!productFormOpen || !editing) { scrolledForEditing.current = null; return; }
+    if (scrolledForEditing.current === editing.id) return;
+    scrolledForEditing.current = editing.id;
+    editorPanelRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [productFormOpen, editing]);
   const [draft, setDraft] = useState({ ...emptyFlavor });
+  const [cakeGPrice, setCakeGPrice] = useState<number | null>(null);
   const [galleryFlavor, setGalleryFlavor] = useState<Flavor | null>(null);
   const [pendingImage, setPendingImage] = useState<PendingFlavorImage | null>(null);
   const [busy, setBusy] = useState(false);
@@ -265,21 +269,6 @@ export default function OperationContentAdmin({
     closes_at: "18:00",
     note: "",
   });
-  const [promoDraft, setPromoDraft] = useState({
-    title: "",
-    body: "",
-    starts_at: todayInFortaleza() + "T09:00",
-    ends_at: "",
-    active: false,
-  });
-  const [campaignDraft, setCampaignDraft] = useState({
-    title: "",
-    body: "",
-    topic: "flavors",
-    channel: "email",
-    scheduled_at: "",
-  });
-
   const load = useCallback(async () => {
     setBusy(true);
     const supabase = requireSupabase();
@@ -294,11 +283,12 @@ export default function OperationContentAdmin({
       exceptionResult,
       promoResult,
       campaignResult,
+      cakePriceResult,
     ] = await Promise.all([
       supabase
         .from("flavors")
         .select(
-          "id,name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
+          "id,name,short_name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
         )
         .order("name"),
       supabase
@@ -345,6 +335,7 @@ export default function OperationContentAdmin({
         .select("id,title,body,topic,channels,status,scheduled_at,created_at")
         .order("created_at", { ascending: false })
         .limit(50),
+      supabase.from("commercial_products").select("base_price").eq("slug", "torta-g").single(),
     ]);
     const error =
       flavorResult.error ||
@@ -355,52 +346,86 @@ export default function OperationContentAdmin({
       hourResult.error ||
       exceptionResult.error ||
       promoResult.error ||
-      campaignResult.error;
+      campaignResult.error ||
+      cakePriceResult.error;
     setBusy(false);
     if (error) return setNotice(error.message);
+    setCakeGPrice(Number(cakePriceResult.data.base_price));
     setFlavors(
       [...((flavorResult.data || []) as Flavor[])].sort((a, b) =>
         a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
       ),
     );
     setImages((imageResult.data || []) as FlavorImage[]);
+    if (canSeeCosts) {
+      const costResult = await requireSupabase().from("flavor_costs").select("flavor_id,unit_cost");
+      setCosts(Object.fromEntries(((costResult.data || []) as Array<{ flavor_id: string; unit_cost: number }>).map((row) => [row.flavor_id, Number(row.unit_cost)])));
+    }
     setAvailability((availabilityResult.data || []) as Availability[]);
     setAvailabilityBatches((batchResult.data || []) as AdminAvailabilityBatch[]);
     setChannels((channelResult.data || []) as Channel[]);
     setHours((hourResult.data || []) as BusinessHour[]);
     setExceptions((exceptionResult.data || []) as BusinessHourException[]);
-    setPromotions((promoResult.data || []) as Promotion[]);
-    setCampaigns((campaignResult.data || []) as NotificationCampaign[]);
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    // "Disponibilidade de hoje" so buscava uma vez, ao abrir a aba. Depois
+    // de uma venda ser paga a quantidade muda no banco, mas quem ja estava
+    // com a tela aberta continuava vendo o numero antigo ate recarregar na
+    // mao. Reescuta mudanca em tempo real e busca tudo de novo, com um
+    // pequeno atraso pra nao disparar uma rajada de buscas.
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { void load(); }, 1500);
+    };
+    const today = todayInFortaleza();
+    const channel = requireSupabase()
+      .channel("operation-content-admin-availability")
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability", filter: `service_date=eq.${today}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability_batches", filter: `service_date=eq.${today}` }, scheduleReload)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      requireSupabase().removeChannel(channel);
+    };
+  }, [load]);
 
   const saveFlavor = async () => {
     if (draft.name.trim().length < 2)
       return setNotice("Informe o nome do produto.");
-    if (draft.whole_cake_available && !editing?.whole_cake_image_path)
+    const consultationOnly = isPriceOnRequest(draft.name);
+    if (cakeGPrice == null || cakeGPrice <= 0)
+      return setNotice("Não foi possível carregar o preço oficial da torta G.");
+    if (!consultationOnly && draft.whole_cake_available && !editing?.whole_cake_image_path)
       return setNotice(
         "Salve o produto, adicione a foto da torta inteira G em Fotos e depois marque esta opção.",
       );
     setBusy(true);
     const payload = {
       name: draft.name.trim(),
+      short_name: (draft.short_name.trim() || draft.name.trim().split(/\s+/).slice(0, 3).join(" ")).slice(0, 40),
       category: draft.category,
       short_description: draft.short_description.trim() || null,
       description: draft.description.trim() || null,
       ingredients: draft.ingredients.trim() || null,
-      base_price: Number(draft.base_price.replace(",", ".")) || null,
-      whole_cake_price:
-        Number(draft.whole_cake_price.replace(",", ".")) || null,
-      whole_cake_available: draft.whole_cake_available,
+      base_price: consultationOnly ? null : Number(draft.base_price.replace(",", ".")) || null,
+      whole_cake_price: consultationOnly ? null : cakeGPrice,
+      whole_cake_available: consultationOnly ? false : draft.whole_cake_available,
       active: draft.active,
     };
     const query = editing
-      ? requireSupabase().from("flavors").update(payload).eq("id", editing.id)
-      : requireSupabase().from("flavors").insert(payload);
-    const { error } = await query;
+      ? requireSupabase().from("flavors").update(payload).eq("id", editing.id).select("id").single()
+      : requireSupabase().from("flavors").insert(payload).select("id").single();
+    const { data: savedFlavor, error } = await query;
+    if (!error && canSeeCosts && savedFlavor?.id) {
+      const costValue = draft.unit_cost.trim() ? Number(draft.unit_cost.replace(/\./g, "").replace(",", ".")) : null;
+      const costResult = await requireSupabase().rpc("manager_set_flavor_cost", { target_flavor_id: savedFlavor.id, requested_unit_cost: costValue != null && Number.isFinite(costValue) ? costValue : null });
+      if (costResult.error) { setBusy(false); return setNotice(`Produto salvo, mas o custo não foi gravado: ${costResult.error.message}`); }
+    }
     setBusy(false);
     if (error) return setNotice(error.message);
     setNotice(
@@ -409,6 +434,7 @@ export default function OperationContentAdmin({
         : "Produto criado. Agora você pode adicionar as fotos.",
     );
     setEditing(null);
+    setCreatingFlavor(false);
     setDraft({ ...emptyFlavor });
     await load();
   };
@@ -417,12 +443,13 @@ export default function OperationContentAdmin({
     setEditing(flavor);
     setDraft({
       name: flavor.name,
+      short_name: flavor.short_name || flavor.name.split(/\s+/).slice(0, 3).join(" "),
       category: flavor.category,
       short_description: flavor.short_description || "",
       description: flavor.description || "",
       ingredients: flavor.ingredients || "",
       base_price: flavor.base_price?.toFixed(2) || "",
-      whole_cake_price: flavor.whole_cake_price?.toFixed(2) || "",
+      unit_cost: costs[flavor.id] == null ? "" : costs[flavor.id].toFixed(2).replace(".", ","),
       whole_cake_available: flavor.whole_cake_available,
       active: flavor.active,
     });
@@ -518,7 +545,7 @@ export default function OperationContentAdmin({
   };
 
   const removeImage = async (image: FlavorImage) => {
-    if (!window.confirm("Remover esta foto da apresentação do produto?"))
+    if (!await confirmAction("Remover esta foto da apresentação do produto?", { destructive: true, confirmLabel: "Remover" }))
       return;
     const { error } = await requireSupabase().rpc(
       "manager_disable_gallery_media",
@@ -673,7 +700,7 @@ export default function OperationContentAdmin({
   };
 
   const removeHour = async (id: string) => {
-    if (!window.confirm("Remover este horário recorrente?")) return;
+    if (!await confirmAction("Remover este horário recorrente?", { destructive: true, confirmLabel: "Remover" })) return;
     const { error } = await requireSupabase()
       .from("business_hours")
       .delete()
@@ -702,7 +729,7 @@ export default function OperationContentAdmin({
   };
 
   const removeException = async (id: string) => {
-    if (!window.confirm("Remover esta exceção de funcionamento?")) return;
+    if (!await confirmAction("Remover esta exceção de funcionamento?", { destructive: true, confirmLabel: "Remover" })) return;
     const { error } = await requireSupabase()
       .from("business_hour_exceptions")
       .delete()
@@ -710,104 +737,6 @@ export default function OperationContentAdmin({
     if (error) return setNotice(error.message);
     await load();
     setNotice("Exceção removida.");
-  };
-
-  const savePromotion = async () => {
-    if (promoDraft.title.trim().length < 2 || promoDraft.body.trim().length < 2)
-      return setNotice("Preencha o título e o texto da promoção.");
-    const { error } = await requireSupabase()
-      .from("promotions")
-      .insert({
-        title: promoDraft.title.trim(),
-        body: promoDraft.body.trim(),
-        starts_at: new Date(promoDraft.starts_at).toISOString(),
-        ends_at: promoDraft.ends_at
-          ? new Date(promoDraft.ends_at).toISOString()
-          : null,
-        active: promoDraft.active,
-        created_by: session.user.id,
-      });
-    if (error) return setNotice(error.message);
-    setPromoDraft({
-      title: "",
-      body: "",
-      starts_at: todayInFortaleza() + "T09:00",
-      ends_at: "",
-      active: false,
-    });
-    setNotice("Promoção salva.");
-    await load();
-  };
-
-  const togglePromotion = async (promo: Promotion) => {
-    const { error } = await requireSupabase()
-      .from("promotions")
-      .update({ active: !promo.active })
-      .eq("id", promo.id);
-    if (error) return setNotice(error.message);
-    await load();
-    setNotice(promo.active ? "Promoção pausada." : "Promoção ativada.");
-  };
-
-  const removePromotion = async (promo: Promotion) => {
-    if (!window.confirm(`Excluir a promoção “${promo.title}”?`)) return;
-    const { error } = await requireSupabase()
-      .from("promotions")
-      .delete()
-      .eq("id", promo.id);
-    if (error) return setNotice(error.message);
-    await load();
-    setNotice("Promoção excluída.");
-  };
-
-  const saveCampaign = async () => {
-    if (
-      campaignDraft.title.trim().length < 2 ||
-      campaignDraft.body.trim().length < 2
-    )
-      return setNotice("Preencha o título e a mensagem.");
-    const { error } = await requireSupabase()
-      .from("notification_campaigns")
-      .insert({
-        title: campaignDraft.title.trim(),
-        body: campaignDraft.body.trim(),
-        topic: campaignDraft.topic,
-        channels: [campaignDraft.channel],
-        status: campaignDraft.scheduled_at ? "scheduled" : "draft",
-        scheduled_at: campaignDraft.scheduled_at
-          ? new Date(campaignDraft.scheduled_at).toISOString()
-          : null,
-        created_by: session.user.id,
-      });
-    if (error) return setNotice(error.message);
-    setCampaignDraft({
-      title: "",
-      body: "",
-      topic: "flavors",
-      channel: "email",
-      scheduled_at: "",
-    });
-    setNotice(
-      "Campanha salva como rascunho editorial. Nenhuma mensagem foi enviada sem revisão.",
-    );
-    await load();
-  };
-
-  const cancelCampaign = async (campaign: NotificationCampaign) => {
-    if (!["draft", "scheduled"].includes(campaign.status))
-      return setNotice(
-        "Esta comunicação já iniciou o processamento e não pode ser cancelada aqui.",
-      );
-    if (!window.confirm(`Cancelar a comunicação “${campaign.title}”?`)) return;
-    const { error } = await requireSupabase()
-      .from("notification_campaigns")
-      .update({ status: "cancelled" })
-      .eq("id", campaign.id);
-    if (error) return setNotice(error.message);
-    setNotice(
-      "Comunicação cancelada. Nenhuma nova mensagem será enviada por ela.",
-    );
-    await load();
   };
 
   const gallery = useMemo(
@@ -819,13 +748,13 @@ export default function OperationContentAdmin({
     <div className="content-admin">
       <div className="operation-title content-admin-title">
         <div>
-          <span>Operação e administração</span>
-          <h1>Central Adoce</h1>
-          <p>Atualize o Adoce Hoje sem depender de alterações no site.</p>
+          <span>{tab === "operation" ? "Configurações" : "Produtos"}</span>
+          <h1>{tab === "today" ? "Produção de hoje" : tab === "operation" ? "Funcionamento" : "Sabores e preços"}</h1>
+          <p>{tab === "today" ? "Libere os sabores e as quantidades que o Caixa e o site podem vender." : tab === "operation" ? "Horários e modalidades de atendimento." : "Cadastro, fotos e preços das fatias."}</p>
         </div>
         <a
           className="content-preview"
-          href="/#adoce-hoje"
+          href="/adoce-hoje"
           target="_blank"
           rel="noreferrer"
         >
@@ -833,57 +762,71 @@ export default function OperationContentAdmin({
         </a>
       </div>
       <nav className="content-tabs" aria-label="Áreas da administração">
-        <button
+        {allowedTabs.includes("catalog") ? <button
           className={tab === "catalog" ? "active" : ""}
           onClick={() => setTab("catalog")}
         >
           <PackageOpen /> Produtos
-        </button>
-        <button
+        </button> : null}
+        {allowedTabs.includes("today") ? <button
           className={tab === "today" ? "active" : ""}
           onClick={() => setTab("today")}
         >
-          <Check /> Disponibilidade
-        </button>
-        <button
+          <Check /> Produção de hoje
+        </button> : null}
+        {allowedTabs.includes("operation") ? <button
           className={tab === "operation" ? "active" : ""}
           onClick={() => setTab("operation")}
         >
           <Store /> Funcionamento
-        </button>
-        <button
-          className={tab === "promotions" ? "active" : ""}
-          onClick={() => setTab("promotions")}
-        >
-          <Megaphone /> Promoções
-        </button>
-        <button
-          className={tab === "notifications" ? "active" : ""}
-          onClick={() => setTab("notifications")}
-        >
-          <Bell /> Notificações
-        </button>
+        </button> : null}
       </nav>
 
       {tab === "catalog" && (
         <>
-          <section className="admin-panel editor-panel">
+          <div className="admin-list-toolbar">
+            <label className="admin-search">
+              <span className="sr-only">Buscar sabor</span>
+              <input
+                type="search"
+                value={productSearch}
+                onChange={(event) => setProductSearch(event.target.value)}
+                placeholder="Buscar sabor pelo nome"
+                aria-label="Buscar sabor pelo nome"
+              />
+            </label>
+            {!productFormOpen ? (
+              <button
+                type="button"
+                className="admin-primary"
+                onClick={() => {
+                  setEditing(null);
+                  setDraft({ ...emptyFlavor });
+                  setCreatingFlavor(true);
+                }}
+              >
+                <Plus /> Novo sabor
+              </button>
+            ) : null}
+          </div>
+          {productFormOpen ? <section className="admin-panel editor-panel" ref={editorPanelRef}>
             <div className="panel-heading">
               <div>
                 <small>{editing ? "Editando produto" : "Novo produto"}</small>
                 <h2>{editing?.name || "Cadastrar sabor"}</h2>
               </div>
-              {editing && (
-                <button
-                  className="icon-button"
-                  onClick={() => {
-                    setEditing(null);
-                    setDraft({ ...emptyFlavor });
-                  }}
-                >
-                  <X />
-                </button>
-              )}
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Fechar formulário"
+                onClick={() => {
+                  setEditing(null);
+                  setCreatingFlavor(false);
+                  setDraft({ ...emptyFlavor });
+                }}
+              >
+                <X />
+              </button>
             </div>
             <div className="admin-form-grid">
               <label>
@@ -893,6 +836,16 @@ export default function OperationContentAdmin({
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 />
+              </label>
+              <label>
+                Nome curto no caixa <span>{draft.short_name.length}/40</span>
+                <input
+                  maxLength={40}
+                  value={draft.short_name}
+                  placeholder="Sugestão automática pelas primeiras palavras"
+                  onChange={(e) => setDraft({ ...draft, short_name: e.target.value })}
+                />
+                <small>Você pode editar este nome a qualquer momento.</small>
               </label>
               <label>
                 Categoria
@@ -909,27 +862,20 @@ export default function OperationContentAdmin({
                   <option value="premium">Premium</option>
                 </select>
               </label>
-              <label>
-                Preço da fatia
-                <input
-                  inputMode="decimal"
-                  value={draft.base_price}
-                  onChange={(e) =>
-                    setDraft({ ...draft, base_price: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Preço da torta inteira G
-                <input
-                  inputMode="decimal"
-                  value={draft.whole_cake_price}
-                  placeholder="Ex.: 195,00"
-                  onChange={(e) =>
-                    setDraft({ ...draft, whole_cake_price: e.target.value })
-                  }
-                />
-              </label>
+              {isPriceOnRequest(draft.name) ? <p>Fatia e tortas P, M e G: valor a consultar.</p> : <>
+                <label>
+                  Preço da fatia
+                  <input
+                    inputMode="decimal"
+                    value={draft.base_price}
+                    onChange={(e) =>
+                      setDraft({ ...draft, base_price: e.target.value })
+                    }
+                  />
+                </label>
+                <p>Preço oficial da torta G para todos os demais sabores: {cakeGPrice == null ? "carregando…" : cakeGPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+              </>}
+              {canSeeCosts ? <label>Custo da fatia (só a gerência vê)<input inputMode="decimal" value={draft.unit_cost} onChange={(e) => setDraft({ ...draft, unit_cost: e.target.value })} /></label> : null}
               <label className="wide">
                 Chamada curta <span>{draft.short_description.length}/90</span>
                 <input
@@ -975,6 +921,7 @@ export default function OperationContentAdmin({
                 <input
                   type="checkbox"
                   checked={draft.whole_cake_available}
+                  disabled={isPriceOnRequest(draft.name)}
                   onChange={(e) =>
                     setDraft({
                       ...draft,
@@ -992,9 +939,12 @@ export default function OperationContentAdmin({
             >
               <Save /> {editing ? "Salvar alterações" : "Cadastrar produto"}
             </button>
-          </section>
+          </section> : null}
+          <p className="admin-list-count" role="status">
+            {flavors.filter((flavor) => matchesText(flavor, productSearch)).length} de {flavors.length} sabores
+          </p>
           <div className="admin-product-grid">
-            {flavors.map((flavor) => (
+            {flavors.filter((flavor) => matchesText(flavor, productSearch)).map((flavor) => (
               <article
                 key={flavor.id}
                 className={!flavor.active ? "inactive" : ""}
@@ -1014,7 +964,7 @@ export default function OperationContentAdmin({
                   {flavor.short_description ||
                     "Descrição curta ainda não informada."}
                 </p>
-                {flavor.whole_cake_price && (
+                {isPriceOnRequest(flavor.name) ? <p>Fatia e tortas: valor a consultar</p> : flavor.whole_cake_price && (
                   <p>
                     Torta G: {flavor.whole_cake_price.toLocaleString("pt-BR", {
                       style: "currency",
@@ -1055,6 +1005,21 @@ export default function OperationContentAdmin({
             </div>
           </div>
           <OperationSliceAlerts />
+          <WeeklyMenuAdmin session={session} flavors={flavors} />
+          {canSeeCosts ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
+          <label className="admin-search availability-search">
+            <span className="sr-only">Buscar sabor</span>
+            <input
+              type="search"
+              value={availabilitySearch}
+              onChange={(event) => setAvailabilitySearch(event.target.value)}
+              placeholder="Buscar sabor"
+              aria-label="Buscar sabor na produção de hoje"
+            />
+          </label>
+          <p className="availability-summary" role="status">
+            {availability.filter((item) => item.status !== "unavailable").length} liberado(s) para venda · {Math.max(0, flavors.filter((flavor) => flavor.active).length - availability.filter((item) => item.status !== "unavailable").length)} indisponível(is)
+          </p>
           <div className="availability-filter" role="group" aria-label="Filtrar itens por situação do estoque">
             <button type="button" className={availabilityFilter === "all" ? "active" : ""} onClick={() => setAvailabilityFilter("all")}>Todos os itens</button>
             <button type="button" className={availabilityFilter === "low" ? "active warning" : ""} onClick={() => setAvailabilityFilter("low")}>{lowStockFlavorIds.size} com estoque baixo</button>
@@ -1073,9 +1038,14 @@ export default function OperationContentAdmin({
                     <span className={`availability-dot ${current}`} />
                     <div>
                       <strong>{flavor.name}</strong>
-                      <small>{availabilityLabels[current]}</small>
+                      <small>
+                        {inventory?.quantity_available !== null && inventory?.quantity_available !== undefined
+                          ? `${Math.max(inventory.quantity_available - (inventory.quantity_reserved || 0), 0)} livre(s) · ${inventory.quantity_reserved || 0} reservada(s)`
+                          : "Sem quantidade lançada"}
+                      </small>
                     </div>
                     <select
+                      aria-label={`Situação de ${flavor.name} hoje`}
                       value={current}
                       onChange={(e) =>
                         void setTodayStatus(
@@ -1093,8 +1063,10 @@ export default function OperationContentAdmin({
                         ),
                       )}
                     </select>
-                    <div className="availability-batches">
-                      <span>Lotes por horário</span>
+                    <details className="availability-batches">
+                      <summary>
+                        Lotes por horário ({availabilityBatches.filter((batch) => batch.flavor_id === flavor.id).length})
+                      </summary>
                       {availabilityBatches
                         .filter((batch) => batch.flavor_id === flavor.id)
                         .map((batch) => (
@@ -1168,7 +1140,7 @@ export default function OperationContentAdmin({
                           Total: {Math.max(inventory.quantity_available - (inventory.quantity_reserved || 0), 0)} livre(s) · {inventory.quantity_reserved || 0} reservada(s)
                         </small>
                       ) : null}
-                    </div>
+                    </details>
                   </article>
                 );
               })}
@@ -1204,7 +1176,7 @@ export default function OperationContentAdmin({
                       )
                     }
                   >
-                    <option value="scheduled">Seguir agenda automática</option>
+                    <option value="scheduled">Seguir horários cadastrados</option>
                     <option value="paused">Pausar excepcionalmente</option>
                   </select>
                 </label>
@@ -1237,11 +1209,10 @@ export default function OperationContentAdmin({
               </article>
             ))}
           </div>
-          <WeeklyMenuAdmin session={session} flavors={flavors} />
           <section className="admin-panel">
             <div className="panel-heading">
               <div>
-                <small>Agenda automática</small>
+                <small>Horários automáticos</small>
                 <h2>Horários recorrentes</h2>
                 <p>
                   Escolha o tipo de atendimento para ver todos os dias e horários
@@ -1353,7 +1324,7 @@ export default function OperationContentAdmin({
           <section className="admin-panel">
             <div className="panel-heading">
               <div>
-                <small>Feriados e eventos</small>
+                <small>Feriados e datas especiais</small>
                 <h2>Exceções da agenda</h2>
                 <p>
                   Esta configuração prevalece sobre o horário recorrente na data
@@ -1442,7 +1413,7 @@ export default function OperationContentAdmin({
             <div className="hour-list">
               {exceptions.map((item) => (
                 <article key={item.id}>
-                  <CalendarClock />
+                  <Clock3 />
                   <span>
                     <strong>
                       {new Date(
@@ -1469,245 +1440,6 @@ export default function OperationContentAdmin({
               ))}
             </div>
           </section>
-        </>
-      )}
-
-      {tab === "promotions" && (
-        <>
-          <section className="admin-panel">
-            <div className="panel-heading">
-              <div>
-                <small>Comunicação comercial</small>
-                <h2>Nova promoção</h2>
-              </div>
-            </div>
-            <div className="admin-form-grid">
-              <label>
-                Título
-                <input
-                  maxLength={80}
-                  value={promoDraft.title}
-                  onChange={(e) =>
-                    setPromoDraft({ ...promoDraft, title: e.target.value })
-                  }
-                />
-              </label>
-              <label className="wide">
-                Texto
-                <textarea
-                  maxLength={300}
-                  value={promoDraft.body}
-                  onChange={(e) =>
-                    setPromoDraft({ ...promoDraft, body: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Início
-                <input
-                  type="datetime-local"
-                  value={promoDraft.starts_at}
-                  onChange={(e) =>
-                    setPromoDraft({ ...promoDraft, starts_at: e.target.value })
-                  }
-                />
-              </label>
-              <label>
-                Fim opcional
-                <input
-                  type="datetime-local"
-                  value={promoDraft.ends_at}
-                  onChange={(e) =>
-                    setPromoDraft({ ...promoDraft, ends_at: e.target.value })
-                  }
-                />
-              </label>
-              <label className="admin-check">
-                <input
-                  type="checkbox"
-                  checked={promoDraft.active}
-                  onChange={(e) =>
-                    setPromoDraft({ ...promoDraft, active: e.target.checked })
-                  }
-                />{" "}
-                Publicar assim que começar
-              </label>
-            </div>
-            <button
-              className="admin-primary"
-              onClick={() => void savePromotion()}
-            >
-              <Save /> Salvar promoção
-            </button>
-          </section>
-          <div className="promotion-list">
-            {promotions.map((promo) => (
-              <article className="admin-panel" key={promo.id}>
-                <Megaphone />
-                <span>
-                  <strong>{promo.title}</strong>
-                  <p>{promo.body}</p>
-                  <small>
-                    {promo.active ? "Ativa" : "Rascunho"} ·{" "}
-                    {new Date(promo.starts_at).toLocaleString("pt-BR")}
-                  </small>
-                  <div className="promotion-actions">
-                    <button onClick={() => void togglePromotion(promo)}>
-                      {promo.active ? "Pausar" : "Ativar"}
-                    </button>
-                    <button
-                      className="danger"
-                      onClick={() => void removePromotion(promo)}
-                    >
-                      <Trash2 /> Excluir
-                    </button>
-                  </div>
-                </span>
-              </article>
-            ))}
-          </div>
-        </>
-      )}
-
-      {tab === "notifications" && (
-        <>
-          <section className="admin-panel">
-            <div className="panel-heading">
-              <div>
-                <small>Central de notificações</small>
-                <h2>Preparar comunicação</h2>
-                <p>
-                  A campanha fica em rascunho ou agendada. O envio só ocorrerá
-                  pelos canais efetivamente configurados e autorizados pelo
-                  cliente.
-                </p>
-              </div>
-            </div>
-            <div className="admin-form-grid">
-              <label>
-                Título <span>{campaignDraft.title.length}/80</span>
-                <input
-                  maxLength={80}
-                  value={campaignDraft.title}
-                  onChange={(e) =>
-                    setCampaignDraft({
-                      ...campaignDraft,
-                      title: e.target.value,
-                    })
-                  }
-                />
-              </label>
-              <label>
-                Assunto
-                <select
-                  value={campaignDraft.topic}
-                  onChange={(e) =>
-                    setCampaignDraft({
-                      ...campaignDraft,
-                      topic: e.target.value,
-                    })
-                  }
-                >
-                  <option value="flavors">Sabores disponíveis</option>
-                  <option value="festival">Festival</option>
-                  <option value="promotions">Promoções</option>
-                  <option value="club_news">Novidades do Clube</option>
-                  <option value="rewards">Prêmios e indicações</option>
-                  <option value="birthday">Aniversário</option>
-                </select>
-              </label>
-              <label>
-                Canal
-                <select
-                  value={campaignDraft.channel}
-                  onChange={(e) =>
-                    setCampaignDraft({
-                      ...campaignDraft,
-                      channel: e.target.value,
-                    })
-                  }
-                >
-                  <option value="email">E-mail</option>
-                  <option value="push">Notificação do aparelho</option>
-                  <option value="whatsapp">WhatsApp</option>
-                </select>
-              </label>
-              <label>
-                Agendar (opcional)
-                <input
-                  type="datetime-local"
-                  value={campaignDraft.scheduled_at}
-                  onChange={(e) =>
-                    setCampaignDraft({
-                      ...campaignDraft,
-                      scheduled_at: e.target.value,
-                    })
-                  }
-                />
-              </label>
-              <label className="wide">
-                Mensagem <span>{campaignDraft.body.length}/240</span>
-                <textarea
-                  maxLength={240}
-                  value={campaignDraft.body}
-                  onChange={(e) =>
-                    setCampaignDraft({ ...campaignDraft, body: e.target.value })
-                  }
-                />
-              </label>
-            </div>
-            <div className="admin-safety">
-              <CalendarClock />
-              <span>
-                <strong>Revisão antes do disparo</strong>
-                <small>
-                  Rascunhos não enviam mensagens. Push e WhatsApp só serão
-                  liberados após a configuração técnica dos respectivos
-                  provedores.
-                </small>
-              </span>
-            </div>
-            <button
-              className="admin-primary"
-              onClick={() => void saveCampaign()}
-            >
-              <Save /> Salvar comunicação
-            </button>
-          </section>
-          <div className="promotion-list">
-            {campaigns.map((campaign) => (
-              <article className="admin-panel" key={campaign.id}>
-                <Bell />
-                <span>
-                  <strong>{campaign.title}</strong>
-                  <p>{campaign.body}</p>
-                  <small>
-                    {campaign.status === "draft"
-                      ? "Rascunho"
-                      : campaign.status === "scheduled"
-                        ? "Agendada"
-                        : campaign.status === "cancelled"
-                          ? "Cancelada"
-                          : campaign.status}{" "}
-                    · {campaign.channels.join(", ")}{" "}
-                    {campaign.scheduled_at
-                      ? `· ${new Date(campaign.scheduled_at).toLocaleString("pt-BR")}`
-                      : ""}
-                  </small>
-                  {["draft", "scheduled"].includes(campaign.status) && (
-                    <div className="promotion-actions">
-                      <button
-                        className="danger"
-                        onClick={() => void cancelCampaign(campaign)}
-                      >
-                        Cancelar comunicação
-                      </button>
-                    </div>
-                  )}
-                </span>
-              </article>
-            ))}
-          </div>
         </>
       )}
 

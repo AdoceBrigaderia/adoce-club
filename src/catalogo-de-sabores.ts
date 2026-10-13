@@ -67,7 +67,7 @@ export function frasedoEstado(sabor: SaborNaVitrine) {
 
 /** Pode reservar agora? Só quem tem fatia sobrando hoje. */
 export const podeReservarAgora = (sabor: SaborNaVitrine) =>
-  sabor.estado === "hoje" && sabor.disponiveis > 0;
+  !isPriceOnRequest(sabor.nome) && sabor.estado === "hoje" && sabor.disponiveis > 0;
 
 /**
  * A ordem da vitrine: primeiro o que da para levar hoje, depois o que ja tem
@@ -124,3 +124,5 @@ export function listaDeIngredientes(sabor: Sabor) {
     .map((i) => i.trim())
     .filter(Boolean);
 }
+import { isPriceOnRequest } from "./consultation-pricing";
+

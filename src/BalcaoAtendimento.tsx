@@ -26,6 +26,7 @@ import "./balcao-atendimento.css";
 export default function BalcaoAtendimento({
   clientes,
   onCarimbar,
+  onCarimbarIndicacao,
   onEntregarPresente,
   onAbrirCadastro,
   onCadastrar,
@@ -33,6 +34,7 @@ export default function BalcaoAtendimento({
 }: {
   clientes: Cliente[];
   onCarimbar: (cliente: Cliente) => Promise<void> | void;
+  onCarimbarIndicacao?: (cliente: Cliente) => Promise<void> | void;
   onEntregarPresente: (cliente: Cliente) => Promise<void> | void;
   onAbrirCadastro?: (cliente: Cliente) => Promise<void> | void;
   onCadastrar?: () => void;
@@ -127,6 +129,9 @@ export default function BalcaoAtendimento({
                   </p>
                   <small>Abrir cadastro</small>
                 </button>
+                {situacao !== "presente" && onCarimbarIndicacao ? <button type="button" className="bal-indicacao" onClick={() => void onCarimbarIndicacao(cliente)} disabled={ocupado === cliente.id}>
+                  + Indicação
+                </button> : null}
                 <button
                   type="button"
                   className={situacao === "presente" ? "bal-entregar" : "bal-carimbar"}

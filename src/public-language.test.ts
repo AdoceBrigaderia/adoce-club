@@ -9,7 +9,7 @@ describe("linguagem pública da Adoce", () => {
 
   it("fala em disponibilidade de sabores em vez de termos internos", () => {
     expect(today).toContain("Sabores disponíveis hoje");
-    expect(today).toContain(">Hoje</button>");
+    expect(today).toContain(">Disponíveis hoje</button>");
     expect(today).toContain("Disponível hoje");
     expect(today).not.toContain("Sinalizados hoje");
     expect(today).not.toContain("Sinalizado hoje");

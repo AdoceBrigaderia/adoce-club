@@ -20,7 +20,7 @@ describe("avisos de disponibilidade e imagens de produto", () => {
   });
 
   it("leva a fatia avisada diretamente ao carrinho", () => {
-    expect(operation).toContain("#carrinho?flavor=");
+    expect(operation).toContain("/pedido?flavor=");
     expect(today).toContain('get("flavor")');
   });
 

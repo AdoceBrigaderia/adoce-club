@@ -11,8 +11,8 @@ describe("galerias comerciais", () => {
     expect(admin).toContain("onReplace={(item, file)");
   });
 
-  it("não repete a foto da categoria em cada opção de eventos, escola e aluguel", () => {
-    expect(catalog).toContain('["cakes", "events", "school", "rentals"]');
+  it("não repete a foto da categoria em cada opção de tortas", () => {
+    expect(catalog).toContain('(["cakes"])');
     expect(catalog).toContain("!categoryOnlyMediaSegments.has(segment)");
   });
 

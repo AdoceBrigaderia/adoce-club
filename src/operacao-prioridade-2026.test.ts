@@ -37,7 +37,7 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
   it("abre o cartão do Clube depois do login, sem mandar cadastrar de novo", () => {
     const access = source("./AccessApp.tsx");
     const app = source("./App.tsx");
-    expect(access).toContain('location.hash = "clube"');
+    expect(access).toContain('navigateRoute("/clube")');
     expect(access).toContain("mascaraTelefone");
     expect(app).toContain("tokenDoMagicLink");
     expect(app).toContain('surface="client"');
@@ -61,24 +61,40 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
   it("baixa a fatia-presente no estoque ao entregar no balcão", () => {
     const access = source("./AccessApp.tsx");
     const endpoint = source("../netlify/functions/staff-redeem-reward-slice.ts");
+    const rpc = source("../supabase/migrations/20260904190000_staff_redeem_reward_slice_rpc.sql");
     expect(access).toContain("redeemRewardSlice");
     expect(access).toContain("A unidade sai do estoque de hoje.");
-    expect(endpoint).toContain("quantity_available");
-    expect(endpoint).toContain('status: "redeemed"');
-    expect(endpoint).toContain("flavor_availability");
+    // A baixa em si é transacional, dentro de staff_redeem_reward_slice (uma
+    // função por resgate era ~13 gravações soltas sem transação; ver
+    // 20260904190000_staff_redeem_reward_slice_rpc.sql).
+    expect(endpoint).toContain('"staff_redeem_reward_slice"');
+    expect(rpc).toContain("quantity_available");
+    expect(rpc).toContain("flavor_availability_batches");
+    expect(rpc).toMatch(/for update/i);
   });
 
   it("envia senha temporária para o cliente cadastrado no balcão entrar no portal", () => {
     const endpoint = source("../netlify/functions/staff-create-customer.ts");
+    // A criação da conta foi para um módulo comum (também usado no fechamento da venda).
+    const counterCustomer = source("../netlify/functions/_shared/counter-customer.ts");
     const access = source("./AccessApp.tsx");
-    const clube = source("./AdoceClube.tsx");
     expect(endpoint).toContain("temporaryPassword");
-    expect(endpoint).toContain("auth_upgraded_at");
-    expect(endpoint).toContain("must_change_password: true");
+    expect(counterCustomer).toContain("auth_upgraded_at");
+    expect(counterCustomer).toContain("must_change_password: true");
     expect(access).toContain("acessoDoBalcao");
-    expect(access).toContain("Enviar acesso no WhatsApp");
-    expect(clube).toContain('.eq("status", "available")');
-    expect(clube).not.toContain("Math.floor(principal / TOTAL_CLUBE)");
+    // Nao existe mais link wa.me/<cliente> aqui nem na funcao: abrir esse deep
+    // link mandaria a mensagem pelo WhatsApp pessoal do atendente, nao pelo
+    // numero oficial. So "Copiar mensagem" (canal neutro) + ditar a senha.
+    expect(endpoint).not.toMatch(/wa\.me\/\$\{/);
+    expect(endpoint).not.toMatch(/\bwhatsappUrl\b/);
+    expect(access).not.toMatch(/acessoDoBalcao\.whatsappUrl/);
+    // A UI de fallback (sem envio automatico) precisa continuar mostrando a
+    // senha temporaria e o botao de copiar a mensagem.
+    expect(access).toContain("acessoDoBalcao.temporaryPassword");
+    expect(access).toContain("acessoDoBalcao.accessMessage");
+    expect(access).toContain("Copiar mensagem");
+    expect(access).toContain('.eq("status", "available")');
+    expect(access).not.toContain("Math.floor(principal / TOTAL_CLUBE)");
   });
 
   it("aumenta texto e toque da operação no tablet compacto", () => {
@@ -87,5 +103,17 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(tablet).toContain("minmax(220px, 260px)");
     expect(tablet).toContain("min-height: 56px");
     expect(tablet).toContain("font-size: 1.02rem");
+  });
+
+  it("usa dialogo proprio para registrar indicacoes no balcao e na ficha", () => {
+    const access = source("./AccessApp.tsx");
+    const balcao = source("./BalcaoAtendimento.tsx");
+    expect(access).toContain("referralDialog");
+    expect(access).toContain("staff_record_referral_stamps");
+    expect(access).toContain("Math.min(20, current + 1)");
+    expect(access).toContain('aria-labelledby="referral-stamp-title"');
+    expect(access).not.toContain("window.prompt");
+    expect(balcao).not.toContain("window.prompt");
+    expect(balcao).toContain("onCarimbarIndicacao(cliente)");
   });
 });

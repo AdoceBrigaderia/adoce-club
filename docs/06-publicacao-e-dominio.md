@@ -6,6 +6,12 @@ status: Proposta técnica
 
 # Publicação e domínio
 
+## Regra atual de endereços
+
+As páginas do site, do Clube Adoce, do Adoce Hoje e da Adoce Operação usam caminhos no endereço, sem fragmentos `#`. A entrada da equipe é `/operacao`, e as telas internas usam caminhos abaixo de `/operacao/`. O servidor entrega a aplicação nessas rotas, e o frontend seleciona a superfície correta pelo caminho. A validação no domínio oficial deve ser feita após cada publicação.
+
+O acesso assistido ao Clube usa `/acesso-direto`; e-mail e código temporário são informados na tela, nunca colocados na URL. Fragmentos de retorno de autenticação recebidos de links antigos continuam sendo aceitos apenas para concluir a sessão com segurança.
+
 ## Domínio oficial
 
 O domínio oficial é **adocebrigaderia.com.br**, registrado no Registro.br. Em 14/07/2026, a consulta pública indicava os servidores `a.auto.dns.br` e `b.auto.dns.br`, sem registro A público para o site e sem CNAME para `www`.
@@ -87,3 +93,10 @@ Credenciais, códigos de autenticação e chaves privadas nunca devem ser enviad
 - Métricas e logs sem dados pessoais indevidos.
 - Backup e retorno de versão testados.
 - Monitoramento de disponibilidade e vencimento do domínio.
+
+
+### 08/10/2026 — fonte única determinada pelo proprietário
+
+Todo desenvolvimento, teste, revisão e publicação deste site deve usar exclusivamente `D:\AdoceOnLine`. É proibido criar outra cópia completa, pasta de release, réplica ou worktree para atualizar o produto. Histórico deve ser preservado no Git da pasta principal. A pasta `android` é um componente do mesmo produto, não outra fonte de desenvolvimento.
+
+Os comandos de desenvolvimento, testes, verificação, compilação e publicação verificam o caminho canônico antes de continuar. Cópias externas são bloqueadas; cópias completas internas também bloqueiam a validação, salvo quando todos os seus comandos estão desativados e sua configuração de publicação foi retirada, aguardando remoção física. Essa desativação é uma medida provisória para o bloqueio da exclusão pela política de execução automática, não uma autorização para manter fontes paralelas.

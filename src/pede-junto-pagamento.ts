@@ -102,8 +102,8 @@ export function resumoParaOrganizador(grupo: GrupoDePagamento) {
   if (!grupo.fechado) {
     const faltam = Math.max(0, MINIMO_ENTREGA_GRATIS - grupo.totalDeFatias);
     return faltam > 0
-      ? `${grupo.totalDeFatias} fatias — faltam ${faltam} para a entrega grátis.`
-      : `${grupo.totalDeFatias} fatias e entrega grátis liberada. Ainda cabe mais gente.`;
+      ? `${grupo.totalDeFatias} fatias — faltam ${faltam} para enviar o pedido do grupo.`
+      : `${grupo.totalDeFatias} fatias. O pedido já pode ser enviado e ainda cabe mais gente.`;
   }
   if (!grupo.separado) return "A Adoce está separando. Ninguém precisa pagar ainda.";
   if (todosPagaram(grupo)) return "Todo mundo já acertou. É só buscar. 💗";

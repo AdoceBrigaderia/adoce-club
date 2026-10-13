@@ -356,7 +356,7 @@ export default function WeeklyMenuAdmin({
           <small>Planejamento da semana</small>
           <h2>Cardápio e atendimento</h2>
           <p>
-            Monte o Festival com antecedência. O que for publicado aqui aparece na agenda que o cliente consulta.
+            Monte o Festival com antecedência. O que for publicado aqui aparece na programação que o cliente consulta.
           </p>
         </div>
         <CalendarDays />

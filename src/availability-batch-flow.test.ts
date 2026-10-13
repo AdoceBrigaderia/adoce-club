@@ -10,7 +10,7 @@ const thermalPrinter = readFileSync("src/lib/thermal-printer.ts", "utf8");
 const migration = readFileSync(
   "supabase/migrations/20260815110239_add_inventory_availability_batches.sql",
   "utf8",
-);
+).replace(/\r\n/g, "\n");
 
 describe("cadeia completa dos lotes de fatias", () => {
   it("permite vários lotes por sabor na operação", () => {
@@ -23,7 +23,9 @@ describe("cadeia completa dos lotes de fatias", () => {
     expect(catalog).toContain("get_public_flavor_availability_batches");
     expect(catalog).toContain("formatBatchAvailability");
     expect(checkout).toContain("latestRequiredPickupTime");
-    expect(checkout).toContain("Seu pedido completo pode ser retirado");
+    expect(checkout).toContain("Sua quantidade fica pronta a partir das");
+    expect(checkout).toContain("requested_pickup_time: pickupTime");
+    expect(checkout).toContain('type="time"');
   });
 
   it("exposes only the safe batch summary to public visitors", () => {
@@ -69,7 +71,7 @@ describe("cadeia completa dos lotes de fatias", () => {
   });
 
   it("mantém a venda manual em uma rota exclusiva da equipe", () => {
-    expect(manualSale).toContain('rpc("staff_submit_instant_order_v5"');
+    expect(manualSale).toContain('rpc("staff_submit_cash_order_v1"');
     expect(migration).toContain("not private.is_staff()");
     expect(migration).toContain("revoke all on function public.submit_instant_order_v5");
     expect(migration).toContain("grant execute on function public.get_checkout_payment_methods()");

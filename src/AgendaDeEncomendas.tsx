@@ -12,7 +12,7 @@
 // nunca termina em "nao".
 
 import { useMemo, useState } from "react";
-import { CalendarDays, Check, Copy, School, TriangleAlert } from "lucide-react";
+import { CalendarDays, Check, Copy, TriangleAlert } from "lucide-react";
 import {
   avaliarEncomenda,
   docinhosDisponiveis,
@@ -141,8 +141,8 @@ export default function AgendaDeEncomendas({
               >
                 <span className="ae-dia-semana">{DIA_CURTO[dia.data.getUTCDay()]}</span>
                 <span className="ae-dia-numero">{dia.data.getUTCDate()}</span>
-                {dia.agenda.escolaReservada ? (
-                  <School className="ae-dia-marca" aria-label="Adoce na Escola" />
+                {dia.agenda.reservaExclusiva ? (
+                  <CalendarDays className="ae-dia-marca" aria-label="Reserva existente" />
                 ) : (
                   <span className="ae-dia-vagas">
                     {dia.tortasLivres > 0 ? `${dia.tortasLivres} torta${dia.tortasLivres === 1 ? "" : "s"}` : "cheio"}

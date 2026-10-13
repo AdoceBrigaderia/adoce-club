@@ -6,6 +6,16 @@ status: Em validação
 
 # Regras de negócio
 
+## Pedidos online de fatias
+
+- Fatias tradicionais custam R$ 16,00 cada.
+- A Torta de Pudim tem valor a consultar para fatia e tortas P, M e G. Não entra em pedidos automáticos com preço fixo; o atendimento confirma o valor antes do pedido. Seu cadastro pode ser ocultado ou exibido pela operação em **Catálogo > Exibir no catálogo**.
+- Site e pedido automático por WhatsApp oferecem somente Pix. A cobrança acontece após a confirmação da disponibilidade.
+- A Adoce não faz entregas. O pedido é retirado no Cantinho Adoce pelo cliente ou por motorista de aplicativo solicitado pelo cliente. Não há promoção de entrega grátis.
+- O início do pedido pede nome e sobrenome. A comunicação de preços não atribui valor fixo à Torta de Pudim.
+
+Os preços atuais das tortas inteiras dos demais sabores são únicos por tamanho: P R$ 115,00, M R$ 155,00 e G R$ 195,00. As fatias dos demais sabores estão hoje em R$ 16,00. Os custos de todas as fatias ainda estão sendo levantados; depois disso, a Adoce avaliará o sabor de menor margem, buscará aproximadamente 60% de margem nele e definirá um novo preço de venda comum aos demais. Esse recálculo ainda não autoriza alterar os preços atuais.
+
 ## Conceitos que não devem ser misturados
 
 O produto precisa mostrar e armazenar separadamente:
@@ -43,15 +53,15 @@ Após usar um prêmio, o progresso continua 3 de 14, cartões completados perman
 ## Cartão em Grupo
 
 - Um titular cria o grupo e define um nome livre.
-- O titular convida participantes por link seguro, QR ou compartilhamento.
-- Cada participante possui acesso, passe da Wallet e QR próprios.
+- O titular convida participantes por link seguro ou compartilhamento.
+- Cada participante possui acesso e passe da Wallet próprios.
 - Todos contribuem para o mesmo Meu Cartão e enxergam seu progresso.
 - O histórico registra qual participante originou cada compra ou resgate.
 - O titular pode remover participantes e revogar acessos.
 - Recomendação inicial: limite padrão de 6 participantes, configurável pela Adoce.
 - Recomendação inicial: permitir que o titular escolha entre resgate livre pelo grupo ou autorização do titular.
 
-> O compartilhamento é da conta de fidelidade, não de credenciais. Nunca se deve orientar várias pessoas a usarem o mesmo login ou o mesmo QR.
+> O compartilhamento é da conta de fidelidade, não de credenciais. Nunca se deve orientar várias pessoas a usarem o mesmo login.
 
 ## Espalhe Doçura
 

@@ -1,3 +1,5 @@
+import { confirmAction } from "./lib/confirm-dialog";
+import OperationManualSale from "./OperationManualSale";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { operationWhatsAppUrl } from "./operation-whatsapp";
@@ -42,39 +44,36 @@ import ImageEditor, {
 import ClipboardImageInput from "./ClipboardImageInput";
 import CommercialMediaAdmin from "./CommercialMediaAdmin";
 import { normalizeInstagramUrl, type CommercialMediaItem } from "./commercial-media";
-import OperationPedeJunto from "./OperationPedeJunto";
 import OperationInstantOrders from "./OperationInstantOrders";
 import OperationFinance from "./OperationFinance";
 import OperationCommerceSettings from "./OperationCommerceSettings";
 import MetaCatalogAdmin from "./MetaCatalogAdmin";
 import {
-  CommercialEventSubcategory,
   CommercialProduct,
   CommercialProductOption,
   CommercialSegment,
   PreorderBusinessHour,
   PreorderBusinessHourException,
-  eventSubcategoryLabels,
   money,
   normalizeBrazilianPhone,
   segmentLabels,
+  activeCommercialSegments,
   validatePreorderWindow,
 } from "./commercial";
 import "./operation-commercial.css";
 import "./operation-product-options.css";
 import "./operation-media-editor.css";
 
-type AdminTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
+type AdminTab = "agenda" | "sales" | "requests" | "catalog" | "crm" | "feedback" | "finance" | "settings";
 const tabPresentation: Record<AdminTab, { eyebrow: string; title: string; description: string }> = {
   agenda: { eyebrow: "Encomendas & agenda", title: "Agenda operacional", description: "Compromissos, retiradas, produção e bloqueios de horário em uma visão única." },
-  sales: { eyebrow: "Vendas de fatias", title: "Caixa e pedidos", description: "Lance vendas, acompanhe pagamentos, separação, retirada e baixa de estoque." },
-  requests: { eyebrow: "Encomendas", title: "Pedidos e pré-reservas", description: "Acompanhe cada solicitação desde o primeiro contato até a entrega." },
-  pede_junto: { eyebrow: "Venda compartilhada", title: "Pede Junto Adoce", description: "Grupos, participantes, pagamentos individuais e entrega do pedido." },
+  sales: { eyebrow: "Pedidos locais e online", title: "Pedidos", description: "Lance vendas locais e acompanhe os pedidos online na mesma tela." },
+  requests: { eyebrow: "Encomendas", title: "Encomendas", description: "Acompanhe cada solicitação desde o primeiro contato até a entrega." },
   catalog: { eyebrow: "Produtos", title: "Catálogo comercial", description: "Produtos, opções, preços, fotos e informações apresentadas aos clientes." },
   crm: { eyebrow: "Relacionamento", title: "Clientes de encomendas", description: "Histórico, anotações e próximos contatos ligados às solicitações." },
   feedback: { eyebrow: "Experiência do cliente", title: "Reclamações e sugestões", description: "Registre, acompanhe e resolva cada retorno recebido pelo site." },
   finance: { eyebrow: "Gestão financeira", title: "Vendas e recebimentos", description: "Compare faturamento, taxas e valor líquido por período e pagamento." },
-  settings: { eyebrow: "Administração", title: "Configurações comerciais", description: "Defina prazos, regras de reserva, pagamentos e taxas da operação." },
+  settings: { eyebrow: "Pedidos online", title: "Reserva online", description: "Defina quando o estoque é reservado e quanto tempo o cliente tem para pagar." },
 };
 type RequestStatus =
   | "prebooked"
@@ -288,16 +287,6 @@ const newProduct = (): CommercialProduct => ({
   published: false,
   active: true,
   sort_order: 100,
-  meta_retailer_id: "",
-  meta_product_id: null,
-  exibir_whatsapp: false,
-  meta_sync_status: "disabled",
-  meta_last_sync_at: null,
-  meta_last_error: null,
-  meta_last_error_temporary: null,
-  meta_sync_attempts: 0,
-  meta_payload_hash: null,
-  meta_batch_handle: null,
 });
 
 export default function OperationCommercialAdmin({
@@ -306,12 +295,14 @@ export default function OperationCommercialAdmin({
   initialTab = "agenda",
   onTabChange,
   onOpenContent,
+  allowedTabs = ["agenda", "sales", "requests", "catalog", "crm", "feedback", "finance", "settings"],
 }: {
   session: Session;
   role: string;
   initialTab?: AdminTab;
   onTabChange?: (tab: AdminTab) => void;
   onOpenContent?: () => void;
+  allowedTabs?: AdminTab[];
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const presentation = tabPresentation[tab];
@@ -475,15 +466,6 @@ export default function OperationCommercialAdmin({
     setRequestFilter(nextFilter);
   };
 
-  const showRecentWebsiteRequests = () => {
-    setFilter("");
-    setRequestFilter("all");
-    setRecentWebsiteRequestsOnly(true);
-    changeTab("requests");
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => requestsSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-    });
-  };
 
   const competingCount = (current: ServiceRequest) =>
     requests.filter(
@@ -500,7 +482,7 @@ export default function OperationCommercialAdmin({
     const confirmation = status === "confirmed"
       ? `Confirmar ${request.request_number}? O sinal de 50% deve ter sido recebido.`
       : `Alterar ${request.request_number} para “${statuses[status]}”?`;
-    if (!window.confirm(confirmation)) return;
+    if (!await confirmAction(confirmation)) return;
     setBusy(true);
     const { error } = await requireSupabase().rpc("manager_update_service_request", {
       target_request_id: request.id,
@@ -547,7 +529,7 @@ export default function OperationCommercialAdmin({
   const createManualRequest = async (event: FormEvent) => {
     event.preventDefault();
     const product = products.find((item) => item.id === manualRequest.productId);
-    if (!product) return;
+    if (!product || !activeCommercialSegments.includes(product.segment)) return;
     const phone = normalizeBrazilianPhone(manualRequest.phone);
     if (!/^55\d{10,11}$/.test(phone)) return setNotice("Informe um WhatsApp válido com DDD.");
     if (!nomeCompletoValido(manualRequest.name)) return setNotice("Informe nome e sobrenome separados por espaço.");
@@ -563,7 +545,7 @@ export default function OperationCommercialAdmin({
       customer_phone: `+${phone}`,
       quantity: product.minimum_quantity,
       desired_start: start.toISOString(),
-      desired_end: new Date(start.getTime() + (product.segment === "rentals" ? 48 : 2) * 60 * 60 * 1000).toISOString(),
+      desired_end: new Date(start.getTime() + 2 * 60 * 60 * 1000).toISOString(),
       customer_notes: manualRequest.notes.trim(),
       status: "prebooked",
       source: "operation",
@@ -582,14 +564,12 @@ export default function OperationCommercialAdmin({
 
   const saveProduct = async (event: FormEvent) => {
     event.preventDefault();
-    if (!selectedProduct) return;
+    if (!selectedProduct || !activeCommercialSegments.includes(selectedProduct.segment)) return;
     setBusy(true);
     const payload = {
         slug: selectedProduct.slug.trim() || slugify(selectedProduct.name),
         segment: selectedProduct.segment,
-        subcategory: selectedProduct.segment === "events"
-          ? selectedProduct.subcategory || "trays"
-          : null,
+        subcategory: null,
         name: selectedProduct.name.trim(),
         short_description: selectedProduct.short_description.trim(),
         description: selectedProduct.description.trim(),
@@ -605,7 +585,6 @@ export default function OperationCommercialAdmin({
         sort_order: selectedProduct.sort_order,
         published: selectedProduct.published,
         active: selectedProduct.active,
-        exibir_whatsapp: selectedProduct.exibir_whatsapp,
         updated_by: session.user.id,
       };
     const query = selectedProduct.id
@@ -613,18 +592,6 @@ export default function OperationCommercialAdmin({
       : requireSupabase().from("commercial_products").insert({ ...payload, created_by: session.user.id });
     const { data: savedProduct, error } = await query.select("id").single();
     let syncWarning = "";
-    if (!error && savedProduct && selectedProduct.exibir_whatsapp) {
-      try {
-        const response = await fetch(`/api/admin/integrations/meta/catalog/products/${savedProduct.id}/sync`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-        });
-        const body = await response.json().catch(() => ({})) as { error?: string };
-        if (!response.ok) syncWarning = ` O cadastro local foi preservado; sincronização pendente: ${body.error || `HTTP ${response.status}`}`;
-      } catch {
-        syncWarning = " O cadastro local foi preservado; a sincronização será reprocessada depois.";
-      }
-    }
     setBusy(false);
     if (error) setNotice(error.message);
     else {
@@ -769,7 +736,7 @@ export default function OperationCommercialAdmin({
   };
 
   const removeGalleryMedia = async (item: CommercialMediaItem) => {
-    if (!window.confirm("Remover esta mídia da apresentação pública?")) return;
+    if (!await confirmAction("Remover esta mídia da apresentação pública?")) return;
     setBusy(true);
     const { error } = await requireSupabase().from("commercial_media_items").update({ active: false, updated_by: session.user.id }).eq("id", item.id);
     setBusy(false); if (error) setNotice(error.message); else { setNotice("Mídia removida da apresentação."); await load(); }
@@ -931,7 +898,7 @@ export default function OperationCommercialAdmin({
   };
 
   const cancelCalendarBlock = async (block: CalendarBlock) => {
-    if (!window.confirm(`Cancelar “${block.title}” e retirá-lo da agenda ativa? O registro continuará no histórico.`)) return;
+    if (!await confirmAction(`Cancelar “${block.title}” e retirá-lo da agenda ativa? O registro continuará no histórico.`)) return;
     setBusy(true);
     const { error } = await requireSupabase()
       .from("calendar_blocks")
@@ -964,33 +931,9 @@ export default function OperationCommercialAdmin({
         <span><strong>{tasks.filter((item) => item.status === "open" && item.due_at && new Date(item.due_at).getTime() <= now + 24 * 60 * 60 * 1000).length}</strong><small>lembretes em 24h</small></span>
       </div> : null}
 
-      {canManage && (["agenda", "requests", "crm", "feedback"] as AdminTab[]).includes(tab) ? <section className="operation-analytics-summary" aria-label="Resultados do site nos últimos sete dias">
-        <div><span>Últimos 7 dias</span><strong>Interesse no site</strong><small>Aberturas são anônimas. Solicitações recebidas têm contato e podem ser atendidas.</small></div>
-        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "page_view").length}</strong><small>páginas vistas</small></span>
-        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "whatsapp_click").length}</strong><small>cliques no WhatsApp</small></span>
-        <span><strong>{analyticsLast7Days.filter((event) => event.event_name === "prebook_start").length}</strong><small>formulários abertos</small><em>Anônimo, não gera atendimento</em></span>
-        <button type="button" onClick={showRecentWebsiteRequests}><strong>{recentWebsiteRequests.length}</strong><small>solicitações recebidas</small><em>Ver atendimentos <ArrowRight /></em></button>
-      </section> : null}
 
-      <nav className="operation-commercial-tabs">
-        <div><small>Vendas</small><span>
-          <button className={tab === "sales" ? "active" : ""} onClick={() => changeTab("sales")}><ShoppingCart /> Fatias</button>
-          <button className={tab === "pede_junto" ? "active" : ""} onClick={() => changeTab("pede_junto")}><Users /> Pede Junto</button>
-        </span></div>
-        <div><small>Encomendas</small><span>
-          <button className={tab === "agenda" ? "active" : ""} onClick={() => changeTab("agenda")}><CalendarDays /> Agenda</button>
-          <button className={tab === "requests" ? "active" : ""} onClick={() => changeTab("requests")}><PackagePlus /> Pedidos</button>
-        </span></div>
-        <div><small>Relacionamento</small><span>
-          <button className={tab === "crm" ? "active" : ""} onClick={() => changeTab("crm")}><Users /> Clientes</button>
-          <button className={tab === "feedback" ? "active" : ""} onClick={() => changeTab("feedback")}><MessageSquareWarning /> Retornos</button>
-        </span></div>
-        <div><small>Gestão</small><span>
-          <button className={tab === "catalog" ? "active" : ""} onClick={() => changeTab("catalog")}><Edit3 /> Produtos</button>
-          <button className={tab === "finance" ? "active" : ""} onClick={() => changeTab("finance")}><CircleDollarSign /> Financeiro</button>
-          <button className={tab === "settings" ? "active" : ""} onClick={() => changeTab("settings")}><Settings2 /> Configurações</button>
-        </span></div>
-      </nav>
+
+      <nav className="operation-commercial-tabs"><div><span>{allowedTabs.map((area) => <button key={area} type="button" className={tab === area ? "active" : ""} onClick={() => changeTab(area)}>{tabPresentation[area].title}</button>)}</span></div></nav>
 
       {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
 
@@ -1036,7 +979,7 @@ export default function OperationCommercialAdmin({
             <small>Inserção direta</small><h2>Bloquear horário</h2>
             <label>Título<input required value={blockForm.title} onChange={(event) => setBlockForm({ ...blockForm, title: event.target.value })} /></label>
             <div><label>Início<input required type="datetime-local" value={blockForm.start} onChange={(event) => setBlockForm({ ...blockForm, start: event.target.value })} /></label><label>Fim<input required type="datetime-local" value={blockForm.end} onChange={(event) => setBlockForm({ ...blockForm, end: event.target.value })} /></label></div>
-            <label>Tipo<select value={blockForm.kind} onChange={(event) => setBlockForm({ ...blockForm, kind: event.target.value })}><option value="internal">Compromisso interno</option><option value="event">Evento</option><option value="production">Produção</option><option value="pickup">Retirada</option><option value="closed">Fechado</option></select></label>
+            <label>Tipo<select value={blockForm.kind} onChange={(event) => setBlockForm({ ...blockForm, kind: event.target.value })}><option value="internal">Compromisso interno</option><option value="production">Produção</option><option value="pickup">Retirada</option><option value="closed">Fechado</option></select></label>
             <label>Recurso <small>(opcional)</small><input value={blockForm.resource} onChange={(event) => setBlockForm({ ...blockForm, resource: event.target.value })} placeholder="Ex.: equipe externa" /></label>
             <label>Observações<textarea value={blockForm.notes} onChange={(event) => setBlockForm({ ...blockForm, notes: event.target.value })} /></label>
             <button disabled={busy}><Plus /> Adicionar à agenda</button>
@@ -1083,7 +1026,7 @@ export default function OperationCommercialAdmin({
             <p>Use quando o pedido chegar fora do site. Ele entra na mesma fila e recebe número e prazo.</p>
             {!showManualRequest ? <button type="button" onClick={() => setShowManualRequest(true)}><Plus /> Nova solicitação</button> : (
               <form className="operation-block-form" onSubmit={createManualRequest}>
-                <label>Produto<select required value={manualRequest.productId} onChange={(event) => setManualRequest({ ...manualRequest, productId: event.target.value })}><option value="">Selecione</option>{products.filter((item) => item.active).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+                <label>Produto<select required value={manualRequest.productId} onChange={(event) => setManualRequest({ ...manualRequest, productId: event.target.value })}><option value="">Selecione</option>{products.filter((item) => item.active && activeCommercialSegments.includes(item.segment)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
                 <label>Cliente<input required value={manualRequest.name} onChange={(event) => setManualRequest({ ...manualRequest, name: event.target.value })} /></label>
                 <label>WhatsApp com DDD<input required inputMode="tel" value={manualRequest.phone} onChange={(event) => setManualRequest({ ...manualRequest, phone: event.target.value })} /></label>
                 <label>Data e hora<input required type="datetime-local" value={manualRequest.start} onChange={(event) => setManualRequest({ ...manualRequest, start: event.target.value })} /></label>
@@ -1098,13 +1041,9 @@ export default function OperationCommercialAdmin({
         </div>
       ) : null}
 
-      {tab === "sales" ? <OperationInstantOrders /> : null}
+      {tab === "sales" ? <OperationManualSale onCreated={() => void load()} /> : null}
       {tab === "finance" ? <OperationFinance /> : null}
-      {tab === "settings" ? <OperationCommerceSettings
-        session={session}
-        onOpenFlavorImages={onOpenContent}
-        onOpenProductImages={() => changeTab("catalog")}
-      /> : null}
+      {tab === "settings" ? <OperationCommerceSettings area="orders" /> : null}
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
@@ -1113,10 +1052,10 @@ export default function OperationCommercialAdmin({
             <div>
               <small>Fotos principais das páginas</small>
               <h2>Galerias reais por categoria</h2>
-              <p>Eventos, Adoce na Escola e Aluguel de decoração mostram esta foto uma única vez; os produtos e valores aparecem logo abaixo.</p>
+              <p>As fotos das categorias aparecem junto dos produtos e valores correspondentes.</p>
             </div>
             <div className="operation-segment-media-grid">
-              {(Object.keys(segmentLabels) as CommercialSegment[]).filter((segment) => segment !== "sweets").map((segment) => {
+              {activeCommercialSegments.filter((segment) => segment !== "sweets").map((segment) => {
                 const media = segmentMedia.find((item) => item.segment === segment);
                 return (
                   <article key={segment}>
@@ -1175,14 +1114,11 @@ export default function OperationCommercialAdmin({
             <button className="operation-new-product" onClick={() => setSelectedProduct(newProduct())}>
               <Plus /><span><small>Cadastro</small><strong>Novo produto</strong></span><ArrowRight />
             </button>
-            {products.map((product) => (
+            {products.filter((product) => activeCommercialSegments.includes(product.segment)).map((product) => (
               <button key={product.id} onClick={() => setSelectedProduct({ ...product })}>
                 <span>
                   <small>
                     {segmentLabels[product.segment]}
-                    {product.segment === "events" && product.subcategory
-                      ? ` · ${eventSubcategoryLabels[product.subcategory]}`
-                      : ""}
                   </small>
                   <strong>{product.name}</strong>
                 </span>
@@ -1204,31 +1140,13 @@ export default function OperationCommercialAdmin({
                       setSelectedProduct({
                         ...selectedProduct,
                         segment: nextSegment,
-                        subcategory: nextSegment === "events"
-                          ? selectedProduct.subcategory || "trays"
-                          : null,
+                        subcategory: null,
                       });
                     }}
                   >
-                    {(Object.keys(segmentLabels) as CommercialSegment[]).map((item) => <option key={item} value={item}>{segmentLabels[item]}</option>)}
+                    {activeCommercialSegments.map((item) => <option key={item} value={item}>{segmentLabels[item]}</option>)}
                   </select>
                 </label>
-                {selectedProduct.segment === "events" ? (
-                  <label>
-                    Tipo de evento
-                    <select
-                      value={selectedProduct.subcategory || "trays"}
-                      onChange={(event) => setSelectedProduct({
-                        ...selectedProduct,
-                        subcategory: event.target.value as CommercialEventSubcategory,
-                      })}
-                    >
-                      {(Object.keys(eventSubcategoryLabels) as CommercialEventSubcategory[]).map((item) => (
-                        <option key={item} value={item}>{eventSubcategoryLabels[item]}</option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
                 <label>Ordem<input type="number" value={selectedProduct.sort_order} onChange={(event) => setSelectedProduct({ ...selectedProduct, sort_order: Number(event.target.value) })} /></label>
               </div>
               <label>Nome<input value={selectedProduct.name} onChange={(event) => setSelectedProduct({ ...selectedProduct, name: event.target.value })} /></label>
@@ -1236,13 +1154,6 @@ export default function OperationCommercialAdmin({
               <label>Chamada curta<input value={selectedProduct.short_description} onChange={(event) => setSelectedProduct({ ...selectedProduct, short_description: event.target.value })} /></label>
               <label>Descrição<textarea value={selectedProduct.description} onChange={(event) => setSelectedProduct({ ...selectedProduct, description: event.target.value })} /></label>
               <div><label>Preço<input type="number" min="0" step="0.01" value={selectedProduct.base_price ?? ""} onChange={(event) => setSelectedProduct({ ...selectedProduct, base_price: event.target.value === "" ? null : Number(event.target.value) })} /></label><label>Complemento do preço<input value={selectedProduct.price_suffix} onChange={(event) => setSelectedProduct({ ...selectedProduct, price_suffix: event.target.value })} placeholder="ex.: por pessoa" /></label><label>Quantidade mínima<input type="number" min="1" value={selectedProduct.minimum_quantity} onChange={(event) => setSelectedProduct({ ...selectedProduct, minimum_quantity: Number(event.target.value) })} /></label><label>Antecedência útil<input type="number" min="0" value={selectedProduct.lead_business_days} onChange={(event) => setSelectedProduct({ ...selectedProduct, lead_business_days: Number(event.target.value) })} /></label></div>
-              {selectedProduct.segment === "school" ? <label>Valor por criança adicional<input type="number" min="0" step="0.01" value={selectedProduct.details.additional_price ?? ""} onChange={(event) => setSelectedProduct({
-                ...selectedProduct,
-                details: {
-                  ...selectedProduct.details,
-                  additional_price: event.target.value === "" ? undefined : Number(event.target.value),
-                },
-              })} /></label> : null}
               <div className="operation-product-detail-fields">
                 <label>
                   O que está incluído <small>(um item por linha)</small>
@@ -1349,17 +1260,6 @@ export default function OperationCommercialAdmin({
               </div>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.published} onChange={(event) => setSelectedProduct({ ...selectedProduct, published: event.target.checked })} /> Publicado para clientes</label>
               <label className="operation-check"><input type="checkbox" checked={selectedProduct.active} onChange={(event) => setSelectedProduct({ ...selectedProduct, active: event.target.checked })} /> Produto ativo</label>
-              <section className="operation-meta-product">
-                <label className="operation-check"><input type="checkbox" checked={selectedProduct.exibir_whatsapp} onChange={(event) => setSelectedProduct({ ...selectedProduct, exibir_whatsapp: event.target.checked })} /> Exibir no WhatsApp</label>
-                <dl>
-                  <div><dt>Identificador permanente</dt><dd>{selectedProduct.meta_retailer_id || "Será definido ao criar o produto"}</dd></div>
-                  <div><dt>Situação</dt><dd>{({ disabled: "Não enviado", pending: "Pendente", syncing: "Enviando", submitted: "Processando na Meta", synced: "Sincronizado", error: "Erro" } as Record<string, string>)[selectedProduct.meta_sync_status] || selectedProduct.meta_sync_status}</dd></div>
-                  <div><dt>Última sincronização</dt><dd>{selectedProduct.meta_last_sync_at ? dateTime(selectedProduct.meta_last_sync_at) : "Ainda não realizada"}</dd></div>
-                  <div><dt>Tentativas</dt><dd>{selectedProduct.meta_sync_attempts}</dd></div>
-                </dl>
-                {selectedProduct.meta_last_error ? <p role="alert">{selectedProduct.meta_last_error}</p> : null}
-                {selectedProduct.id ? <button type="button" disabled={busy} onClick={() => void syncMetaProduct(selectedProduct)}><RefreshCw /> {selectedProduct.meta_sync_status === "error" ? "Reprocessar" : "Sincronizar agora"}</button> : <small>Crie o produto antes da primeira sincronização.</small>}
-              </section>
               {selectedProduct.id ? <CommercialMediaAdmin
                 title={`Galeria de ${selectedProduct.name}`}
                 items={galleryFor({ productId: selectedProduct.id })}
@@ -1476,7 +1376,6 @@ export default function OperationCommercialAdmin({
         </div>
       ) : null}
 
-      {tab === "pede_junto" ? <OperationPedeJunto /> : null}
 
       {tab === "feedback" ? (
         <div className="operation-commercial-grid feedback-operation">
@@ -1586,6 +1485,16 @@ export default function OperationCommercialAdmin({
             <label>Sinal recebido<input type="number" min="0" step="0.01" value={selectedRequest.deposit_amount ?? ""} onChange={(event) => setSelectedRequest({ ...selectedRequest, deposit_amount: event.target.value === "" ? null : Number(event.target.value) })} /></label>
             <label>Notas internas<textarea value={selectedRequest.internal_notes} onChange={(event) => setSelectedRequest({ ...selectedRequest, internal_notes: event.target.value })} placeholder="Registre combinados e motivos de alterações." /></label>
             {canManage ? <button className="drawer-save" disabled={busy} onClick={() => void saveRequestDetails(selectedRequest)}><Save /> Salvar valores e anotações</button> : null}
+<section className="operation-crm-summary" aria-label="Histórico e lembretes do pedido">
+              <small>Histórico do pedido</small>
+              <div className="operation-crm-timeline">
+                {requestHistory.filter((event) => event.entity_id === selectedRequest.id).map((event) => <article key={`history-${event.id}`}><RefreshCw /><span><strong>{event.payload.from_status ? `${statuses[event.payload.from_status]} → ` : ""}{event.payload.status ? statuses[event.payload.status] : "Pedido atualizado"}</strong><small>{dateTime(event.created_at)}</small></span></article>)}
+                {notes.filter((note) => note.service_request_id === selectedRequest.id).map((note) => <article key={note.id}><NotebookPen /><span><strong>{note.note}</strong><small>{dateTime(note.created_at)}</small></span></article>)}
+                {tasks.filter((task) => task.service_request_id === selectedRequest.id).map((task) => <article key={task.id}><Clock3 /><span><strong>{task.title}</strong><small>{task.due_at ? dateTime(task.due_at) : "Sem prazo"} · {task.status}</small></span>{task.status === "open" ? <button type="button" onClick={() => void completeTask(task)}><Check /></button> : null}</article>)}
+              </div>
+              <form onSubmit={addCrmNote}><label>Nova nota<textarea value={crmText} onChange={(event) => setCrmText(event.target.value)} placeholder="Preferências, contexto do atendimento ou combinado..." /></label><button><NotebookPen /> Registrar nota</button></form>
+              <form onSubmit={addCrmTask}><label>Lembrete<input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} placeholder="Ex.: confirmar sinal" /></label><label>Quando<input type="datetime-local" value={taskDue} onChange={(event) => setTaskDue(event.target.value)} /></label><button><Clock3 /> Criar lembrete</button></form>
+            </section>
             <div className="drawer-next-step">
               <small>Próxima ação recomendada</small>
               <div className="drawer-actions">
@@ -1612,7 +1521,7 @@ export default function OperationCommercialAdmin({
                 </>}
               </div>
             ) : null}
-            <a href={operationWhatsAppUrl(selectedRequest.customer_phone, `Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Adoce Brigaderia.`)} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente no WhatsApp Business</a>
+            <a href={operationWhatsAppUrl(selectedRequest.customer_phone, `Olá, ${selectedRequest.customer_name.split(/\s+/)[0]}! Estamos falando sobre sua solicitação ${selectedRequest.request_number} na Cantinho da Adoce.`)} target="_blank" rel="noreferrer"><MessageCircle /> Falar com o cliente no WhatsApp Business</a>
           </aside>
         </div>
       ) : null}

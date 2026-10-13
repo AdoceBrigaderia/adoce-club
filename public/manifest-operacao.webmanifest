@@ -3,7 +3,7 @@
   "short_name": "Adoce Operação",
   "id": "/adoce-operacao",
   "description": "Atendimento e operação segura do Clube Adoce.",
-  "start_url": "/#operacao",
+  "start_url": "/operacao",
   "scope": "/",
   "display": "standalone",
   "background_color": "#fff7ed",

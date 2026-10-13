@@ -130,18 +130,6 @@
 
 .f-insta { font-size: 8.5pt; letter-spacing: 0.06em; }
 
-.f-qr {
-  width: 22mm;
-  height: 22mm;
-  image-rendering: pixelated; /* térmica agradece a borda dura */
-}
-
-.f-qr-legenda {
-  font-size: 7.5pt;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 /* ---- Impressão ---- */
 
 @page ficha-58mm {

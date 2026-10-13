@@ -23,7 +23,7 @@ describe("código de acesso por e-mail", () => {
       "../netlify/functions/verify-email-code.ts",
     );
     expect(requestEndpoint).toContain('create_user: Boolean(body.createUser)');
-    expect(requestEndpoint).toContain("redirect_to: `${siteUrl}/#entrar`");
+    expect(requestEndpoint).toContain("redirect_to: `${siteUrl}/entrar`");
     expect(requestEndpoint).toContain("OTP_TIMEOUT_MS = 20000");
     expect(requestEndpoint).toContain("for (let attempt = 1; attempt <= 2; attempt += 1)");
     expect(requestEndpoint).not.toContain("generateLink");

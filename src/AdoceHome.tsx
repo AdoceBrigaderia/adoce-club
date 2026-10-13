@@ -5,11 +5,12 @@
 // cliques no WhatsApp. As pessoas usavam o site como cardapio e compravam fora.
 //
 // Aqui a fatia vem antes da marca. A regra de retirada vem na primeira linha.
-// Festas, escola e decoracao saem da navegacao e viram uma linha discreta.
 
 import { useEffect, useState } from "react";
-import { ChevronRight, Search, User } from "lucide-react";
+import { Search, User } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
+import { isPriceOnRequest } from "./consultation-pricing";
+import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 import { useConnectedClubSummary } from "./ConnectedClubSummary";
 import { pickupWindowsForDay, pickupWindowHint, type PickupHour } from "./pickup-window";
 import "./adoce-home.css";
@@ -45,6 +46,7 @@ function dataPorExtenso() {
 }
 
 export default function AdoceHome() {
+  const whatsapp = useOrderWhatsAppNumber();
   const { summary } = useConnectedClubSummary();
   const progresso = summary?.progress || 0;
   const faltam = Math.max(0, 14 - progresso);
@@ -106,8 +108,8 @@ export default function AdoceHome() {
           <span>Adoce</span>
         </div>
         <div className="ah-acoes">
-          <a href="#cardapio-fatias" aria-label="Buscar sabores"><Search /></a>
-          <a href="#entrar" aria-label="Minha conta"><User /></a>
+          <a href="/cardapio-fatias" aria-label="Buscar sabores"><Search /></a>
+          <a href="/entrar" aria-label="Minha conta"><User /></a>
         </div>
       </header>
 
@@ -133,7 +135,7 @@ export default function AdoceHome() {
           <div className="ah-esgotado">
             <p><strong>As fatias de hoje já acabaram</strong></p>
             <p>Amanhã tem mais, feito na hora.</p>
-            <a className="ah-secundario" href="#cardapio-fatias">Ver o cardápio da semana</a>
+            <a className="ah-secundario" href="/cardapio-fatias">Ver o cardápio da semana</a>
           </div>
         ) : (
           <>
@@ -146,19 +148,19 @@ export default function AdoceHome() {
                   <div className="ah-fatia-info">
                     <p className="ah-fatia-nome">{s.nome}</p>
                     <p className={s.restam !== null && s.restam <= 3 ? "ah-fatia-ultimas" : "ah-fatia-qtd"}>
-                      {s.restam === null
+                      {isPriceOnRequest(s.nome) ? "Valor a consultar" : s.restam === null
                         ? money(s.preco)
                         : s.restam <= 3
                           ? `Últimas ${s.restam} · ${money(s.preco)}`
                           : `${s.restam} fatias · ${money(s.preco)}`}
                     </p>
                   </div>
-                  <a className="ah-reservar" href={`#adoce-hoje?sabor=${s.id}`}>Reservar</a>
+                  <a className="ah-reservar" href={isPriceOnRequest(s.nome) ? orderWhatsAppUrl(whatsapp, "Olá, Adoce! Quero consultar o valor da fatia de Torta de Pudim.") : `/adoce-hoje?sabor=${s.id}`}>{isPriceOnRequest(s.nome) ? "Consultar" : "Reservar"}</a>
                 </li>
               ))}
             </ul>
             {sabores.length > visiveis.length && (
-              <a className="ah-ver-todos" href="#cardapio-fatias">
+              <a className="ah-ver-todos" href="/cardapio-fatias">
                 Ver os {sabores.length} sabores de hoje
               </a>
             )}
@@ -182,7 +184,7 @@ export default function AdoceHome() {
           </p>
           <div className="ah-barra"><span style={{ width: `${(progresso / 14) * 100}%` }} /></div>
         </div>
-        <a className="ah-clube-num" href="#clube">
+        <a className="ah-clube-num" href="/clube">
           <strong>{progresso}</strong><small>/14</small>
         </a>
       </section>
@@ -190,20 +192,17 @@ export default function AdoceHome() {
       <section className="ah-secao" aria-labelledby="ah-encomendas">
         <h2 id="ah-encomendas" className="ah-titulo-menor">Encomendar</h2>
         <div className="ah-cards">
-          <a className="ah-card" href="#encomendas">
+          <a className="ah-card" href="/encomendas">
             <img src="/site/card-tortas.webp" alt="" aria-hidden="true" loading="lazy" />
             <p>Tortas</p>
             <small>Sob encomenda</small>
           </a>
-          <a className="ah-card" href="#docinhos">
+          <a className="ah-card" href="/docinhos">
             <img src="/site/card-docinhos.webp" alt="" aria-hidden="true" loading="lazy" />
             <p>Docinhos</p>
             <small>A partir de 50</small>
           </a>
         </div>
-        <a className="ah-outros" href="#eventos">
-          Festas, Adoce na Escola e decoração <ChevronRight />
-        </a>
       </section>
     </main>
   );

@@ -18,8 +18,6 @@
 export type Reconhecimento = {
   /** Sessao de verdade no Supabase. */
   sessao: boolean;
-  /** Token do cartao, que chega pelo QR impresso na sacola: #cartao/<token>. */
-  tokenDoCartao: string | null;
   /** Resumo ja carregado do Clube, quando houver. */
   membro: { primeiroNome: string; carimbos: number } | null;
   /** Token solto na URL depois de um Magic Link, que ninguem aproveitou. */
@@ -68,18 +66,7 @@ export function decidirPorta(r: Reconhecimento): Decisao {
     };
   }
 
-  // 3. QR impresso na sacola. Nao exige senha, nao exige e-mail, nao exige
-  //    nada — e o unico caminho que funciona para quem esta sem dado movel,
-  //    porque o papel ja esta na mao dele.
-  if (r.tokenDoCartao) {
-    return {
-      porta: "cartao",
-      titulo: r.membro ? `Olá, ${r.membro.primeiroNome}` : "Seu cartão",
-      mensagem: "",
-    };
-  }
-
-  // 4. A home reconheceu o membro (pelo telefone do ultimo pedido, por
+  // 3. A home reconheceu o membro (pelo telefone do ultimo pedido, por
   //    exemplo) mas nao ha como abrir a conta agora. Nunca mandar cadastrar:
   //    a pessoa JA existe, e cadastrar de novo perde os carimbos dela.
   if (r.membro) {
@@ -126,12 +113,6 @@ export function tipoDoLinkDeAcesso(hash = ""): string | null {
   const limpo = hash.startsWith("#") ? hash.slice(1) : hash;
   if (!limpo.includes("access_token")) return null;
   return new URLSearchParams(limpo).get("type");
-}
-
-/** Token do cartao impresso: #cartao/<token>. */
-export function tokenDoCartaoNaRota(hash = ""): string | null {
-  const m = hash.match(/^#cartao\/([A-Za-z0-9._-]{8,})$/);
-  return m ? m[1] : null;
 }
 
 /**

@@ -1,6 +1,6 @@
 ---
 title: Catálogo, agenda e CRM
-description: Produtos por encomenda, eventos, pré-reservas, conflitos e relacionamento operacional.
+description: Produtos por encomenda, pré-reservas, conflitos e relacionamento operacional.
 status: Produção em implantação
 ---
 
@@ -8,20 +8,19 @@ status: Produção em implantação
 
 ## Organização comercial
 
-Tudo que a Adoce vende ou aluga integra o **Catálogo Adoce**, apresentado ao cliente em seis categorias com o mesmo enquadramento e a mesma navegação:
+O **Catálogo Adoce** apresenta ao cliente as linhas atualmente oferecidas:
 
 - fatias;
 - tortas;
-- docinhos;
-- eventos;
-- Adoce na Escola;
-- aluguel de decoração.
+- docinhos.
 
-As Tortas apresentam as fotos em uma galeria única, organizada por tamanho, sem repetir a mesma imagem em cada cartão de opção.
+Festas e eventos, Adoce na Escola e aluguel de decoração foram encerrados em 07/10/2026. Suas páginas, ofertas e controles de cadastro saem do site e da operação. Solicitações e registros anteriores permanecem disponíveis no histórico operacional para consulta e auditoria.
 
-A página pública **Cardápio de Fatias** consolida o sabor do dia, o cardápio fixo de terça a sábado, preços, horários e forma de pedir em conteúdo responsivo e legível, sem depender das artes impressas como imagem integral.
+A página de Tortas apresenta primeiro os tamanhos P, M e G, seus valores comuns aos sabores regulares e a referência de fatias servidas. A Torta de Pudim é a exceção: fatia e tortas P, M e G têm valor a consultar. Depois mostra os sabores ativos com a foto de torta inteira cadastrada para o sabor; quando ela não existe, usa a foto disponível do sabor. Tortas inteiras são somente por encomenda, com confirmação de sabor, valor e data pela Adoce. O cliente pode conversar pelo WhatsApp ou abrir o formulário de pré-reserva pelo link da página; o formulário mantém o registro na fila operacional.
 
-Somente fatias tradicionais e premium pagas geram carimbos. Encomendas, docinhos, tortas inteiras e eventos não geram carimbos.
+A página pública **Cardápio de Fatias** consolida o sabor do dia, o cardápio fixo de terça a sábado, preços, horários e forma de pedir em conteúdo responsivo e legível, sem depender das artes impressas como imagem integral. A vitrine de Fatias não separa sabores em Tradicionais e Premium; cada sabor abre suas descrições e ingredientes cadastrados. Há chamada visível para conversar com a Adoce pelo WhatsApp.
+
+Somente fatias tradicionais e premium pagas geram carimbos. Encomendas, docinhos e tortas inteiras não geram carimbos.
 
 ## Catálogo administrável
 
@@ -33,14 +32,9 @@ Preços iniciais confirmados:
 
 - torta P: R$ 115;
 - torta M: R$ 155;
-- torta G: R$ 220;
+- torta G: R$ 195;
 - docinhos tradicionais: 25 por R$ 35, 50 por R$ 70 e 100 por R$ 140;
-- docinhos especiais: 25 por R$ 45, 50 por R$ 90 e 100 por R$ 180;
-- Tabuleiro de Doces: 100 colheres por R$ 320, 200 por R$ 420 e 500 por R$ 550;
-- Kit Festa na Mesa: R$ 220;
-- Kit Comemore: R$ 50;
-- Kit Pegue e Monte: R$ 100;
-- Adoce na Escola: pacotes iniciais de R$ 390, R$ 500, R$ 650 e R$ 950.
+- docinhos especiais: 25 por R$ 45, 50 por R$ 90 e 100 por R$ 180.
 
 Recheios e outras personalizações podem receber preço adicional pelo cadastro administrativo, sem valor fixo espalhado pela interface.
 
@@ -50,7 +44,7 @@ O cliente escolhe um produto, informa contato, quantidade, data, horário, local
 
 Os indicadores de uso do site não substituem a fila operacional. Uma abertura do formulário é anônima e não oferece contato para atendimento. Quando o formulário é enviado com sucesso, a solicitação real aparece em **Pedidos e pré-reservas**, com nome, contato, situação e próxima ação. O indicador de solicitações recebidas leva diretamente aos registros dos últimos sete dias, inclusive quando já foram concluídos, cancelados ou expiraram; esses registros podem ser consultados e, quando cabível, reabertos sem apagar o histórico.
 
-O formulário informa antecipadamente a primeira data disponível conforme o prazo do produto. Se o cliente escolher uma data anterior, a interface explica em linguagem amigável quantos dias úteis são necessários, mostra a primeira data possível e oferece um botão para aplicá-la. Nome, WhatsApp, e-mail, quantidade, horário e consentimento também exibem mensagens próprias junto ao campo, sem depender apenas do destaque vermelho do navegador. Essa experiência é compartilhada por Tortas, Docinhos, Eventos, Adoce na Escola e Aluguel de Decoração.
+O formulário informa antecipadamente a primeira data disponível conforme o prazo do produto. Se o cliente escolher uma data anterior, a interface explica em linguagem amigável quantos dias úteis são necessários, mostra a primeira data possível e oferece um botão para aplicá-la. Nome, WhatsApp, e-mail, quantidade, horário e consentimento também exibem mensagens próprias junto ao campo, sem depender apenas do destaque vermelho do navegador. Essa experiência é compartilhada por Tortas e Docinhos.
 
 Regras:
 
@@ -58,9 +52,7 @@ Regras:
 - até três pré-reservas concorrentes podem existir para o mesmo recurso e período;
 - compromisso confirmado bloqueia nova solicitação conflitante;
 - a antecedência é validada em dias úteis;
-- eventos e Adoce na Escola têm saldo até 24 horas antes;
 - encomendas comuns mantêm o saldo na retirada;
-- a Adoce na Escola exige cinco dias úteis de antecedência;
 - domingo permanece fechado por padrão, com possibilidade de exceção administrativa.
 
 ## Agenda operacional
@@ -78,7 +70,7 @@ A agenda reúne pré-reservas, pedidos confirmados e bloqueios inseridos diretam
 Cada solicitação alimenta o histórico de relacionamento. A equipe pode registrar notas e lembretes ligados ao cliente ou pedido. A visão inicial reúne:
 
 - solicitações e orçamentos;
-- eventos confirmados;
+- encomendas confirmadas;
 - cancelamentos;
 - preferências declaradas;
 - notas internas;

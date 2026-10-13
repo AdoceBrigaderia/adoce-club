@@ -57,13 +57,8 @@ describe("o que o Rubens pediu no desenho", () => {
     expect(componente).toContain("Obrigada por adoçar");
   });
 
-  it("leva o convite para o Clube com QR", () => {
-    expect(componente).toContain("Entre no Clube Adoce");
-    expect(componente).toContain("#clube");
-  });
-
-  it("o QR não tem margem larga nem escala pequena, senão não lê no papel", () => {
-    expect(componente).toContain("margin: 0");
-    expect(componente).toContain("scale: 6");
+  it("leva o endereço do Clube em texto", () => {
+    expect(componente).toContain("Clube Adoce:");
+    expect(componente).toContain("/clube");
   });
 });

@@ -1,0 +1,18 @@
+import { writeFileSync } from 'node:fs';
+const base = 'https://www.adocebrigaderia.com.br';
+const response = await fetch(base + '/operacao');
+const html = await response.text();
+const entry = [...html.matchAll(/src="(\/assets\/[^"\s]+\.js)"/g)][0]?.[1];
+if (!entry || response.status !== 200) throw Error('Página operacional indisponível');
+const js = await (await fetch(base + entry)).text();
+const access = js.match(/assets\/(AccessApp-[^"\s]+\.js)/)?.[0];
+if (!access) throw Error('Pacote operacional ausente');
+const accessChunk = await (await fetch(base + '/' + access)).text();
+const saleAsset = accessChunk.match(/OperationCommercialAdmin-[^"'`\s]+\.js/)?.[0];
+if (!saleAsset) throw Error('Pacote do caixa ausente');
+const chunk = await (await fetch(base + '/assets/' + saleAsset)).text();
+const present = chunk.includes('Imprimir cupom') && chunk.includes('Venda finalizada sem impressão.');
+if (!present) throw Error('Alteração ausente em produção');
+const result = {url:base+'/operacao',status:response.status,entry,operationAsset:access,cashAsset:saleAsset,printChoicePresent:present};
+writeFileSync('entregas/producao-impressao-opcional-20261008.json',JSON.stringify(result,null,2));
+console.log(result);

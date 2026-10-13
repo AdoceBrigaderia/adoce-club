@@ -4,7 +4,7 @@ export type MetaSyncOperation = "create" | "update" | "availability";
 export type CatalogProductRow = {
   id: string;
   slug: string;
-  segment: "cakes" | "sweets" | "events" | "school" | "rentals";
+  segment: string;
   name: string;
   short_description: string;
   description: string;
@@ -56,12 +56,9 @@ export class MetaCatalogError extends Error {
   }
 }
 
-const segmentNames: Record<CatalogProductRow["segment"], string> = {
+const segmentNames: Record<string, string> = {
   cakes: "Tortas",
   sweets: "Docinhos",
-  events: "Eventos",
-  school: "Adoce na Escola",
-  rentals: "Aluguel de decoração",
 };
 
 const stableJson = (value: unknown) => JSON.stringify(value, Object.keys(value as object).sort());
@@ -88,7 +85,7 @@ export function isPublicHttpsUrl(value: string | null | undefined) {
 
 export async function prepareMetaItem(product: CatalogProductRow, productBaseUrl: string): Promise<PreparedMetaItem | null> {
   const previouslySubmitted = Boolean(product.meta_payload_hash || product.meta_product_id || product.meta_batch_handle);
-  const available = product.exibir_whatsapp && product.active && product.published;
+  const available = Boolean(segmentNames[product.segment]) && product.exibir_whatsapp && product.active && product.published;
 
   if (!available && !previouslySubmitted) return null;
 

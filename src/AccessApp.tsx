@@ -1,3 +1,26 @@
+import {  confirmAction  } from "./lib/confirm-dialog";
+import {  Capacitor  } from "@capacitor/core";
+import {  BrowserQRCodeReader, type IScannerControls  } from "@zxing/browser";
+import QRCode from "qrcode";
+import { 
+  AlertTriangle,
+  BarChart3,
+  Camera,
+  Clock3,
+  QrCode } from "lucide-react";
+import OperationAccountMenu from "./OperationAccountMenu";
+import CashDayGuard from "./CashDayGuard";
+import {  operationNavigateEvent, type OperationAreaRequest, type StampSale  } from "./lib/operation-navigation";
+import {  describeOperationMessage, type OperationMessageKind  } from "./lib/operation-feedback";
+import NativePrinterSettings from "./NativePrinterSettings";
+import {  syncNativeOperationSession  } from "./lib/native-operation";
+import {  productionApiOrigin  } from "./lib/native-api";
+import "./cash-register-layout.css";
+import "./operation-shell.css";
+import "./operation-desktop.css";
+const OperationCommerceSettings = lazy(() => import("./OperationCommerceSettings"));
+const OperationManagement = lazy(() => import("./OperationManagement"));
+const OperationPurchasingInventory = lazy(() => import("./OperationPurchasingInventory"));
 import {
   lazy,
   Suspense,
@@ -9,15 +32,12 @@ import {
   useState,
 } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { BrowserQRCodeReader, type IScannerControls } from "@zxing/browser";
-import QRCode from "qrcode";
+import { currentRouteHash, navigateRoute, pathFromLegacyHash } from "./route-paths";
 import {
   ArrowLeft,
   ArrowRight,
-  Archive,
   CakeSlice,
   CalendarDays,
-  Camera,
   Check,
   ChevronDown,
   ClipboardCheck,
@@ -43,7 +63,6 @@ import {
   Pencil,
   Plus,
   Printer,
-  QrCode,
   RotateCcw,
   Search,
   Settings2,
@@ -63,7 +82,6 @@ import {
   decidirPorta,
   rotaLimpaDepoisDoLogin,
   tipoDoLinkDeAcesso,
-  tokenDoCartaoNaRota,
   tokenDoMagicLink,
 } from "./identidade-do-clube";
 import "./operation-print.css";
@@ -91,7 +109,6 @@ import {
 import {
   generateStaffAccessCode,
   staffAccessMessage,
-  staffAccessWhatsAppUrl,
   type StaffAccessCode,
 } from "./staff-access-code";
 import ProductionRollbackPanel from "./ProductionRollbackPanel";
@@ -164,26 +181,21 @@ function readClubOrderInviteDraft() {
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
-type ClubView = "card" | "qr" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "dashboard" | "attend" | "movements" | "orders" | "catalog" | "archive" | "team" | "content" | "whatsapp-pilot" | "director-plan" | "security";
-type OperationCommercialTab = "agenda" | "sales" | "requests" | "pede_junto" | "catalog" | "crm" | "feedback" | "finance" | "settings";
+type ClubView = "card" | "share" | "group" | "help" | "install" | "profile";
+type OperationView = "dashboard" | "orders" | "products" | "attend" | "purchasing_inventory" | "history" | "settings" | "management";
+type OperationCommercialTab = "sales" | "requests" | "catalog";
 type OperationNavigationLocation = {
   view: OperationView;
   commercialTab: OperationCommercialTab;
 };
-type OperationContentTab =
-  | "catalog"
-  | "today"
-  | "operation"
-  | "promotions"
-  | "notifications";
+type OperationContentTab = "catalog" | "today" | "operation";
 
 function clubViewFromLocation(): ClubView {
-  const requested = new URLSearchParams(location.hash.split("?")[1] || "").get(
+  const requested = new URLSearchParams(currentRouteHash().split("?")[1] || "").get(
     "view",
   );
-  if (requested === "qr" || requested === "profile") return requested;
-  return location.hash.startsWith("#minha-conta") ? "profile" : "card";
+  if (requested === "profile") return requested;
+  return currentRouteHash().startsWith("#minha-conta") ? "profile" : "card";
 }
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 type MemberStatusFilter = "all" | "active" | "deactivated" | "pending";
@@ -224,7 +236,7 @@ function NotificationPreferencesFields({
   const topics: Array<[keyof NotificationPreferences, string]> = [
     ["flavors", "Sabores disponíveis no dia"],
     ["festival", "Festivais e horários especiais"],
-    ["promotions", "Promoções e Pede Junto Adoce"],
+    ["promotions", "Promoções da Adoce"],
     ["club_news", "Novidades do Clube Adoce"],
     ["rewards", "Fatia grátis, carimbos e indicações"],
     ["birthday", "Mimos e ações de aniversário"],
@@ -586,7 +598,7 @@ function InstallGuide({
 }
 
 function Brand({ label }: { label: string }) {
-  const homeHref = label === "Adoce Operação" ? "/#operacao" : "/";
+  const homeHref = label === "Adoce Operação" ? "/operacao" : "/";
   return (
     <a className="access-brand" href={homeHref}>
       <img src="/site/logo.webp" alt="Adoce Brigaderia" />
@@ -646,19 +658,11 @@ export function MemberDemo() {
     pendingReferrals: 0,
     acceptedInvites: [],
   };
-  const requestedView = new URLSearchParams(location.hash.split("?")[1] || "").get("view");
-  const initialView: ClubView = ["card", "qr", "share", "help", "profile", "group", "install"].includes(requestedView || "")
+  const requestedView = new URLSearchParams(currentRouteHash().split("?")[1] || "").get("view");
+  const initialView: ClubView = ["card", "share", "help", "profile", "group", "install"].includes(requestedView || "")
     ? requestedView as ClubView
     : "card";
   const [demoView, setDemoView] = useState<ClubView>(initialView);
-  const [demoQr, setDemoQr] = useState("");
-  useEffect(() => {
-    QRCode.toDataURL(`${location.origin}/c/previa-clube-adoce`, {
-      width: 320,
-      margin: 1,
-      color: { dark: "#2b130d", light: "#ffffff" },
-    }).then(setDemoQr);
-  }, []);
   const stamps = Array.from({ length: 14 }, (_, index) => index < snapshot.referralProgress);
   return (
     <main className="club-home club-demo-preview">
@@ -666,11 +670,10 @@ export function MemberDemo() {
         <Brand label="Clube Adoce" />
         <span className="club-header-greeting">Olá, Rubens!</span>
         <div className="club-header-actions">
-          <button onClick={() => setDemoView("qr")}><QrCode /> Meu QR</button>
           <button onClick={() => setDemoView("profile")}><Settings2 /> Preferências</button>
         </div>
       </header>
-      {(demoView === "card" || demoView === "qr") && (
+      {demoView === "card" && (
         <>
           <section className="club-member-start">
             <div className="club-member-welcome">
@@ -678,9 +681,8 @@ export function MemberDemo() {
               <p>Seu benefício está aqui. Acompanhe cada compra até a próxima fatia grátis.</p>
             </div>
             <MemberLoyaltyCard snapshot={snapshot} />
-            <a className="club-flavors-primary" href="/#adoce-hoje"><CakeSlice /> Ver sabores de hoje <ArrowRight /></a>
+            <a className="club-flavors-primary" href="/adoce-hoje"><CakeSlice /> Ver sabores de hoje <ArrowRight /></a>
             <div className="club-benefit-actions">
-              <button onClick={() => setDemoView("qr")}><QrCode /><span><strong>Meu QR</strong><small>Apresente no atendimento</small></span><ArrowRight /></button>
               <button onClick={() => setDemoView("share")}><Users /><span><strong>Indicar e ganhar</strong><small>Compartilhe seu convite</small></span><ArrowRight /></button>
             </div>
           </section>
@@ -707,7 +709,7 @@ export function MemberDemo() {
       {demoView === "help" && (
         <section className="club-panel club-help">
           <CircleHelp /><small>Cartão Clube Adoce</small><h1>Como funciona</h1><p>Cada fatia comprada vale um carimbo. Complete 14 e ganhe uma fatia grátis.</p>
-          <div className="club-help-list"><article><Heart /><span><strong>Como ganho carimbos?</strong><small>Cada fatia tradicional ou premium vale 1 carimbo.</small></span></article><article><QrCode /><span><strong>Como sou identificado?</strong><small>Abra Meu QR e apresente no atendimento.</small></span></article><article><Gift /><span><strong>O que acontece ao completar 14?</strong><small>Sua fatia grátis fica disponível para resgate.</small></span></article></div>
+          <div className="club-help-list"><article><Heart /><span><strong>Como ganho carimbos?</strong><small>Cada fatia tradicional ou premium vale 1 carimbo.</small></span></article><article><Search /><span><strong>Como sou identificado?</strong><small>Informe seu nome ou Código do Membro no atendimento.</small></span></article><article><Gift /><span><strong>O que acontece ao completar 14?</strong><small>Sua fatia grátis fica disponível para resgate.</small></span></article></div>
         </section>
       )}
       {demoView === "profile" && (
@@ -722,19 +724,18 @@ export function MemberDemo() {
               {snapshot.rewards > 0 && (
                 <div className="club-account-reward-ready" role="status">
                   <Gift />
-                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Apresente seu QR Code para resgatar no atendimento.</small></span>
+                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Informe seu Código do Membro no atendimento para resgatar.</small></span>
                 </div>
               )}
             </div>
             <button type="button" onClick={() => setDemoView("card")}>Ver meu cartão</button>
           </article>
           <div className="club-account-primary-actions" aria-label="Ações principais da conta">
-            <button type="button" onClick={() => setDemoView("qr")}><QrCode /><span>Gerar QR Code</span></button>
-            <a href="/#adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
+            <a href="/adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
           </div>
           <div className="club-account-actions">
-            <a href="/#carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
-            <a href="/#adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
+            <a href="/carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
+            <a href="/adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
             <a href="#demo-profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
             <a href="#demo-profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
           </div>
@@ -752,24 +753,20 @@ export function MemberDemo() {
       )}
       {demoView === "group" && (
         <section className="club-panel club-group-panel">
-          <Users /><small>Família, amigos ou equipe</small><h1>Cartão em grupo</h1><p>Até cinco pessoas somam carimbos no mesmo cartão, cada uma com seu próprio acesso e QR.</p>
+          <Users /><small>Família, amigos ou equipe</small><h1>Cartão em grupo</h1><p>Até cinco pessoas somam carimbos no mesmo cartão, cada uma com seu próprio acesso.</p>
           <div className="group-member-list"><h2>Família Bezerra</h2><article><span>R</span><p><strong>Rubens Bezerra</strong><small>{snapshot.memberCode} · Proprietário</small></p></article><article><span>B</span><p><strong>Beth Bezerra</strong><small>ADOC 2026 0000 0124 · Membro</small></p></article></div>
           <div className="group-invite-box"><button className="access-primary" type="button"><Users /> Convidar uma pessoa</button><small>O convite será compartilhado com segurança.</small></div>
         </section>
       )}
       {demoView === "install" && (
         <section className="club-panel club-install-panel">
-          <Download /><small>Atalho no celular</small><h1>Leve o Clube Adoce com você.</h1><p>Abra carimbos e QR rapidamente, sem procurar o site toda vez.</p>
+          <Download /><small>Atalho no celular</small><h1>Leve o Clube Adoce com você.</h1><p>Abra seus carimbos rapidamente, sem procurar o site toda vez.</p>
           <div className="install-guide"><strong>Adicionar à tela inicial</strong><ol><li>Abra o menu do navegador.</li><li>Escolha “Adicionar à tela inicial”.</li><li>Confirme o nome Clube Adoce.</li></ol><button className="access-primary" type="button"><Download /> Instalar Clube Adoce</button></div>
         </section>
       )}
-      {demoView === "qr" && (
-        <div className="club-qr-backdrop"><section className="club-panel club-qr" role="dialog" aria-modal="true"><button className="club-qr-close" type="button" onClick={() => setDemoView("card")} aria-label="Fechar meu QR"><X /></button><QrCode /><small>Cartão Clube Adoce</small><h1>Meu QR do Clube</h1><p>Apresente este QR no atendimento para somar carimbos.</p><div className="club-member-code"><span>Código do Membro</span><strong>{snapshot.memberCode}</strong></div><div className="club-qr-image club-qr-demo-image">{demoQr ? <img src={demoQr} alt="QR Code de demonstração do Clube Adoce" /> : <QrCode />}</div><strong>Pronto para apresentar</strong></section></div>
-      )}
       <nav className="club-bottom">
         <button className={demoView === "card" ? "active" : ""} onClick={() => setDemoView("card")}><Heart /> Início</button>
-        <button className={demoView === "qr" ? "active" : ""} onClick={() => setDemoView("qr")}><QrCode /> Meu QR</button>
-        <a href="/#adoce-hoje"><CakeSlice /> Sabores</a>
+        <a href="/adoce-hoje"><CakeSlice /> Sabores</a>
         <button className={demoView === "share" ? "active" : ""} onClick={() => setDemoView("share")}><Users /> Indicar</button>
         <button className={demoView === "profile" ? "active" : ""} onClick={() => setDemoView("profile")}><Settings2 /> Preferências</button>
       </nav>
@@ -793,9 +790,9 @@ export function OperationDemo() {
         <div>
           <span>Proprietário · Prévia local</span>
           <Suspense fallback={null}>
-            <OperationNotificationPreview initialOpen={location.hash.includes("alertas")} />
+            <OperationNotificationPreview initialOpen={currentRouteHash().includes("alertas")} />
           </Suspense>
-          <a href="/#adoce-hoje"><CakeSlice /> Adoce Hoje</a>
+          <a href="/adoce-hoje"><CakeSlice /> Adoce Hoje</a>
         </div>
       </header>
       <div className="operation-shell">
@@ -845,7 +842,7 @@ export function OperationDemo() {
                   <span>Clientes e fidelidade</span>
                   <h1>Clientes & Clube Adoce</h1>
                   <p>
-                    Localize um cliente, leia o QR do cartão ou consulte a lista completa em um só lugar.
+                    Localize um cliente pelo nome, telefone ou Código do Membro.
                   </p>
                 </div>
                 <div className="operation-role"><Check /> Acesso verificado</div>
@@ -856,7 +853,6 @@ export function OperationDemo() {
                   <input placeholder="Nome, telefone ou código" />
                   <button>Buscar</button>
                 </div>
-                <button className="operation-scan-button"><Camera /> Ler QR do membro</button>
               </div>
               <div className="operation-results">
                 {demoMembers.map((member) => (
@@ -925,17 +921,18 @@ function AuthScreen({
 }) {
   const clubOrderDraft = useMemo(() => readClubOrderInviteDraft(), []);
   const directParams = useMemo(() => {
-    if (!location.hash.startsWith("#acesso-direto?")) return null;
-    const params = new URLSearchParams(location.hash.split("?")[1] || "");
+    if (!currentRouteHash().startsWith("#acesso-direto?")) return null;
+    const params = new URLSearchParams(currentRouteHash().split("?")[1] || "");
     const directEmail = params.get("email")?.trim() || "";
     const directCode = params.get("code")?.replace(/\D/g, "").slice(0, 6) || "";
     return directEmail && directCode.length === 6
       ? { email: directEmail, code: directCode }
       : null;
   }, []);
+  const manualDirectRoute = location.pathname === "/acesso-direto" && !directParams;
   const directAttempted = useRef(false);
-  const [stage, setStage] = useState<AuthStage>(directParams ? "code" : "identify");
-  const registrationRoute = location.hash.startsWith("#cadastro");
+  const [stage, setStage] = useState<AuthStage>(directParams || manualDirectRoute ? "code" : "identify");
+  const registrationRoute = currentRouteHash().startsWith("#cadastro");
   const [registering, setRegistering] = useState(
     () =>
       registrationRoute ||
@@ -977,7 +974,7 @@ function AuthScreen({
           Boolean(rememberReferralInvite()) ||
           Boolean(rememberGroupInvite()),
       );
-      setStage("identify");
+      setStage(directParams || manualDirectRoute ? "code" : "identify");
       setMessage("");
     } else {
       setLoginMode("password");
@@ -985,7 +982,7 @@ function AuthScreen({
       setStage("identify");
       setMessage("");
     }
-  }, [registrationRoute, surface]);
+  }, [directParams, manualDirectRoute, registrationRoute, surface]);
 
   useEffect(() => {
     if (surface !== "client") return;
@@ -1007,7 +1004,7 @@ function AuthScreen({
     setMessage("Validando o acesso seguro gerado pela Adoce...");
     void verifyEmailCode(directParams.email, directParams.code)
       .then(() => {
-        location.hash = "clube";
+        navigateRoute("/clube");
       })
       .catch((error) => {
         setStage("code");
@@ -1086,11 +1083,11 @@ function AuthScreen({
       if (surface === "operation") {
         const result = await signInWithStaffPhonePassword(phone, password, rememberLogin);
         if (result.homologationDemo) onHomologationLogin(rememberLogin);
-        location.hash = "operacao";
+        location.assign("/operacao");
       } else {
         const result = await signInWithPhonePassword(phone, password, rememberLogin);
         if (result.homologationDemo) onHomologationLogin(rememberLogin);
-        location.hash = result.mustChangePassword ? "minha-conta" : "clube";
+        navigateRoute(result.mustChangePassword ? "/minha-conta" : "/clube");
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível entrar agora.");
@@ -1135,7 +1132,8 @@ function AuthScreen({
         if (surface === "client") {
           sessionStorage.setItem(passwordRecoveryStorageKey, "true");
         }
-        location.hash = surface === "operation" ? "operacao" : "minha-conta";
+        if (surface === "operation") location.assign("/operacao");
+        else navigateRoute("/minha-conta");
       } catch (error) {
         setMessage(
           error instanceof Error ? error.message : "Código inválido ou expirado.",
@@ -1210,13 +1208,14 @@ function AuthScreen({
         await acceptRememberedReferral();
         sessionStorage.removeItem(clubOrderInviteDraftKey);
         window.dispatchEvent(new Event("adoce-profile-ready"));
-        location.hash = "clube";
+        navigateRoute("/clube");
         return;
       }
       if (surface === "client") {
         sessionStorage.setItem(passwordRecoveryStorageKey, "true");
       }
-      location.hash = surface === "operation" ? "operacao" : "minha-conta";
+      if (surface === "operation") location.assign("/operacao");
+      else navigateRoute("/minha-conta");
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Código inválido ou expirado.",
@@ -1240,7 +1239,7 @@ function AuthScreen({
       await acceptRememberedReferral();
       sessionStorage.removeItem(clubOrderInviteDraftKey);
       window.dispatchEvent(new Event("adoce-profile-ready"));
-      location.hash = "clube";
+      navigateRoute("/clube");
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -1262,7 +1261,7 @@ function AuthScreen({
             aria-label="Voltar"
             onClick={() => {
               if (window.history.length > 1) window.history.back();
-              else window.location.hash = "inicio";
+              else navigateRoute("/");
             }}
           >
             <ArrowLeft />
@@ -1271,7 +1270,7 @@ function AuthScreen({
         <Brand
           label={surface === "operation" ? "Adoce Operação" : "Clube Adoce"}
         />
-        {surface === "operation" && <a href="/#entrar">Sou membro</a>}
+        {surface === "operation" && <a href="/entrar">Sou membro</a>}
       </header>
       <section className="access-auth-shell">
         {surface === "client" && <div className="access-auth-copy">
@@ -1290,6 +1289,8 @@ function AuthScreen({
             {stage === "code"
               ? directParams
                 ? "Acesso direto ao Clube"
+                : manualDirectRoute
+                  ? "Digite o código recebido"
                 : resetChallengeId
                   ? "Confira seu WhatsApp"
                   : "Confira seu e-mail"
@@ -1311,6 +1312,8 @@ function AuthScreen({
             {stage === "code"
               ? directParams
                 ? `Estamos validando o código seguro gerado para ${email}.`
+                : manualDirectRoute
+                  ? "Informe o e-mail e o código enviados pela Adoce."
                 : resetChallengeId
                   ? "Toque em \"Copiar código\" na mensagem do WhatsApp e cole o código de 6 números abaixo."
                   : "Se o e-mail tiver um código de 6 números, digite abaixo. Se tiver um botão ou link, toque nele — o site abre sozinho."
@@ -1506,7 +1509,7 @@ function AuthScreen({
                         setPrivacy(event.target.checked);
                       }}
                     />
-                    <span>Li e aceito os <a href="/#termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a> e a <a href="/#privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
+                    <span>Li e aceito os <a href="/termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a> e a <a href="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>.</span>
                   </label>
                   <small className="access-fast-registration-note">Depois do código, você entra direto no seu cartão. Preferências de mensagens ficam para depois.</small>
                 </div>
@@ -1525,6 +1528,7 @@ function AuthScreen({
             )
           ) : stage === "code" ? (
             <form onSubmit={submitCode}>
+              {manualDirectRoute && <label>E-mail<input type="email" value={email} onChange={(event) => setEmail(event.target.value.trim())} autoComplete="email" required /></label>}
               <label>
                 Código de acesso
                 <input
@@ -1541,7 +1545,7 @@ function AuthScreen({
               </label>
               <button
                 className="access-primary"
-                disabled={busy || code.length !== 6}
+                disabled={busy || code.length !== 6 || (manualDirectRoute && !email)}
               >
                 {busy ? "Confirmando..." : surface === "operation" ? "Entrar na operação" : registering ? "Abrir meu cartão" : "Entrar no Clube"}
                 <ArrowRight />
@@ -1598,14 +1602,12 @@ function AuthScreen({
               {message}
             </div>
           )}
-          {stage === "identify" && (
+          {stage === "identify" && surface !== "operation" && (
             <button
               className="access-switch"
               type="button"
               onClick={() => {
-                if (surface === "operation") {
-                  setLoginMode(loginMode === "password" ? "email" : "password");
-                } else if (!registering && (loginMode === "email" || loginMode === "forgot")) {
+                if (!registering && (loginMode === "email" || loginMode === "forgot")) {
                   setLoginMode("password");
                 } else {
                   setRegistering(!registering);
@@ -1617,11 +1619,7 @@ function AuthScreen({
                 setMessage("");
               }}
             >
-              {surface === "operation"
-                ? loginMode === "email"
-                  ? "Entrar com e-mail e senha"
-                  : "Entrar com código enviado por e-mail"
-                : registering
+              {registering
                 ? "Entrar no Clube"
                 : loginMode === "email" || loginMode === "forgot"
                   ? "Entrar com celular e senha"
@@ -1632,7 +1630,7 @@ function AuthScreen({
             <ShieldCheck /> Seus dados são protegidos e usados conforme suas
             escolhas.
           </small>
-          {surface === "client" && <a className="access-feedback-link" href="/#fale-com-a-adoce">Encontrou um problema? Envie uma reclamação ou sugestão</a>}
+          {surface === "client" && <a className="access-feedback-link" href="/fale-com-a-adoce">Encontrou um problema? Envie uma reclamação ou sugestão</a>}
         </div>
       </section>
     </main>
@@ -1668,20 +1666,15 @@ function CustomerHome({ session }: { session: Session }) {
   });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [qrImage, setQrImage] = useState("");
-  const [qrExpiresAt, setQrExpiresAt] = useState("");
   const [group, setGroup] = useState<GroupOverview>({});
   const [groupName, setGroupName] = useState("");
   const [groupInvite, setGroupInvite] = useState(
     () => rememberGroupInvite(),
   );
   const [groupShareUrl, setGroupShareUrl] = useState("");
-  const qrDialogRef = useRef<HTMLElement | null>(null);
-  const directQrOpenedRef = useRef(false);
   const installApp = useInstallApp();
 
   useEffect(() => {
-    if (view === "qr") return;
     const resetScroll = () => {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       document.documentElement.scrollTop = 0;
@@ -1698,43 +1691,6 @@ function CustomerHome({ session }: { session: Session }) {
     view,
   ]);
 
-  useEffect(() => {
-    if (view !== "qr") return;
-    const dialog = qrDialogRef.current;
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const focusable = () =>
-      Array.from(
-        dialog?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ) || [],
-      );
-    window.requestAnimationFrame(() => focusable()[0]?.focus());
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setView("card");
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const items = focusable();
-      if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.body.classList.add("club-modal-open");
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.classList.remove("club-modal-open");
-      window.removeEventListener("keydown", handleKeyDown);
-      previousFocus?.focus();
-    };
-  }, [view]);
   const loadSnapshot = useCallback(async () => {
     const supabase = requireSupabase();
     setError("");
@@ -2149,7 +2105,7 @@ function CustomerHome({ session }: { session: Session }) {
           : "Senha atualizada com segurança. Nos próximos acessos, use a nova senha.",
       );
       await loadSnapshot();
-      location.hash = "clube";
+      navigateRoute("/clube");
     } catch (upgradeError) {
       setMessage(
         readableError(
@@ -2204,7 +2160,7 @@ function CustomerHome({ session }: { session: Session }) {
     if (navigator.share)
       await navigator.share({
         title: "Convite para meu Cartão Clube Adoce",
-        text: "Quero dividir meu Cartão Clube Adoce com você. Cada pessoa mantém seu próprio acesso e QR.",
+        text: "Quero dividir meu Cartão Clube Adoce com você. Cada pessoa mantém seu próprio acesso.",
         url,
       });
     else {
@@ -2227,7 +2183,7 @@ function CustomerHome({ session }: { session: Session }) {
     await Promise.all([loadGroup(), loadSnapshot()]);
   };
   const removeGroupMember = async (profileId: string) => {
-    if (!window.confirm("Remover este membro do cartão em grupo?")) return;
+    if (!await confirmAction("Remover este membro do cartão em grupo?")) return;
     setBusy(true);
     const { error: removeError } = await requireSupabase().rpc(
       "remove_group_member",
@@ -2238,43 +2194,6 @@ function CustomerHome({ session }: { session: Session }) {
     setMessage("Membro removido. Ele recebeu um novo cartão individual vazio.");
     await loadGroup();
   };
-  const openCustomerQr = async () => {
-    directQrOpenedRef.current = true;
-    setView("qr");
-    setBusy(true);
-    setMessage("");
-    setQrImage("");
-    const { data, error: qrError } =
-      await requireSupabase().rpc("issue_customer_qr");
-    if (qrError) {
-      setBusy(false);
-      setMessage(qrError.message);
-      return;
-    }
-    const issued = Array.isArray(data) ? data[0] : data;
-    if (!issued?.token) {
-      setBusy(false);
-      setMessage("Não foi possível gerar seu QR agora.");
-      return;
-    }
-    const qrUrl = new URL("/", location.origin);
-    qrUrl.searchParams.set("cartao", issued.token);
-    qrUrl.hash = "cartao";
-    const image = await QRCode.toDataURL(qrUrl.toString(), {
-      width: 640,
-      margin: 2,
-      color: { dark: "#2b130d", light: "#fffaf4" },
-      errorCorrectionLevel: "M",
-    });
-    setQrImage(image);
-    setQrExpiresAt(issued.expires_at);
-    setBusy(false);
-  };
-  useEffect(() => {
-    if (view !== "qr" || directQrOpenedRef.current || qrImage) return;
-    directQrOpenedRef.current = true;
-    void openCustomerQr();
-  }, [view, qrImage]);
   if (onboardingRequired)
     return (
       <main className="club-onboarding">
@@ -2325,7 +2244,7 @@ function CustomerHome({ session }: { session: Session }) {
                   checked={termsAccepted}
                   onChange={(event) => setTermsAccepted(event.target.checked)}
                 />
-                <span>Aceito os <a href="/#termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a>. *</span>
+                <span>Aceito os <a href="/termos" target="_blank" rel="noreferrer">Termos do Clube Adoce</a>. *</span>
               </label>
               <label>
                 <input
@@ -2333,7 +2252,7 @@ function CustomerHome({ session }: { session: Session }) {
                   checked={privacyAccepted}
                   onChange={(event) => setPrivacyAccepted(event.target.checked)}
                 />
-                <span>Li e aceito a <a href="/#privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>. *</span>
+                <span>Li e aceito a <a href="/privacidade" target="_blank" rel="noreferrer">Política de Privacidade</a>. *</span>
               </label>
               <label>
                 <input
@@ -2494,9 +2413,6 @@ function CustomerHome({ session }: { session: Session }) {
         <Brand label="Clube Adoce" />
         <span className="club-header-greeting">Olá, {snapshot.name.split(" ")[0]}!</span>
         <div className="club-header-actions">
-          <button onClick={() => void openCustomerQr()}>
-            <QrCode /> Meu QR
-          </button>
           <button onClick={() => setView("profile")}>
             <Settings2 /> Preferências
           </button>
@@ -2505,7 +2421,7 @@ function CustomerHome({ session }: { session: Session }) {
           </button>
         </div>
       </header>
-      {(view === "card" || view === "qr") && (
+      {view === "card" && (
         <>
           <section className="club-member-start">
             <div className="club-member-welcome">
@@ -2513,13 +2429,10 @@ function CustomerHome({ session }: { session: Session }) {
               <p>Seu benefício está aqui. Acompanhe cada compra até a próxima fatia grátis.</p>
             </div>
             <MemberLoyaltyCard snapshot={snapshot} />
-            <a className="club-flavors-primary" href="/#adoce-hoje">
+            <a className="club-flavors-primary" href="/adoce-hoje">
               <CakeSlice /> Ver sabores de hoje <ArrowRight />
             </a>
             <div className="club-benefit-actions">
-              <button onClick={() => void openCustomerQr()}>
-                <QrCode /><span><strong>Meu QR</strong><small>Apresente no atendimento</small></span><ArrowRight />
-              </button>
               <button onClick={() => setView("share")}>
                 <Users /><span><strong>Indicar e ganhar</strong><small>Compartilhe seu convite</small></span><ArrowRight />
               </button>
@@ -2655,7 +2568,7 @@ function CustomerHome({ session }: { session: Session }) {
           <small>Família, amigos ou equipe</small>
           <h1>Cartão Clube Adoce em grupo</h1>
           <p>
-            Cada pessoa mantém seu próprio acesso, Código do Membro e QR. Os
+            Cada pessoa mantém seu próprio acesso e Código do Membro. Os
             carimbos e a Fatia Grátis são compartilhados por até 5 membros.
           </p>
           {group.kind === "group" && (
@@ -2715,55 +2628,6 @@ function CustomerHome({ session }: { session: Session }) {
           </small>
         </section>
       )}
-      {view === "qr" && (
-        <div
-          className="club-qr-backdrop"
-          role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setView("card");
-          }}
-        >
-        <section className="club-panel club-qr" ref={qrDialogRef} role="dialog" aria-modal="true" aria-labelledby="club-qr-title">
-          <button className="club-qr-close" type="button" onClick={() => setView("card")} aria-label="Fechar meu QR"><X /></button>
-          <QrCode />
-          <small>Cartão Clube Adoce</small>
-          <h1 id="club-qr-title">Meu QR do Clube</h1>
-          <p>
-            Este QR Code identifica seu Cartão Clube Adoce. Seu Código do Membro
-            também pode ser usado para localizar você.
-          </p>
-          <div className="club-member-code">
-            <span>Código do Membro</span>
-            <strong>{snapshot.memberCode}</strong>
-          </div>
-          {busy && !qrImage ? (
-            <div className="qr-loading">Gerando seu QR seguro...</div>
-          ) : (
-            qrImage && (
-              <>
-                <div className="club-qr-image">
-                  <img src={qrImage} alt="QR do cartão Clube Adoce" />
-                  <img src="/site/logo.webp" alt="" />
-                </div>
-                <strong>
-                  Válido até{" "}
-                  {new Date(qrExpiresAt).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </strong>
-                <button
-                  className="access-secondary"
-                  onClick={() => void openCustomerQr()}
-                >
-                  <QrCode /> Gerar um novo QR
-                </button>
-              </>
-            )
-          )}
-        </section>
-        </div>
-      )}
       {view === "help" && (
         <section className="club-panel club-help">
           <CircleHelp />
@@ -2785,16 +2649,10 @@ function CustomerHome({ session }: { session: Session }) {
               </span>
             </article>
             <article>
-              <QrCode />
+              <Search />
               <span>
                 <strong>Como meu Cartão Clube Adoce é localizado?</strong>
-                <small>
-                  Abra “Meu QR” e mostre o código. Se precisar, informe também
-                  seu Código do Membro: {snapshot.memberCode}.
-                </small>
-                <button onClick={() => void openCustomerQr()}>
-                  Abrir meu QR
-                </button>
+                <small>Informe seu nome ou Código do Membro: {snapshot.memberCode}.</small>
               </span>
             </article>
             <article>
@@ -2829,7 +2687,7 @@ function CustomerHome({ session }: { session: Session }) {
                   Abra o Adoce Hoje para consultar sabores, atendimento e
                   informações atualizadas.
                 </small>
-                <a href="/#adoce-hoje">Abrir Adoce Hoje</a>
+                <a href="/adoce-hoje">Abrir Adoce Hoje</a>
               </span>
             </article>
           </div>
@@ -2867,7 +2725,7 @@ function CustomerHome({ session }: { session: Session }) {
               {snapshot.rewards > 0 && (
                 <div className="club-account-reward-ready" role="status">
                   <Gift />
-                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Apresente seu QR Code para resgatar no atendimento.</small></span>
+                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Informe seu Código do Membro no atendimento para resgatar.</small></span>
                 </div>
               )}
             </div>
@@ -2875,13 +2733,12 @@ function CustomerHome({ session }: { session: Session }) {
           </article>
 
           <div className="club-account-primary-actions" aria-label="Ações principais da conta">
-            <button type="button" onClick={() => void openCustomerQr()}><QrCode /><span>Gerar QR Code</span></button>
-            <a href="/#adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
+            <a href="/adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
           </div>
 
           <div className="club-account-actions">
-            <a href="/#carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
-            <a href="/#adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
+            <a href="/carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
+            <a href="/adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
             <a href="#profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
             <a href="#profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
           </div>
@@ -2985,13 +2842,7 @@ function CustomerHome({ session }: { session: Session }) {
         >
           <Heart /> Início
         </button>
-        <button
-          className={view === "qr" ? "active" : ""}
-          onClick={() => void openCustomerQr()}
-        >
-          <QrCode /> Meu QR
-        </button>
-        <a href="/#adoce-hoje">
+        <a href="/adoce-hoje">
           <CakeSlice /> Sabores
         </a>
         <button
@@ -3026,15 +2877,30 @@ function OperationHome({ session }: { session: Session }) {
     targetUserId: string;
     fullName: string;
     temporaryPassword: string;
+    loginUrl?: string;
+    whatsappSent?: boolean;
+    whatsappStatus?: string;
+    whatsappError?: string;
   } | null>(null);
   const [qty, setQty] = useState(1);
-  const [message, setMessage] = useState("");
+  const [feedback, setFeedback] = useState<{ kind: OperationMessageKind; text: string }>({ kind: "success", text: "" });
+  const message = feedback.text;
+  const messageKind = feedback.kind;
+  const setMessage = useCallback((text: string) => setFeedback(describeOperationMessage(text)), []);
+  useEffect(() => {
+    if (!feedback.text || feedback.kind === "error") return;
+    const timer = window.setTimeout(() => setFeedback({ kind: "success", text: "" }), 6000);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
   const [busy, setBusy] = useState(false);
   const [correctionQty, setCorrectionQty] = useState(1);
   const [correctionReason, setCorrectionReason] = useState("");
   const [correctionError, setCorrectionError] = useState("");
   const [deleteCustomerOpen, setDeleteCustomerOpen] = useState(false);
   const [deleteCustomerConfirmation, setDeleteCustomerConfirmation] = useState("");
+  const [referralDialog, setReferralDialog] = useState<{ id: string; nome: string } | null>(null);
+  const [referralQty, setReferralQty] = useState(1);
+  const [referralError, setReferralError] = useState("");
   const [memberCounts, setMemberCounts] = useState<MemberCounts>({ total: 0, active: 0, deactivated: 0, pending: 0 });
   const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("all");
   const [cadastrando, setCadastrando] = useState(false);
@@ -3042,8 +2908,11 @@ function OperationHome({ session }: { session: Session }) {
   const [acessoDoBalcao, setAcessoDoBalcao] = useState<{
     fullName: string;
     temporaryPassword: string;
-    whatsappUrl?: string;
+    loginUrl?: string;
     accessMessage?: string;
+    whatsappSent?: boolean;
+    whatsappStatus?: string;
+    whatsappError?: string;
   } | null>(null);
   const [entregaPresente, setEntregaPresente] = useState<{
     profileId: string;
@@ -3053,54 +2922,28 @@ function OperationHome({ session }: { session: Session }) {
   const [saboresPresente, setSaboresPresente] = useState<Array<{ id: string; name: string; remaining: number }>>([]);
   const [editingCustomerName, setEditingCustomerName] = useState(false);
   const [customerNameDraft, setCustomerNameDraft] = useState("");
-  const [view, setView] = useState<OperationView>(() =>
-    location.hash.includes("plano-diretor")
-      ? "director-plan"
-      : location.hash.includes("historico-clube")
-        ? "movements"
-      : location.hash.includes("equipe")
-        ? "team"
-      : location.hash.includes("conteudo")
-        ? "content"
-      : location.hash.includes("seguranca")
-        ? "security"
-      : location.hash.includes("whatsapp-pilot") && whatsappAuthPilotUiEnabled
-        ? "whatsapp-pilot"
-      : location.hash.includes("catalogo-comercial")
-        ? "orders"
-      : location.hash.includes("catalogo")
-        ? "catalog"
-        : location.hash.includes("arquivados") || location.hash.includes("historico")
-          ? "archive"
-        : location.hash.includes("vendas") || location.hash.includes("pedidos") || location.hash.includes("pede-junto") || location.hash.includes("reclamacoes") || location.hash.includes("agenda") || location.hash.includes("financeiro") || location.hash.includes("configuracoes") || location.hash.includes("operacao-relacionamento")
-          ? "orders"
-          : location.hash.includes("membros") || location.hash.includes("operacao-clientes")
-            ? "attend"
-        : "dashboard",
-  );
+  const [view, setView] = useState<OperationView>(() => {
+    const path = location.pathname;
+    if (path.includes("/operacao/clientes")) return "attend";
+    if (path.includes("/operacao/configuracoes")) return "settings";
+    if (path.includes("/operacao/historico")) return "history";
+    if (path.includes("/operacao/gestao") || path.includes("/operacao/financeiro")) return "management";
+    if (path.includes("/operacao/compras")) return "purchasing_inventory";
+    if (path.includes("/operacao/produtos")) return "products";
+    if (path.includes("/operacao/pedidos") || path.includes("/operacao/caixa")) return "orders";
+    return "dashboard";
+  });
   const [commercialTab, setCommercialTab] = useState<OperationCommercialTab>(() =>
-    location.hash.includes("catalogo-comercial")
+    new URLSearchParams(location.search).get("tipo") === "catalogo"
       ? "catalog"
-      : location.hash.includes("vendas")
-      ? "sales"
-      : location.hash.includes("pede-junto")
-      ? "pede_junto"
-      : location.hash.includes("reclamacoes")
-        ? "feedback"
-        : location.hash.includes("operacao-relacionamento")
-          ? "crm"
-        : location.hash.includes("pedidos")
-          ? "requests"
-          : location.hash.includes("financeiro")
-            ? "finance"
-            : location.hash.includes("configuracoes")
-              ? "settings"
-              : "agenda",
+      : new URLSearchParams(location.search).get("tipo") === "encomendas"
+        ? "requests"
+        : "sales",
   );
   const [contentTab, setContentTab] =
     useState<OperationContentTab>("catalog");
+  const [productArea, setProductArea] = useState<"flavors" | "commercial">("flavors");
   const [contentAvailabilityFilter, setContentAvailabilityFilter] = useState<"all" | "low">("all");
-  const [movements, setMovements] = useState<Movement[]>([]);
   const [customerMovements, setCustomerMovements] = useState<CustomerMovement[]>([]);
   const [team, setTeam] = useState<StaffMember[]>([]);
   const [currentStaffBadge, setCurrentStaffBadge] = useState<{ name: string; avatarUrl: string } | null>(null);
@@ -3109,9 +2952,7 @@ function OperationHome({ session }: { session: Session }) {
   const [manualQr, setManualQr] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [moreNavOpen, setMoreNavOpen] = useState(() =>
-    /historico|arquivados|equipe|conteudo|seguranca|configuracoes|plano-diretor|reclamacoes/.test(location.hash),
-  );
+  const [settingsTab, setSettingsTab] = useState<"store" | "hours" | "team">("store");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const customerResultsRef = useRef<HTMLDivElement | null>(null);
@@ -3133,7 +2974,7 @@ function OperationHome({ session }: { session: Session }) {
   }, []);
   useLayoutEffect(() => {
     scrollOperationToTop();
-  }, [view, commercialTab, contentTab, selected?.profile_id, scrollOperationToTop]);
+  }, [view, commercialTab, contentTab, productArea, settingsTab, selected?.profile_id, scrollOperationToTop]);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -3161,6 +3002,9 @@ function OperationHome({ session }: { session: Session }) {
   const scannerControls = useRef<IScannerControls | null>(null);
   const scanHandled = useRef(false);
   const installApp = useInstallApp();
+  // Cache curto da lista de perfis: antes cada busca baixava a base inteira.
+  // Mudanças em profiles/account_memberships (tempo real) limpam o cache.
+  const profileDirectoryCacheRef = useRef<{ at: number; profiles: Array<{ id: string; full_name: string; phone_e164: string | null; email: string | null; member_code: string | null; account_status: string; updated_at: string }>; staffIds: Set<string> } | null>(null);
   const search = useCallback(
     async (term = query, statusFilter: MemberStatusFilter = memberStatusFilter) => {
       setBusy(true);
@@ -3190,16 +3034,23 @@ function OperationHome({ session }: { session: Session }) {
           if ((page.data || []).length < 1000) return { data: rows, error: null };
         }
       };
-      const [{ data: profiles, error: profilesError }, { data: staffRows }] = await Promise.all([
-        loadAllProfiles(),
-        supabase.from("staff_members").select("user_id"),
-      ]);
-      if (profilesError) {
-        setBusy(false);
-        setMessage(profilesError.message);
-        return;
+      const cached = profileDirectoryCacheRef.current;
+      let profiles = cached && Date.now() - cached.at < 60_000 ? cached.profiles : null;
+      let staffIds = cached && profiles ? cached.staffIds : new Set<string>();
+      if (!profiles) {
+        const [{ data: loadedProfiles, error: profilesError }, { data: staffRows }] = await Promise.all([
+          loadAllProfiles(),
+          supabase.from("staff_members").select("user_id"),
+        ]);
+        if (profilesError) {
+          setBusy(false);
+          setMessage(profilesError.message);
+          return;
+        }
+        profiles = loadedProfiles || [];
+        staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
+        profileDirectoryCacheRef.current = { at: Date.now(), profiles, staffIds };
       }
-      const staffIds = new Set((staffRows || []).map((staff) => staff.user_id));
       const customers = [...(profiles || [])]
         .filter((profile) => isCustomerProfile(profile, staffIds));
       setMemberCounts({
@@ -3394,6 +3245,35 @@ function OperationHome({ session }: { session: Session }) {
     if (!authorized) return;
     void loadCounterWorkspace(results);
   }, [authorized, loadCounterWorkspace, results]);
+  useEffect(() => {
+    if (!authorized) return;
+    const supabase = requireSupabase();
+    let timer: number | null = null;
+    const refreshDirectory = () => {
+      profileDirectoryCacheRef.current = null;
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void search("", memberStatusFilter);
+      }, 250);
+    };
+    const refreshCounters = () => {
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        void loadCounterWorkspace(results);
+      }, 250);
+    };
+    const channel = supabase
+      .channel("operation-customer-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, refreshDirectory)
+      .on("postgres_changes", { event: "*", schema: "public", table: "account_memberships" }, refreshDirectory)
+      .on("postgres_changes", { event: "*", schema: "public", table: "loyalty_tracks" }, refreshCounters)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ledger_entries" }, refreshCounters)
+      .subscribe();
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [authorized, loadCounterWorkspace, memberStatusFilter, results, search]);
   const issueAccessCode = useCallback(async () => {
     if (!selected) return;
     setBusy(true);
@@ -3593,7 +3473,7 @@ function OperationHome({ session }: { session: Session }) {
     fullName: string,
   ) => {
     if (!["owner", "manager"].includes(role)) return;
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `Redefinir a senha de ${fullName}?\n\nA senha temporária será 123456@adoce e a pessoa será obrigada a criar uma nova senha no próximo acesso.`,
     );
     if (!confirmed) return;
@@ -3612,6 +3492,10 @@ function OperationHome({ session }: { session: Session }) {
         targetUserId,
         fullName: result.fullName || fullName,
         temporaryPassword,
+        loginUrl: result.loginUrl,
+        whatsappSent: result.whatsappSent,
+        whatsappStatus: result.whatsappStatus,
+        whatsappError: result.whatsappError,
       });
       if (targetKind === "staff") {
         setTeam((currentTeam) =>
@@ -3623,7 +3507,9 @@ function OperationHome({ session }: { session: Session }) {
         );
       }
       setMessage(
-        `Senha temporária criada para ${result.fullName || fullName}. A troca será obrigatória no próximo acesso.`,
+        result.whatsappSent
+          ? `Senha temporária criada e link enviado pelo WhatsApp para ${result.fullName || fullName}.`
+          : `Senha temporária criada para ${result.fullName || fullName}. O link não foi enviado automaticamente (${result.whatsappStatus || "pendente"}); use o botão manual.`,
       );
     } catch (resetError) {
       setMessage(
@@ -3645,6 +3531,36 @@ function OperationHome({ session }: { session: Session }) {
   const refreshSelected = async () => {
     if (selected) await openCustomer(selected);
   };
+  const operationApiRequest = async (path: string, body: unknown) => {
+    const { data } = await requireSupabase().auth.getSession();
+    const accessToken = data.session?.access_token;
+    if (!accessToken) throw new Error("Sua sessão expirou. Entre novamente na operação.");
+    const base = Capacitor.isNativePlatform() ? productionApiOrigin : "";
+    const response = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Não foi possível concluir a ação.");
+    return payload;
+  };
+  const openCustomerWhatsApp = async (phone: string | null) => {
+    if (!phone) {
+      setMessage("Este cliente não tem WhatsApp cadastrado.");
+      return;
+    }
+    rememberOperationLocation("orders", "sales");
+    setView("orders");
+    setCommercialTab("sales");
+    setSelected(null);
+    const url = new URL(window.location.href);
+    url.pathname = "/operacao/caixa";
+    url.search = "";
+    url.searchParams.set("whatsappStart", phone);
+    window.history.replaceState(null, "", url);
+    setMessage("Conversa oficial pronta para escrever a primeira mensagem.");
+  };
   const showCustomersByStatus = async (statusFilter: MemberStatusFilter) => {
     setMemberStatusFilter(statusFilter);
     setQuery("");
@@ -3654,34 +3570,25 @@ function OperationHome({ session }: { session: Session }) {
       customerResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
-  const operationHash = useCallback((nextView: OperationView, nextCommercialTab: OperationCommercialTab) => {
+  const operationPath = useCallback((nextView: OperationView, nextCommercialTab: OperationCommercialTab) => {
     if (nextView === "orders") {
-      const hashes: Record<OperationCommercialTab, string> = {
-        agenda: "#operacao-agenda",
-        sales: "#operacao-vendas",
-        requests: "#operacao-pedidos",
-        pede_junto: "#operacao-pede-junto",
-        catalog: "#operacao-catalogo-comercial",
-        crm: "#operacao-relacionamento",
-        feedback: "#operacao-reclamacoes",
-        finance: "#operacao-financeiro",
-        settings: "#operacao-configuracoes",
+      const paths: Record<OperationCommercialTab, string> = {
+        sales: "/operacao/caixa",
+        requests: "/operacao/pedidos?tipo=encomendas",
+        catalog: "/operacao/pedidos?tipo=catalogo",
       };
-      return hashes[nextCommercialTab];
+      return paths[nextCommercialTab];
     }
-    const hashes: Record<Exclude<OperationView, "orders">, string> = {
-      dashboard: "#operacao",
-      attend: "#operacao-clientes",
-      movements: "#operacao-historico-clube",
-      catalog: "#operacao-catalogo",
-      archive: "#operacao-arquivados",
-      team: "#operacao-equipe",
-      content: "#operacao-conteudo",
-      "director-plan": "#operacao-plano-diretor",
-      security: "#operacao-seguranca",
-      "whatsapp-pilot": "#operacao-whatsapp-pilot",
+    const paths: Record<Exclude<OperationView, "orders">, string> = {
+      dashboard: "/operacao",
+      attend: "/operacao/clientes",
+      products: "/operacao/produtos",
+      settings: "/operacao/configuracoes",
+      management: "/operacao/gestao",
+      purchasing_inventory: "/operacao/compras",
+      history: "/operacao/historico",
     };
-    return hashes[nextView];
+    return paths[nextView];
   }, []);
   const rememberOperationLocation = useCallback((nextView: OperationView, nextCommercialTab = commercialTab) => {
     if (view === nextView && commercialTab === nextCommercialTab) return;
@@ -3698,20 +3605,17 @@ function OperationHome({ session }: { session: Session }) {
     setMobileNavOpen(false);
     setProfileMenuOpen(false);
     setView(next);
-    const viewHashes: Record<OperationView, string> = {
-      dashboard: "#operacao",
-      attend: "#operacao-clientes",
-      movements: "#operacao-historico-clube",
-      orders: "#operacao-agenda",
-      catalog: "#operacao-catalogo",
-      archive: "#operacao-arquivados",
-      team: "#operacao-equipe",
-      content: "#operacao-conteudo",
-      "director-plan": "#operacao-plano-diretor",
-      security: "#operacao-seguranca",
-      "whatsapp-pilot": "#operacao-whatsapp-pilot",
+    const viewPaths: Record<OperationView, string> = {
+      dashboard: "/operacao",
+      attend: "/operacao/clientes",
+      orders: "/operacao/caixa",
+      products: "/operacao/produtos",
+      settings: "/operacao/configuracoes",
+      management: "/operacao/gestao",
+      purchasing_inventory: "/operacao/compras",
+      history: "/operacao/historico",
     };
-    window.history.replaceState(null, "", viewHashes[next]);
+    window.history.replaceState(null, "", viewPaths[next]);
     setSelected(null);
     setMessage("");
     window.requestAnimationFrame(() => {
@@ -3723,72 +3627,7 @@ function OperationHome({ session }: { session: Session }) {
       }
     });
     if (next === "attend") await search("");
-    if (next === "movements") {
-      const supabase = requireSupabase();
-      const entries: Movement[] = [];
-      const pageSize = 500;
-      for (let from = 0; ; from += pageSize) {
-        const page = await supabase
-          .from("ledger_entries")
-          .select("id,reason,stamps_delta,created_at,subject_profile_id,actor_user_id")
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: false })
-          .range(from, from + pageSize - 1);
-        if (page.error) {
-          setMessage(page.error.message);
-          return;
-        }
-        entries.push(...((page.data || []) as Movement[]));
-        if ((page.data || []).length < pageSize) break;
-      }
-      const profileIds = [
-        ...new Set(
-          entries
-            .map((item) => item.subject_profile_id)
-            .filter((id): id is string => Boolean(id)),
-        ),
-      ];
-      const { data: profiles, error: profilesError } = profileIds.length
-        ? await supabase
-            .from("profiles")
-            .select("id,full_name")
-            .in("id", profileIds)
-        : { data: [], error: null };
-      if (profilesError) {
-        setMessage(profilesError.message);
-        return;
-      }
-      const names = new Map(
-        (profiles || []).map((profile) => [
-          profile.id,
-          profile.full_name?.trim().split(/\s+/)[0] || "Membro",
-        ]),
-      );
-      const actorIds = [...new Set(entries.map((item) => item.actor_user_id).filter((id): id is string => Boolean(id)))];
-      const { data: staffProfiles } = role === "owner" && actorIds.length
-        ? await supabase.from("staff_private_profiles").select("user_id,full_name,nickname,avatar_path").in("user_id", actorIds)
-        : { data: [] };
-      const actorBadges = new Map<string, { name: string; avatarUrl: string }>();
-      await Promise.all((staffProfiles || []).map(async (profile) => {
-        let avatarUrl = "";
-        if (profile.avatar_path) {
-          const signed = await supabase.storage.from("staff-profile-media").createSignedUrl(profile.avatar_path, 3600);
-          avatarUrl = signed.data?.signedUrl || "";
-        }
-        actorBadges.set(profile.user_id, { name: profile.nickname || profile.full_name, avatarUrl });
-      }));
-      setMovements(
-        entries.map((item) => ({
-          ...item,
-          customer_first_name:
-            (item.subject_profile_id && names.get(item.subject_profile_id)) ||
-            "Membro",
-          actor_name: item.actor_user_id ? actorBadges.get(item.actor_user_id)?.name || "Equipe Adoce" : "Sistema",
-          actor_avatar_url: item.actor_user_id ? actorBadges.get(item.actor_user_id)?.avatarUrl || "" : "",
-        })),
-      );
-    }
-    if (next === "team") {
+    if (next === "settings") {
       const supabase = requireSupabase();
       const { data, error } = await supabase
         .from("staff_members")
@@ -3828,34 +3667,68 @@ function OperationHome({ session }: { session: Session }) {
     setProfileMenuOpen(false);
     setCommercialTab(tab);
     setView("orders");
-    window.history.replaceState(null, "", operationHash("orders", tab));
+    window.history.replaceState(null, "", operationPath("orders", tab));
     setSelected(null);
     setMessage("");
     resetOperationViewport();
-  }, [operationHash, rememberOperationLocation, resetOperationViewport]);
-  const openNotificationTarget = (actionUrl: string) => {
-    if (actionUrl.includes("vendas")) {
-      openCommercial("sales");
-      return;
-    }
-    if (actionUrl.includes("pede-junto")) {
-      openCommercial("pede_junto");
-      return;
-    }
-    if (actionUrl.includes("reclamacoes")) {
-      openCommercial("feedback");
-      return;
-    }
-    if (actionUrl.includes("pedidos")) {
-      openCommercial("requests");
-      return;
-    }
-    if (actionUrl.includes("membros") || actionUrl.includes("operacao-clientes")) {
-      void openView("attend");
-      return;
-    }
-    void openView("dashboard");
-  };
+  }, [operationPath, rememberOperationLocation, resetOperationViewport]);
+  const canManageOperation = role === "owner" || role === "manager";
+  const [stampSale, setStampSale] = useState<StampSale | null>(null);
+  useEffect(() => {
+    const onNavigate = (event: Event) => {
+      const request = (event as CustomEvent<OperationAreaRequest>).detail;
+      if (!request) return;
+      if (request.view === "products") {
+        setProductArea("flavors");
+        setContentTab(request.contentTab || "catalog");
+        setContentAvailabilityFilter("all");
+        void openView("products");
+      } else if (request.view === "attend") {
+        setStampSale(request.stampSale && request.stampSale.quantity > 0 ? request.stampSale : null);
+        void openView("attend");
+      } else if (request.view === "orders") {
+        openCommercial("sales");
+        if (request.channel === "official") window.history.replaceState(null, "", "/operacao/caixa?whatsappStart=1");
+      } else {
+        void openView("dashboard");
+      }
+    };
+    window.addEventListener(operationNavigateEvent, onNavigate);
+    return () => window.removeEventListener(operationNavigateEvent, onNavigate);
+  });
+  const roleLabel = role === "owner" ? "Proprietário" : role === "manager" ? "Gerente" : "Atendimento";
+  const signOutOperation = useCallback(async () => {
+    const confirmed = await confirmAction("Sair da operação neste aparelho? No tablet, novos pedidos deixam de ser recebidos e impressos até o próximo login.", {
+      confirmLabel: "Sair da operação",
+      destructive: true,
+    });
+    if (confirmed) await signOut();
+  }, []);
+  // Um único mapa de destinos alimenta o menu superior e a barra inferior:
+  // ninguém vê um botão que leva a uma tela bloqueada para o próprio perfil.
+  const operationNavItems: Array<{ view: OperationView; label: string; shortLabel: string; icon: typeof LayoutDashboard; open: () => void }> = [
+    { view: "dashboard", label: "Hoje", shortLabel: "Hoje", icon: LayoutDashboard, open: () => void openView("dashboard") },
+    { view: "orders", label: "Pedidos", shortLabel: "Pedidos", icon: ShoppingCart, open: () => openCommercial("sales") },
+    {
+      view: "products",
+      label: "Produtos",
+      shortLabel: "Produtos",
+      icon: Package,
+      open: () => {
+        setProductArea("flavors");
+        setContentTab("catalog");
+        setContentAvailabilityFilter("all");
+        void openView("products");
+      },
+    },
+    { view: "attend", label: "Clientes", shortLabel: "Clientes", icon: Users, open: () => void openView("attend") },
+    ...(canManageOperation
+      ? [{ view: "purchasing_inventory" as const, label: "Compras e Estoque", shortLabel: "Compras", icon: ClipboardCheck, open: () => void openView("purchasing_inventory") }]
+      : []),
+    ...(canManageOperation
+      ? [{ view: "management" as const, label: "Gestão", shortLabel: "Gestão", icon: BarChart3, open: () => void openView("management") }]
+      : []),
+  ];
   const goBackInOperation = useCallback(() => {
     setMobileNavOpen(false);
     setProfileMenuOpen(false);
@@ -3875,14 +3748,14 @@ function OperationHome({ session }: { session: Session }) {
       setGeneratedAccess(null);
       setPasswordResetNotice(null);
       setMessage("");
-      window.history.replaceState(null, "", operationHash("attend", commercialTab));
+      window.history.replaceState(null, "", operationPath("attend", commercialTab));
       resetOperationViewport();
       return;
     }
 
     const previous = operationNavigationHistoryRef.current.pop() || {
       view: "dashboard" as const,
-      commercialTab: "agenda" as const,
+      commercialTab: "sales" as const,
     };
     setView(previous.view);
     setCommercialTab(previous.commercialTab);
@@ -3891,17 +3764,17 @@ function OperationHome({ session }: { session: Session }) {
     window.history.replaceState(
       null,
       "",
-      operationHash(previous.view, previous.commercialTab),
+      operationPath(previous.view, previous.commercialTab),
     );
     if (previous.view === "attend") void search("");
     resetOperationViewport();
-  }, [commercialTab, operationHash, resetOperationViewport, search, selected]);
+  }, [commercialTab, operationPath, resetOperationViewport, search, selected]);
   const purchase = async () => {
     if (!selected) return;
     const total = selected.current_progress + qty;
     const nextProgress = total % 14;
     const newRewards = Math.floor(total / 14);
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `Confirmar ${qty} carimbo(s) para ${selected.full_name}?\n\nAntes: ${selected.current_progress} de 14\nDepois: ${nextProgress} de 14${newRewards ? ` e ${newRewards} nova(s) fatia(s) grátis` : ""}`,
     );
     if (!confirmed) return;
@@ -3920,10 +3793,22 @@ function OperationHome({ session }: { session: Session }) {
     setBusy(false);
     if (error) setMessage(error.message);
     else {
+      let whatsappNotice = "";
+      try {
+        await operationApiRequest("/api/loyalty/stamp-message", {
+          profileId: selected.profile_id,
+          stampsAdded: qty,
+          progress: Number(data?.progress || nextProgress),
+          newRewards: Number(data?.new_rewards || newRewards),
+        });
+        whatsappNotice = " Cliente avisado pelo WhatsApp oficial.";
+      } catch (messageError) {
+        whatsappNotice = ` ${messageError instanceof Error ? messageError.message : "Não foi possível avisar pelo WhatsApp oficial."}`;
+      }
       setMessage(
-        data?.referral_confirmed
+        (data?.referral_confirmed
           ? `${qty} carimbo(s) da compra registrados. A indicação vinculada também foi confirmada automaticamente.`
-          : `${qty} carimbo(s) registrado(s) com sucesso.`,
+          : `${qty} carimbo(s) registrado(s) com sucesso.`) + whatsappNotice,
       );
       setQty(1);
       await refreshSelected();
@@ -3939,7 +3824,7 @@ function OperationHome({ session }: { session: Session }) {
       return;
     }
     setCorrectionError("");
-    const confirmed = window.confirm(
+    const confirmed = await confirmAction(
       `Remover ${correctionQty} carimbo(s) de ${selected.full_name}?\n\nSaldo atual: ${selected.current_progress} de 14\nMotivo: ${normalizedReason}\n\nA correção ficará registrada no histórico.`,
     );
     if (!confirmed) return;
@@ -3948,12 +3833,12 @@ function OperationHome({ session }: { session: Session }) {
     const { error } = await requireSupabase().rpc("owner_remove_stamps", {
       target_account_id: selected.account_id,
       target_profile_id: selected.profile_id,
-      quantity_to_remove: correctionQty,
+      quantity_to_remove: Number(correctionQty),
       adjustment_reason: normalizedReason,
       operation_key: crypto.randomUUID(),
     });
     setBusy(false);
-    if (error) setMessage(error.message);
+    if (error) setMessage(`Não foi possível estornar os carimbos: ${error.message}`);
     else {
       setMessage(
         `${correctionQty} carimbo(s) removido(s). A correção foi registrada no histórico.`,
@@ -3995,6 +3880,57 @@ function OperationHome({ session }: { session: Session }) {
     });
     if (error) throw error;
     await search(query);
+  };
+  const carimbarIndicacao = async (cliente: Cliente, quantidade: number) => {
+    const { error } = await requireSupabase().rpc("staff_record_referral_stamps", {
+      target_profile_id: cliente.id,
+      quantity: quantidade,
+      operation_key: crypto.randomUUID(),
+      adjustment_reason: "Indicação confirmada no atendimento",
+    });
+    if (error) throw error;
+    setMessage(`${quantidade} carimbo(s) de indicação registrado(s) para ${cliente.nome}.`);
+    await search(query);
+  };
+  const solicitarIndicacao = (cliente: Pick<Cliente, "id" | "nome">) => {
+    setReferralQty(1);
+    setReferralError("");
+    setReferralDialog({ id: cliente.id, nome: cliente.nome });
+  };
+  const fecharDialogoIndicacao = () => {
+    if (busy) return;
+    setReferralDialog(null);
+    setReferralError("");
+    setReferralQty(1);
+  };
+  const confirmarIndicacao = async () => {
+    if (!referralDialog) return;
+    setBusy(true);
+    setReferralError("");
+    try {
+      await carimbarIndicacao(
+        {
+          id: referralDialog.id,
+          nome: referralDialog.nome,
+          telefone: "",
+          carimbos: 0,
+          presentesGuardados: 0,
+          ultimaCompra: null,
+        },
+        referralQty,
+      );
+      if (selected?.profile_id === referralDialog.id) await refreshSelected();
+      setReferralDialog(null);
+      setReferralQty(1);
+    } catch (error) {
+      setReferralError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível registrar a indicação agora.",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
   const carregarSaboresPresente = async () => {
     const supabase = requireSupabase();
@@ -4052,12 +3988,24 @@ function OperationHome({ session }: { session: Session }) {
   const salvarCadastroBalcao = async (dados: { nome: string; telefone: string }) => {
     const created = await createStaffCustomer(session.access_token, dados.nome, dados.telefone);
     setCadastrando(false);
+    if (created.existing) {
+      const { data, error } = await requireSupabase().rpc("staff_search_customers", { search_text: created.phone });
+      if (error) throw error;
+      const existing = ((data || []) as CustomerSnapshot[]).find((customer) => customer.profile_id === created.profileId);
+      if (!existing) throw new Error("O cadastro já existe, mas não foi possível abri-lo agora. Pesquise pelo telefone.");
+      setMessage("");
+      await openCustomer(existing);
+      return;
+    }
     if (created.temporaryPassword) {
       setAcessoDoBalcao({
         fullName: created.fullName,
         temporaryPassword: created.temporaryPassword,
-        whatsappUrl: created.whatsappUrl,
+        loginUrl: created.loginUrl,
         accessMessage: created.accessMessage,
+        whatsappSent: created.whatsappSent,
+        whatsappStatus: created.whatsappStatus,
+        whatsappError: created.whatsappError,
       });
     }
     if (created.accountId) {
@@ -4208,162 +4156,32 @@ function OperationHome({ session }: { session: Session }) {
       <header>
         <Brand label="Adoce Operação" />
         <div>
-          <span>
-            {role === "owner"
-              ? "Proprietário"
-              : role === "manager"
-                ? "Gerente"
-                : "Atendimento"}
-          </span>
-          {currentStaffBadge ? <span className="operation-current-staff" title={`Atendimento por ${currentStaffBadge.name}`}>{currentStaffBadge.avatarUrl ? <img src={currentStaffBadge.avatarUrl} alt="" /> : <UserRound />}<small>{currentStaffBadge.name}</small></span> : null}
-          <Suspense fallback={null}>
-            <OperationNotificationCenter session={session} onNavigate={openNotificationTarget} />
-          </Suspense>
-          <button className="operation-mobile-nav-toggle" onClick={() => setMobileNavOpen((open) => !open)} aria-label="Abrir menu da operação" aria-expanded={mobileNavOpen}>
-            {mobileNavOpen ? <X /> : <MoreHorizontal />}
-          </button>
-          <button onClick={() => setInstallGuideOpen(true)}>
-            <Download /> Instalar
-          </button>
-          <button onClick={() => void signOut()}>
-            <LogOut /> Sair
-          </button>
+          <OperationAccountMenu
+            name={currentStaffBadge?.name || String(session.user.user_metadata?.full_name || session.user.user_metadata?.name || "")}
+            avatarUrl={currentStaffBadge?.avatarUrl}
+            roleLabel={roleLabel}
+            onInstall={() => setInstallGuideOpen(true)}
+            onSettings={() => void openView("settings")}
+            onSignOut={() => void signOutOperation()}
+          />
         </div>
       </header>
       <div className="operation-shell">
-        <aside className={mobileNavOpen ? "is-open" : ""}>
-          <small className="operation-nav-group">Visão geral</small>
-          <button
-            className={view === "dashboard" ? "active" : ""}
-            onClick={() => void openView("dashboard")}
-          >
-            <LayoutDashboard /> Início da operação
-          </button>
-          <small className="operation-nav-group">Clientes e fidelidade</small>
-          <button
-            className={view === "attend" ? "active" : ""}
-            onClick={() => void openView("attend")}
-          >
-            <Search /> Clientes & Clube
-          </button>
-          <button
-            className={view === "movements" ? "active" : ""}
-            onClick={() => void openView("movements")}
-          >
-            <History /> Histórico do Clube
-          </button>
-          <small className="operation-nav-group">Vendas</small>
-          {(role === "owner" || role === "manager") && (
+        <aside aria-label="Navegação da operação">
+          {operationNavItems.map((item) => (
             <button
-              className={view === "orders" && commercialTab === "sales" ? "active" : ""}
-              onClick={() => openCommercial("sales")}
+              key={item.view}
+              type="button"
+              className={view === item.view ? "active" : ""}
+              aria-current={view === item.view ? "page" : undefined}
+              onClick={item.open}
             >
-              <ShoppingCart /> Caixa e pedidos
+              <item.icon /> {item.label}
             </button>
-          )}
-          {whatsappAuthPilotUiEnabled && (role === "owner" || role === "manager") && (
-            <button
-              className={view === "whatsapp-pilot" ? "active" : ""}
-              onClick={() => void openView("whatsapp-pilot")}
-            >
-              <ShieldCheck /> Piloto WhatsApp
-            </button>
-          )}
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "orders" && (commercialTab === "agenda" || commercialTab === "requests") ? "active" : ""}
-              onClick={() => openCommercial("agenda")}
-            >
-              <CalendarDays /> Encomendas e agenda
-            </button>
-          )}
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "orders" && commercialTab === "pede_junto" ? "active" : ""}
-              onClick={() => openCommercial("pede_junto")}
-            >
-              <Users /> Pede Junto
-            </button>
-          )}
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "orders" && commercialTab === "finance" ? "active" : ""}
-              onClick={() => openCommercial("finance")}
-            >
-              <CircleDollarSign /> Financeiro
-            </button>
-          )}
-          <small className="operation-nav-group">Produtos e disponibilidade</small>
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "catalog" ? "active" : ""}
-              onClick={() => void openView("catalog")}
-            >
-              <Settings2 /> Produtos e serviços
-            </button>
-          )}
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "content" ? "active" : ""}
-              onClick={() => {
-                setContentTab("today");
-                setContentAvailabilityFilter("all");
-                void openView("content");
-              }}
-            >
-              <Settings2 /> Disponibilidade, horários e site
-            </button>
-          )}
-          <small className="operation-nav-group">Administração</small>
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "orders" && commercialTab === "settings" ? "active" : ""}
-              onClick={() => openCommercial("settings")}
-            >
-              <Settings2 /> Configurações globais
-            </button>
-          )}
-          {(role === "owner" || role === "manager") && (
-            <button
-              className={view === "archive" ? "active" : ""}
-              onClick={() => void openView("archive")}
-            >
-              <Archive /> Histórico e arquivados
-            </button>
-          )}
-          <button
-            className={view === "team" ? "active" : ""}
-            onClick={() => void openView("team")}
-          >
-            <ShieldCheck /> Equipe
-          </button>
-          {role === "owner" && (
-            <button
-              className={view === "director-plan" ? "active" : ""}
-              onClick={() => void openView("director-plan")}
-            >
-              <ClipboardCheck /> Plano Diretor
-            </button>
-          )}
-          {role === "owner" && (
-            <button
-              className={view === "security" ? "active" : ""}
-              onClick={() => void openView("security")}
-            >
-              <RotateCcw /> Restaurar produção
-            </button>
-          )}
-          <div className="operation-nav-account">
-            <button type="button" onClick={() => setInstallGuideOpen(true)}>
-              <Download /> Instalar aplicativo
-            </button>
-            <button type="button" onClick={() => void signOut()}>
-              <LogOut /> Sair da operação
-            </button>
-          </div>
+          ))}
         </aside>
         <section className="operation-work">
-          {(view !== "dashboard" || selected) && (
+          {selected && (
             <nav className="operation-back-bar" aria-label="Retorno da tela atual">
               <button type="button" className="operation-back-button" onClick={goBackInOperation}>
                 <ArrowLeft /> Voltar
@@ -4380,13 +4198,16 @@ function OperationHome({ session }: { session: Session }) {
                     return;
                   }
                   if (destination === "catalog") {
-                    void openView("catalog");
+                    setProductArea("flavors");
+                    setContentTab("catalog");
+                    void openView("products");
                     return;
                   }
                   if (destination === "availability" || destination === "low-stock") {
+                    setProductArea("flavors");
                     setContentTab("today");
                     setContentAvailabilityFilter(destination === "low-stock" ? "low" : "all");
-                    void openView("content");
+                    void openView("products");
                     return;
                   }
                   openCommercial(destination);
@@ -4462,22 +4283,26 @@ function OperationHome({ session }: { session: Session }) {
                 <section className="cad-acesso" role="status">
                   <p>
                     <strong>{acessoDoBalcao.fullName.split(/\s+/)[0]}</strong> já está no Clube.
-                    Senha temporária: <code>{acessoDoBalcao.temporaryPassword}</code>
                   </p>
-                  <p>Envie no WhatsApp para a pessoa ver os carimbos no celular. Ela entra em adocebrigaderia.com.br/#entrar com este número e essa senha.</p>
+                  {acessoDoBalcao.whatsappSent ? (
+                    <p className="access-message"><Check /> Link para criar a senha enviado automaticamente pelo WhatsApp oficial da Adoce.</p>
+                  ) : (
+                    <p className="access-message">
+                      O envio automático não saiu ({acessoDoBalcao.whatsappStatus || "não configurado"}).
+                      Diga a senha temporária abaixo para {acessoDoBalcao.fullName.split(/\s+/)[0]} entrar em{" "}
+                      <code>{acessoDoBalcao.loginUrl ? "adocebrigaderia.com.br/clube/entrar" : "adocebrigaderia.com.br"}</code>{" "}
+                      com o próprio WhatsApp. No primeiro acesso o site pede uma senha nova.
+                    </p>
+                  )}
+                  <p>Link de acesso: <code>{acessoDoBalcao.loginUrl || "indisponível"}</code><br />Senha temporária: <code>{acessoDoBalcao.temporaryPassword}</code></p>
                   <div className="cad-acesso-acoes">
-                    {acessoDoBalcao.whatsappUrl ? (
-                      <a className="cad-salvar" href={acessoDoBalcao.whatsappUrl} target="_blank" rel="noreferrer">
-                        <MessageCircle aria-hidden="true" /> Enviar acesso no WhatsApp
-                      </a>
-                    ) : null}
                     {acessoDoBalcao.accessMessage ? (
                       <button
                         type="button"
                         className="access-secondary"
                         onClick={() => {
                           void navigator.clipboard.writeText(acessoDoBalcao.accessMessage || "");
-                          setMessage("Mensagem de acesso copiada.");
+                          setMessage("Mensagem de acesso copiada. Cole no WhatsApp oficial da Adoce.");
                         }}
                       >
                         <Copy /> Copiar mensagem
@@ -4489,9 +4314,21 @@ function OperationHome({ session }: { session: Session }) {
                   </div>
                 </section>
               ) : null}
+              {stampSale ? (
+                <section className="cad-acesso operation-stamp-sale" role="status">
+                  <p>
+                    <strong>Venda {stampSale.orderNumber}: {stampSale.quantity} {stampSale.quantity === 1 ? "fatia paga" : "fatias pagas"}.</strong>{" "}
+                    Busque o cliente abaixo e toque em <strong>Carimbar</strong> {stampSale.quantity === 1 ? "uma vez" : `${stampSale.quantity} vezes`} (um carimbo por fatia).
+                  </p>
+                  <div className="cad-acesso-acoes">
+                    <button type="button" className="access-link" onClick={() => setStampSale(null)}>Concluído</button>
+                  </div>
+                </section>
+              ) : null}
               <BalcaoAtendimento
                 clientes={counterFichas}
                 onCarimbar={carimbarBalcao}
+                onCarimbarIndicacao={solicitarIndicacao}
                 onEntregarPresente={entregarBalcao}
                 onAbrirCadastro={(cliente) => {
                   const customer = results.find(
@@ -4552,6 +4389,11 @@ function OperationHome({ session }: { session: Session }) {
                         {["owner", "manager"].includes(role) ? <button type="button" onClick={() => setEditingCustomerName(true)}>Editar nome</button> : null}
                       </div>}
                       <p>{selected.phone_e164 || selected.email}</p>
+                      {selected.phone_e164 ? (
+                        <button type="button" className="access-secondary customer-whatsapp-action" onClick={() => void openCustomerWhatsApp(selected.phone_e164)}>
+                          <MessageCircle /> Conversar pelo WhatsApp oficial
+                        </button>
+                      ) : null}
                       <p className="customer-member-code">
                         Código do Membro: <strong>{selected.member_code}</strong>
                       </p>
@@ -4625,16 +4467,10 @@ function OperationHome({ session }: { session: Session }) {
                           >
                             <ArrowRight /> Testar link direto
                           </a>
-                          {staffAccessWhatsAppUrl(generatedAccess) && (
-                            <a
-                              className="access-primary"
-                              href={staffAccessWhatsAppUrl(generatedAccess) || undefined}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <MessageCircle /> Enviar pelo WhatsApp
-                            </a>
-                          )}
+                          <p className="access-message">
+                            Copie a mensagem e cole no WhatsApp oficial da Adoce. Abrir um link
+                            <code> wa.me </code> aqui usaria o seu WhatsApp pessoal.
+                          </p>
                         </div>
                       )}
                     </section>
@@ -4662,10 +4498,18 @@ function OperationHome({ session }: { session: Session }) {
                       {passwordResetNotice?.targetUserId ===
                         selected.profile_id && (
                         <div className="password-reset-result" role="status">
-                          <strong>Senha temporária criada</strong>
+                          <strong>{passwordResetNotice.whatsappSent ? "Senha redefinida e link enviado pelo WhatsApp" : "Senha temporária criada; link pendente"}</strong>
+                          {passwordResetNotice.loginUrl ? (
+                            <a className="access-link" href={passwordResetNotice.loginUrl} target="_blank" rel="noreferrer">
+                              <ArrowRight /> Abrir link de criação de senha
+                            </a>
+                          ) : null}
                           <code>
                             {passwordResetNotice.temporaryPassword}
                           </code>
+                          {passwordResetNotice.whatsappError ? (
+                            <small>Detalhe do envio: {passwordResetNotice.whatsappError}</small>
+                          ) : null}
                           <button
                             type="button"
                             onClick={() => void copyTemporaryPassword()}
@@ -4715,6 +4559,18 @@ function OperationHome({ session }: { session: Session }) {
                         disabled={busy}
                       >
                         Revisar e confirmar {qty} carimbo(s)
+                      </button>
+                    </article>
+                    <article>
+                      <Users />
+                      <h3>Registrar indicação</h3>
+                      <p>Use quando este cliente trouxer alguém novo para a Adoce.</p>
+                      <button
+                        className="access-secondary"
+                        onClick={() => solicitarIndicacao({ id: selected.profile_id, nome: selected.full_name })}
+                        disabled={busy}
+                      >
+                        <Users /> Adicionar carimbo por indicação
                       </button>
                     </article>
                     <article>
@@ -4866,183 +4722,156 @@ function OperationHome({ session }: { session: Session }) {
                   )}
                 </div>
               ) : null}
-            </>
-          )}
-          {view === "movements" && (
-            <>
-              <div className="operation-title">
-                <div>
-                  <span>Auditoria</span>
-                  <h1>Movimentações</h1>
-                  <p>Compras, indicações e ajustes mais recentes.</p>
-                </div>
-              </div>
-              <div className="operation-simple-list">
-                {movements.length ? (
-                  movements.map((item) => (
-                    <article key={item.id}>
-                      {item.actor_avatar_url ? <img className="staff-history-avatar" src={item.actor_avatar_url} alt="" /> : <History />}
-                      <span>
-                        <strong>
-                          {{
-                            purchase: "Compra registrada",
-                            referral_referred: "Bônus para novo membro",
-                            referral_referrer: "Bônus de indicação",
-                            manual_adjustment: "Ajuste de carimbos",
-                            reversal: "Correção de carimbos",
-                            reward_redeemed: "Fatia grátis retirada",
-                          }[item.reason] || "Movimentação do cartão"}
-                        </strong>
-                        <em>{item.customer_first_name}</em>
-                        <small>Atendido por {item.actor_name}</small>
-                        <small>
-                          {new Date(item.created_at).toLocaleString("pt-BR")}
-                        </small>
-                      </span>
-                      <b
-                        className={
-                          item.stamps_delta >= 0 ? "positive" : "negative"
-                        }
-                      >
-                        {item.reason === "reward_redeemed"
-                          ? "Fatia grátis entregue"
-                          : `${item.stamps_delta > 0 ? "+" : ""}${item.stamps_delta} ${Math.abs(item.stamps_delta) === 1 ? "carimbo" : "carimbos"}`}
-                      </b>
-                    </article>
-                  ))
-                ) : (
-                  <p>Nenhuma movimentação registrada ainda.</p>
-                )}
-              </div>
-            </>
-          )}
-          {view === "team" && role === "owner" && (
-            <Suspense fallback={<p>Carregando cadastro da equipe...</p>}>
-              <StaffProfileAdmin session={session} staff={team} />
-            </Suspense>
-          )}
-          {view === "team" && role !== "owner" && (
-            <>
-              <div className="operation-title">
-                <div>
-                  <span>Acessos</span>
-                  <h1>Equipe</h1>
-                  <p>Proprietários, gerentes e atendimento autorizados.</p>
-                </div>
-              </div>
-              <div className="operation-simple-list">
-                {team.map((member) => (
-                  <article key={member.user_id}>
-                    <ShieldCheck />
-                    <span>
-                      <strong>{member.display_name}</strong>
-                      <small>
-                        {member.role === "owner"
-                          ? "Proprietário"
-                          : member.role === "manager"
-                            ? "Gerente"
-                            : "Atendimento"}
-                      </small>
-                      {member.must_change_password && (
-                        <small>Troca de senha obrigatória no próximo acesso</small>
-                      )}
-                    </span>
-                    <div className="team-member-actions">
-                      <b>{member.active ? "Ativo" : "Inativo"}</b>
-                      {["owner", "manager"].includes(role) &&
-                        member.active && (
-                          <button
-                            type="button"
-                            className="access-secondary"
-                            onClick={() =>
-                              void resetAccessPassword(
-                                member.user_id,
-                                "staff",
-                                member.display_name || "Membro da equipe",
-                              )
-                            }
-                            disabled={busy}
-                          >
-                            <KeyRound /> Redefinir senha
-                          </button>
-                        )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-              {passwordResetNotice &&
-                team.some(
-                  (member) =>
-                    member.user_id === passwordResetNotice.targetUserId,
-                ) && (
-                  <div className="password-reset-result" role="status">
-                    <strong>
-                      Acesso temporário de {passwordResetNotice.fullName}
-                    </strong>
-                    <code>{passwordResetNotice.temporaryPassword}</code>
-                    <span>
-                      A pessoa entrará com o celular cadastrado e deverá criar
-                      uma nova senha.
-                    </span>
+              {referralDialog ? (
+                <div
+                  className="operation-modal"
+                  role="presentation"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) fecharDialogoIndicacao();
+                  }}
+                >
+                  <section
+                    className="referral-stamp-card"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="referral-stamp-title"
+                  >
                     <button
                       type="button"
-                      onClick={() => void copyTemporaryPassword()}
+                      className="modal-close"
+                      onClick={fecharDialogoIndicacao}
+                      aria-label="Fechar registro de indicação"
+                      disabled={busy}
                     >
-                      <Copy /> Copiar instruções
+                      <X />
                     </button>
-                  </div>
-                )}
+                    <Users aria-hidden="true" />
+                    <h2 id="referral-stamp-title">Registrar indicação</h2>
+                    <p>
+                      Quantas pessoas novas <strong>{referralDialog.nome}</strong> trouxe para a Adoce?
+                    </p>
+                    <div className="referral-stamp-summary">
+                      <span>Carimbos de indicação</span>
+                      <strong>{referralQty}</strong>
+                    </div>
+                    <div className="stepper" aria-label="Quantidade de indicações">
+                      <button
+                        type="button"
+                        aria-label="Diminuir indicações"
+                        onClick={() => setReferralQty((current) => Math.max(1, current - 1))}
+                        disabled={busy || referralQty <= 1}
+                      >
+                        −
+                      </button>
+                      <strong aria-live="polite">{referralQty}</strong>
+                      <button
+                        type="button"
+                        aria-label="Aumentar indicações"
+                        onClick={() => setReferralQty((current) => Math.min(20, current + 1))}
+                        disabled={busy || referralQty >= 20}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <p className="field-help">
+                      Cada indicação confirmada adiciona um carimbo ao cartão de indicações. Limite por registro: 20.
+                    </p>
+                    {referralError ? <p className="field-error" role="alert">{referralError}</p> : null}
+                    <div className="referral-stamp-dialog-actions">
+                      <button type="button" className="access-secondary" onClick={fecharDialogoIndicacao} disabled={busy}>
+                        Cancelar
+                      </button>
+                      <button type="button" className="access-primary" onClick={() => void confirmarIndicacao()} disabled={busy}>
+                        {busy ? "Registrando..." : `Confirmar ${referralQty} carimbo(s)`}
+                      </button>
+                    </div>
+                  </section>
+                </div>
+              ) : null}
             </>
           )}
-          {view === "content" && (
-            <Suspense fallback={<p>Carregando administração...</p>}>
-              <OperationContentAdmin
-                key={`${contentTab}-${contentAvailabilityFilter}`}
-                session={session}
-                role={role}
-                initialTab={contentTab}
-                initialAvailabilityFilter={contentAvailabilityFilter}
-              />
-            </Suspense>
+          {view === "products" && (
+            <div className="operation-products-workspace">
+              <nav className="content-tabs" aria-label="Áreas de produtos">
+                <button className={productArea === "flavors" ? "active" : ""} onClick={() => setProductArea("flavors")}><CakeSlice /> Fatias e disponibilidade</button>
+                {(role === "owner" || role === "manager") ? <button className={productArea === "commercial" ? "active" : ""} onClick={() => setProductArea("commercial")}><Package /> Encomendas e eventos</button> : null}
+              </nav>
+              {productArea === "flavors" ? (
+                <Suspense fallback={<p>Carregando produtos...</p>}>
+                  <OperationContentAdmin
+                    key={`${contentTab}-${contentAvailabilityFilter}`}
+                    session={session}
+                    role={role}
+                    initialTab={contentTab === "operation" ? "catalog" : contentTab}
+                    initialAvailabilityFilter={contentAvailabilityFilter}
+                    allowedTabs={["catalog", "today"]}
+                  />
+                </Suspense>
+              ) : null}
+              {productArea === "commercial" && (role === "owner" || role === "manager") ? (
+                <Suspense fallback={<p>Carregando catálogo comercial...</p>}>
+                  <OperationCommercialAdmin session={session} role={role} initialTab="catalog" allowedTabs={["catalog"]} />
+                </Suspense>
+              ) : null}
+            </div>
           )}
-          {view === "orders" && (role === "owner" || role === "manager") && (
-            <Suspense fallback={<p>Carregando agenda e CRM...</p>}>
+          {view === "orders" && Boolean(role) && (
+            <Suspense fallback={<p>Carregando pedidos...</p>}>
               <OperationCommercialAdmin
                 session={session}
                 role={role}
                 initialTab={commercialTab}
-                onTabChange={openCommercial}
-                onOpenContent={() => void openView("content")}
+                onTabChange={(next) => openCommercial(next as OperationCommercialTab)}
+                allowedTabs={["sales", "requests", "settings"]}
               />
             </Suspense>
           )}
-          {view === "catalog" && (role === "owner" || role === "manager") && (
-            <Suspense fallback={<p>Carregando catálogo e mídias...</p>}>
-              <OperationCommercialAdmin
-                session={session}
-                role={role}
-                initialTab="catalog"
-                onOpenContent={() => void openView("content")}
-              />
+          {view === "management" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando a gestão…</p>}>
+              <OperationManagement />
             </Suspense>
           )}
-          {view === "archive" && (role === "owner" || role === "manager") && (
-            <Suspense fallback={<p>Carregando histórico...</p>}>
-              <OperationArchive />
+          {view === "purchasing_inventory" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando compras e estoque…</p>}>
+              <OperationPurchasingInventory />
             </Suspense>
           )}
-          {view === "security" && role === "owner" && (
-            <ProductionRollbackPanel accessToken={session.access_token} />
+          {view === "history" && (role === "owner" || role === "manager") && (
+            <Suspense fallback={<p>Carregando histórico...</p>}><OperationArchive /></Suspense>
           )}
-          {view === "whatsapp-pilot" && whatsappAuthPilotUiEnabled && (role === "owner" || role === "manager") && (
-            <Suspense fallback={<p>Carregando piloto WhatsApp…</p>}>
-              <WhatsAppAuthPilot accessToken={session.access_token} />
-            </Suspense>
-          )}
-          {view === "director-plan" && role === "owner" && (
-            <Suspense fallback={<p>Carregando validação do projeto...</p>}>
-              <DirectorPlanChecklist session={session} />
-            </Suspense>
+          {view === "settings" && (role === "owner" || role === "manager") && (
+            <div className="operation-settings-workspace">
+              <div className="operation-title">
+                <div>
+                  <span>Administração essencial</span>
+                  <h1>Configurações</h1>
+                  <p>Regras da loja, pagamentos e equipe em um único lugar.</p>
+                </div>
+              </div>
+              <nav className="content-tabs" aria-label="Áreas de configurações">
+                <button className={settingsTab === "store" ? "active" : ""} onClick={() => setSettingsTab("store")}><Settings2 /> Loja e pagamentos</button>
+                <button className={settingsTab === "hours" ? "active" : ""} onClick={() => setSettingsTab("hours")}><Clock3 /> Funcionamento</button>
+                {role === "owner" ? <button className={settingsTab === "team" ? "active" : ""} onClick={() => setSettingsTab("team")}><ShieldCheck /> Equipe</button> : null}
+              </nav>
+              {settingsTab === "store" ? (
+                <>
+                  <NativePrinterSettings />
+                  <Suspense fallback={<p>Carregando configurações...</p>}>
+                    <OperationCommerceSettings />
+                  </Suspense>
+                </>
+              ) : null}
+              {settingsTab === "hours" ? (
+                <Suspense fallback={<p>Carregando funcionamento...</p>}>
+                  <OperationContentAdmin session={session} role={role} initialTab="operation" allowedTabs={["operation"]} />
+                </Suspense>
+              ) : null}
+              {settingsTab === "team" && role === "owner" ? (
+                <Suspense fallback={<p>Carregando cadastro da equipe...</p>}>
+                  <StaffProfileAdmin session={session} staff={team} />
+                </Suspense>
+              ) : null}
+            </div>
           )}
           {scannerOpen && (
             <div
@@ -5107,55 +4936,37 @@ function OperationHome({ session }: { session: Session }) {
               </div>
             </div>
           )}
+          <CashDayGuard onCashScreen={view === "orders"} onNotice={setMessage} />
           {message && (
-            <div className="operation-toast">
-              <Check />
-              {message}
+            <div
+              className={`operation-toast ${messageKind === "error" ? "is-error" : ""}`}
+              role={messageKind === "error" ? "alert" : "status"}
+            >
+              {messageKind === "error" ? <AlertTriangle aria-hidden="true" /> : <Check aria-hidden="true" />}
+              <span>{message}</span>
+              <button type="button" onClick={() => setMessage("")} aria-label="Fechar aviso">
+                <X aria-hidden="true" />
+              </button>
             </div>
           )}
         </section>
       </div>
-      <nav className="operation-mobile-tabbar" aria-label="Navegação principal da operação">
-        <button
-          type="button"
-          className={view === "dashboard" ? "active" : ""}
-          onClick={() => void openView("dashboard")}
-          aria-current={view === "dashboard" ? "page" : undefined}
-        >
-          <LayoutDashboard /><span>Início</span>
-        </button>
-        <button
-          type="button"
-          className={view === "orders" && commercialTab === "sales" ? "active" : ""}
-          onClick={() => openCommercial("sales")}
-          aria-current={view === "orders" && commercialTab === "sales" ? "page" : undefined}
-        >
-          <ShoppingCart /><span>Vendas</span>
-        </button>
-        <button
-          type="button"
-          className={view === "orders" && (commercialTab === "agenda" || commercialTab === "requests") ? "active" : ""}
-          onClick={() => openCommercial("agenda")}
-          aria-current={view === "orders" && (commercialTab === "agenda" || commercialTab === "requests") ? "page" : undefined}
-        >
-          <CalendarDays /><span>Agenda</span>
-        </button>
-        <button
-          type="button"
-          className={view === "attend" ? "active" : ""}
-          onClick={() => void openView("attend")}
-          aria-current={view === "attend" ? "page" : undefined}
-        >
-          <Users /><span>Clientes</span>
-        </button>
-        <button
-          type="button"
-          className={mobileNavOpen ? "active" : ""}
-          onClick={() => setMobileNavOpen((open) => !open)}
-          aria-expanded={mobileNavOpen}
-        >
-          <MoreHorizontal /><span>Mais</span>
-        </button>
+      <nav
+        className="operation-mobile-tabbar"
+        aria-label="Navegação principal da operação"
+        style={{ gridTemplateColumns: `repeat(${operationNavItems.length}, minmax(0, 1fr))` }}
+      >
+        {operationNavItems.map((item) => (
+          <button
+            key={item.view}
+            type="button"
+            className={view === item.view ? "active" : ""}
+            onClick={item.open}
+            aria-current={view === item.view ? "page" : undefined}
+          >
+            <item.icon /><span>{item.shortLabel}</span>
+          </button>
+        ))}
       </nav>
     </main>
   );
@@ -5173,7 +4984,6 @@ export default function AccessApp({ surface }: { surface: Surface }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const identityDecision = decidirPorta({
     sessao: Boolean(session),
-    tokenDoCartao: tokenDoCartaoNaRota(window.location.hash),
     membro: null,
     tokenNaUrl: tokenDoMagicLink(window.location.hash),
   });
@@ -5203,8 +5013,8 @@ export default function AccessApp({ surface }: { surface: Surface }) {
         .then(({ data, error }) => {
           if (error) throw error;
           setSession(data.session);
-          const nextHash = linkType === "recovery" ? "#minha-conta" : rotaLimpaDepoisDoLogin;
-          window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${nextHash}`);
+          const nextPath = linkType === "recovery" ? "/minha-conta" : pathFromLegacyHash(rotaLimpaDepoisDoLogin) || "/clube";
+          window.history.replaceState(null, "", nextPath);
         })
         .catch(() => setSession(null));
     } else {
@@ -5218,6 +5028,12 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     return () => data.subscription.unsubscribe();
   }, [homologationFakeEnabled, identityDecision.porta, surface]);
   useEffect(() => {
+    if (surface !== "operation" || session === undefined || homologationFakeEnabled) return;
+    void syncNativeOperationSession(session).catch(() => {
+      console.error("Não foi possível iniciar o serviço de impressão do tablet.");
+    });
+  }, [surface, session, homologationFakeEnabled]);
+  useEffect(() => {
     if (!session) return;
     const url = new URL(window.location.href);
     const expectedReturn = surface === "operation" ? "operacao" : "clube";
@@ -5227,7 +5043,10 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     url.searchParams.delete("error");
     url.searchParams.delete("error_code");
     url.searchParams.delete("error_description");
-    url.hash = surface === "operation" ? "operacao" : "clube";
+    if (surface === "operation") {
+      url.pathname = "/operacao";
+      url.hash = "";
+    } else { url.pathname = "/clube"; url.hash = ""; }
     window.history.replaceState(
       null,
       "",

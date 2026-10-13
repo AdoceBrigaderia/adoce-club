@@ -1,45 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-
-declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
-
-const env = (name: string) =>
-  (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) ||
-  process.env[name];
-
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
+import { deliverAccessLink, generateAccessLink } from "./_shared/access-link";
+import { CounterCustomerError, findOrCreateCounterCustomer } from "./_shared/counter-customer";
+import { allowedOrigin, env, json, normalizeBrazilPhone } from "./_shared/whatsapp-auth";
 
 const allowedRoles = new Set(["owner", "manager", "attendant"]);
-
-const normalizePhone = (value: string) => {
-  const digits = value.replace(/\D/g, "");
-  const national = digits.startsWith("55") ? digits.slice(2) : digits;
-  return national.length === 10 || national.length === 11 ? `+55${national}` : null;
-};
-
-const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
-};
 
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -79,7 +43,7 @@ export default async (request: Request) => {
     phone?: string;
   };
   const fullName = (body.fullName || "").trim().replace(/\s+/g, " ");
-  const phone = normalizePhone(body.phone || "");
+  const phone = normalizeBrazilPhone(body.phone || "");
   if (fullName.split(" ").filter((part) => part.length > 1).length < 2) {
     return json({ error: "Informe nome e sobrenome." }, 400);
   }
@@ -89,90 +53,52 @@ export default async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data: existing } = await admin
-    .from("profiles")
-    .select("id,full_name,phone_e164")
-    .eq("phone_e164", phone)
-    .maybeSingle();
-  if (existing?.id) {
-    const { data: membership } = await admin
-      .from("account_memberships")
-      .select("account_id")
-      .eq("profile_id", existing.id)
-      .eq("active", true)
-      .eq("is_primary", true)
-      .maybeSingle();
+  let customer;
+  try {
+    customer = await findOrCreateCounterCustomer(admin, userData.user.id, fullName, phone);
+  } catch (error) {
+    if (error instanceof CounterCustomerError) return json({ error: error.message }, error.status);
+    throw error;
+  }
+  if (customer.existing) {
     return json({
-      profileId: existing.id,
-      accountId: membership?.account_id || null,
-      fullName: existing.full_name,
-      phone: existing.phone_e164,
+      profileId: customer.profileId,
+      accountId: customer.accountId,
+      fullName: customer.fullName,
+      phone: customer.phone,
       existing: true,
     });
   }
-
-  const fallbackEmail = `${phone.replace(/\D/g, "")}@membro.adocebrigaderia.com.br`;
-  const temporaryPassword = Array.from(crypto.getRandomValues(new Uint32Array(1)))[0]
-    .toString()
-    .slice(-6)
-    .padStart(6, "0");
-
-  let createdUser = (
-    await admin.auth.admin.createUser({
-      email: fallbackEmail,
-      email_confirm: true,
-      phone,
-      phone_confirm: true,
-      password: temporaryPassword,
-      user_metadata: { full_name: fullName, created_at_counter: true },
-    })
-  ).data.user;
-  if (!createdUser) {
-    return json({ error: "Não foi possível criar o cadastro." }, 409);
-  }
-
-  const profileId = createdUser.id;
-  const now = new Date().toISOString();
-  await admin
-    .from("profiles")
-    .update({
-      full_name: fullName,
-      phone_e164: phone,
-      auth_upgraded_at: now,
-      must_change_password: true,
-      updated_at: now,
-    })
-    .eq("id", profileId);
-
-  await admin.from("consent_events").insert([
-    { profile_id: profileId, consent_type: "club_terms", granted: true, document_version: "1.0", source: "operation_counter" },
-    { profile_id: profileId, consent_type: "privacy", granted: true, document_version: "1.0", source: "operation_counter" },
-  ]);
-
-  const { data: membership } = await admin
-    .from("account_memberships")
-    .select("account_id")
-    .eq("profile_id", profileId)
-    .eq("active", true)
-    .eq("is_primary", true)
-    .maybeSingle();
-
-  await admin.from("audit_events").insert({
-    actor_user_id: userData.user.id,
-    action: "customer.created_at_counter",
-    entity_type: "profile",
-    entity_id: profileId,
-    payload: { phone_suffix: phone.slice(-4), source: "operation_counter" },
-  });
+  const { profileId, fallbackEmail } = customer;
+  const temporaryPassword = customer.temporaryPassword || "";
+  const membership = { account_id: customer.accountId };
 
   const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-  const loginUrl = `${siteUrl}/#entrar`;
+  let loginUrl = `${siteUrl}/entrar`;
   const firstName = fullName.split(/\s+/)[0] || "cliente";
-  const accessMessage =
+  let accessMessage =
     `Olá, ${firstName}! Seu Clube Adoce já está pronto. Abra ${loginUrl} e entre com este WhatsApp e a senha temporária: ${temporaryPassword}\n\nNo primeiro acesso o site pede que você troque essa senha por uma só sua, com no mínimo 6 caracteres.`;
-  const whatsappDigits = phone.replace(/\D/g, "");
-  const whatsappUrl = `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(accessMessage)}`;
-
+  let whatsappSent = false;
+  let whatsappStatus = "not_configured";
+  let whatsappError: string | undefined;
+  try {
+    const access = await generateAccessLink(admin, fallbackEmail);
+    loginUrl = access.loginUrl;
+    accessMessage =
+      `Olá, ${firstName}! Seu acesso ao Clube Adoce está pronto. Toque neste link para criar sua senha e acompanhar seus carimbos: ${loginUrl}\n\nO link é pessoal e temporário.`;
+    const delivery = await deliverAccessLink(fullName, phone, access);
+    whatsappSent = delivery.status === "accepted";
+    whatsappStatus = delivery.status;
+    whatsappError = delivery.error;
+  } catch (error) {
+    whatsappStatus = "link_generation_failed";
+    whatsappError = error instanceof Error ? error.message : "access_link_generation_failed";
+  }
+  // Sem link wa.me/<cliente>: abrir esse deep link manda a mensagem pelo
+  // WhatsApp PESSOAL de quem está no balcão, não pelo número oficial. Quando
+  // o envio automático (Twilio) falha, o caminho seguro é ditar a senha
+  // temporária para o cliente entrar sozinho -- accessMessage segue no
+  // retorno só para "Copiar mensagem" e colar no canal oficial.
   return json({
     profileId,
     accountId: membership?.account_id || null,
@@ -182,7 +108,9 @@ export default async (request: Request) => {
     temporaryPassword,
     loginUrl,
     accessMessage,
-    whatsappUrl,
+    whatsappSent,
+    whatsappStatus,
+    whatsappError,
   });
 };
 
