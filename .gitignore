@@ -4,6 +4,7 @@ launch-dist/
 .env
 *.log
 coverage/
+artifacts/
 tsconfig.tsbuildinfo
 tmp/
 .codex-remote-attachments/
