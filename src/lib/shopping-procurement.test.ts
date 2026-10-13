@@ -23,10 +23,10 @@ describe("compras e cotações",()=>{
   expect(result?.supplierId).toBe("barato");expect(result?.estimatedTotal).toBe(20);
  });
  it("usa plural correto no pedido",()=>{
-  const rows=[{name:"Leite condensado",buy:1000,unit:"g",packages:10,packageName:"pacote"},{name:"Creme",buy:200,unit:"g",packages:1,packageName:"caixa"}];
-  expect(budgetText("13/10/2026",rows)).toContain("10 pacotes");
+  const rows=[{name:"Leite condensado",buy:1000,unit:"g",packages:10,packageName:"PACOTE"},{name:"Creme",buy:200,unit:"g",packages:1,packageName:"caixa"}];
+  expect(budgetText("13/10/2026",rows)).toContain("10 PACOTES");
   expect(budgetText("13/10/2026",rows)).toContain("1 caixa");
-  expect(budgetCsv(rows)).toContain('"Leite condensado";"10 pacotes"');
+  expect(budgetCsv(rows)).toContain('"Leite condensado";"10 PACOTES"');
  });
  it("importa resposta exportável do fornecedor",()=>{
   const parsed=importBudgetResponse('item;fornecedor;embalagens;conteudo_por_embalagem;valor_total\n"Leite";"Fornecedor A";2;395;15,90');

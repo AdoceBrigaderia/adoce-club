@@ -13,7 +13,7 @@ export function recommendOffers(state:ProcurementItem|undefined,required:number)
  const candidates=(state?.offers||[]).filter(valid).map(entry=>{const content=entry.packages*entry.contentPerPackage;const packages=Math.ceil(required/entry.contentPerPackage);return {...entry,content,unitPrice:entry.totalPrice/content,packagesNeeded:packages,estimatedTotal:entry.totalPrice/entry.packages*packages};});
  return candidates.sort((a,b)=>a.unitPrice-b.unitPrice)[0]||null;
 }
-const plural=(name:string,count:number)=>count===1?name:(name.endsWith("ão")?name.slice(0,-2)+"ões":name.endsWith("m")?name.slice(0,-1)+"ns":name.endsWith("r")||name.endsWith("z")?name+"es":name+"s");
+const plural=(name:string,count:number)=>{if(count===1)return name;const lower=name.toLocaleLowerCase("pt-BR"),result=lower.endsWith("ão")?lower.slice(0,-2)+"ões":lower.endsWith("m")?lower.slice(0,-1)+"ns":lower.endsWith("r")||lower.endsWith("z")?lower+"es":lower+"s";return name===name.toLocaleUpperCase("pt-BR")?result.toLocaleUpperCase("pt-BR"):result;};
 type BudgetRow={name:string;buy:number;unit:string;packages:number|null;packageName:string};
 export function budgetText(date:string,rows:BudgetRow[]){return [`PEDIDO DE ORÇAMENTO · ${date}`,"Informe fornecedor, embalagem e valor total.","",...rows.map(r=>`- ${r.name}: ${r.packages==null?`${r.buy.toLocaleString("pt-BR")} ${r.unit}`:`${r.packages} ${plural(r.packageName,r.packages)}`} | Fornecedor: ______ | Valor total: R$ ______`)].join("\n");}
 const q=(value:string)=>`"${value.replaceAll('"','""')}"`;
