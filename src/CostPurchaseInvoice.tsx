@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { requireSupabase } from "./lib/supabase";
 import { grossLineTotal, moneyFromTypedDigits, normalizePurchaseQuantity, referenceQuantityInBase, type BaseUnit, type PackageLayer } from "./lib/purchase-invoice";
+import {compareInvoicePurchase,type ProcurementItem} from "./lib/shopping-procurement";
+import {localShoppingDate,weekStart,type ShoppingWeek} from "./lib/shopping-week";
 import "./cost-purchase-invoice.css";
 import CostRecordArchiveDialog from "./CostRecordArchiveDialog";
 import CostPurchaseCatalogEditor from "./CostPurchaseCatalogEditor";
@@ -16,14 +18,14 @@ type DraftLine = {
   baseUnit: BaseUnit | ""; layers: PackageLayer[]; contentQuantity: string; contentUnit: string;
   newContentUnitName: string; newContentUnitQuantity: string; newContentUnitPhysicalUnit: BaseUnit | "";
   usefulQuantity: string; checked: boolean; unitPrice: string; brandName: string; itemNotes: string;
-  referencePackageName: string; referenceQuantity: string; referenceUnit: BaseUnit | "";
+  referencePackageName: string; referenceQuantity: string; referenceUnit: BaseUnit | ""; shoppingDifferenceAccepted:boolean;
 };
 const units: BaseUnit[] = ["g", "kg", "ml", "l", "unit"];
 const costUnits: BaseUnit[] = ["unit", "g", "ml"];
 const referenceUnits = (base: string): BaseUnit[] => base === "g" ? ["g", "kg"] : base === "ml" ? ["ml", "l"] : base === "unit" ? ["unit"] : [];
 const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const unitMoney = (value: number) => `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 4, maximumFractionDigits: 6 })}`;
-const nextLine = (): DraftLine => ({ key: crypto.randomUUID(), itemId: "", newItemKind: "ingredient", newItemName: "", newItemCode: "", baseUnit: "", layers: [{ name: "", quantity: "" }], contentQuantity: "", contentUnit: "", newContentUnitName: "", newContentUnitQuantity: "", newContentUnitPhysicalUnit: "", usefulQuantity: "", checked: false, unitPrice: "", brandName: "", itemNotes: "", referencePackageName: "", referenceQuantity: "", referenceUnit: "" });
+const nextLine = (): DraftLine => ({ key: crypto.randomUUID(), itemId: "", newItemKind: "ingredient", newItemName: "", newItemCode: "", baseUnit: "", layers: [{ name: "", quantity: "" }], contentQuantity: "", contentUnit: "", newContentUnitName: "", newContentUnitQuantity: "", newContentUnitPhysicalUnit: "", usefulQuantity: "", checked: false, unitPrice: "", brandName: "", itemNotes: "", referencePackageName: "", referenceQuantity: "", referenceUnit: "",shoppingDifferenceAccepted:false });
 
 export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[]; onSaved: () => Promise<void> }) {
   const [archivingInvoice, setArchivingInvoice] = useState<{ id: string; name: string; restore: boolean } | null>(null);
@@ -48,6 +50,7 @@ export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[];
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [historyItem, setHistoryItem] = useState("");
+  const [shoppingPlan,setShoppingPlan]=useState<ShoppingWeek|null>(null);
 
   const loadHistory = useCallback(async () => {
     const { data, error } = await requireSupabase().rpc("manager_get_costing_purchase_workspace");
@@ -68,7 +71,7 @@ export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[];
     if (error) setNotice(error.message);
     else setSuppliers(data as Supplier[]);
   }, []);
-  useEffect(() => { void Promise.all([loadHistory(), loadCatalog(), loadSuppliers()]); }, [loadHistory, loadCatalog, loadSuppliers]);
+  useEffect(() => { void Promise.all([loadHistory(), loadCatalog(), loadSuppliers(),requireSupabase().rpc("manager_get_shopping_week",{requested_week:weekStart(localShoppingDate())}).then(({data})=>setShoppingPlan(data as ShoppingWeek))]); }, [loadHistory, loadCatalog, loadSuppliers]);
 
   const createSupplier = async () => {
     const name = newSupplierName.trim();
@@ -138,6 +141,7 @@ export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[];
   };
   const subtotal = useMemo(() => lines.reduce((sum, line) => sum + Number(grossLineTotal(line.layers[0]?.quantity || "", line.unitPrice) || 0), 0), [lines]);
   const total = subtotal - (Number(discount) || 0) + (Number(freight) || 0);
+  const shoppingComparison=(line:DraftLine)=>{const quantity=normalized(line),gross=grossLineTotal(line.layers[0]?.quantity||"",line.unitPrice),state=shoppingPlan?.procurement?.[line.itemId] as ProcurementItem|undefined;if(!state?.purchases.length||quantity==null||gross==null)return null;return compareInvoicePurchase({normalizedQuantity:quantity,grossTotal:Number(gross)},state);};
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -147,8 +151,9 @@ export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[];
         (!line.referencePackageName.trim() || !line.referenceQuantity || !line.referenceUnit ||
           referenceQuantityInBase(line.referenceQuantity, line.referenceUnit, line.baseUnit as BaseUnit) == null)) ||
       (line.checked && !line.usefulQuantity) ||
-      (line.usefulQuantity && (Number(line.usefulQuantity) <= 0 || Number(line.usefulQuantity) > (normalized(line) || 0))))) {
-      setNotice("Revise o item, as camadas da embalagem, o conteúdo e a quantidade útil de cada linha.");
+      (line.usefulQuantity && (Number(line.usefulQuantity) <= 0 || Number(line.usefulQuantity) > (normalized(line) || 0))) ||
+      (shoppingComparison(line)?.matches===false&&!line.shoppingDifferenceAccepted))) {
+      setNotice("Revise o item, as embalagens e a quantidade útil. Se a nota divergir da lista, confirme que conferiu a diferença.");
       return;
     }
     if (!Number.isFinite(total) || total < 0 || Number(discount || 0) > subtotal) {
@@ -224,6 +229,7 @@ export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[];
         const referenceQuantity = line.itemId === "new" ? line.referenceQuantity : selectedItem?.reference_quantity;
         const referenceUnit = line.itemId === "new" ? line.referenceUnit : selectedItem?.reference_unit;
         const referenceBase = baseUnit ? referenceQuantityInBase(referenceQuantity || null, referenceUnit || null, baseUnit) : null;
+        const plannedComparison=shoppingComparison(line);
         return <section className="adoce-invoice-card" key={line.key}>
           <div className="adoce-invoice-card-head"><h4>Item {index + 1}</h4>{lines.length > 1 && <button type="button" onClick={() => setLines(current => current.filter(candidate => candidate.key !== line.key))}>Remover item</button>}</div>
           <div className="adoce-invoice-fields">
@@ -274,6 +280,7 @@ export default function CostPurchaseInvoice({ items, onSaved }: { items: Item[];
             {gross != null && <span>{line.layers[0].quantity} {line.layers[0].name || "embalagens"} × {money(Number(line.unitPrice))} = {money(Number(gross))}</span>}
             {unitCost != null && <span>Custo estimado com desconto e frete: {unitMoney(unitCost)} / {baseUnit}</span>}
             {referenceBase != null && referenceName && <span className="adoce-reference-result">Custo equivalente a uma {referenceName} de {referenceQuantity} {referenceUnit}: {unitCost == null ? "preencha preço e quantidade" : `${money(unitCost * referenceBase)} (estimativa)`}</span>}
+            {plannedComparison&&<div className={plannedComparison.matches?"adoce-shopping-comparison better":"adoce-cost-pending"}><strong>{plannedComparison.matches?"Nota confere com a lista de compras.":"Atenção: a nota está diferente do combinado."}</strong>{!plannedComparison.matches&&<><span>Quantidade: {plannedComparison.quantityDifference>0?"a mais":"a menos"} {Math.abs(plannedComparison.quantityDifference).toLocaleString("pt-BR")} {baseUnit}.</span><span>Valor: {plannedComparison.priceDifference>0?"a mais":"a menos"} {money(Math.abs(plannedComparison.priceDifference))}.</span><label><input type="checkbox" checked={line.shoppingDifferenceAccepted} onChange={e=>updateLine(line.key,{shoppingDifferenceAccepted:e.target.checked})}/> Conferi a divergência e desejo salvar a nota</label></>}</div>}
             {quantity != null && <button type="button" onClick={() => updateLine(line.key, { usefulQuantity: String(quantity), checked: false })}>Usar quantidade total como útil (sem perda)</button>}
             <label><input type="checkbox" checked={line.checked} disabled={!line.usefulQuantity} onChange={e => updateLine(line.key, { checked: e.target.checked })} /> Preço e quantidade útil conferidos</label>
             <small>O custo usa o valor da nota e a quantidade comprada. Ao conferir a quantidade útil, o cálculo passa a usar essa nova referência.</small>

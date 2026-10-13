@@ -7,7 +7,7 @@ export function useShoppingPlanSync(week:string) {
  const [ready,setReady]=useState(false);
  const [saving,setSaving]=useState(false);
  const [status,setStatus]=useState("Carregando planejamento compartilhado…");
- const pending=useRef<{week:string;group:keyof ShoppingWeek;key:string;value:number|boolean}[]>([]);
+ const pending=useRef<{week:string;group:keyof ShoppingWeek;key:string;value:unknown}[]>([]);
  const running=useRef(false),mounted=useRef(true),generation=useRef(0),activeWeek=useRef(week);
  activeWeek.current=week;
  const refresh=async()=>{
@@ -39,11 +39,11 @@ export function useShoppingPlanSync(week:string) {
   const focus=()=>{void refresh();};window.addEventListener("focus",focus);
   return()=>{mounted.current=false;window.clearInterval(timer);window.removeEventListener("focus",focus);};
  },[week]);
- const change=(group:keyof ShoppingWeek,key:string,value:number|boolean)=>{
+ const change=(group:keyof ShoppingWeek,key:string,value:unknown)=>{
   if(!ready)return;
   if(typeof value==="number"&&(!Number.isFinite(value)||value<0||value>1e9))return;
   generation.current++;
-  setPlan(current=>group==="daily"?applyDailyQuantity(current,key.split("|")[0],key.split("|")[1],Number(value)):({...current,[group]:{...current[group],[key]:value}}));
+  setPlan(current=>group==="daily"?applyDailyQuantity(current,key.split("|")[0],key.split("|")[1],Number(value)):({...current,[group]:{...(current[group]||{}),[key]:value}} as ShoppingWeek));
   pending.current.push({week,group,key,value});setSaving(true);setStatus("Salvando planejamento…");void flush();
  };
  const copyPrevious=async(sourceWeek:string)=>{

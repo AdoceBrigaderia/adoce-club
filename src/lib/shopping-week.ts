@@ -1,4 +1,5 @@
-export type ShoppingWeek = {cakes:Record<string,number>;daily:Record<string,number>;extras:Record<string,number>;stock:Record<string,number>;selected:Record<string,boolean>;inCart?:Record<string,boolean>;quoteUnits?:Record<string,number>;quoteWeight?:Record<string,number>;quotePrice?:Record<string,number>};
+import type {ProcurementItem} from "./shopping-procurement";
+export type ShoppingWeek = {cakes:Record<string,number>;daily:Record<string,number>;extras:Record<string,number>;stock:Record<string,number>;selected:Record<string,boolean>;inCart?:Record<string,boolean>;quoteUnits?:Record<string,number>;quoteWeight?:Record<string,number>;quotePrice?:Record<string,number>;procurement?:Record<string,ProcurementItem>};
 export const emptyShoppingWeek=():ShoppingWeek=>({cakes:{},daily:{},extras:{},stock:{},selected:{}});
 export function localShoppingDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());}
 export function shiftDate(date:string,days:number){const value=new Date(`${date}T12:00:00Z`);value.setUTCDate(value.getUTCDate()+days);return value.toISOString().slice(0,10);}
