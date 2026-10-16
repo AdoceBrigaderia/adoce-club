@@ -19,6 +19,12 @@ describe("diretório e edição completa de clientes", () => {
     expect(migration).toContain("last_stamp_at");
   });
 
+  it("não limita a busca rápida do balcão à página atual da lista completa", () => {
+    expect(operation).toContain("counterDirectoryProfiles");
+    expect(operation).toContain("activeCustomerProfilesForCounter");
+    expect(operation).toContain("loadCounterWorkspace(counterDirectoryProfiles)");
+  });
+
   it("edita o mesmo profile e protege telefone duplicado", () => {
     expect(endpoint).toContain("phoneE164");
     expect(endpoint).toContain("addressLine");

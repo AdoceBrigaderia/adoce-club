@@ -24,6 +24,15 @@ export function countCustomerProfiles(
   return profiles.filter((profile) => isCustomerProfile(profile, staffIds)).length;
 }
 
+export function activeCustomerProfilesForCounter<T extends CustomerProfileIdentity>(
+  profiles: readonly T[],
+  staffIds: ReadonlySet<string>,
+): T[] {
+  return profiles.filter(
+    (profile) => isCustomerProfile(profile, staffIds) && profile.account_status === "active",
+  );
+}
+
 export function normalizeSearchValue(value: string): string {
   return value
     .normalize("NFD")

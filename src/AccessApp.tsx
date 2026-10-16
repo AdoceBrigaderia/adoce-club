@@ -102,7 +102,7 @@ import {
   whatsappVerificationLink,
   type WhatsAppChallenge,
 } from "./services/auth";
-import { isCustomerProfile, matchesCustomerSearch } from "./customer-search";
+import { activeCustomerProfilesForCounter, isCustomerProfile, matchesCustomerSearch } from "./customer-search";
 import {
   applyCustomerAccountAction,
 } from "./customer-account-actions";
@@ -2923,6 +2923,7 @@ function OperationHome({ session }: { session: Session }) {
   const [customerTotal, setCustomerTotal] = useState(0);
   const [cadastrando, setCadastrando] = useState(false);
   const [counterFichas, setCounterFichas] = useState<Array<Cliente & { accountId: string; rewardId: string | null }>>([]);
+  const [counterDirectoryProfiles, setCounterDirectoryProfiles] = useState<CustomerSearchResult[]>([]);
   const [acessoDoBalcao, setAcessoDoBalcao] = useState<{
     fullName: string;
     temporaryPassword: string;
@@ -3072,6 +3073,18 @@ function OperationHome({ session }: { session: Session }) {
       }
       const customers = [...(profiles || [])]
         .filter((profile) => isCustomerProfile(profile, staffIds));
+      setCounterDirectoryProfiles(
+        activeCustomerProfilesForCounter(customers, new Set()).map((profile) => ({
+          profile_id: profile.id,
+          full_name: profile.full_name,
+          phone_e164: profile.phone_e164,
+          email: profile.email,
+          member_code: profile.member_code || "—",
+          account_status: profile.account_status,
+          current_progress: 0,
+          available_rewards: 0,
+        })),
+      );
       setMemberCounts({
         total: customers.length,
         active: customers.filter((profile) => profile.account_status === "active").length,
@@ -3273,8 +3286,8 @@ function OperationHome({ session }: { session: Session }) {
   }, []);
   useEffect(() => {
     if (!authorized) return;
-    void loadCounterWorkspace(results);
-  }, [authorized, loadCounterWorkspace, results]);
+    void loadCounterWorkspace(counterDirectoryProfiles);
+  }, [authorized, counterDirectoryProfiles, loadCounterWorkspace]);
   useEffect(() => {
     if (!authorized) return;
     const supabase = requireSupabase();
@@ -4379,7 +4392,7 @@ function OperationHome({ session }: { session: Session }) {
                 onCarimbarIndicacao={solicitarIndicacao}
                 onEntregarPresente={entregarBalcao}
                 onAbrirCadastro={(cliente) => {
-                  const customer = results.find(
+                  const customer = counterDirectoryProfiles.find(
                     (item) => item.profile_id === cliente.id,
                   );
                   if (customer) void openCustomer(customer);

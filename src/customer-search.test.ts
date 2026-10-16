@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countCustomerProfiles, isCustomerProfile, matchesCustomerSearch } from "./customer-search";
+import { activeCustomerProfilesForCounter, countCustomerProfiles, isCustomerProfile, matchesCustomerSearch } from "./customer-search";
 
 const customer = {
   full_name: "João da Silva",
@@ -27,6 +27,19 @@ describe("pesquisa de clientes", () => {
     ];
 
     expect(countCustomerProfiles(profiles, staffIds)).toBe(2);
+  });
+
+  it("mantém todos os clientes ativos na busca rápida, inclusive depois da primeira página", () => {
+    const profiles = Array.from({ length: 60 }, (_, index) => ({
+      id: `customer-${index}`,
+      account_status: "active",
+      full_name: index === 59 ? "Gabriela da Silva" : `Cliente ${index}`,
+    }));
+
+    const directory = activeCustomerProfilesForCounter(profiles, new Set());
+
+    expect(directory).toHaveLength(60);
+    expect(directory.some((profile) => profile.full_name.includes("Gabriela"))).toBe(true);
   });
   it("encontra por parte do nome sem exigir acento", () => {
     expect(matchesCustomerSearch(customer, "joa")).toBe(true);

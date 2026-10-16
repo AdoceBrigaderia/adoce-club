@@ -19,4 +19,13 @@ describe("lista completa de clientes no caixa", () => {
     expect(migration).toContain("where p.active");
     expect(migration).not.toContain("limit 30");
   });
+
+  it("não transforma busca textual em correspondência com qualquer celular", () => {
+    const migration = readFileSync(new URL("../supabase/migrations/20261016150255_fix_cash_customer_text_search.sql", import.meta.url), "utf8");
+
+    expect(migration).toContain("nullif(regexp_replace(trim(search_text), '[^0-9]', '', 'g'), '')");
+    expect(migration).toContain("extensions.unaccent(lower(p.full_name))");
+    expect(migration).toContain("order by extensions.unaccent(lower(p.full_name)), p.full_name");
+    expect(migration).not.toContain("limit 30");
+  });
 });
