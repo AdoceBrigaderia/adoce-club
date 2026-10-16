@@ -50,6 +50,7 @@
   .cash-register-page .cash-fast-methods button{font-size:13px;gap:6px}
 }
 @media(max-width:760px){.cash-register-page .cash-customer-identification{grid-template-columns:1fr}.cash-register-page .cash-customer-identification p{grid-column:auto}}
+.cash-register-page .cash-customer-combobox{position:relative}.cash-register-page .cash-customer-options{position:absolute;z-index:30;top:100%;left:0;right:0;max-height:320px;overflow-y:auto;background:#fff;border:1px solid #d9bda9;border-radius:12px;box-shadow:0 14px 30px rgba(67,36,25,.18)}.cash-register-page .cash-customer-options button{width:100%;min-height:58px;padding:10px 12px;border:0;border-bottom:1px solid #eee2d8;background:#fff;text-align:left;display:grid;gap:3px}.cash-register-page .cash-customer-options button:hover,.cash-register-page .cash-customer-options button[aria-selected="true"]{background:#fff4e9}.cash-register-page .cash-customer-options small{color:#765b51}.cash-register-page .cash-customer-option-state{display:block;padding:16px;color:#765b51}
 @media(max-height:500px) and (min-width:600px){
   .cash-register-page .cash-fast-methods{grid-template-columns:repeat(3,minmax(0,1fr))}
   .cash-register-page .cash-modal.cash-fast-modal .cash-fast-heading h3{font-size:18px}

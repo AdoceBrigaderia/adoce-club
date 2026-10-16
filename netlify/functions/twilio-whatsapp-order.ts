@@ -33,6 +33,7 @@ type OrderState = {
   sauce?: BotOption;
   pickupMethod?: "customer" | "driver";
   pickupTime?: string;
+  existingOrders?: Array<{ order_number: string; status: string }>;
 };
 
 const MAX_WEBHOOK_BYTES = 32768;
@@ -306,9 +307,21 @@ export default async (request: Request) => {
       return await finish(`Oi! Que bom ter você por aqui 🍰\n\nJá conhece as fatias da Adoce? ${priceIntroduction}\n\nNão fazemos entregas. Seu pedido pode ser retirado aqui por você ou por um motorista de aplicativo que você solicitar.\n\nPara começar, qual é seu nome e sobrenome?`);
     };
 
+    const offerExistingOrderChoice = async () => {
+      const { data, error } = await admin.rpc("server_find_whatsapp_orders_today", {
+        requested_customer_phone: phone,
+      });
+      if (error) throw new Error(`orders_today:${error.code}`);
+      const existingOrders = (Array.isArray(data) ? data : []) as Array<{ order_number: string; status: string }>;
+      if (!existingOrders.length) return startConversation();
+      await save("existing_order_choice", { existingOrders });
+      const references = existingOrders.map((order) => order.order_number).join(", ");
+      return finish(`Identificamos que você já realizou um pedido hoje (${references}). Deseja falar sobre esse pedido ou fazer uma nova compra?\n\n1. Falar sobre pedido existente\n2. Fazer uma nova compra`);
+    };
+
     if (command === "menu" || command === "pedido" || command === "pedir" || command === "comprar") {
       await clear();
-      return await startConversation();
+      return await offerExistingOrderChoice();
     }
 
     const { data: loaded, error: conversationError } = await admin.rpc(
@@ -317,13 +330,21 @@ export default async (request: Request) => {
     );
     if (conversationError) throw new Error(`conversation:${conversationError.code}`);
     const conversation = (loaded || null) as Conversation;
-    if (!conversation) return await startConversation();
+    if (!conversation) return await offerExistingOrderChoice();
     if (conversation.step === "handoff")
       return await finish("A automaÃ§Ã£o estÃ¡ pausada para este atendimento. Envie *MENU* para recomeÃ§ar.");
     if (conversation.step === "completed")
       return await finish("Seu pedido anterior jÃ¡ foi registrado. Envie *MENU* para fazer outro pedido.");
 
     const state = conversation.state || {};
+    if (conversation.step === "existing_order_choice") {
+      if (command === "1") {
+        await save("handoff", { existingOrders: state.existingOrders || [] });
+        return await finish("Certo. Não criei outro pedido. Envie aqui a informação sobre o pedido anterior e a equipe da Adoce continuará o atendimento.");
+      }
+      if (command === "2") return await startConversation();
+      return await finish("Escolha uma opção:\n\n1. Falar sobre pedido existente\n2. Fazer uma nova compra");
+    }
     if (conversation.step === "name") {
       if (!isFullName(body)) return await finish("Informe seu nome e sobrenome. Exemplo: *Maria da Silva*.");
       return await startMenu(body.trim());

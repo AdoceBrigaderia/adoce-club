@@ -13,6 +13,9 @@ export default function CashSessionActions({ sessionId, storeId, hasDraft, onCha
   const [rows, setRows] = useState<Pending[]>([]);
   const [selected, setSelected] = useState<Pending | null>(null);
   const [method, setMethod] = useState("pix");
+  const [receiveAmount,setReceiveAmount] = useState("");
+  const [employees,setEmployees] = useState<Array<{employee_id:string;full_name:string}>>([]);
+  const [employeeId,setEmployeeId] = useState("");
   const [counted, setCounted] = useState("");
   const [message, setMessage] = useState("");
   const [report, setReport] = useState<ClosingReport | null>(null);
@@ -25,13 +28,19 @@ export default function CashSessionActions({ sessionId, storeId, hasDraft, onCha
       const { data, error } = await requireSupabase().from("instant_orders").select("id,customer_name,order_number,total,amount_paid").eq("store_id", storeId).eq("payment_deferred", true).eq("payment_status", "pending").order("created_at");
       if (error) throw error;
       setRows(data || []);
+      const {data: employeeRows} = await requireSupabase().rpc("staff_list_payroll_employees");
+      setEmployees((employeeRows || []) as Array<{employee_id:string;full_name:string}>);
     } catch (error) { setMessage((error as Error).message); } finally { setBusy(false); }
   };
   const receive = async () => {
     if (!selected || !sessionId) return;
+    const remaining=selected.total-selected.amount_paid;
+    const amount=Number(receiveAmount.replace(",","."));
+    if(!Number.isFinite(amount)||amount<=0||amount>remaining){setMessage("Informe um valor maior que zero e limitado ao saldo pendente.");return;}
+    if(method==="payroll"&&!employeeId){setMessage("Selecione o funcionário para o desconto em folha.");return;}
     setBusy(true); setMessage("");
     try {
-      const { error } = await requireSupabase().rpc("staff_receive_deferred_cash_sale", { target_order_id: selected.id, target_session_id: sessionId, requested_method: method });
+      const { error } = await requireSupabase().rpc("staff_receive_deferred_cash_sale_v2", { target_order_id: selected.id, target_session_id: sessionId, requested_method: method, requested_amount: amount, requested_operation_key: crypto.randomUUID(), requested_payroll_employee_id: employeeId || null });
       if (error) throw error;
       setSelected(null); await loadPending(); setMessage("Pagamento recebido e registrado no caixa atual."); onChanged();
     } catch (error) { setMessage((error as Error).message); } finally { setBusy(false); }
@@ -56,7 +65,7 @@ export default function CashSessionActions({ sessionId, storeId, hasDraft, onCha
     <header className="cash-fast-heading"><h3 id="cash-session-title">{view === "pending" ? selected ? "Receber pagamento" : "Pagamentos pendentes" : "Fechar caixa"}</h3><button type="button" className="cash-modal-close" disabled={busy} onClick={() => { setView(null); setSelected(null); }} aria-label="Fechar janela do caixa">×</button></header>
     {message ? <p role="status" className="cash-fast-message">{message}</p> : null}
     {view === "pending" ? <>{!sessionId ? <p>Abra o caixa para registrar um recebimento.</p> : null}{!busy && !rows.length ? <p>Nenhum pagamento pendente.</p> : null}
-      {selected ? <div className="cash-fast-body"><h4>{selected.customer_name}</h4><strong>{selected.order_number} · {cashMoney(selected.total - selected.amount_paid)}</strong><label>Meio de pagamento<select value={method} onChange={event => setMethod(event.target.value)}>{Object.entries(paymentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label><button type="button" disabled={busy || !sessionId} onClick={() => void receive()}>Confirmar recebimento</button><button type="button" disabled={busy} onClick={()=>setSelected(null)}>Voltar à lista</button></div> : <><div className="cash-compact-list">{rows.slice(page*size,page*size+size).map(row=><button type="button" key={row.id} disabled={busy} onClick={()=>{setSelected(row);setMessage("");}}><span>{row.customer_name} · {row.order_number}</span><strong>{cashMoney(row.total-row.amount_paid)}</strong></button>)}</div><div className="cash-fast-footer cash-reprint-pages"><button type="button" disabled={busy || page===0} onClick={()=>setPage(value=>value-1)}>Anterior</button><span>{page+1} / {Math.max(1,Math.ceil(rows.length/size))}</span><button type="button" disabled={busy || (page+1)*size>=rows.length} onClick={()=>setPage(value=>value+1)}>Próxima</button></div></>}
+      {selected ? <div className="cash-fast-body"><h4>{selected.customer_name}</h4><strong>{selected.order_number} · {cashMoney(selected.total - selected.amount_paid)}</strong><label>Valor a receber<input inputMode="decimal" value={receiveAmount} placeholder={String(selected.total-selected.amount_paid).replace(".",",")} onChange={event=>setReceiveAmount(event.target.value)} /></label><label>Meio de pagamento<select value={method} onChange={event => setMethod(event.target.value)}>{Object.entries(paymentLabels).map(([code, label]) => <option key={code} value={code}>{label}</option>)}</select></label>{method==="payroll"?<label>Funcionário<select value={employeeId} onChange={event=>setEmployeeId(event.target.value)}><option value="">Selecione</option>{employees.map(employee=><option key={employee.employee_id} value={employee.employee_id}>{employee.full_name}</option>)}</select></label>:null}<button type="button" disabled={busy || !sessionId} onClick={() => void receive()}>Confirmar recebimento</button><button type="button" disabled={busy} onClick={()=>setSelected(null)}>Voltar à lista</button></div> : <><div className="cash-compact-list">{rows.slice(page*size,page*size+size).map(row=><button type="button" key={row.id} disabled={busy} onClick={()=>{setSelected(row);setReceiveAmount(String(row.total-row.amount_paid).replace(".",","));setEmployeeId("");setMessage("");}}><span>{row.customer_name} · {row.order_number}</span><strong>{cashMoney(row.total-row.amount_paid)}</strong></button>)}</div><div className="cash-fast-footer cash-reprint-pages"><button type="button" disabled={busy || page===0} onClick={()=>setPage(value=>value-1)}>Anterior</button><span>{page+1} / {Math.max(1,Math.ceil(rows.length/size))}</span><button type="button" disabled={busy || (page+1)*size>=rows.length} onClick={()=>setPage(value=>value+1)}>Próxima</button></div></>}
     </> : report ? <CashPagedText text={closingPrintJobs(report as FullClosingReport).map((job) => plainText(job.lines)).join(String.fromCharCode(10, 10))} /> : <div className="cash-fast-body"><p className="cash-fast-hint">Informe somente o dinheiro físico da gaveta. Pix e cartões aparecem separadamente no relatório.</p><label>Dinheiro contado<input inputMode="decimal" value={counted} onChange={event => setCounted(event.target.value)} /></label><button type="button" disabled={busy || hasDraft} onClick={() => void closeCash()}>{busy ? "Fechando…" : "Fechar e imprimir relatório"}</button>{hasDraft ? <p>Conclua ou cancele o pedido iniciado antes de fechar.</p> : null}</div>}
   </div></div> : null}</>;
 }

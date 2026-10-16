@@ -118,7 +118,7 @@ import {
   isRealCustomerName,
   type ConsentEvent,
 } from "./customer-onboarding";
-import { updateCustomerName } from "./customer-profile-admin";
+import { updateCustomerName, updateCustomerProfile, type StaffCustomerProfileDraft } from "./customer-profile-admin";
 import BalcaoAtendimento from "./BalcaoAtendimento";
 import CadastroRapido from "./CadastroRapido";
 import { mascaraTelefone } from "./cadastro-rapido";
@@ -311,12 +311,23 @@ type CustomerSnapshot = {
   completed_cards: number;
   available_rewards: number;
   available_reward_id: string | null;
+  created_at?: string;
+  last_stamp_at?: string | null;
+  birth_date?: string | null;
+  preferred_channel?: string | null;
+  postal_code?: string | null;
+  address_line?: string | null;
+  address_number?: string | null;
+  address_complement?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state_code?: string | null;
 };
 
 type CustomerSearchResult = Pick<
   CustomerSnapshot,
   "profile_id" | "full_name" | "phone_e164" | "email" | "member_code" | "account_status"
->;
+> & Pick<CustomerSnapshot, "current_progress" | "available_rewards" | "created_at" | "last_stamp_at">;
 
 type ClubSnapshot = {
   name: string;
@@ -2903,6 +2914,13 @@ function OperationHome({ session }: { session: Session }) {
   const [referralError, setReferralError] = useState("");
   const [memberCounts, setMemberCounts] = useState<MemberCounts>({ total: 0, active: 0, deactivated: 0, pending: 0 });
   const [memberStatusFilter, setMemberStatusFilter] = useState<MemberStatusFilter>("all");
+  const [customerRegisteredFrom, setCustomerRegisteredFrom] = useState("");
+  const [customerLastStampFrom, setCustomerLastStampFrom] = useState("");
+  const [customerMinStamps, setCustomerMinStamps] = useState("");
+  const [customerHasReward, setCustomerHasReward] = useState(false);
+  const [customerSort, setCustomerSort] = useState("name_asc");
+  const [customerPage, setCustomerPage] = useState(1);
+  const [customerTotal, setCustomerTotal] = useState(0);
   const [cadastrando, setCadastrando] = useState(false);
   const [counterFichas, setCounterFichas] = useState<Array<Cliente & { accountId: string; rewardId: string | null }>>([]);
   const [acessoDoBalcao, setAcessoDoBalcao] = useState<{
@@ -2921,6 +2939,7 @@ function OperationHome({ session }: { session: Session }) {
   } | null>(null);
   const [saboresPresente, setSaboresPresente] = useState<Array<{ id: string; name: string; remaining: number }>>([]);
   const [editingCustomerName, setEditingCustomerName] = useState(false);
+  const [customerProfileDraft, setCustomerProfileDraft] = useState<StaffCustomerProfileDraft | null>(null);
   const [customerNameDraft, setCustomerNameDraft] = useState("");
   const [view, setView] = useState<OperationView>(() => {
     const path = location.pathname;
@@ -3006,7 +3025,7 @@ function OperationHome({ session }: { session: Session }) {
   // Mudanças em profiles/account_memberships (tempo real) limpam o cache.
   const profileDirectoryCacheRef = useRef<{ at: number; profiles: Array<{ id: string; full_name: string; phone_e164: string | null; email: string | null; member_code: string | null; account_status: string; updated_at: string }>; staffIds: Set<string> } | null>(null);
   const search = useCallback(
-    async (term = query, statusFilter: MemberStatusFilter = memberStatusFilter) => {
+    async (term = query, statusFilter: MemberStatusFilter = memberStatusFilter, requestedPage = customerPage) => {
       setBusy(true);
       setMessage("");
       setSelected(null);
@@ -3072,19 +3091,19 @@ function OperationHome({ session }: { session: Session }) {
             sensitivity: "base",
           }),
         );
-      setResults(
-        matched.map((profile) => ({
-          profile_id: profile.id,
-          full_name: profile.full_name,
-          phone_e164: profile.phone_e164,
-          email: profile.email,
-          member_code: profile.member_code || "—",
-          account_status: profile.account_status || "active",
-        })),
-      );
+      const { data: directoryRows, error: directoryError } = await supabase.rpc("staff_customer_directory", { search_text: term, status_filter: statusFilter, registered_from: customerRegisteredFrom || null, registered_to: null, min_stamps: customerMinStamps === "" ? null : Number(customerMinStamps), max_stamps: null, last_stamp_from: customerLastStampFrom || null, last_stamp_to: null, has_available_reward: customerHasReward ? true : null, sort_by: customerSort, page_number: requestedPage, page_size: 50 });
+      if (directoryError) {
+        setResults(matched.slice((requestedPage - 1) * 50, requestedPage * 50).map((profile) => ({ profile_id: profile.id, full_name: profile.full_name, phone_e164: profile.phone_e164, email: profile.email, member_code: profile.member_code || "—", account_status: profile.account_status || "active", current_progress: 0, available_rewards: 0, created_at: undefined, last_stamp_at: null })));
+        setCustomerTotal(matched.length);
+      } else {
+        const rows = (directoryRows || []) as Array<CustomerSearchResult & { total_count?: number }>;
+        setResults(rows);
+        setCustomerTotal(Number(rows[0]?.total_count || 0));
+      }
+      setCustomerPage(requestedPage);
       setBusy(false);
     },
-    [memberStatusFilter, query],
+    [customerHasReward, customerLastStampFrom, customerMinStamps, customerPage, customerRegisteredFrom, customerSort, memberStatusFilter, query],
   );
   const openCustomer = useCallback(async (customer: CustomerSearchResult) => {
     setBusy(true);
@@ -3107,7 +3126,7 @@ function OperationHome({ session }: { session: Session }) {
         .eq("active", true),
       supabase
         .from("profiles")
-        .select("member_code")
+        .select("member_code,created_at,birth_date,preferred_channel,postal_code,address_line,address_number,address_complement,neighborhood,city,state_code")
         .eq("id", customer.profile_id)
         .single(),
     ]);
@@ -3176,6 +3195,17 @@ function OperationHome({ session }: { session: Session }) {
       completed_cards: track?.completed_cards || 0,
       available_rewards: rewards?.length || 0,
       available_reward_id: rewards?.[0]?.id || null,
+      created_at: memberProfile?.created_at,
+      last_stamp_at: historyRows.find((entry) => entry.stamps_delta > 0)?.created_at || null,
+      birth_date: memberProfile?.birth_date,
+      preferred_channel: memberProfile?.preferred_channel,
+      postal_code: memberProfile?.postal_code,
+      address_line: memberProfile?.address_line,
+      address_number: memberProfile?.address_number,
+      address_complement: memberProfile?.address_complement,
+      neighborhood: memberProfile?.neighborhood,
+      city: memberProfile?.city,
+      state_code: memberProfile?.state_code,
     });
     setView("attend");
     setBusy(false);
@@ -3345,6 +3375,22 @@ function OperationHome({ session }: { session: Session }) {
       setMessage(nameError instanceof Error ? nameError.message : "Não foi possível atualizar o nome.");
     } finally { setBusy(false); }
   }, [customerNameDraft, query, search, selected, session.access_token]);
+  const beginCustomerProfileEdit = useCallback(() => {
+    if (!selected) return;
+    setCustomerProfileDraft({ fullName: selected.full_name, phoneE164: selected.phone_e164 || "", email: selected.email || "", birthDate: selected.birth_date || "", preferredChannel: selected.preferred_channel || "", postalCode: selected.postal_code || "", addressLine: selected.address_line || "", addressNumber: selected.address_number || "", addressComplement: selected.address_complement || "", neighborhood: selected.neighborhood || "", city: selected.city || "Fortaleza", stateCode: selected.state_code || "CE" });
+  }, [selected]);
+  const saveCustomerProfile = useCallback(async () => {
+    if (!selected || !customerProfileDraft) return;
+    setBusy(true); setMessage("");
+    try {
+      await updateCustomerProfile(session.access_token, selected.profile_id, customerProfileDraft);
+      profileDirectoryCacheRef.current = null;
+      const refreshed = { ...selected, full_name: customerProfileDraft.fullName.trim().replace(/\s+/g, " "), phone_e164: customerProfileDraft.phoneE164 || null, email: customerProfileDraft.email || null, birth_date: customerProfileDraft.birthDate || null, preferred_channel: customerProfileDraft.preferredChannel || null, postal_code: customerProfileDraft.postalCode || null, address_line: customerProfileDraft.addressLine || null, address_number: customerProfileDraft.addressNumber || null, address_complement: customerProfileDraft.addressComplement || null, neighborhood: customerProfileDraft.neighborhood || null, city: customerProfileDraft.city || null, state_code: customerProfileDraft.stateCode || null };
+      setSelected(refreshed); setCustomerProfileDraft(null); await search(query); setSelected(refreshed);
+      setMessage("Cadastro atualizado sem alterar carimbos, pedidos ou histórico.");
+    } catch (profileError) { setMessage(profileError instanceof Error ? profileError.message : "Não foi possível atualizar o cadastro."); }
+    finally { setBusy(false); }
+  }, [customerProfileDraft, query, search, selected, session.access_token]);
   const stopScanner = useCallback(() => {
     scannerControls.current?.stop();
     scannerControls.current = null;
@@ -4141,6 +4187,8 @@ function OperationHome({ session }: { session: Session }) {
               <small>
                 {customer.phone_e164 || customer.email || "Contato não informado"}
               </small>
+              <small>{customer.current_progress || 0} de 14 carimbos · Cadastro: {customer.created_at ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Fortaleza" }).format(new Date(customer.created_at)) : "não informado"}</small>
+              <small>Último carimbo: {customer.last_stamp_at ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Fortaleza" }).format(new Date(customer.last_stamp_at)) : "ainda não possui"}</small>
             </span>
             <span>
               <small>Abrir membro</small>
@@ -4361,7 +4409,16 @@ function OperationHome({ session }: { session: Session }) {
                   </button>
                 </form>
               </div>
+              <form className="operation-customer-filters" onSubmit={(event) => { event.preventDefault(); void search(query, memberStatusFilter, 1); }}>
+                <label>Cadastro desde<input type="date" value={customerRegisteredFrom} onChange={(event) => setCustomerRegisteredFrom(event.target.value)} /></label>
+                <label>Último carimbo desde<input type="date" value={customerLastStampFrom} onChange={(event) => setCustomerLastStampFrom(event.target.value)} /></label>
+                <label>Mínimo de carimbos<input type="number" min="0" max="13" value={customerMinStamps} onChange={(event) => setCustomerMinStamps(event.target.value)} /></label>
+                <label><input type="checkbox" checked={customerHasReward} onChange={(event) => setCustomerHasReward(event.target.checked)} /> Benefício disponível</label>
+                <label>Ordenar<select value={customerSort} onChange={(event) => setCustomerSort(event.target.value)}><option value="name_asc">Nome A–Z</option><option value="name_desc">Nome Z–A</option><option value="created_desc">Cadastro mais recente</option><option value="stamps_desc">Mais carimbos</option><option value="last_stamp_desc">Último carimbo</option></select></label>
+                <button type="submit" disabled={busy}>Aplicar filtros</button>
+              </form>
               {customerList}
+              {customerTotal > 50 ? <nav className="operation-customer-pagination" aria-label="Paginação de clientes"><button type="button" disabled={busy || customerPage <= 1} onClick={() => void search(query, memberStatusFilter, customerPage - 1)}>← Anterior</button><span>Página {customerPage} de {Math.ceil(customerTotal / 50)}</span><button type="button" disabled={busy || customerPage * 50 >= customerTotal} onClick={() => void search(query, memberStatusFilter, customerPage + 1)}>Próxima →</button></nav> : null}
               </details>
               </>}
               {selected ? (
@@ -4386,7 +4443,6 @@ function OperationHome({ session }: { session: Session }) {
                         <button type="button" onClick={() => { setEditingCustomerName(false); setCustomerNameDraft(selected.full_name); }}>Cancelar</button>
                       </div> : <div className="customer-name-display">
                         <h2>{selected.full_name}</h2>
-                        {["owner", "manager"].includes(role) ? <button type="button" onClick={() => setEditingCustomerName(true)}>Editar nome</button> : null}
                       </div>}
                       <p>{selected.phone_e164 || selected.email}</p>
                       {selected.phone_e164 ? (
@@ -4400,6 +4456,10 @@ function OperationHome({ session }: { session: Session }) {
                       <p className={`customer-account-status status-${selected.account_status}`}>
                         {selected.account_status === "active" ? "Cadastro ativo" : selected.account_status === "pending_deletion" ? "Aguardando decisão da Adoce: excluir ou reativar" : "Cadastro desativado"}
                       </p>
+                      <p><strong>Data do cadastro:</strong> {selected.created_at ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "America/Fortaleza" }).format(new Date(selected.created_at)) : "Não informada"}</p>
+                      <p><strong>Último carimbo:</strong> {selected.last_stamp_at ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Fortaleza" }).format(new Date(selected.last_stamp_at)) : "Ainda não possui carimbos"}</p>
+                      {selected.address_line ? <p><strong>Endereço:</strong> {[selected.address_line, selected.address_number, selected.neighborhood, selected.city, selected.state_code].filter(Boolean).join(", ")}</p> : null}
+                      {(["owner", "manager"].includes(role)) ? <button type="button" className="access-secondary" onClick={beginCustomerProfileEdit}><Pencil /> Editar cliente</button> : null}
                     </div>
                     <div className="customer-progress">
                       <small>Meus Carimbos</small>
@@ -4871,6 +4931,27 @@ function OperationHome({ session }: { session: Session }) {
                   <StaffProfileAdmin session={session} staff={team} />
                 </Suspense>
               ) : null}
+            </div>
+          )}
+          {customerProfileDraft && selected && (
+            <div className="operation-modal" role="dialog" aria-modal="true" aria-label="Editar cliente">
+              <form className="scanner-card customer-profile-editor" onSubmit={(event) => { event.preventDefault(); void saveCustomerProfile(); }}>
+                <button type="button" className="modal-close" onClick={() => setCustomerProfileDraft(null)} aria-label="Fechar edição"><X /></button>
+                <h2>Editar cliente</h2><p>O identificador, os carimbos, pedidos e o histórico serão preservados.</p>
+                <label>Nome e sobrenome<input required value={customerProfileDraft.fullName} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, fullName: event.target.value })} /></label>
+                <label>Celular / WhatsApp<input inputMode="tel" value={customerProfileDraft.phoneE164} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, phoneE164: event.target.value })} /></label>
+                <label>E-mail<input type="email" value={customerProfileDraft.email} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, email: event.target.value })} /></label>
+                <label>Data de nascimento<input type="date" value={customerProfileDraft.birthDate} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, birthDate: event.target.value })} /></label>
+                <label>Canal preferido<select value={customerProfileDraft.preferredChannel} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, preferredChannel: event.target.value })}><option value="">Não informado</option><option value="whatsapp">WhatsApp</option><option value="email">E-mail</option><option value="both">WhatsApp e e-mail</option><option value="none">Nenhum</option></select></label>
+                <label>CEP<input inputMode="numeric" value={customerProfileDraft.postalCode} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, postalCode: event.target.value })} /></label>
+                <label>Endereço<input value={customerProfileDraft.addressLine} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, addressLine: event.target.value })} /></label>
+                <label>Número<input value={customerProfileDraft.addressNumber} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, addressNumber: event.target.value })} /></label>
+                <label>Complemento<input value={customerProfileDraft.addressComplement} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, addressComplement: event.target.value })} /></label>
+                <label>Bairro<input value={customerProfileDraft.neighborhood} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, neighborhood: event.target.value })} /></label>
+                <label>Cidade<input value={customerProfileDraft.city} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, city: event.target.value })} /></label>
+                <label>UF<input maxLength={2} value={customerProfileDraft.stateCode} onChange={(event) => setCustomerProfileDraft({ ...customerProfileDraft, stateCode: event.target.value.toUpperCase() })} /></label>
+                <button className="access-primary" disabled={busy}>{busy ? "Salvando…" : "Salvar cadastro"}</button>
+              </form>
             </div>
           )}
           {scannerOpen && (

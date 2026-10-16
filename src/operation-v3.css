@@ -20,6 +20,7 @@
     var(--op-bg);
   color: var(--op-ink);
 }
+.operation-customer-filters{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr)) auto;gap:10px;align-items:end;padding:14px;background:#fffaf5;border:1px solid var(--line);border-radius:12px;margin:10px 0}.operation-customer-filters label{display:grid;gap:5px;font-size:.8rem}.operation-customer-filters label:has(input[type="checkbox"]){display:flex;align-items:center;min-height:48px}.operation-customer-filters input,.operation-customer-filters select{width:100%;min-height:44px}.operation-customer-pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding:16px}.customer-profile-editor{width:min(760px,calc(100vw - 32px));max-height:90vh;overflow:auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.customer-profile-editor>h2,.customer-profile-editor>p,.customer-profile-editor>.access-primary{grid-column:1/-1}@media(max-width:900px){.operation-customer-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-profile-editor{grid-template-columns:1fr}}
 
 .operation-home > header {
   position: sticky;

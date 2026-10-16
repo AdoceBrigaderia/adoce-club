@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Banknote, CreditCard } from "lucide-react";
-import { addSplitPayment, paymentBalance, parseCashAmount, singlePayment, type CashCheckoutRequest, type CashPaymentMethod } from "./cash-fast-checkout";
+import { addSplitPayment, partialPaymentError, paymentBalance, parseCashAmount, payrollEmployeeError, singlePayment, type CashCheckoutRequest, type CashPaymentMethod } from "./cash-fast-checkout";
 import { paymentLabels, splitChange, validateDeferredSale } from "./cash-receivables";
 import type { Payment } from "./cash-register-domain";
 import "./cash-fast-checkout.css";
 
 const money = (value: number) => value.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
 const methodCodes: CashPaymentMethod[] = ["cash","pix","credit_card","debit_card","payroll"];
-type Step = "choose" | "cash" | "split" | "special" | "change" | "pix";
-export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKey, busy, notice, printReceipt, onPrintChange, onClose, onComplete}: {
+type Step = "choose" | "cash" | "split" | "special" | "change" | "pix" | "payroll";
+export default function CashCheckoutDialog({total, loyaltyCharge, methods, employees, pixKey, busy, notice, printReceipt, onPrintChange, onClose, onComplete}: {
   total:number; loyaltyCharge:number; methods:Array<{code:string;label:string}>; pixKey:string; busy:boolean; notice:string;
+  employees:Array<{id:string;name:string}>;
   printReceipt:boolean; onPrintChange:(checked:boolean)=>void; onClose:()=>void; onComplete:(request:CashCheckoutRequest)=>Promise<void>;
 }) {
   const [step,setStep] = useState<Step>("choose");
@@ -19,6 +20,7 @@ export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKe
   const [amount,setAmount] = useState("");
   const [error,setError] = useState("");
   const [name,setName] = useState("");
+  const [employeeId,setEmployeeId] = useState("");
   const [pix,setPix] = useState("0"); const [source,setSource] = useState("Conta pessoal");
   const [changePayments,setChangePayments] = useState<Payment[]>([]); const [changeReturn,setChangeReturn] = useState<Step>("cash");
   const [splitPixChange,setSplitPixChange] = useState(false);
@@ -34,13 +36,16 @@ export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKe
   const complete = async (next:Payment[], selected:CashPaymentMethod, extra:Partial<CashCheckoutRequest> = {}) => {
     if(busy || locked.current) return;
     locked.current = true; setError("");
-    try { await onComplete({method:selected,payments:next,...extra}); }
+    const payrollError = payrollEmployeeError(next, employeeId);
+    if (payrollError) { setError(payrollError); locked.current = false; return; }
+    try { await onComplete({method:selected,payments:next,payrollEmployeeId:employeeId || undefined,...extra}); }
     catch (cause) {setError(cause instanceof Error ? cause.message : "Não foi possível finalizar. Tente novamente.");}
     finally {locked.current = false;}
   };
   const choose = (selected:CashPaymentMethod) => {
     setError("");setMethod(selected);
     if(selected === "cash") setStep("cash");
+    else if(selected === "payroll") setStep("payroll");
     else void complete(singlePayment(total,selected),selected);
   };
   const finishCash = () => {
@@ -63,7 +68,7 @@ export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKe
   };
   const openChange = (next:Payment[], previous:Step) => {setChangePayments(next);setChangeReturn(previous);setStep("change");setError("");};
   const back = () => {setError("");setStep("choose");setPayments([]);setAmount("");};
-  const title = step === "choose" ? "Como será o pagamento?" : step === "cash" ? "Pagamento em dinheiro" : step === "split" ? "Duas ou mais formas" : step === "change" ? "Troco por Pix" : step === "pix" ? "Chave Pix" : "Pagamento pendente";
+  const title = step === "choose" ? "Como será o pagamento?" : step === "cash" ? "Pagamento em dinheiro" : step === "split" ? "Duas ou mais formas" : step === "change" ? "Troco por Pix" : step === "pix" ? "Chave Pix" : step === "payroll" ? "Desconto em folha" : "Pagamento pendente";
   return <div className="cash-modal-backdrop cash-fast-backdrop"><div className="cash-modal cash-fast-modal" role="dialog" aria-modal="true" aria-labelledby="cash-payment-title" aria-busy={busy}>
     <header className="cash-fast-heading"><div><h3 id="cash-payment-title">{title}</h3><p>Total <strong>{money(total)}</strong></p></div><button type="button" className="cash-modal-close" disabled={busy} onClick={onClose} aria-label="Fechar pagamento"><X /></button></header>
     <div className="cash-fast-body">
@@ -85,7 +90,9 @@ export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKe
         <div className="cash-fast-split-fields"><label>Forma<select aria-label="Forma" value={method} disabled={busy || balance.remaining === 0} onChange={event=>{setMethod(event.target.value as CashPaymentMethod);setError("");}}>{available.map(code=><option key={code} value={code}>{paymentLabels[code]}</option>)}</select></label><label>Valor deste pagamento<input inputMode="decimal" value={amount} disabled={busy || balance.remaining === 0} onChange={event=>setAmount(event.target.value)} placeholder="Digite o valor" /></label></div>
         <div className="cash-fast-allocations">{available.filter(code=>payments.some(item=>item.method===code)).map(code=><div key={code}><span>{paymentLabels[code]}</span><strong>{money(payments.filter(item=>item.method===code).reduce((sum,item)=>sum+item.amount,0))}</strong></div>)}</div>
         <div className="cash-fast-balance">Restante <strong>{money(balance.remaining)}</strong></div>
-        <small className="cash-fast-hint">A venda finaliza ao adicionar o pagamento que cobre o restante.</small>
+        <small className="cash-fast-hint">Você pode quitar agora ou concluir a entrega e deixar o restante para receber depois.</small>
+        {payments.some(payment=>payment.method === "payroll") ? <label>Funcionário<select value={employeeId} onChange={event=>setEmployeeId(event.target.value)}><option value="">Selecione</option>{employees.map(employee=><option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label> : null}
+        {payments.length && balance.remaining > 0 ? <><label>Cliente responsável pelo saldo<input autoComplete="name" value={name} onChange={event=>setName(event.target.value)} /></label><button type="button" disabled={busy} onClick={()=>{const message=partialPaymentError(name,balance.remaining);if(message){setError(message);return;}void complete(payments,method,{name,deferred:true});}}>Concluir e deixar {money(balance.remaining)} pendente</button></> : null}
         {method === "cash" && parseCashAmount(amount) > balance.remaining ? <><div className="cash-fast-balance">Troco previsto <strong>{money(parseCashAmount(amount)-balance.remaining)}</strong></div><label className="cash-print-choice"><input type="checkbox" checked={splitPixChange} onChange={event=>setSplitPixChange(event.target.checked)} /> Devolver troco por Pix</label></> : null}
         {payments.length ? <button type="button" disabled={busy} onClick={()=>{setPayments([]);setError("");}}>Limpar pagamentos</button> : null}
       </> : null}
@@ -93,6 +100,7 @@ export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKe
         <label>Nome do cliente<input autoComplete="name" value={name} onChange={event=>setName(event.target.value)} /></label>
         <p className="cash-fast-hint">Baixa o estoque e deixa o valor a receber.</p>
       </> : null}
+      {step === "payroll" ? <><label>Funcionário<select value={employeeId} onChange={event=>setEmployeeId(event.target.value)}><option value="">Selecione</option>{employees.map(employee=><option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label><p className="cash-fast-hint">O valor ficará identificado para desconto em folha e não será contado como dinheiro disponível no caixa.</p></> : null}
       {step === "change" ? <>
         <div className="cash-fast-balance">Troco total <strong>{money(paymentBalance(total,changePayments).change)}</strong></div>
         <label>Valor do troco por Pix<input inputMode="decimal" value={pix} onChange={event=>setPix(event.target.value)} /></label>
@@ -107,6 +115,7 @@ export default function CashCheckoutDialog({total, loyaltyCharge, methods, pixKe
         if(step === "cash") finishCash();
         else if(step === "split") add();
         else if(step === "special") {if(validateDeferredSale(name)){setError(validateDeferredSale(name));return;}void complete([],method,{name,deferred:true});}
+        else if(step === "payroll") void complete(singlePayment(total,"payroll"),"payroll");
         else if(step === "change") {try{const value=parseCashAmount(pix);splitChange(paymentBalance(total,changePayments).change,value);if(value>0&&!source.trim())throw Error("Informe a conta usada no troco por Pix.");void complete(changePayments,"cash",{changePix:value,changeSource:source});}catch(cause){setError((cause as Error).message);}}
       }}>{busy ? "Finalizando…" : step === "split" ? balance.remaining === 0 ? "Tentar finalizar novamente" : "Adicionar pagamento" : "Finalizar venda"}</button> : null}
     </footer> : busy ? <p role="status">Finalizando…</p> : null}

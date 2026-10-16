@@ -66,7 +66,9 @@ export function purchaseReference(item:PlanItem,required:number,invoices:PlanInv
 }
 
 export function shoppingQuantity(item:PlanItem,required:number,stock:number,invoices:PlanInvoice[]) {
- const buy=Math.max(0,Math.round((required-stock)*1e6)/1e6);
+ const safetyMargin=Math.round(required*.2*1e6)/1e6;
+ const adjustedRequired=Math.round((required+safetyMargin)*1e6)/1e6;
+ const buy=Math.max(0,Math.round((adjustedRequired-stock)*1e6)/1e6);
  const reference=purchaseReference(item,buy,invoices);
  const size=item.reference_quantity&&item.reference_unit?convertQuantity(item.reference_quantity,item.reference_unit,item.consumption_unit):null;
  const perPackage=size||reference.perPackage;
@@ -80,7 +82,7 @@ export function shoppingQuantity(item:PlanItem,required:number,stock:number,invo
   packageName:last.package_layers[0]?.name||"embalagem",
   packageQuantity:reference.perPackage,date:last.date,
  }:null;
- return {required,stock,buy,lastPrice,packages:perPackage?Math.max(0,Math.ceil(buy/perPackage-1e-10)):null,packageName:size?item.reference_package_name||"pacote":reference.last?.package_layers[0]?.name||"pacote"};
+ return {required,safetyMargin,adjustedRequired,stock,buy,lastPrice,packages:perPackage?Math.max(0,Math.ceil(buy/perPackage-1e-10)):null,packageName:size?item.reference_package_name||"pacote":reference.last?.package_layers[0]?.name||"pacote"};
 }
 export function displayShoppingQuantity(value:number,unit:string) {
  const amount=unit==="g"||unit==="ml"?value/1000:value;
@@ -93,7 +95,7 @@ export function shoppingReceipt(total:number,rows:({item:PlanItem}&ReturnType<ty
  for(const row of rows) {
   const packageLabel=row.packages===1?row.packageName:plural[row.packageName.toLowerCase()]||row.packageName;
   const packages=row.packages==null?"pacotes pendentes":`${row.packages} ${packageLabel}`;
-  lines.push(`[ ] ${row.item.name}`,`Comprar: ${displayShoppingQuantity(row.buy,row.item.consumption_unit)} / ${packages}`,`Estoque: ${displayShoppingQuantity(row.stock,row.item.consumption_unit)}`);
+  lines.push(`[ ] ${row.item.name}`,`Previsto: ${displayShoppingQuantity(row.required,row.item.consumption_unit)}`,`Margem 20%: ${displayShoppingQuantity(row.safetyMargin,row.item.consumption_unit)}`,`Estoque: ${displayShoppingQuantity(row.stock,row.item.consumption_unit)}`,`Comprar: ${displayShoppingQuantity(row.buy,row.item.consumption_unit)} / ${packages}`);
   const price=row.lastPrice;
   if(price){
    lines.push(`${money(price.perMeasure)}/${price.measure}${price.perPackage!=null?` | ${money(price.perPackage)}/${price.packageName}`:""}`);

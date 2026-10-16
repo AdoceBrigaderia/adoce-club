@@ -41,7 +41,13 @@ export function verifyPrimaryWorkspace(directory = process.cwd(), expected = pri
   for (const entry of readdirSync(dirname(expected), { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const sibling = join(dirname(expected), entry.name);
-    if (realpathSync(sibling).replaceAll("\\", "/").toLowerCase() === canonical) continue;
+    // Diretórios temporários podem desaparecer entre a leitura da pasta e a
+    // inspeção (por exemplo, quando a suíte roda em paralelo).
+    if (!existsSync(sibling)) continue;
+    let siblingRealPath;
+    try { siblingRealPath = realpathSync(sibling).replaceAll("\\", "/").toLowerCase(); }
+    catch { continue; }
+    if (siblingRealPath === canonical) continue;
     const siblingPackage = join(sibling, "package.json");
     if (!existsSync(siblingPackage) || !existsSync(join(sibling, "src", "App.tsx"))) continue;
     const siblingProject = JSON.parse(readFileSync(siblingPackage, "utf8"));

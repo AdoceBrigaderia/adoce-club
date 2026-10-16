@@ -46,7 +46,7 @@ type ScheduledSupportMessage = {
   status: "pending" | "processing" | "failed";
   last_error?: string | null;
 };
-type SupportThread = SupportThreadSummary & { messages: SupportMessage[]; scheduled_messages?: ScheduledSupportMessage[] };
+type SupportThread = SupportThreadSummary & { messages: SupportMessage[]; scheduled_messages?: ScheduledSupportMessage[]; has_more_messages?: boolean };
 type OrderNotificationHealth = { pending: number; failed: number; last_failure?: string | null };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -93,10 +93,14 @@ export async function supportRequest(path = "", init?: RequestInit) {
 export default function WhatsAppSupportInbox() {
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const [threads, setThreads] = useState<SupportThreadSummary[]>([]);
+  const [hasMoreThreads, setHasMoreThreads] = useState(false);
+  const nextThreadsCursorRef = useRef<{ at: string; id: string } | null>(null);
+  const [selectedThreadIds, setSelectedThreadIds] = useState<Set<string>>(new Set());
   const [view, setView] = useState<"active" | "history">("active");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [thread, setThread] = useState<SupportThread | null>(null);
+  const threadRef = useRef<SupportThread | null>(null);
   const selectedRef = useRef("");
   const nearBottomRef = useRef(true);
   const [reply, setReply] = useState("");
@@ -115,20 +119,33 @@ export default function WhatsAppSupportInbox() {
   const [notice, setNotice] = useState("");
   const [orderHealth, setOrderHealth] = useState<OrderNotificationHealth | null>(null);
 
-  const loadThread = useCallback(async (threadId: string) => {
+  const loadThread = useCallback(async (threadId: string, older = false) => {
     if (!UUID.test(threadId)) return;
-    const payload = await supportRequest(`?thread=${encodeURIComponent(threadId)}`);
+    const current = older ? threadRef.current : null;
+    const oldest = current?.messages?.[0];
+    const olderQuery = older && oldest ? `&beforeAt=${encodeURIComponent(oldest.created_at)}&beforeId=${oldest.id}` : "";
+    const payload = await supportRequest(`?thread=${encodeURIComponent(threadId)}${olderQuery}`);
     if (selectedRef.current !== threadId) return;
-    setThread(payload.thread || null);
+    setThread((existing) => {
+      const next = older && existing && payload.thread
+        ? { ...payload.thread, messages: [...payload.thread.messages, ...existing.messages] }
+        : payload.thread || null;
+      threadRef.current = next;
+      return next;
+    });
     if(payload.thread) setThreads((items)=>items.map((item)=>item.id===threadId?{...item,automation_mode:payload.thread.automation_mode,status:payload.thread.status,assigned_staff_user_id:payload.thread.assigned_staff_user_id}:item));
   }, []);
 
-  const load = useCallback(async (quiet = false) => {
+  const load = useCallback(async (quiet = false, append = false) => {
     if (!quiet) setLoading(true);
     try {
-      const payload = await supportRequest(view === "history" ? "?view=history" : "");
+      const cursor = append ? nextThreadsCursorRef.current : null;
+      const base = view === "history" ? "?view=history" : "?view=active";
+      const payload = await supportRequest(`${base}${cursor ? `&cursorAt=${encodeURIComponent(cursor.at)}&cursorId=${cursor.id}` : ""}`);
       const nextThreads = (payload.threads || []) as SupportThreadSummary[];
-      setThreads(nextThreads);
+      setThreads((existing) => append ? [...existing, ...nextThreads.filter((item) => !existing.some((old) => old.id === item.id))] : nextThreads);
+      setHasMoreThreads(Boolean(payload.hasMore));
+      nextThreadsCursorRef.current = payload.nextCursor || null;
       setOrderHealth(payload.orderNotificationHealth || null);
       // Usa sempre a conversa selecionada AGORA (ref), nunca a capturada quando
       // esta busca começou: buscas antigas terminando depois de uma troca de
@@ -140,9 +157,8 @@ export default function WhatsAppSupportInbox() {
         if (selectedRef.current !== nextSelected && selectedRef.current) return;
         selectedRef.current = nextSelected; setSelectedId(nextSelected);
         await loadThread(nextSelected);
-      } else if (current && current === selectedRef.current && !nextThreads.some((item) => item.id === current)) {
-        selectedRef.current = ""; setSelectedId("");
-        setThread(null);
+      } else if (current && current === selectedRef.current && !append) {
+        await loadThread(current).catch(() => undefined);
       }
       setNotice("");
     } catch (error) {
@@ -151,6 +167,11 @@ export default function WhatsAppSupportInbox() {
       if (!quiet) setLoading(false);
     }
   }, [loadThread, view]);
+
+  useEffect(() => {
+    nextThreadsCursorRef.current = null;
+    setSelectedThreadIds(new Set());
+  }, [view]);
 
   useEffect(() => {
     void load();
@@ -230,7 +251,7 @@ export default function WhatsAppSupportInbox() {
   }, [load]);
 
   const selectThread = async (threadId: string) => {
-    selectedRef.current = threadId; nearBottomRef.current = true; setThread(null); setSelectedId(threadId);
+    selectedRef.current = threadId; nearBottomRef.current = true; threadRef.current = null; setThread(null); setSelectedId(threadId);
     setReply("");
     const url = new URL(window.location.href);
     url.searchParams.set("whatsapp", threadId);
@@ -271,7 +292,7 @@ export default function WhatsAppSupportInbox() {
       });
       if (action === "close") {
         selectedRef.current = ""; setSelectedId("");
-        setThread(null);
+        threadRef.current = null; setThread(null);
         const url = new URL(window.location.href);
         url.searchParams.delete("whatsapp");
         window.history.replaceState({}, "", url);
@@ -377,6 +398,20 @@ export default function WhatsAppSupportInbox() {
     (item.customer_name || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")) ||
     (item.last_message || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR"))
   ), [threads, search]);
+  const allVisibleSelected = visibleThreads.length > 0 && visibleThreads.every((item) => selectedThreadIds.has(item.id));
+  const archiveSelected = async () => {
+    const ids = [...selectedThreadIds];
+    if (!ids.length || !window.confirm(`Arquivar ${ids.length} conversa(s)? O histórico será preservado.`)) return;
+    setBusy(true);
+    try {
+      const result = await supportRequest("", { method: "POST", body: JSON.stringify({ action: "batchArchive", threadIds: ids }) });
+      setSelectedThreadIds(new Set());
+      await load();
+      setNotice(`${Number(result.archived || 0)} conversa(s) arquivada(s).`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Não foi possível arquivar as conversas.");
+    } finally { setBusy(false); }
+  };
 
   return (
     <section className="whatsapp-support" aria-labelledby="whatsapp-support-title">
@@ -431,17 +466,18 @@ export default function WhatsAppSupportInbox() {
             <button type="button" aria-pressed={view === "active"} onClick={() => { setView("active"); setSearch(""); }}>Em atendimento</button>
             <button type="button" aria-pressed={view === "history"} onClick={() => { setView("history"); setSearch(""); }}>Histórico</button>
             <input aria-label="Buscar conversa por nome, telefone ou mensagem" placeholder="Buscar nome, telefone ou mensagem" value={search} onChange={(event) => setSearch(event.target.value)} />
+            <button type="button" onClick={() => setSelectedThreadIds(allVisibleSelected ? new Set() : new Set(visibleThreads.map((item) => item.id)))}>
+              {allVisibleSelected ? "Desmarcar todas" : "Selecionar todas desta página"}
+            </button>
+            {selectedThreadIds.size ? <button type="button" onClick={() => void archiveSelected()} disabled={busy}>Arquivar selecionadas ({selectedThreadIds.size})</button> : null}
           </div>
           {!loading && !notice && !visibleThreads.length ? (
             <p className="whatsapp-support-empty">{search ? "Nenhuma conversa corresponde à busca." : view === "history" ? "Nenhuma conversa encerrada registrada." : "Nenhum cliente aguardando agora."}</p>
           ) : null}
           {visibleThreads.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={selectedId === item.id ? "is-selected" : ""}
-              onClick={() => void selectThread(item.id)}
-            >
+            <div className="whatsapp-support-list-row" key={item.id}>
+              <input type="checkbox" aria-label={`Selecionar conversa de ${item.customer_name || contactPhoneLabel(item)}`} checked={selectedThreadIds.has(item.id)} onChange={() => setSelectedThreadIds((current) => { const next=new Set(current); if(next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />
+              <button type="button" className={selectedId === item.id ? "is-selected" : ""} onClick={() => void selectThread(item.id)}>
               <MessageCircle />
               <span>
                 <strong>{item.customer_name || contactPhoneLabel(item)}</strong>
@@ -449,8 +485,10 @@ export default function WhatsAppSupportInbox() {
                 <em>{item.last_message || "Nova solicitação"}</em>
               </span>
               <time>{new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(item.last_message_at))}</time>
-            </button>
+              </button>
+            </div>
           ))}
+          {hasMoreThreads && !search ? <button type="button" className="whatsapp-support-load-more" onClick={() => void load(false, true)}>Carregar conversas anteriores</button> : null}
         </aside>
 
         <div className="whatsapp-support-conversation">
@@ -480,6 +518,7 @@ export default function WhatsAppSupportInbox() {
               </header>
               {!thread.messages.some(message => message.direction === "inbound") ? <p className="whatsapp-support-notice">Ainda não há mensagens recebidas deste cliente registradas. Abaixo estão os avisos disponíveis do pedido.</p> : null}
               <div onScroll={() => { const list=messageListRef.current; if(list) nearBottomRef.current=list.scrollHeight-list.scrollTop-list.clientHeight < 90; }} ref={messageListRef} className="whatsapp-support-messages" aria-live="polite">
+                {thread.has_more_messages ? <button type="button" className="whatsapp-support-load-more" onClick={() => void loadThread(thread.id, true)}>Carregar mensagens anteriores</button> : null}
                 {[...(thread.messages || []), ...(pendingReply ? [pendingReply] : [])].map((message) => (
                   <article key={message.id} className={`is-${message.direction}`}>
                     <strong>{message.author_kind === "bot" ? "Robô Adoce" : message.direction === "inbound" ? "Cliente" : message.direction === "system" ? "Registro do atendimento" : "Equipe Adoce"}</strong>

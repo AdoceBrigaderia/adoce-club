@@ -9,8 +9,11 @@ describe("planejamento de compras",()=>{
   expect(planDemand(archived,{}, {sugar:0}).errors).toEqual([]);
  });
  it("desconta estoque antes de arredondar pacotes e não gera compra negativa",()=>{
-  expect(shoppingQuantity(item,2500,700,[])).toMatchObject({buy:1800,packages:2,stock:700});
+  expect(shoppingQuantity(item,2500,700,[])).toMatchObject({buy:2300,packages:3,stock:700});
   expect(shoppingQuantity(item,500,700,[])).toMatchObject({buy:0,packages:0});
+ });
+ it("aplica 20% de segurança uma vez antes de descontar o estoque",()=>{
+  expect(shoppingQuantity(item,10000,3000,[])).toMatchObject({required:10000,safetyMargin:2000,adjustedRequired:12000,stock:3000,buy:9000,packages:9});
  });
  it("encontra uso indireto e ignora versões antigas fora da composição atual",()=>{
   expect(compositionUsage(workspace).items.sugar.cakes).toEqual(["Torta"]);
@@ -20,9 +23,11 @@ describe("planejamento de compras",()=>{
  it("imprime total de tortas, estoque e compra sem fórmulas",()=>{
   const lines=shoppingReceipt(3,[{item,...shoppingQuantity(item,2500,700,[])}]);
   expect(lines.join("\n")).toContain("Total: 3 tortas");
-  expect(lines.join("\n")).toContain("Comprar: 1,8 kg");
+  expect(lines.join("\n")).toContain("Previsto: 2,5 kg");
+  expect(lines.join("\n")).toContain("Margem 20%: 0,5 kg");
+  expect(lines.join("\n")).toContain("Comprar: 2,3 kg");
   expect(lines.join("\n")).toContain("Estoque: 0,7 kg");
-  expect(lines.join("\n")).toContain("2 pacote");
+  expect(lines.join("\n")).toContain("3 pacote");
   expect(lines.every(line=>line.length<=32)).toBe(true);
  });
  it("mostra último preço por kg e pela embalagem realmente comprada, mesmo com referência diferente",()=>{

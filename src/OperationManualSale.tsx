@@ -25,11 +25,18 @@ import CashCustomerSelector from "./CashCustomerSelector";
 import { rewardUnitOptions, resolveLoyaltyMode, type CashCustomer } from "./cash-customer-selector";
 
 
-type Flavor = { id: string; name: string; short_name?: string | null; base_price: number; remaining: number };
+type Flavor = { id: string; name: string; short_name?: string | null; base_price: number; stock: number; reserved: number; free: number; remaining: number };
 type Method = { code: string; label: string; active: boolean };
+type PayrollEmployee = { id: string; name: string };
 type Sauce = { id: string; name: string };
 type EntryMode = "order" | "sale";
 type ChannelMode = "presential" | "official";
+type CashDraftSnapshot = {
+  draftKey: string; quantities: Record<string, number>; name: string; phone: string;
+  notes: string; sauceChoices: Record<string, string>; discountKind: Discount["kind"];
+  discountValue: string; selectedCustomer: CashCustomer | null; manualRewardUnit: string;
+  digitalRewardUnit: string; updatedAt: string;
+};
 type BusinessWorkspace = {
   role: string;
   stores: Array<{ id: string; name: string; active: boolean }>;
@@ -41,13 +48,14 @@ const money = (value: number) => value.toLocaleString("pt-BR", { style: "currenc
 
 export default function OperationManualSale({ onCreated }: { onCreated: () => void }) {
   const [flavors, setFlavors] = useState<Flavor[]>([]); const [methods, setMethods] = useState<Method[]>([]); const [sauces, setSauces] = useState<Sauce[]>([]);
+  const [payrollEmployees, setPayrollEmployees] = useState<PayrollEmployee[]>([]);
   const [mode, setMode] = useState<EntryMode>("sale");
   const [channel, setChannel] = useState<ChannelMode>("presential");
   const [quantities, setQuantities] = useState<Record<string, number>>({}); const [name, setName] = useState(""); const [phone, setPhone] = useState("");
   const [method, setMethod] = useState("pix"); const [notes, setNotes] = useState(""); const [sauceChoices, setSauceChoices] = useState<Record<string, string>>({}); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState("");
   const [enrollNotice, setEnrollNotice] = useState("");
   const [paymentModal, setPaymentModal] = useState(false); const [discountKind, setDiscountKind] = useState<Discount["kind"]>("none"); const [discountValue, setDiscountValue] = useState("0"); const [quantityEditor, setQuantityEditor] = useState<Flavor | null>(null); const [quantityDraft, setQuantityDraft] = useState("");
-  const [workspace, setWorkspace] = useState<BusinessWorkspace | null>(null); const [draftKey, setDraftKey] = useState(() => crypto.randomUUID()); const [registerId, setRegisterId] = useState(""); const [openingFloat, setOpeningFloat] = useState("0");
+  const [workspace, setWorkspace] = useState<BusinessWorkspace | null>(null); const [draftKey, setDraftKey] = useState<string>(() => crypto.randomUUID()); const [registerId, setRegisterId] = useState(""); const [openingFloat, setOpeningFloat] = useState("0");
   const [pendingCount, setPendingCount] = useState(0);
   const [pixKey,setPixKey] = useState(DEFAULT_PIX_KEY);
   const [reservationBusy, setReservationBusy] = useState(false);
@@ -62,6 +70,7 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
   const [manualRewardUnit, setManualRewardUnit] = useState("");
   const [digitalRewardUnit, setDigitalRewardUnit] = useState("");
   const checkoutLock = useRef(false);
+  const hydratedDraftSession = useRef("");
   const flavorHeading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -72,16 +81,18 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
   }, []);
   useEffect(() => { const refresh = () => { void supportRequest().then((data) => setPendingCount((data.threads || []).filter((item: { has_customer_messages?: boolean }) => item.has_customer_messages).length)).catch(() => setPendingCount(0)); }; refresh(); const timer = window.setInterval(refresh, 30000); window.addEventListener("focus", refresh); window.addEventListener("adoce-support-updated", refresh); return () => { clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("adoce-support-updated", refresh); }; }, []);
   const load = useCallback(async () => {
-    const [{ data: flavorData }, { data: availabilityData }, { data: settingsData }, { data: sauceData }, { data: workspaceData, error: workspaceError }] = await Promise.all([
+    const [{ data: flavorData }, { data: availabilityData }, { data: settingsData }, { data: sauceData }, { data: workspaceData, error: workspaceError }, {data: employeeData}] = await Promise.all([
       requireSupabase().from("flavors").select("id,name,short_name,base_price").eq("active", true).order("name"),
       requireSupabase().from("flavor_availability").select("flavor_id,status,quantity_available,quantity_reserved").eq("service_date", dateKey()),
       requireSupabase().rpc("staff_get_commerce_settings"),
       requireSupabase().from("order_sauces").select("id,name").eq("active", true).order("sort_order").order("name"),
       requireSupabase().rpc("staff_get_business_workspace"),
+      requireSupabase().rpc("staff_list_payroll_employees"),
     ]);
-    setFlavors((flavorData || []).map((flavor) => { const availability = availabilityData?.find((row) => row.flavor_id === flavor.id); return { id: flavor.id, name: flavor.name, short_name: flavor.short_name || flavor.name.split(/\s+/).slice(0, 3).join(" "), base_price: Number(flavor.base_price), remaining: Math.max(0, Number(availability?.quantity_available || 0) - Number(availability?.quantity_reserved || 0) + Number(quantitiesRef.current[flavor.id] || 0)) }; }).filter((flavor) => flavor.remaining > 0));
+    setFlavors((flavorData || []).map((flavor) => { const availability = availabilityData?.find((row) => row.flavor_id === flavor.id); const stock=Number(availability?.quantity_available || 0),reserved=Number(availability?.quantity_reserved || 0),free=Math.max(0,stock-reserved),own=Number(quantitiesRef.current[flavor.id] || 0); return { id: flavor.id, name: flavor.name, short_name: flavor.short_name || flavor.name.split(/\s+/).slice(0, 3).join(" "), base_price: Number(flavor.base_price), stock, reserved, free, remaining: free+own }; }).filter((flavor) => flavor.remaining > 0));
     const activeMethods = ((settingsData?.payment_methods || []) as Method[]).filter((item) => item.active); setMethods(activeMethods); if (!activeMethods.some((item) => item.code === method)) setMethod(activeMethods[0]?.code || "");
     setSauces((sauceData || []) as Sauce[]);
+    setPayrollEmployees(((employeeData || []) as Array<{employee_id:string;full_name:string}>).map(employee=>({id:employee.employee_id,name:employee.full_name})));
     setPixKey(String(settingsData?.pix_key || DEFAULT_PIX_KEY));
     const nextWorkspace = workspaceData as BusinessWorkspace | null;
     if (workspaceError) setNotice(`Não foi possível carregar o caixa: ${workspaceError.message}`);
@@ -127,6 +138,46 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
   });
   const total = useMemo(() => flavors.reduce((sum, flavor) => sum + flavor.base_price * (quantities[flavor.id] || 0), 0), [flavors, quantities]);
   const openCashSession = workspace?.sessions.find((session) => session.status === "open") || null;
+  const draftStorageKey = openCashSession?.id ? `adoce:cash-draft:${openCashSession.id}` : "";
+  useEffect(() => {
+    if (!openCashSession?.id || hydratedDraftSession.current === openCashSession.id) return;
+    hydratedDraftSession.current = openCashSession.id;
+    const saved = localStorage.getItem(`adoce:cash-draft:${openCashSession.id}`);
+    if (!saved) return;
+    try {
+      const snapshot = JSON.parse(saved) as CashDraftSnapshot;
+      if (!snapshot.draftKey || Date.now() - new Date(snapshot.updatedAt).getTime() > 30 * 60 * 1000) {
+        localStorage.removeItem(`adoce:cash-draft:${openCashSession.id}`);
+        return;
+      }
+      setDraftKey(snapshot.draftKey); quantitiesRef.current = snapshot.quantities || {}; setQuantities(snapshot.quantities || {});
+      setName(snapshot.name || ""); setPhone(snapshot.phone || ""); setNotes(snapshot.notes || "");
+      setSauceChoices(snapshot.sauceChoices || {}); setDiscountKind(snapshot.discountKind || "none");
+      setDiscountValue(snapshot.discountValue || "0"); setSelectedCustomer(snapshot.selectedCustomer || null);
+      setManualRewardUnit(snapshot.manualRewardUnit || ""); setDigitalRewardUnit(snapshot.digitalRewardUnit || "");
+      void requireSupabase().rpc("staff_set_cash_draft_reservation", {
+        target_session_id: openCashSession.id,
+        target_draft_key: snapshot.draftKey,
+        requested_items: Object.entries(snapshot.quantities || {}).filter(([, quantity]) => quantity > 0).map(([flavor_id, quantity]) => ({ flavor_id, quantity })),
+      }).then(({ data, error }) => {
+        if (error || !data?.accepted) {
+          quantitiesRef.current = {}; setQuantities({});
+          localStorage.removeItem(`adoce:cash-draft:${openCashSession.id}`);
+          setNotice("O estoque mudou e o pedido anterior não pôde ser recuperado. Monte o pedido novamente.");
+        } else setNotice("Pedido em andamento recuperado.");
+        void load();
+      });
+    } catch {
+      localStorage.removeItem(`adoce:cash-draft:${openCashSession.id}`);
+    }
+  }, [openCashSession?.id, load]);
+  useEffect(() => {
+    if (!draftStorageKey || hydratedDraftSession.current !== openCashSession?.id) return;
+    const hasContent = Object.values(quantities).some((value) => value > 0);
+    if (!hasContent) { localStorage.removeItem(draftStorageKey); return; }
+    const snapshot: CashDraftSnapshot = { draftKey, quantities, name, phone, notes, sauceChoices, discountKind, discountValue, selectedCustomer, manualRewardUnit, digitalRewardUnit, updatedAt: new Date().toISOString() };
+    localStorage.setItem(draftStorageKey, JSON.stringify(snapshot));
+  }, [draftStorageKey, openCashSession?.id, draftKey, quantities, name, phone, notes, sauceChoices, discountKind, discountValue, selectedCustomer, manualRewardUnit, digitalRewardUnit]);
   const [openSessionInfo, setOpenSessionInfo] = useState<{ session_number: number; opened_at: string } | null>(null);
   useEffect(() => {
     if (!openCashSession?.id) { setOpenSessionInfo(null); return; }
@@ -157,6 +208,7 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     setBusy(true);
     try {
       if (openCashSession) { const {error} = await requireSupabase().rpc("staff_release_cash_draft_reservation", { target_session_id: openCashSession.id, target_draft_key: draftKey }); if (error) throw error; }
+      if (draftStorageKey) localStorage.removeItem(draftStorageKey);
       quantitiesRef.current = {}; setQuantities({}); setSauceChoices({}); setName(""); setPhone(""); setNotes(""); setPrintReceipt(false); setDiscountKind("none"); setDiscountValue("0"); setDraftKey(crypto.randomUUID()); setNotice("Pedido cancelado. Estoque liberado."); await load();
     } catch (error) { setNotice((error as Error).message); } finally { setBusy(false); }
   };
@@ -202,6 +254,7 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     const clubPhone = phone || checkout?.clubPhone || "";
     const changePix = checkout?.changePix || 0;
     const changeSource = checkout?.changeSource || "Conta pessoal";
+    const payrollEmployeeId = checkout?.payrollEmployeeId || null;
     const saleTotals = calculateTotals(cashLines, discount, payments);
     if (!items.length) return setNotice("Inclua pelo menos uma fatia.");
     if (!saleMethod) return setNotice("Escolha a forma de pagamento.");
@@ -210,13 +263,12 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     if (mode === "order" && phone.replace(/\D/g, "").length < 10) return setNotice("Informe o WhatsApp do cliente com DDD.");
     if (!openCashSession) return setNotice("Abra o caixa e informe o dinheiro inicial antes da primeira venda do dia.");
     if (reservationLock.current || checkoutLock.current || busy) return;
-    if (deferred && validateDeferredSale(saleName)) return setNotice(validateDeferredSale(saleName));
-    if (deferred && payments.length) return setNotice("Remova os pagamentos antes de deixar a venda totalmente pendente.");
+    if (deferred && !payments.length && validateDeferredSale(saleName)) return setNotice(validateDeferredSale(saleName));
     const clubError = mode === "sale" ? enrollFieldsError(clubName, clubPhone) : "";
     if (clubError) return setNotice(clubError);
     if (legacyLoyalty && (deferred || payments.length)) return setNotice("Na fidelidade não há pagamento pendente nem pagamentos lançados. Remova-os.");
     if (manualRewardUnit && wantsEnroll(clubName, clubPhone)) { setManualRewardUnit(""); return setNotice("Ao identificar ou cadastrar o cliente, a fidelidade manual é desabilitada. Confirme novamente a venda pelo Clube Adoce."); }
-    if (mode === "sale" && !deferred && !loyalty && saleTotals.remaining > 0) return setNotice("Adicione o restante por Pix, cartão ou dinheiro para concluir o pagamento.");
+    if (mode === "sale" && !deferred && !loyalty && saleTotals.remaining > 0) return setNotice("Adicione o restante ou escolha concluir com saldo pendente.");
     try { splitChange(saleTotals.change, changePix); } catch (error) { return setNotice((error as Error).message); }
     checkoutLock.current = true; setBusy(true); setNotice("");
     const shouldPrint = printReceipt;
@@ -229,9 +281,11 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
         ? await requireSupabase().rpc("staff_submit_cash_order_v1", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_customer_name: saleName, requested_customer_phone: phone, requested_items: items, requested_payment_method: saleMethod, requested_notes: [notes, discountSummary, paymentSummary].filter(Boolean).join(" "), requested_reward: null })
         : loyalty
           ? await requireSupabase().rpc("staff_create_loyalty_cash_sale", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_operation_key: draftKey, requested_customer_name: saleName, requested_items: items, requested_payment_method: loyaltyCharge > 0 ? saleMethod : null, requested_notes: notes })
-        : deferred
-          ? await requireSupabase().rpc("staff_create_deferred_cash_sale", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_operation_key: draftKey, requested_customer_name: saleName, requested_items: items, requested_discount: discount, requested_notes: notes })
-          : await requireSupabase().rpc("staff_create_manual_sale_in_cash_v6", { target_draft_key: draftKey, requested_operation_key: draftKey, target_session_id: openCashSession.id, requested_customer_name: saleName, requested_customer_phone: phone, requested_items: items, requested_payment_method: saleMethod, requested_discount: discount, requested_payments: payments, requested_change: { pix: changePix, source: changeSource }, requested_notes: [notes, discountSummary, paymentSummary].filter(Boolean).join(" ") });
+        : deferred && payments.length
+          ? await requireSupabase().rpc("staff_complete_partial_cash_sale", { target_draft_key: draftKey, requested_operation_key: draftKey, target_session_id: openCashSession.id, requested_customer_name: saleName, requested_customer_phone: phone, requested_items: items, requested_payment_method: saleMethod, requested_discount: discount, requested_payments: payments, requested_change: { pix: changePix, source: changeSource }, requested_notes: [notes, discountSummary, paymentSummary].filter(Boolean).join(" "), requested_payroll_employee_id: payrollEmployeeId })
+          : deferred
+            ? await requireSupabase().rpc("staff_create_deferred_cash_sale", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_operation_key: draftKey, requested_customer_name: saleName, requested_items: items, requested_discount: discount, requested_notes: notes })
+            : await requireSupabase().rpc("staff_create_manual_sale_in_cash_v7", { target_draft_key: draftKey, requested_operation_key: draftKey, target_session_id: openCashSession.id, requested_customer_name: saleName, requested_customer_phone: phone, requested_items: items, requested_payment_method: saleMethod, requested_discount: discount, requested_payments: payments, requested_change: { pix: changePix, source: changeSource }, requested_notes: [notes, discountSummary, paymentSummary].filter(Boolean).join(" "), requested_payroll_employee_id: payrollEmployeeId });
       const { data, error } = result;
       if (error) throw error;
       if (mode === "order" && !data?.accepted) throw Error(data?.message || "Não foi possível registrar o pedido.");
@@ -262,14 +316,14 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     {channel === "official" ? <div className="cash-official"><WhatsAppSupportInbox /></div> : <><div className="cash-register-layout"><main><h3 ref={flavorHeading} className="cash-flavors-title">Fatias disponíveis hoje</h3>
       {notice ? <p className="operation-commercial-notice">{notice}</p> : null}
       {!openCashSession ? <section className="manual-sale-cash-state"><strong>Abra o caixa para começar as vendas de hoje</strong><p>Conte o dinheiro que está na gaveta e informe o valor. O comprovante de abertura sai na impressora do tablet.</p><label>Caixa<select value={registerId} onChange={(event) => setRegisterId(event.target.value)}>{activeRegisters.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}</select></label><label>Dinheiro inicial no caixa<input inputMode="decimal" value={openingFloat} onChange={(event) => setOpeningFloat(event.target.value)} /></label><button className="commerce-secondary-action" type="button" onClick={() => void openCash()} disabled={busy || !registerId}>{busy ? "Abrindo…" : "Abrir caixa"}</button></section> : null}
-      {openCashSession ? <><div className="cash-register-flavors" aria-busy={reservationBusy}>{flavors.map((flavor) => <article className="cash-flavor-card" key={flavor.id}><button type="button" disabled={reservationBusy || busy} onClick={() => void setQuantity(flavor, (quantities[flavor.id] || 0) + 1)}><strong>{flavor.short_name || flavor.name}</strong><small>{money(flavor.base_price)}</small></button><div className="cash-flavor-qty"><button type="button" aria-label={`Diminuir ${flavor.short_name || flavor.name}`} disabled={reservationBusy || busy} onClick={() => void setQuantity(flavor, (quantities[flavor.id] || 0) - 1)}><Minus /></button><button type="button" className="cash-qty-value" aria-label={`Editar quantidade de ${flavor.short_name || flavor.name}`} onClick={() => { setQuantityEditor(flavor); setQuantityDraft(String(quantities[flavor.id] || 0)); }}>{quantities[flavor.id] || 0}</button><button type="button" aria-label={`Aumentar ${flavor.short_name || flavor.name}`} disabled={reservationBusy || busy} onClick={() => void setQuantity(flavor, (quantities[flavor.id] || 0) + 1)}><Plus /></button></div>{(quantities[flavor.id] || 0) > 0 && sauces.length ? <details className="cash-sauces"><summary>Caldas ({quantities[flavor.id]})</summary>{Array.from({length: quantities[flavor.id]}, (_, index) => <label key={index}>Fatia {index + 1}<select aria-label={`Calda ${index + 1} de ${flavor.short_name || flavor.name}`} value={sauceChoices[`${flavor.id}:${index + 1}`] || "none"} onChange={(event) => setSauceChoices(current => ({...current, [`${flavor.id}:${index + 1}`]: event.target.value}))}><option value="none">Sem calda</option>{sauces.map(sauce => <option key={sauce.id} value={sauce.id}>{sauce.name}</option>)}</select></label>)}</details> : null}</article>)}</div>
+      {openCashSession ? <><div className="cash-register-flavors" aria-busy={reservationBusy}>{flavors.map((flavor) => <article className="cash-flavor-card" key={flavor.id}><button type="button" disabled={reservationBusy || busy} onClick={() => void setQuantity(flavor, (quantities[flavor.id] || 0) + 1)}><strong>{flavor.short_name || flavor.name}</strong><small>{money(flavor.base_price)}</small><small>Estoque: {flavor.stock} | Reservado: {flavor.reserved} | Livre: {flavor.free}{(quantities[flavor.id] || 0) > 0 ? ` | Neste pedido: ${quantities[flavor.id]}` : ""}</small></button><div className="cash-flavor-qty"><button type="button" aria-label={`Diminuir ${flavor.short_name || flavor.name}`} disabled={reservationBusy || busy} onClick={() => void setQuantity(flavor, (quantities[flavor.id] || 0) - 1)}><Minus /></button><button type="button" className="cash-qty-value" aria-label={`Editar quantidade de ${flavor.short_name || flavor.name}`} onClick={() => { setQuantityEditor(flavor); setQuantityDraft(String(quantities[flavor.id] || 0)); }}>{quantities[flavor.id] || 0}</button><button type="button" aria-label={`Aumentar ${flavor.short_name || flavor.name}`} disabled={reservationBusy || busy} onClick={() => void setQuantity(flavor, (quantities[flavor.id] || 0) + 1)}><Plus /></button></div>{(quantities[flavor.id] || 0) > 0 && sauces.length ? <details className="cash-sauces"><summary>Caldas ({quantities[flavor.id]})</summary>{Array.from({length: quantities[flavor.id]}, (_, index) => <label key={index}>Fatia {index + 1}<select aria-label={`Calda ${index + 1} de ${flavor.short_name || flavor.name}`} value={sauceChoices[`${flavor.id}:${index + 1}`] || "none"} onChange={(event) => setSauceChoices(current => ({...current, [`${flavor.id}:${index + 1}`]: event.target.value}))}><option value="none">Sem calda</option>{sauces.map(sauce => <option key={sauce.id} value={sauce.id}>{sauce.name}</option>)}</select></label>)}</details> : null}</article>)}</div>
       {!flavors.length ? <div className="cash-empty-flavors" role="status"><strong>Nenhum sabor liberado para vender agora.</strong><p>Os sabores aparecem aqui quando estão como "Disponível" e com quantidade em Produtos → Disponibilidade.</p><button type="button" className="commerce-secondary-action" onClick={() => openOperationArea({ view: "products", contentTab: "today" })}>Liberar sabores de hoje</button></div> : null}</> : null}
       <CashCustomerSelector value={selectedCustomer} phone={phone} name={name} paidSlices={Math.max(0, itemCount - (selectedRewardUnit ? 1 : 0))} onSelect={setSelectedCustomer} onPhone={setPhone} onName={setName} />
     </main><aside className="cash-register-cart"><div className="cash-cart-heading"><strong><ShoppingBag /> Carrinho</strong><span>{itemCount} {itemCount === 1 ? "item" : "itens"}</span></div>{items.length ? items.map((item) => { const flavor = flavors.find((entry) => entry.id === item.flavor_id); return <div className="cash-cart-item" key={item.flavor_id}><span>{flavor?.short_name || flavor?.name}<small>{money((flavor?.base_price || 0) * item.quantity)}</small></span><b>{item.quantity}</b></div>; }) : <div className="cash-cart-empty"><ShoppingBag /><p>Seu carrinho está vazio.</p></div>}{selectedCustomer?.available_rewards ? <label>Fatia grátis do Clube<select value={digitalRewardUnit} onChange={(event) => setDigitalRewardUnit(event.target.value)}><option value="">Não usar agora</option>{rewardOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select></label> : null}<label>Fidelidade manual<select disabled={loyaltyState.manualDisabled} value={loyaltyState.manualUnitKey} onChange={(event) => setManualRewardUnit(event.target.value)}><option value="">Não aplicar</option>{rewardOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select><small>{loyaltyState.manualDisabled ? "Desabilitada porque o cliente foi identificado no Clube Adoce." : "Use para o cartão de fidelidade externo."}</small></label><div className="cash-cart-total"><span>Total</span><strong>{money(payableTotal)}</strong></div><button type="button" className="cash-discount-link" onClick={() => setDiscountKind(discountKind === "none" ? "amount" : "none")}>Desconto <span>{discountKind === "none" ? money(0) : discountKind === "percent" ? `${discountValue}%` : money(discount.value) } ›</span></button>{discountKind !== "none" ? <div className="cash-discount-fields"><select value={discountKind} onChange={(event) => setDiscountKind(event.target.value as Discount["kind"])}><option value="amount">Valor</option><option value="percent">Percentual</option></select><input inputMode="decimal" value={discountValue} onChange={(event) => setDiscountValue(event.target.value)} placeholder="0" /></div> : null}<label>Observações<textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Informações úteis" /></label><button className="commerce-secondary-action cash-cancel" type="button" onClick={() => void cancelDraft()} disabled={busy || reservationBusy || !items.length}>Cancelar pedido</button><button className="commerce-primary-action cash-finish" type="button" onClick={openPayment} disabled={busy || reservationBusy || !items.length}>{busy ? "Registrando…" : "Finalizar venda"}</button></aside>{items.length ? <div className="cash-mobile-checkout"><span><strong>{money(payableTotal)}</strong><small>{itemCount} {itemCount === 1 ? "fatia" : "fatias"}</small></span><button type="button" onClick={openPayment} disabled={busy || reservationBusy}>Cobrar</button></div> : null}</div><section className="cash-online-orders"><h3>Pedidos online</h3><p>Acompanhe os pedidos que entram no sistema sem sair do caixa.</p><OperationInstantOrders /></section></>}
     {channel === "presential" && lastSale ? <div className="cash-last-actions"><span>Última venda: <strong>{lastSale.order_number}</strong></span><button type="button" onClick={()=>setCustomerOpen(true)}>Clube da última venda</button><button type="button" onClick={()=>openOperationArea({view:"attend",stampSale:{orderNumber:lastSale.order_number,quantity:paidSliceCount(lastSale)}})}>Lançar carimbos</button>{printNotice ? <p role="status">{printNotice}</p> : null}{enrollNotice ? <p role="status">{enrollNotice}</p> : null}</div> : null}
     <details className="cash-admin-menu"><summary>Gestão do caixa: sangria, suprimento, perdas, conferência e fechamento</summary><CashAdjustments sessionId={openCashSession?.id} flavors={flavors.map((flavor) => ({ id: flavor.id, name: flavor.name, remaining: flavor.remaining - (quantities[flavor.id] || 0) }))} onChanged={() => { setNotice("Lançamento registrado no caixa."); void load(); }} /><CashSessionActions sessionId={openCashSession?.id} storeId={openCashSession?.store_id || selectedStore?.id} hasDraft={items.length > 0} onChanged={() => void load()} /></details>
     {quantityEditor ? <div className="cash-modal-backdrop"><div className="cash-modal cash-quantity-modal" role="dialog" aria-modal="true" aria-labelledby="cash-quantity-title"><button type="button" className="cash-modal-close" onClick={() => setQuantityEditor(null)} aria-label="Fechar teclado"><X /></button><h3 id="cash-quantity-title">Quantidade de {quantityEditor.short_name || quantityEditor.name}</h3><input inputMode="none" value={quantityDraft} onChange={(event) => setQuantityDraft(event.target.value.replace(/\D/g, ""))} /><div className="cash-keypad">{[1,2,3,4,5,6,7,8,9,0].map((key) => <button type="button" className={key === 0 ? "cash-keypad-zero" : ""} key={key} onClick={() => setQuantityDraft((value) => `${value}${key}`.replace(/^0+(?=\d)/, ""))}>{key}</button>)}<button type="button" onClick={() => setQuantityDraft(value => value.slice(0,-1))} aria-label="Apagar último dígito"><Delete /></button><button type="button" className="cash-keypad-confirm" aria-label="Confirmar quantidade" onClick={() => { if (quantityEditor) void setQuantity(quantityEditor, Number(quantityDraft) || 0); setQuantityEditor(null); }}><Check /></button></div></div></div> : null}
-    {paymentModal ? <CashCheckoutDialog total={payableTotal} loyaltyCharge={loyaltyCharge} methods={methods} pixKey={pixKey} busy={busy} notice={notice} printReceipt={printReceipt} onPrintChange={setPrintReceipt} onClose={()=>{if(!busy)setPaymentModal(false);}} onComplete={submit} /> : null}
+    {paymentModal ? <CashCheckoutDialog total={payableTotal} loyaltyCharge={loyaltyCharge} methods={methods} employees={payrollEmployees} pixKey={pixKey} busy={busy} notice={notice} printReceipt={printReceipt} onPrintChange={setPrintReceipt} onClose={()=>{if(!busy)setPaymentModal(false);}} onComplete={submit} /> : null}
     {reprintOpen && (openCashSession?.register_id || registerId) && (openCashSession?.store_id || selectedStore?.id) ? <CashReprintDialog registerId={openCashSession?.register_id || registerId} storeId={openCashSession?.store_id || selectedStore!.id} registerName={activeRegisters.find(register=>register.id===(openCashSession?.register_id || registerId))?.name || "Caixa"} onClose={()=>setReprintOpen(false)} /> : null}
     {customerOpen && lastSale ? <div className="cash-modal-backdrop cash-fast-backdrop"><div className="cash-modal cash-fast-modal" role="dialog" aria-modal="true" aria-labelledby="cash-club-last-title"><header className="cash-fast-heading"><h3 id="cash-club-last-title">Clube · {lastSale.order_number}</h3><button type="button" className="cash-modal-close" onClick={()=>setCustomerOpen(false)} aria-label="Fechar cadastro"><X /></button></header><CashCustomerRegistration orderId={lastSale.id} openInitially onEnrolled={message=>{setEnrollNotice(message);setCustomerOpen(false);}} /></div></div> : null}
   </section>;

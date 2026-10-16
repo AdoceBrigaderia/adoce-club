@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCashPhone, resolveLoyaltyMode, rewardUnitOptions } from "./cash-customer-selector";
+import { customerMatchesQuery, normalizeCashPhone, resolveLoyaltyMode, rewardUnitOptions, shouldSearchCustomers } from "./cash-customer-selector";
 
 describe("identificação e fidelidade no caixa", () => {
   it("normaliza telefone brasileiro para pesquisa", () => {
     expect(normalizeCashPhone("(85) 9 8765-4321")).toBe("5585987654321");
     expect(normalizeCashPhone("+55 85 98765-4321")).toBe("5585987654321");
+  });
+
+  it("busca por nome, sobrenome e últimos dígitos sem disparar consultas vazias", () => {
+    expect(shouldSearchCustomers("Ma")).toBe(true);
+    expect(shouldSearchCustomers("4321")).toBe(true);
+    expect(shouldSearchCustomers("M")).toBe(false);
+    expect(customerMatchesQuery({ full_name: "Maria da Silva", phone_e164: "+55 85 98765-4321" }, "silva")).toBe(true);
+    expect(customerMatchesQuery({ full_name: "Maria da Silva", phone_e164: "+55 85 98765-4321" }, "4321")).toBe(true);
   });
 
   it("impede fidelidade manual quando existe cliente identificado", () => {

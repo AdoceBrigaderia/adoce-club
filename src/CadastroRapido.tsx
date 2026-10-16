@@ -37,6 +37,7 @@ export default function CadastroRapido({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const campoNome = useRef<HTMLInputElement>(null);
+  const lastOpenedCustomer = useRef("");
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -48,6 +49,11 @@ export default function CadastroRapido({
     tentou ? problemas.find((p) => p.campo === campo)?.texto : undefined;
 
   const repetido = jaExiste(clientesConhecidos, rascunho.telefone);
+  useEffect(() => {
+    if (!repetido || !onAbrirExistente || lastOpenedCustomer.current === repetido.id) return;
+    lastOpenedCustomer.current = repetido.id;
+    onAbrirExistente(repetido.id);
+  }, [onAbrirExistente, repetido]);
 
   const salvar = async () => {
     setTentou(true);

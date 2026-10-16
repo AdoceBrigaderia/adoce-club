@@ -25,7 +25,7 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(access).toContain("item.profile_id === cliente.id");
     expect(access).toContain("void openCustomer(customer)");
     expect(access).toContain("Redefinir senha");
-    expect(access).toContain("Editar nome");
+    expect(access).toContain("Editar cliente");
   });
 
   it("expande a lista completa ao tocar na contagem de clientes", () => {

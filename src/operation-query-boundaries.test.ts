@@ -16,9 +16,9 @@ describe("limites das consultas da operação", () => {
     expect(searchBlock).not.toContain('from("ledger_entries")');
   });
 
-  it("não expõe informações de fidelidade no resultado da busca", () => {
-    expect(searchBlock).not.toContain("current_progress");
-    expect(searchBlock).not.toContain("available_rewards");
+  it("expõe somente o resumo de fidelidade exigido no diretório operacional", () => {
+    expect(searchBlock).toContain("current_progress");
+    expect(searchBlock).toContain("available_rewards");
     expect(searchBlock).not.toContain("available_reward_id");
   });
 });

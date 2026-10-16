@@ -14,6 +14,19 @@ export const normalizeCashPhone = (value: string) => {
   return digits.startsWith("55") ? digits : `55${digits}`;
 };
 
+const normalizeText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
+
+export function shouldSearchCustomers(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 4 || normalizeText(value).length >= 2;
+}
+
+export function customerMatchesQuery(customer: Pick<CashCustomer, "full_name" | "phone_e164">, query: string) {
+  const digits = query.replace(/\D/g, "");
+  return normalizeText(customer.full_name).includes(normalizeText(query))
+    || Boolean(digits && (customer.phone_e164 || "").replace(/\D/g, "").includes(digits));
+}
+
 export function resolveLoyaltyMode(input: { customerId: string; manualUnitKey: string; digitalUnitKey: string }) {
   return { manualUnitKey: input.customerId ? "" : input.manualUnitKey, manualDisabled: Boolean(input.customerId) };
 }

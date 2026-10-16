@@ -24,8 +24,6 @@ import {
 } from "./admin-media";
 import ImageEditor, { PRODUCT_IMAGE_PRESET } from "./ImageEditor";
 import ClipboardImageInput from "./ClipboardImageInput";
-import WeeklyMenuAdmin from "./WeeklyMenuAdmin";
-import OperationSliceAlerts from "./OperationSliceAlerts";
 import ShoppingBatchSuggestions from "./ShoppingBatchSuggestions";
 import { currentLocalTime, normalizeTime, type AvailabilityBatch } from "./availability-batches";
 import "./content-admin.css";
@@ -1004,8 +1002,6 @@ export default function OperationContentAdmin({
               </p>
             </div>
           </div>
-          <OperationSliceAlerts />
-          <WeeklyMenuAdmin session={session} flavors={flavors} />
           {canSeeCosts ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
           <label className="admin-search availability-search">
             <span className="sr-only">Buscar sabor</span>

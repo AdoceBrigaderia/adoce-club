@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 const publicPage = readFileSync(new URL("./AdoceHoje.tsx", import.meta.url), "utf8");
 const dialog = readFileSync(new URL("./WeeklyScheduleDialog.tsx", import.meta.url), "utf8");
 const admin = readFileSync(new URL("./WeeklyMenuAdmin.tsx", import.meta.url), "utf8");
+const operationProducts = readFileSync(new URL("./OperationContentAdmin.tsx", import.meta.url), "utf8");
 const migration = readFileSync(
   new URL("../supabase/migrations/20260721194324_weekly_service_menu.sql", import.meta.url),
   "utf8",
@@ -59,6 +60,11 @@ describe("agenda semanal do Festival de Fatias", () => {
     expect(admin).toContain("quantity_planned");
     expect(admin).toContain("in_person");
     expect(admin).toContain("online_orders");
+  });
+
+  it("não mostra avisos nem planejamento semanal dentro da produção de hoje", () => {
+    expect(operationProducts).not.toContain("<OperationSliceAlerts />");
+    expect(operationProducts).not.toContain("<WeeklyMenuAdmin session={session} flavors={flavors} />");
   });
 
   it("mantém publicação pública somente para leitura e escrita restrita aos gestores", () => {

@@ -57,7 +57,8 @@ describe("fundação segura dos pedidos imediatos", () => {
   });
 
   it("baixa venda manual pelo caixa ou pela fila de conciliacao, nunca pela funcao aposentada", () => {
-    expect(manualEntry).toContain('rpc("staff_create_manual_sale_in_cash_v6"');
+    expect(manualEntry).toContain('rpc("staff_create_manual_sale_in_cash_v7"');
+    expect(manualEntry.indexOf('rpc("staff_complete_partial_cash_sale"')).toBeLessThan(manualEntry.indexOf('rpc("staff_create_deferred_cash_sale"'));
     // Abertura de caixa obrigatória (24/09/2026): não há mais venda sem caixa aberto.
     expect(manualEntry).not.toContain('rpc("manager_create_manual_sale_for_reconciliation"');
     expect(manualEntry).toContain('rpc("staff_open_cash_with_report"');

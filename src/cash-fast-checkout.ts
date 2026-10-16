@@ -20,6 +20,16 @@ export function addSplitPayment(total: number, payments: Payment[], method: Cash
   if (method !== "cash" && amount > remaining) throw Error("Esse valor supera o restante. Troco somente em dinheiro.");
   return [...payments,{method,amount}];
 }
+export function partialPaymentError(customerName: string, remaining: number) {
+  if (remaining <= 0) return "Não há saldo pendente nesta venda.";
+  if (customerName.trim().length < 2) return "Informe o nome do cliente para deixar o saldo pendente.";
+  return "";
+}
+export function payrollEmployeeError(payments: Payment[], employeeId: string) {
+  return payments.some(payment => payment.method === "payroll") && !employeeId
+    ? "Selecione o funcionário para o desconto em folha."
+    : "";
+}
 export function cashDayRange(now = new Date()) {
   const day = new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza"}).format(now);
   const start = new Date(`${day}T00:00:00-03:00`);
@@ -39,4 +49,5 @@ export type CashCheckoutRequest = {
   clubPhone?: string;
   changePix?: number;
   changeSource?: string;
+  payrollEmployeeId?: string;
 };

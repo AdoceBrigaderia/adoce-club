@@ -18,6 +18,7 @@ type SupportThread = {
   automation_mode?: "bot" | "human";
   source_message_sid: string;
   assigned_staff_user_id?: string | null;
+  has_more_messages?: boolean;
   messages?: Array<{
     id: number;
     direction: "inbound" | "outbound" | "system";
@@ -74,25 +75,40 @@ export default async (request: Request) => {
   if (!authorization.actorUserId) return json({ error: "Operador inválido." }, 403);
 
   if (request.method === "GET") {
-    const threadId = new URL(request.url).searchParams.get("thread") || "";
+    const url = new URL(request.url);
+    const threadId = url.searchParams.get("thread") || "";
     if (!threadId) {
-      const history = new URL(request.url).searchParams.get("view") === "history";
+      const history = url.searchParams.get("view") === "history";
+      const cursorAt = url.searchParams.get("cursorAt");
+      const cursorId = url.searchParams.get("cursorId");
       const [{ data, error }, { data: orderNotificationHealth }] = await Promise.all([
-        admin.rpc(history ? "server_list_whatsapp_support_history" : "server_list_whatsapp_support_threads"),
+        admin.rpc("server_list_whatsapp_support_threads_page", {
+          requested_status: history ? "history" : "active",
+          requested_cursor_at: cursorAt || null,
+          requested_cursor_id: cursorId || null,
+          requested_limit: 50,
+        }),
         admin.rpc("server_get_order_staff_notification_health"),
       ]);
       if (error) return json({ error: "Não foi possível carregar os atendimentos." }, 503);
-      const threads = (Array.isArray(data) ? data : []) as Array<{ id: string }>;
+      const threads = (Array.isArray(data?.threads) ? data.threads : []) as Array<{ id: string }>;
       // Telefone completo e nome do cliente: falha aqui nunca derruba a lista.
       const contacts = await resolveThreadContacts(admin, threads.map((thread) => thread.id)).catch(() => new Map());
       return json({
         threads: threads.map((thread) => ({ ...thread, ...(contacts.get(thread.id) || { phone_e164: null, customer_name: null }) })),
+        hasMore: Boolean(data?.has_more),
+        nextCursor: data?.next_cursor || null,
         orderNotificationHealth: orderNotificationHealth || null,
       });
     }
     if (!UUID.test(threadId)) return json({ error: "Atendimento inválido." }, 400);
-    const { data, error } = await admin.rpc("server_get_whatsapp_support_thread", {
+    const beforeAt = url.searchParams.get("beforeAt");
+    const beforeId = url.searchParams.get("beforeId");
+    const { data, error } = await admin.rpc("server_get_whatsapp_support_thread_page", {
       requested_thread_id: threadId,
+      requested_before_at: beforeAt || null,
+      requested_before_id: beforeId ? Number(beforeId) : null,
+      requested_limit: 50,
     });
     if (error) return json({ error: "Não foi possível carregar a conversa." }, 503);
     if (!data) return json({ error: "Conversa não encontrada." }, 404);
@@ -102,7 +118,7 @@ export default async (request: Request) => {
   }
 
   const contentType = request.headers.get("content-type") || "";
-  let payload: { action?: string; threadId?: string; body?: string; scheduledAt?: string; scheduledMessageId?: string; phone?: string } = {};
+  let payload: { action?: string; threadId?: string; threadIds?: string[]; body?: string; scheduledAt?: string; scheduledMessageId?: string; phone?: string } = {};
   let attachment: File | null = null;
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
@@ -121,6 +137,15 @@ export default async (request: Request) => {
   }
   const threadId = payload.threadId?.trim() || "";
   const action = payload.action?.trim() || "";
+  if (action === "batchArchive") {
+    const threadIds = Array.from(new Set(payload.threadIds || [])).filter((id) => UUID.test(id));
+    if (!threadIds.length || threadIds.length > 100) return json({ error: "Seleção de conversas inválida." }, 400);
+    const { data, error } = await admin.rpc("server_archive_whatsapp_support_threads", {
+      requested_thread_ids: threadIds, requested_staff_user_id: authorization.actorUserId,
+    });
+    if (error) return json({ error: "Não foi possível arquivar as conversas selecionadas." }, 409);
+    return json({ ok: true, archived: Number(data?.archived || 0) });
+  }
   if ((!UUID.test(threadId) && action !== "start") || !['reply', 'close', 'takeover', 'resume', 'reopen', 'schedule', 'cancelScheduled', 'start'].includes(action)) {
     return json({ error: "Ação de atendimento inválida." }, 400);
   }

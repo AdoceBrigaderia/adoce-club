@@ -59,14 +59,17 @@
 .whatsapp-support-list-controls button { border: 1px solid #d9b9aa; border-radius: .5rem; background: #fff; color: #3b160f; padding: .45rem .6rem; cursor: pointer; }
 .whatsapp-support-list-controls button[aria-pressed="true"] { background: #fff0e9; border-color: #a43d38; font-weight: 700; }
 .whatsapp-support-list-controls input { box-sizing: border-box; width: 100%; border: 1px solid #d9b9aa; border-radius: .5rem; padding: .55rem; color: #3b160f; background: #fff; }
-.whatsapp-support-list > button { width: 100%; border: 0; border-bottom: 1px solid #f4e6df; background: transparent; color: #3b160f; padding: .9rem; display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; text-align: left; }
-.whatsapp-support-list > button:hover,
-.whatsapp-support-list > button.is-selected { background: #fff0e9; }
-.whatsapp-support-list > button > svg { width: 1.2rem; color: #ef6763; }
-.whatsapp-support-list > button span { min-width: 0; display: grid; gap: .2rem; }
-.whatsapp-support-list > button small { color: #8e5c50; }
-.whatsapp-support-list > button em { overflow: hidden; color: #6c5048; font-size: .82rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
-.whatsapp-support-list > button time { color: #9b7469; font-size: .72rem; }
+.whatsapp-support-list-row { display: grid; grid-template-columns: auto 1fr; align-items: center; border-bottom: 1px solid #f4e6df; padding-left: .65rem; }
+.whatsapp-support-list-row > input { width: 1.1rem; height: 1.1rem; accent-color: #a43d38; }
+.whatsapp-support-list-row > button { width: 100%; border: 0; background: transparent; color: #3b160f; padding: .9rem .65rem; display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; text-align: left; }
+.whatsapp-support-list-row > button:hover,
+.whatsapp-support-list-row > button.is-selected { background: #fff0e9; }
+.whatsapp-support-list-row > button > svg { width: 1.2rem; color: #ef6763; }
+.whatsapp-support-list-row > button span { min-width: 0; display: grid; gap: .2rem; }
+.whatsapp-support-list-row > button small { color: #8e5c50; }
+.whatsapp-support-list-row > button em { overflow: hidden; color: #6c5048; font-size: .82rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.whatsapp-support-list-row > button time { color: #9b7469; font-size: .72rem; }
+.whatsapp-support-load-more { margin: .65rem; border: 1px solid #d9b9aa; border-radius: .5rem; background: #fff; color: #3b160f; padding: .6rem; }
 .whatsapp-support-empty { margin: auto; padding: 2rem; text-align: center; color: #8e5c50; }
 .whatsapp-support-conversation { display: grid; grid-template-rows: auto 1fr auto; }
 .whatsapp-support-conversation > header { padding: .85rem 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; border-bottom: 1px solid #f0ddd3; }
