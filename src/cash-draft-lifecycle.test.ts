@@ -5,6 +5,14 @@ const migration = readFileSync(
   new URL("../supabase/migrations/20261016142700_cash_draft_cleanup_and_lot_continuity.sql", import.meta.url),
   "utf8",
 );
+const strictPreviousDay = readFileSync(
+  new URL("../supabase/migrations/20261016144515_strict_previous_day_inventory_continuity.sql", import.meta.url),
+  "utf8",
+);
+const beforeOperation = readFileSync(
+  new URL("../supabase/migrations/20261016144811_reconcile_previous_day_balance_before_operation.sql", import.meta.url),
+  "utf8",
+);
 
 describe("ciclo de vida do rascunho e continuidade por lote", () => {
   it("libera reservas expiradas periodicamente e recalcula o saldo", () => {
@@ -18,5 +26,27 @@ describe("ciclo de vida do rascunho e continuidade por lote", () => {
     expect(migration).toContain("time '08:00'");
     expect(migration).toContain("source_batch_id");
     expect(migration).toContain("unique (source_batch_id, target_service_date)");
+  });
+
+  it("usa exclusivamente o saldo da data de ontem", () => {
+    expect(strictPreviousDay).toContain("previous.service_date=target_date-1");
+    expect(strictPreviousDay).toContain("b.service_date=target_date-1");
+    expect(strictPreviousDay).not.toContain("previous.service_date<target_date");
+  });
+
+  it("reconcilia movimentos feitos antes da continuidade e executa antes da operação", () => {
+    expect(beforeOperation).toContain("batch.service_date = target_date - 1");
+    expect(beforeOperation).toContain("item.status = 'paid'");
+    expect(beforeOperation).toContain("customer_order.status = 'completed'");
+    expect(beforeOperation).toContain("loss.service_date = target_date");
+    expect(beforeOperation).toContain("'5 3 * * *'");
+    expect(beforeOperation).not.toContain("batch.service_date < target_date");
+  });
+
+  it("reaproveita o lote automático sem duplicar a quantidade física", () => {
+    expect(beforeOperation).toContain("capture_unbatched_inventory_increase");
+    expect(beforeOperation).toContain("available_from = time '00:00'");
+    expect(beforeOperation).toContain("set available_from = time '08:00'");
+    expect(beforeOperation).not.toContain("insert into public.flavor_availability_batches(");
   });
 });
