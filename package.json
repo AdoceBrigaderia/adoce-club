@@ -11,7 +11,7 @@
     "generate:assets": "node scripts/generate-assets.mjs",
     "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "docs:build": "node scripts/generate-docs.mjs",
-    "release:check": "node scripts/verify-primary-workspace.mjs && node scripts/release-check.mjs",
+    "release:check": "node scripts/verify-primary-workspace.mjs && node scripts/verify-twilio-template-policy.mjs && node scripts/release-check.mjs",
     "release:preview": "npm run release:check && npx --yes netlify-cli@26.2.0 deploy --alias=homologacao-adoce --skip-functions-cache",
     "release:prod": "npm run release:check && npx --yes netlify-cli@26.2.0 deploy --prod --skip-functions-cache",
     "prebuild": "node scripts/verify-primary-workspace.mjs && npm run generate:pwa-icons && npm run docs:build",
