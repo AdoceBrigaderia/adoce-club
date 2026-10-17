@@ -449,10 +449,9 @@ function Brand() {
   );
 }
 
-export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?: boolean }) {
-  const [filter, setFilter] = useState<Availability>("all");
+export default function AdoceHoje({ openCartOnLoad = false, compact = false }: { openCartOnLoad?: boolean; compact?: boolean }) {
+  const [filter, setFilter] = useState<Availability>(compact ? "available" : "all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [flavors, setFlavors] = useState<Flavor[]>(
     fallback.map((flavor) => ({ ...flavor, available: false })),
   );
@@ -479,6 +478,16 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
     document.title = "Fatias · Adoce Brigaderia";
   }, []);
   const dateLabel = useMemo(
+    () =>
+      new Intl.DateTimeFormat("pt-BR", {
+        timeZone: "America/Fortaleza",
+        weekday: "long",
+        day: "2-digit",
+        month: "long",
+      }).format(new Date()),
+    [],
+  );
+  const compactDateLabel = useMemo(
     () =>
       new Intl.DateTimeFormat("pt-BR", {
         timeZone: "America/Fortaleza",
@@ -696,6 +705,8 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
   }, [openCartOnLoad]);
   return (
     <main className="today-page">
+      {!compact && (
+      <>
       <section className="today-hero">
         <div className="today-hero-copy">
           <div className="today-live">
@@ -883,7 +894,17 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
           </div>
         </section>
       )}
+      </>
+      )}
       <section className="today-flavors" id="sabores">
+        {compact && (
+        <div className="today-compact-intro">
+          <p className="today-compact-date">{compactDateLabel}</p>
+          <h1 className="today-compact-title">Sabores de nossas fatias de hoje</h1>
+        </div>
+        )}
+        {!compact && (
+        <>
         <PublicCatalogNav active="slices" />
         <div className="today-catalog-intro">
           <p className="today-kicker">Catálogo Adoce</p>
@@ -896,22 +917,14 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
         </div>
         <a className="today-whatsapp-invite" href={orderLink()} target="_blank" rel="noreferrer"><MessageCircle /> Converse com a Adoce no WhatsApp</a>
         <label className="today-search"><Search /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar sabor..." /></label>
+        </>
+        )}
         <div className="today-card-grid">
           {visible.map((flavor) => (
             <article
               className={`today-flavor-card ${flavor.available ? "" : "unavailable"}`}
               key={flavor.id}
             >
-              <button
-                className={`today-favorite ${favoriteIds.has(flavor.id) ? "active" : ""}`}
-                type="button"
-                aria-label={`${favoriteIds.has(flavor.id) ? "Remover" : "Adicionar"} ${flavor.name} dos favoritos`}
-                onClick={() => setFavoriteIds((current) => {
-                  const next = new Set(current);
-                  if (next.has(flavor.id)) next.delete(flavor.id); else next.add(flavor.id);
-                  return next;
-                })}
-              ><Heart /></button>
               {!flavor.available ? <button className="today-unavailable-prompt" type="button" onClick={() => setAlertFlavor(flavor)}>
                 <strong>Indisponível no momento</strong><span>Quer receber um aviso quando voltar?</span>
               </button> : null}
@@ -921,13 +934,14 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                   alt={`Fatia ${flavor.name}`}
                   loading="lazy"
                 />
-                {flavor.available ? <span
-                  className={`today-availability-seal ${flavor.status === "preorder_only" ? "upcoming" : "available compact"}`}
-                  aria-label={flavor.availabilityBatches?.length ? formatBatchAvailability(flavor.availabilityBatches).join(". ") : flavor.status === "preorder_only" ? "Disponível hoje às 19h30" : "Disponível hoje"}
-                  title={flavor.availabilityBatches?.length ? formatBatchAvailability(flavor.availabilityBatches).join(". ") : flavor.status === "preorder_only" ? "Disponível hoje às 19h30" : "Disponível hoje"}
+                <span
+                  className={`today-status-pill ${flavor.available ? "available" : "unavailable"}`}
+                  aria-label={flavor.available ? (flavor.availabilityBatches?.length ? formatBatchAvailability(flavor.availabilityBatches).join(". ") : flavor.status === "preorder_only" ? "Disponível hoje às 19h30" : "Disponível hoje") : "Indisponível no momento"}
                 >
-                  <Heart />{flavor.status === "preorder_only" ? <strong>Hoje às 19h30</strong> : null}
-                </span> : null}
+                  {flavor.available
+                    ? (flavor.status === "preorder_only" ? "Hoje às 19h30" : "Disponível hoje")
+                    : "Indisponível"}
+                </span>
                 {flavor.illustrative && (
                   <span className="today-illustrative">Imagem ilustrativa</span>
                 )}
@@ -965,11 +979,16 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
                   <h3>{flavor.name}</h3>
                   <p>{flavor.note}</p>
                   <strong className="today-card-price">{isPriceOnRequest(flavor.name) ? "Valor a consultar" : flavor.price ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}` : "Consulte"}</strong>
+                  {flavor.available && flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
+                    <small className="today-card-stock-detail">
+                      {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} em estoque · {flavor.quantityReserved || 0} reservada(s)
+                    </small>
+                  ) : null}
                 </div>
               </div>
               {flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
                 <button className="today-order-flavor" type="button" onClick={() => openInstantOrder(flavor.id)}>
-                  <ShoppingBag /> <span>Adicionar ao pedido</span>
+                  <ShoppingBag /> <span>Toque para pedir</span>
                 </button>
               ) : (
                 <button className="today-order-flavor today-alert-flavor" type="button" onClick={() => setAlertFlavor(flavor)}>
@@ -982,7 +1001,14 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
             </article>
           ))}
         </div>
+        {compact && (
+          <a className="today-see-all-link" href="/adoce-hoje">
+            Conhecer todas as nossas delícias Adoce
+          </a>
+        )}
       </section>
+      {!compact && (
+      <>
       {wholeCakes.length > 0 && (
       <section className="today-cakes" id="tortas-inteiras">
         <div className="today-section-head">
@@ -1104,6 +1130,8 @@ export default function AdoceHoje({ openCartOnLoad = false }: { openCartOnLoad?:
           <MessageCircle /> Consultar
         </a>}
       </div>
+      </>
+      )}
       <InstantOrderPanel
         open={instantOrderOpen}
         onClose={() => setInstantOrderOpen(false)}

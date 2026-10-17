@@ -108,7 +108,7 @@ describe("canais independentes do Adoce Hoje", () => {
   });
 
   it("mantém o texto de ação visível em botões e links dos produtos", () => {
-    expect(page).toContain("<span>Adicionar ao pedido</span>");
+    expect(page).toContain("<span>Toque para pedir</span>");
     expect(page).toContain("<span>Avise quando voltar</span>");
     expect(contentStyles).toMatch(/\.today-weekly-link\s*\{/);
   });
@@ -125,7 +125,7 @@ describe("canais independentes do Adoce Hoje", () => {
       page.indexOf('className="today-service-grid"'),
     );
     expect(page).toContain("openInstantOrder(flavor.id)");
-    expect(page).toContain("Adicionar ao pedido");
+    expect(page).toContain("Toque para pedir");
     expect(page).toContain("Sabores disponíveis hoje");
   });
 

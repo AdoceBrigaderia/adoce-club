@@ -16,6 +16,7 @@ const OrderPolicyPage = lazy(() => import("./OrderPolicyPage"));
 const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
+const AdoceHomeCatalog = lazy(() => import("./AdoceHomeCatalog"));
 const SliceMenuPage = lazy(() => import("./SliceMenuPage"));
 const FlavorCatalogRoute = lazy(() => import("./FlavorCatalogRoute"));
 const AccessApp = lazy(() => import("./AccessApp"));
@@ -105,5 +106,5 @@ export default function App(){
   if(routeHash.startsWith("#termos"))return <PublicSurface><LegalPage kind="terms"/></PublicSurface>;
   if(routeHash.startsWith("#privacidade"))return <PublicSurface><LegalPage kind="privacy"/></PublicSurface>;
   if(import.meta.env.DEV && routeHash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
-  return <PublicSurface active="home"><AdoceHome/></PublicSurface>
+  return <PublicSurface active="home"><AdoceHomeCatalog/></PublicSurface>
 }
