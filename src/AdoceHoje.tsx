@@ -72,6 +72,13 @@ type Promotion = {
   starts_at: string;
   ends_at: string | null;
 };
+type WeekBatch = {
+  service_date: string;
+  id: string;
+  flavor_id: string;
+  available_from: string;
+  quantity_free: number;
+};
 type Channel = {
   slug: string;
   label: string;
@@ -484,8 +491,10 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
   );
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
+  const [weekBatches, setWeekBatches] = useState<WeekBatch[]>([]);
   const [compactWeekDay, setCompactWeekDay] = useState(0);
   const compactWeekDayUserPicked = useRef(false);
+  const [confirmedPickupDays, setConfirmedPickupDays] = useState<Set<string>>(new Set());
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const openSchedule = () => {
     trackPublicEvent("schedule_open", { source: "adoce_hoje" });
@@ -538,6 +547,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         { data: imageData },
         { data: promotionData },
         { data: weeklyMenuData },
+        { data: weekBatchData },
       ] = await Promise.all([
         supabase
           .from("flavors")
@@ -587,6 +597,12 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
           .lte("service_date", scheduleEnd)
           .neq("status", "hidden")
           .order("service_date"),
+        compact
+          ? supabase.rpc("get_public_flavor_availability_batches_range", {
+              start_date: today,
+              end_date: scheduleEnd,
+            })
+          : Promise.resolve({ data: null }),
       ]);
       if (catalog?.length) {
         const photos = (imageData || []) as FlavorPhoto[];
@@ -635,9 +651,10 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         setHourExceptions(exceptionData as BusinessHourException[]);
       if (promotionData) setPromotions(promotionData as Promotion[]);
       if (weeklyMenuData) setWeeklyMenu(weeklyMenuData as WeeklyMenuItem[]);
+      if (weekBatchData) setWeekBatches(weekBatchData as WeekBatch[]);
       setUpdated(!catalogError);
     })();
-  }, []);
+  }, [compact]);
   const visible = useMemo(
     () =>
       sortFlavorsByAvailability(flavors.filter((flavor) => {
@@ -653,32 +670,46 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
     const today = getFortalezaNow().date;
     return Array.from({ length: 7 }, (_, index) => {
       const date = dateAfter(today, index);
-      const items = weeklyMenu
-        .filter((item) => item.service_date === date && item.status === "published")
-        .map((item) => {
-          const flavor = flavors.find((candidate) => candidate.id === item.flavor_id);
+      const dayBatches = weekBatches.filter((batch) => batch.service_date === date);
+      const freeByFlavor = new Map<string, number>();
+      let earliestTime: string | undefined;
+      for (const batch of dayBatches) {
+        freeByFlavor.set(
+          batch.flavor_id,
+          (freeByFlavor.get(batch.flavor_id) || 0) + batch.quantity_free,
+        );
+        if (!earliestTime || batch.available_from < earliestTime) {
+          earliestTime = batch.available_from;
+        }
+      }
+      const items = Array.from(freeByFlavor.entries())
+        .filter(([, free]) => free > 0)
+        .map(([flavorId, free]) => {
+          const flavor = flavors.find((candidate) => candidate.id === flavorId);
           if (!flavor) return null;
-          const free =
-            item.quantity_planned === null
-              ? null
-              : Math.max(item.quantity_planned - item.quantity_reserved, 0);
-          if (free === 0) return null;
           return { ...flavor, freeQuantity: free };
         })
-        .filter((item): item is Flavor & { freeQuantity: number | null } => Boolean(item));
-      const seen = new Set<string>();
-      const dedupedItems = items.filter((item) =>
-        seen.has(item.id) ? false : (seen.add(item.id), true),
-      );
-      return { date, isToday: index === 0, items: dedupedItems };
+        .filter((item): item is Flavor & { freeQuantity: number } => Boolean(item));
+      return { date, isToday: index === 0, items, availableFrom: earliestTime };
     });
-  }, [compact, weeklyMenu, flavors]);
+  }, [compact, weekBatches, flavors]);
   useEffect(() => {
     if (!compact || compactWeekDayUserPicked.current) return;
     const firstWithItems = compactWeekDays.findIndex((day) => day.items.length > 0);
     if (firstWithItems >= 0) setCompactWeekDay(firstWithItems);
   }, [compact, compactWeekDays]);
   const selectedCompactDay = compactWeekDays[compactWeekDay];
+  const showPickupNotice = Boolean(
+    compact &&
+      visible.length === 0 &&
+      selectedCompactDay &&
+      selectedCompactDay.items.length > 0 &&
+      !confirmedPickupDays.has(selectedCompactDay.date),
+  );
+  const dismissPickupNotice = () => {
+    if (!selectedCompactDay) return;
+    setConfirmedPickupDays((current) => new Set(current).add(selectedCompactDay.date));
+  };
   const wholeCakes = useMemo(() => {
     const configured = flavors
       .filter(
@@ -1017,7 +1048,11 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                   <div className="today-card-image">
                     <img src={flavor.image} alt={`Fatia ${flavor.name}`} loading="lazy" />
                     <span className="today-status-pill available">
-                      {selectedCompactDay.isToday ? "Disponível hoje" : "Produção confirmada"}
+                      {selectedCompactDay.isToday
+                        ? "Disponível hoje"
+                        : selectedCompactDay.availableFrom
+                          ? `A partir das ${selectedCompactDay.availableFrom.slice(0, 5)}`
+                          : "Produção confirmada"}
                     </span>
                   </div>
                   <div className="today-card-body">
@@ -1299,6 +1334,50 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         onClose={() => setViewedImage(null)}
       />
       {alertFlavor ? <SliceAvailabilityAlert flavorId={alertFlavor.id} flavorName={alertFlavor.name} onClose={() => setAlertFlavor(null)} /> : null}
+      {showPickupNotice && selectedCompactDay && (
+        <div
+          className="today-pickup-notice"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Antes de pedir"
+          onClick={dismissPickupNotice}
+        >
+          <div onClick={(event) => event.stopPropagation()}>
+            <button
+              className="today-pickup-notice-close"
+              type="button"
+              aria-label="Fechar aviso"
+              onClick={dismissPickupNotice}
+            >
+              <X />
+            </button>
+            <p className="today-kicker">Antes de pedir</p>
+            <h2>Isso é uma reserva</h2>
+            {selectedCompactDay.isToday ? (
+              <p>
+                O pedido reserva a fatia; ela fica pronta para retirada
+                {selectedCompactDay.availableFrom
+                  ? ` a partir das ${selectedCompactDay.availableFrom.slice(0, 5)} de hoje`
+                  : " ainda hoje"}
+                .
+              </p>
+            ) : (
+              <p>
+                O pedido reserva a fatia para{" "}
+                <strong>{fullDayLabel(selectedCompactDay.date)}</strong>; ela só
+                estará pronta para retirada
+                {selectedCompactDay.availableFrom
+                  ? ` a partir das ${selectedCompactDay.availableFrom.slice(0, 5)} desse dia`
+                  : " nesse dia"}
+                , não antes.
+              </p>
+            )}
+            <button className="today-primary" type="button" onClick={dismissPickupNotice}>
+              Entendi, continuar
+            </button>
+          </div>
+        </div>
+      )}
       {selectedFlavor && (
         <div
           className="today-gallery-modal"

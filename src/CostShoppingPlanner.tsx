@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { planDemand, shoppingQuantity, shoppingReceipt, displayShoppingQuantity, type PlanWorkspace, type PlanInvoice } from "./lib/purchase-planner";
 import { useShoppingPlanSync } from "./lib/shopping-plan-sync";
 import { queuePrint } from "./lib/print-queue";
+import { requireSupabase } from "./lib/supabase";
 import ShoppingWeekTable from "./ShoppingWeekTable";
 import TabletShoppingList from "./TabletShoppingList";
 import PurchaseWeeklyReport from "./PurchaseWeeklyReport";
@@ -22,6 +23,20 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
  const [tabletMode,setTabletMode]=useState(false);
  const [reportMode,setReportMode]=useState(false);
  const [printNotice,setPrintNotice]=useState("");
+ const [importStart,setImportStart]=useState(week);
+ const [importEnd,setImportEnd]=useState(shiftDate(week,6));
+ const [importing,setImporting]=useState(false);
+ const [importNotice,setImportNotice]=useState("");
+ const runImport=async()=>{
+  setImporting(true);setImportNotice("");
+  try{
+   const {data,error}=await requireSupabase().rpc("manager_import_shopping_plan_availability",{start_date:importStart,end_date:importEnd});
+   if(error)throw error;
+   const result=data as {imported_count:number;skipped_count:number};
+   setImportNotice(result.imported_count?`${result.imported_count} sabor(es)/dia importado(s) para o site${result.skipped_count?`, ${result.skipped_count} ignorado(s) por sabor inexistente`:""}.`:"Nenhum sabor com torta marcada nesse período.");
+  }catch(error){setImportNotice(error instanceof Error?error.message:"Não foi possível importar. Tente novamente.");}
+  finally{setImporting(false);}
+ };
  const demand=useMemo(()=>planDemand(workspace,cakes),[workspace,cakes]);
  const combined=useMemo(()=>planDemand(workspace,cakes,extras),[workspace,cakes,extras]);
  const total=Object.values(cakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
@@ -52,6 +67,14 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   <div className="adoce-shopping-week-controls"><label>Selecionar semana<select value={week} disabled={saving} onChange={event=>setWeek(event.target.value)}>{[...new Set(weeks.map(option=>option.group))].map(group=><optgroup label={group} key={group}>{weeks.filter(option=>option.group===group).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>)}</select></label><button type="button" disabled={saving} onClick={()=>setWeek(shiftDate(week,-7))}>Semana anterior</button><button type="button" disabled={saving} onClick={()=>setWeek(weekStart(localShoppingDate()))}>Semana vigente</button><button type="button" disabled={saving} onClick={()=>setWeek(shiftDate(week,7))}>Próxima semana</button><button type="button" disabled={!ready||saving||total>0} onClick={()=>void copyPrevious(shiftDate(week,-7))}>Copiar semana anterior como modelo</button></div>
   <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
   <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change}/>
+  <div className="adoce-shopping-import">
+   <h4>Importar planejamento para o site</h4>
+   <p>Para cada dia marcado no período, cria um lote de 13 fatias por torta planejada, disponível a partir das 18h. Não reduz reservas que clientes já fizeram.</p>
+   <label>De<input type="date" value={importStart} onChange={event=>setImportStart(event.target.value)} /></label>
+   <label>Até<input type="date" value={importEnd} onChange={event=>setImportEnd(event.target.value)} /></label>
+   <button type="button" disabled={importing||!importStart||!importEnd} onClick={()=>void runImport()}>{importing?"Importando…":"Importar planejamento para o site"}</button>
+   {importNotice&&<p role="status">{importNotice}</p>}
+  </div>
   <button type="button" disabled={!ready||printing||!hasMenu||menuLines.length>=600} onClick={()=>void print(true)}>Imprimir cardápio da semana</button>
   <details><summary>Prévia do cardápio da semana</summary><ThermalShoppingPreview lines={menuLines}/></details>
 

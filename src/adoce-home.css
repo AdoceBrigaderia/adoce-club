@@ -175,7 +175,7 @@
 .ah-clube-num small { font-size: var(--adoce-t-menor); color: var(--adoce-texto-fraco); }
 
 /* ---------- encomendas ---------- */
-.ah-cards { max-width: 420px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: var(--adoce-e2); }
+.ah-cards { max-width: 1260px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: var(--adoce-e2); }
 .ah-card {
   background: var(--adoce-superficie);
   border: 1px solid var(--adoce-borda);
