@@ -202,7 +202,7 @@ body:has(.public-app-shell) {
   .public-shell-header .public-brand { width: 86px; height: 86px; }
   .public-shell-header .public-member-status { gap: 14px; }
   .public-shell-nav.public-mobile-nav {
-    width: min(680px, calc(100vw - 32px));
+    width: min(1260px, calc(100vw - 32px));
     min-height: 76px;
     margin-inline: auto;
   }
