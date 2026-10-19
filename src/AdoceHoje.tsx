@@ -231,6 +231,28 @@ function dateAfter(date: string, days: number) {
   return result.toISOString().slice(0, 10);
 }
 
+function weekdayShortLabel(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", weekday: "short" })
+    .format(new Date(`${date}T12:00:00Z`))
+    .replace(".", "")
+    .toUpperCase();
+}
+
+function dayMonthLabel(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit" }).format(
+    new Date(`${date}T12:00:00Z`),
+  );
+}
+
+function fullDayLabel(date: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(`${date}T12:00:00Z`));
+}
+
 function scrollToTodaySection(id: "sabores" | "atendimento") {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -462,6 +484,8 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
   );
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
+  const [compactWeekDay, setCompactWeekDay] = useState(0);
+  const compactWeekDayUserPicked = useRef(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const openSchedule = () => {
     trackPublicEvent("schedule_open", { source: "adoce_hoje" });
@@ -624,6 +648,37 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
       })),
     [flavors, filter, searchQuery],
   );
+  const compactWeekDays = useMemo(() => {
+    if (!compact) return [];
+    const today = getFortalezaNow().date;
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = dateAfter(today, index);
+      const items = weeklyMenu
+        .filter((item) => item.service_date === date && item.status === "published")
+        .map((item) => {
+          const flavor = flavors.find((candidate) => candidate.id === item.flavor_id);
+          if (!flavor) return null;
+          const free =
+            item.quantity_planned === null
+              ? null
+              : Math.max(item.quantity_planned - item.quantity_reserved, 0);
+          if (free === 0) return null;
+          return { ...flavor, freeQuantity: free };
+        })
+        .filter((item): item is Flavor & { freeQuantity: number | null } => Boolean(item));
+      const seen = new Set<string>();
+      const dedupedItems = items.filter((item) =>
+        seen.has(item.id) ? false : (seen.add(item.id), true),
+      );
+      return { date, isToday: index === 0, items: dedupedItems };
+    });
+  }, [compact, weeklyMenu, flavors]);
+  useEffect(() => {
+    if (!compact || compactWeekDayUserPicked.current) return;
+    const firstWithItems = compactWeekDays.findIndex((day) => day.items.length > 0);
+    if (firstWithItems >= 0) setCompactWeekDay(firstWithItems);
+  }, [compact, compactWeekDays]);
+  const selectedCompactDay = compactWeekDays[compactWeekDay];
   const wholeCakes = useMemo(() => {
     const configured = flavors
       .filter(
@@ -899,9 +954,44 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
       <section className="today-flavors" id="sabores">
         {compact && (
         <div className="today-compact-intro">
-          <p className="today-compact-date">{compactDateLabel}</p>
-          <h1 className="today-compact-title">Sabores de nossas fatias de hoje</h1>
+          <p className="today-compact-date">
+            {visible.length > 0 || !selectedCompactDay
+              ? compactDateLabel
+              : fullDayLabel(selectedCompactDay.date)}
+          </p>
+          <h1 className="today-compact-title">
+            {visible.length > 0
+              ? "Sabores de nossas fatias de hoje"
+              : "Cardápio da semana"}
+          </h1>
+          {visible.length === 0 && (
+            <p className="today-compact-subtitle">
+              Hoje ainda não tem produção liberada — veja o que já está
+              planejado para os próximos dias.
+            </p>
+          )}
         </div>
+        )}
+        {compact && visible.length === 0 && compactWeekDays.length > 0 && (
+          <div className="today-week-tabs" role="tablist" aria-label="Escolher o dia da semana">
+            {compactWeekDays.map((day, index) => (
+              <button
+                key={day.date}
+                type="button"
+                role="tab"
+                aria-selected={index === compactWeekDay}
+                className={`today-week-tab${index === compactWeekDay ? " active" : ""}${day.items.length ? "" : " empty"}`}
+                onClick={() => {
+                  compactWeekDayUserPicked.current = true;
+                  setCompactWeekDay(index);
+                }}
+              >
+                <span>{weekdayShortLabel(day.date)}</span>
+                <strong>{dayMonthLabel(day.date)}</strong>
+                <small>{day.items.length ? `${day.items.length} sabores` : "sem produção"}</small>
+              </button>
+            ))}
+          </div>
         )}
         {!compact && (
         <>
@@ -919,6 +1009,52 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         <label className="today-search"><Search /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar sabor..." /></label>
         </>
         )}
+        {compact && visible.length === 0 ? (
+          selectedCompactDay && selectedCompactDay.items.length > 0 ? (
+            <div className="today-card-grid">
+              {selectedCompactDay.items.map((flavor) => (
+                <article className="today-flavor-card" key={flavor.id}>
+                  <div className="today-card-image">
+                    <img src={flavor.image} alt={`Fatia ${flavor.name}`} loading="lazy" />
+                    <span className="today-status-pill available">
+                      {selectedCompactDay.isToday ? "Disponível hoje" : "Produção confirmada"}
+                    </span>
+                  </div>
+                  <div className="today-card-body">
+                    <div>
+                      <h3>{flavor.name}</h3>
+                      <p>{flavor.note}</p>
+                      <strong className="today-card-price">
+                        {isPriceOnRequest(flavor.name)
+                          ? "Valor a consultar"
+                          : flavor.price
+                            ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}`
+                            : "Consulte"}
+                      </strong>
+                    </div>
+                  </div>
+                  <a
+                    className="today-order-flavor"
+                    href={orderLink(`${flavor.name} (${fullDayLabel(selectedCompactDay.date)})`)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MessageCircle /> <span>Reservar no WhatsApp</span>
+                  </a>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="today-week-empty-note">
+              Nenhum sabor liberado ainda para{" "}
+              {selectedCompactDay ? fullDayLabel(selectedCompactDay.date) : "este dia"}.{" "}
+              <a href={orderLink()} target="_blank" rel="noreferrer">
+                Fale com a Adoce no WhatsApp
+              </a>{" "}
+              para encomendar.
+            </p>
+          )
+        ) : (
         <div className="today-card-grid">
           {visible.map((flavor) => (
             <article
@@ -1001,6 +1137,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
             </article>
           ))}
         </div>
+        )}
         {compact && (
           <a className="today-see-all-link" href="/adoce-hoje">
             Conhecer todas as nossas delícias Adoce
