@@ -694,14 +694,14 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
     });
   }, [compact, weekBatches, flavors]);
   useEffect(() => {
-    if (!compact || compactWeekDayUserPicked.current) return;
+    if (!compact || compactWeekDayUserPicked.current || visible.length > 0) return;
     const firstWithItems = compactWeekDays.findIndex((day) => day.items.length > 0);
     if (firstWithItems >= 0) setCompactWeekDay(firstWithItems);
-  }, [compact, compactWeekDays]);
+  }, [compact, compactWeekDays, visible.length]);
   const selectedCompactDay = compactWeekDays[compactWeekDay];
   const showPickupNotice = Boolean(
     compact &&
-      visible.length === 0 &&
+      !(compactWeekDay === 0 && visible.length > 0) &&
       selectedCompactDay &&
       selectedCompactDay.items.length > 0 &&
       !confirmedPickupDays.has(selectedCompactDay.date),
@@ -986,24 +986,25 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         {compact && (
         <div className="today-compact-intro">
           <p className="today-compact-date">
-            {visible.length > 0 || !selectedCompactDay
+            {compactWeekDay === 0 || !selectedCompactDay
               ? compactDateLabel
               : fullDayLabel(selectedCompactDay.date)}
           </p>
           <h1 className="today-compact-title">
-            {visible.length > 0
+            {compactWeekDay === 0 && visible.length > 0
               ? "Sabores de nossas fatias de hoje"
               : "Cardápio da semana"}
           </h1>
-          {visible.length === 0 && (
+          {!(compactWeekDay === 0 && visible.length > 0) && (
             <p className="today-compact-subtitle">
-              Hoje ainda não tem produção liberada — veja o que já está
-              planejado para os próximos dias.
+              {visible.length === 0
+                ? "Hoje ainda não tem produção liberada — veja o que já está planejado para os próximos dias."
+                : "Veja o que já está planejado para os próximos dias."}
             </p>
           )}
         </div>
         )}
-        {compact && visible.length === 0 && compactWeekDays.length > 0 && (
+        {compact && compactWeekDays.length > 0 && (
           <div className="today-week-tabs" role="tablist" aria-label="Escolher o dia da semana">
             {compactWeekDays.map((day, index) => (
               <button
@@ -1040,7 +1041,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         <label className="today-search"><Search /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar sabor..." /></label>
         </>
         )}
-        {compact && visible.length === 0 ? (
+        {compact && !(compactWeekDay === 0 && visible.length > 0) ? (
           selectedCompactDay && selectedCompactDay.items.length > 0 ? (
             <div className="today-card-grid">
               {selectedCompactDay.items.map((flavor) => (
