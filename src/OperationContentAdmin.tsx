@@ -26,6 +26,7 @@ import ImageEditor, { PRODUCT_IMAGE_PRESET } from "./ImageEditor";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ShoppingBatchSuggestions from "./ShoppingBatchSuggestions";
 import { currentLocalTime, normalizeTime, type AvailabilityBatch } from "./availability-batches";
+import { weekStart, shiftDate } from "./lib/shopping-week";
 import "./content-admin.css";
 
 export type AdminTab = "catalog" | "today" | "operation";
@@ -75,6 +76,12 @@ export type Availability = {
 type AdminAvailabilityBatch = AvailabilityBatch & {
   service_date: string;
   active: boolean;
+};
+type WeekBatchRow = {
+  flavor_id: string;
+  service_date: string;
+  quantity_available: number;
+  quantity_reserved: number;
 };
 type Channel = {
   slug: string;
@@ -220,6 +227,13 @@ export default function OperationContentAdmin({
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [availabilityBatches, setAvailabilityBatches] = useState<AdminAvailabilityBatch[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayInFortaleza());
+  const [weekBatches, setWeekBatches] = useState<WeekBatchRow[]>([]);
+  const [clearingWeek, setClearingWeek] = useState(false);
+  const weekAnchor = useMemo(() => weekStart(selectedDate), [selectedDate]);
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => shiftDate(weekAnchor, index)),
+    [weekAnchor],
+  );
   const [batchDrafts, setBatchDrafts] = useState<Record<string, { time: string; quantity: string }>>({});
   const sortedAvailabilityFlavors = useMemo(
     () => sortFlavorsByAvailability(flavors, availability),
@@ -398,6 +412,60 @@ export default function OperationContentAdmin({
       requireSupabase().removeChannel(channel);
     };
   }, [load, selectedDate]);
+
+  const loadWeekOverview = useCallback(async () => {
+    const weekEnd = shiftDate(weekAnchor, 6);
+    const { data, error } = await requireSupabase()
+      .from("flavor_availability_batches")
+      .select("flavor_id,service_date,quantity_available,quantity_reserved")
+      .eq("active", true)
+      .gte("service_date", weekAnchor)
+      .lte("service_date", weekEnd);
+    if (error) return;
+    setWeekBatches((data || []) as WeekBatchRow[]);
+  }, [weekAnchor]);
+
+  useEffect(() => {
+    void loadWeekOverview();
+  }, [loadWeekOverview]);
+
+  const weekOverviewRows = useMemo(() => {
+    const byFlavor = new Map<string, Map<string, number>>();
+    for (const batch of weekBatches) {
+      const free = Math.max(batch.quantity_available - batch.quantity_reserved, 0);
+      if (!byFlavor.has(batch.flavor_id)) byFlavor.set(batch.flavor_id, new Map());
+      const perDay = byFlavor.get(batch.flavor_id)!;
+      perDay.set(batch.service_date, (perDay.get(batch.service_date) || 0) + free);
+    }
+    return Array.from(byFlavor.entries())
+      .map(([flavorId, perDay]) => ({
+        flavor: flavors.find((candidate) => candidate.id === flavorId),
+        flavorId,
+        perDay,
+      }))
+      .filter((row) => row.flavor)
+      .sort((a, b) => a.flavor!.name.localeCompare(b.flavor!.name, "pt-BR"));
+  }, [weekBatches, flavors]);
+
+  const clearWeek = async () => {
+    const confirmed = await confirmAction(
+      `Remover todos os lotes de disponibilidade de ${new Date(weekAnchor + "T12:00:00").toLocaleDateString("pt-BR")} a ${new Date(shiftDate(weekAnchor, 6) + "T12:00:00").toLocaleDateString("pt-BR")}? Lotes com fatias já reservadas por clientes não são removidos.`,
+      { title: "Limpar semana inteira", confirmLabel: "Remover semana", destructive: true },
+    );
+    if (!confirmed) return;
+    setClearingWeek(true);
+    const { data, error } = await requireSupabase().rpc("manager_clear_availability_week", {
+      start_date: weekAnchor,
+      end_date: shiftDate(weekAnchor, 6),
+    });
+    setClearingWeek(false);
+    if (error) return setNotice(error.message);
+    const result = data as { removed_count: number; removal_blocked_count: number };
+    setNotice(
+      `${result.removed_count} lote(s) removido(s) da semana${result.removal_blocked_count ? `, ${result.removal_blocked_count} não removido(s) por já ter fatia reservada` : ""}.`,
+    );
+    await Promise.all([load(), loadWeekOverview()]);
+  };
 
   const saveFlavor = async () => {
     if (draft.name.trim().length < 2)
@@ -583,6 +651,7 @@ export default function OperationContentAdmin({
     if (error) return setNotice(error.message);
     setNotice(`${flavor.name}: ${availabilityLabels[status]}.`);
     await load();
+    await loadWeekOverview();
   };
 
   const saveAvailabilityBatch = async (
@@ -621,6 +690,7 @@ export default function OperationContentAdmin({
       `${flavor.name}: ${quantity} ${quantity === 1 ? "fatia" : "fatias"} a partir das ${availableFrom.replace(":00", "h")}.`,
     );
     await load();
+    await loadWeekOverview();
   };
 
   const deleteAvailabilityBatch = async (
@@ -636,6 +706,7 @@ export default function OperationContentAdmin({
     if (error) return setNotice(error.message);
     setNotice(`${flavor.name}: lote das ${normalizeTime(batch.available_from)} removido.`);
     await load();
+    await loadWeekOverview();
   };
 
   const saveChannel = async (channel: Channel) => {
@@ -1042,6 +1113,59 @@ export default function OperationContentAdmin({
               </button>
             ) : null}
           </div>
+          <details className="admin-panel availability-week-overview">
+            <summary>
+              Ver semana inteira ({weekOverviewRows.length ? `${weekOverviewRows.length} sabor(es) com lote` : "nenhum lote"})
+            </summary>
+            <div className="availability-week-table-scroll">
+              <table className="availability-week-table">
+                <thead>
+                  <tr>
+                    <th>Sabor</th>
+                    {weekDays.map((day) => (
+                      <th key={day}>
+                        <button
+                          type="button"
+                          className={day === selectedDate ? "active" : ""}
+                          onClick={() => setSelectedDate(day)}
+                        >
+                          {week[new Date(day + "T12:00:00").getDay()]}
+                          <small>
+                            {new Date(day + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                          </small>
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekOverviewRows.map((row) => (
+                    <tr key={row.flavorId}>
+                      <td>{row.flavor!.name}</td>
+                      {weekDays.map((day) => (
+                        <td key={day}>{row.perDay.get(day) ?? "—"}</td>
+                      ))}
+                    </tr>
+                  ))}
+                  {!weekOverviewRows.length ? (
+                    <tr>
+                      <td colSpan={weekDays.length + 1}>Nenhum sabor com lote nesta semana.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+            {weekOverviewRows.length ? (
+              <button
+                type="button"
+                className="availability-clear-week"
+                disabled={clearingWeek}
+                onClick={() => void clearWeek()}
+              >
+                <Trash2 /> {clearingWeek ? "Removendo…" : "Limpar semana inteira"}
+              </button>
+            ) : null}
+          </details>
           {canSeeCosts && selectedDate === todayInFortaleza() ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
           <label className="admin-search availability-search">
             <span className="sr-only">Buscar sabor</span>
