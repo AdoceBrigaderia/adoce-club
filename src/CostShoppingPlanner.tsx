@@ -44,7 +44,7 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   }catch(error){setSyncNotice(error instanceof Error?error.message:"Não foi possível sincronizar o site. Tente novamente.");}
   finally{setSyncing(false);}
  };
- const handleSave=async()=>{await save();await runSync(false);};
+ const handleSave=async()=>{if(await save())await runSync(false);};
  const batterColors=useMemo(()=>Object.fromEntries(flavors.map(flavor=>[flavor.id,predominantBatterColor(flavor.id,workspace)])),[flavors,workspace]);
  const demand=useMemo(()=>planDemand(workspace,savedCakes),[workspace,savedCakes]);
  const combined=useMemo(()=>planDemand(workspace,savedCakes,saved.extras),[workspace,savedCakes,saved.extras]);

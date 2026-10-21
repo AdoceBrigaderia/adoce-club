@@ -57,12 +57,17 @@ export function useShoppingPlanSync(week:string) {
   setDraft(current=>({...current,[group]:{...(current[group]||{}),[key]:value}} as ShoppingWeek));
   pending.current.push({week,group,key,value});setSaving(true);setStatus("Salvando…");void flush();
  };
- const save=async()=>{
-  if(!dirtyRef.current||running.current)return;
+ const save=async():Promise<boolean>=>{
+  if(!dirtyRef.current)return false;
   setSaving(true);setStatus("Salvando planejamento…");
   for(const change of diffShoppingWeekDrafts(saved,draft))pending.current.push({week,...change});
-  await flush();
-  if(mounted.current){setSaved(draft);setDirty(false);setStatus("Planejamento salvo e sincronizado");}
+  if(!running.current)await flush();
+  else while(running.current)await new Promise(resolve=>window.setTimeout(resolve,50));
+  if(!mounted.current)return false;
+  setSaving(false);
+  if(pending.current.length)return false;
+  setSaved(draft);setDirty(false);setStatus("Planejamento salvo e sincronizado");
+  return true;
  };
  const discard=()=>{setDraft(saved);setDirty(false);setStatus("Planejamento salvo e sincronizado");};
  const copyPrevious=async(sourceWeek:string)=>{
