@@ -1,5 +1,5 @@
 import type {ProcurementItem} from "./shopping-procurement";
-export type ShoppingWeek = {cakes:Record<string,number>;daily:Record<string,number>;extras:Record<string,number>;stock:Record<string,number>;selected:Record<string,boolean>;inCart?:Record<string,boolean>;quoteUnits?:Record<string,number>;quoteWeight?:Record<string,number>;quotePrice?:Record<string,number>;procurement?:Record<string,ProcurementItem>};
+export type ShoppingWeek = {cakes:Record<string,number>;daily:Record<string,number>;extras:Record<string,number>;stock:Record<string,number>;selected:Record<string,boolean>;inCart?:Record<string,boolean>;quoteUnits?:Record<string,number>;quoteWeight?:Record<string,number>;quotePrice?:Record<string,number>;procurement?:Record<string,ProcurementItem>;requiredDays?:Record<string,boolean>};
 export const emptyShoppingWeek=():ShoppingWeek=>({cakes:{},daily:{},extras:{},stock:{},selected:{}});
 export function localShoppingDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());}
 export function shiftDate(date:string,days:number){const value=new Date(`${date}T12:00:00Z`);value.setUTCDate(value.getUTCDate()+days);return value.toISOString().slice(0,10);}
@@ -28,6 +28,16 @@ export function weeklyTotals(plan:ShoppingWeek,start:string){
 export function applyDailyQuantity(plan:ShoppingWeek,date:string,flavor:string,value:number):ShoppingWeek{
  const key=`${date}|${flavor}`;const added=Math.max(0,value-(plan.daily[key]||0));
  return {...plan,daily:{...plan.daily,[key]:value},cakes:{...plan.cakes,[flavor]:Math.max(0,(plan.cakes[flavor]||0)-added)}};
+}
+export function requiredDayWarnings(plan:ShoppingWeek,start:string,flavors:{id:string}[],batterColors:Record<string,string|null>){
+ const warnings:{date:string;flavorCount:number;whiteCount:number}[]=[];
+ for(const date of weekDates(start)){
+  if(!plan.requiredDays?.[date])continue;
+  const dayFlavors=flavors.filter(flavor=>plan.daily[`${date}|${flavor.id}`]>0);
+  const whiteCount=dayFlavors.filter(flavor=>batterColors[flavor.id]==="Branca").length;
+  if(dayFlavors.length<6||whiteCount*3<dayFlavors.length)warnings.push({date,flavorCount:dayFlavors.length,whiteCount});
+ }
+ return warnings;
 }
 export function weeklyMenuReceipt(start:string,plan:ShoppingWeek,flavors:{id:string;name:string}[]){
  const lines=["CARDÁPIO DA SEMANA",`${shortShoppingDate(start)} a ${shortShoppingDate(shiftDate(start,6))}`,"--------------------------------"];

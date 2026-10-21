@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {weekStart,weekDates,shiftDate,weeklyTotals,applyDailyQuantity,weeklyMenuReceipt,emptyShoppingWeek,shoppingWeekLabel,shoppingWeekOptions} from "./shopping-week";
+import {weekStart,weekDates,shiftDate,weeklyTotals,applyDailyQuantity,weeklyMenuReceipt,requiredDayWarnings,emptyShoppingWeek,shoppingWeekLabel,shoppingWeekOptions} from "./shopping-week";
 describe("planejamento diário de tortas",()=>{
  it("identifica semanas completas pelo mês da segunda-feira, sem repetir datas",()=>{
   expect(shoppingWeekLabel("2026-10-05")).toBe("Outubro — semana 1 · 05/10 a 11/10");
@@ -32,5 +32,16 @@ describe("planejamento diário de tortas",()=>{
   expect(lines.join("\n")).toContain("Morango");
   expect(lines.join("\n")).not.toContain("Estoque");
   expect(lines.every(line=>line.length<=32)).toBe(true);
+ });
+ it("avisa quando um dia obrigatório não tem 6 sabores ou 1/3 de massa branca",()=>{
+  const flavors=[{id:"a"},{id:"b"},{id:"c"},{id:"d"},{id:"e"},{id:"f"},{id:"g"}];
+  const batterColors={a:"Branca",b:"Branca",c:"Chocolate",d:"Chocolate",e:"Black",f:"Red",g:"Red"};
+  const fewFlavors={...emptyShoppingWeek(),requiredDays:{"2026-10-12":true},daily:{"2026-10-12|a":1,"2026-10-12|b":1}};
+  expect(requiredDayWarnings(fewFlavors,"2026-10-12",flavors,batterColors)).toEqual([{date:"2026-10-12",flavorCount:2,whiteCount:2}]);
+  const notEnoughWhite={...emptyShoppingWeek(),requiredDays:{"2026-10-12":true},daily:{"2026-10-12|a":1,"2026-10-12|c":1,"2026-10-12|d":1,"2026-10-12|e":1,"2026-10-12|f":1,"2026-10-12|g":1}};
+  expect(requiredDayWarnings(notEnoughWhite,"2026-10-12",flavors,batterColors)).toEqual([{date:"2026-10-12",flavorCount:6,whiteCount:1}]);
+  const ok={...emptyShoppingWeek(),requiredDays:{"2026-10-12":true},daily:{"2026-10-12|a":1,"2026-10-12|b":1,"2026-10-12|c":1,"2026-10-12|d":1,"2026-10-12|e":1,"2026-10-12|f":1}};
+  expect(requiredDayWarnings(ok,"2026-10-12",flavors,batterColors)).toEqual([]);
+  expect(requiredDayWarnings({...emptyShoppingWeek(),daily:ok.daily},"2026-10-12",flavors,batterColors)).toEqual([]);
  });
 });
