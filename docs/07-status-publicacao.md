@@ -6,6 +6,22 @@ status: Produção em evolução
 
 # Status da publicação
 
+## 21/10/2026 (continuação) — massa predominante, dia obrigatório, rascunho com botão salvar e sincronização automática
+
+Completadas as 5 fases combinadas com o proprietário (listadas como pendentes na entrada anterior desta mesma data):
+
+1. **Cor da massa nas fichas técnicas.** Nova coluna `costing_recipes.batter_color` (Branca/Chocolate/Black/Red/Outra), preenchida automaticamente nas 4 fichas de massa existentes (MASSA AMANTEIGADA→Branca, MASSA CHOCOLATE→Chocolate, MASSA BLACK→Black, MASSA RED→Red). `predominantBatterColor()` em `src/lib/purchase-planner.ts` calcula a massa predominante de um sabor pelos 3 "Discos de bolo" da versão mais recente da ficha.
+2. **Coluna e ordenação por massa predominante** na tabela de planejamento (`src/ShoppingWeekTable.tsx`): coluna "Massa predominante" e opção de ordenação "Massa branca primeiro, depois por cor".
+3. **Checkbox de dia obrigatório.** Cada dia da semana de planejamento pode ser marcado como obrigatório; `requiredDayWarnings()` avisa (não bloqueia) quando um dia marcado tem menos de 6 sabores selecionados ou menos de 1/3 deles com massa branca.
+4. **Planejamento como rascunho, com botão "Salvar planejamento".** O hook `useShoppingPlanSync` (`src/lib/shopping-plan-sync.ts`) deixou de salvar a cada clique: sabores×dia, extras, estoque e dias obrigatórios agora ficam num rascunho local até o clique em "Salvar planejamento" (ou "Descartar alterações"); a lista de compras (insumos, relatório, impressão) só é recalculada a partir do último planejamento salvo. Trocar de semana com alterações pendentes pede confirmação antes de descartar. Grupos operacionais (carrinho, cotações, compras registradas no modo tablet) continuam salvando imediatamente.
+5. **Sincronização automática do planejamento salvo com o site**, substituindo o botão manual de importar: ao salvar, `manager_import_shopping_plan_availability` roda sozinha para a semana corrente. Remoção de lote com fatia já reservada por cliente ou vindo de continuidade do dia anterior fica bloqueada por padrão e é reportada na tela ("Alguns sabores não foram removidos do site") para confirmação explícita; confirmando ("Sim, remover mesmo assim"), a reserva do cliente é cancelada via `staff_update_instant_order` (sem estorno, pois o pagamento só ocorre depois que a equipe confirma que a fatia está separada) e o lote é removido.
+
+**Migrações aplicadas direto em produção via MCP do Supabase:** `20261021200000_recipe_batter_color.sql`, `20261021210000_shopping_week_required_days.sql`, `20261021220000_shopping_plan_sync_force_removal.sql`.
+
+Validado automaticamente (`tsc -b` + suíte de testes, 966 casos). Validação visual em Operação (desktop/celular) e teste do fluxo de confirmação de remoção com fatia reservada **ainda pendentes** — nenhuma das 5 fases acima foi exercitada no navegador nesta sessão.
+
+**Trabalho concorrente de outra IA na mesma pasta:** durante esta sessão, o Codex tinha WIP não commitado em `src/CostShoppingPlanner.tsx`, `src/OperationCosts.tsx`, `src/lib/purchase-planner.ts` e outros arquivos (refatoração do painel de custos, total estimado em R$ na lista de compras, catálogo 2026). Cada commit desta entrada foi isolado do WIP dele antes de publicar (reconstruindo HEAD + só as linhas desta tarefa, publicando, depois restaurando o WIP dele por cima) — ver `docs/18-guia-de-entrega-para-outra-ia.md`.
+
 ## 21/10/2026 — cardápio da semana ligado ao planejamento real + disponibilidade por lote
 
 A home pública e a página completa de fatias passam a sempre mostrar abas Seg–Dom (antes só apareciam quando hoje estava sem produção). A aba de hoje usa a grade real (`flavor_availability` + pedido instantâneo); as demais mostram uma prévia por lote com link de reserva no WhatsApp e um aviso explicando que é reserva, com o horário real de liberação.
@@ -22,7 +38,7 @@ Validado automaticamente (tsc -b + suíte de testes) e visualmente em produção
 
 **Migrações aplicadas direto em produção via MCP do Supabase** (não só preparadas localmente): `20261019160000_import_shopping_plan_availability_batches.sql`, `20261019161500_public_flavor_availability_batches_range.sql`, `20261021120000_shopping_plan_import_reconciles_removals.sql`, `20261021180000_manager_clear_availability_week.sql`. Todas já estão nos arquivos de migração do repositório.
 
-**Pendente combinado com o proprietário, ainda não iniciado:** campo de cor da massa nas fichas técnicas + coluna "massa predominante" e ordenação na tabela de planejamento, checkbox de dia obrigatório com aviso de mínimo de sabores/massa branca, botão "Salvar planejamento" com rascunho (hoje o planejamento salva a cada clique, sem botão), e sincronização automática do planejamento salvo com o cardápio público (substituindo a importação manual), incluindo cancelamento de reserva/baixa de estoque do dia anterior mediante segunda confirmação.
+**Pendente combinado com o proprietário:** concluído na entrada seguinte, mais recente, desta mesma data.
 
 ## 17/10/2026 — sessão de ajustes: home pública, tablet, regressão e achados pendentes na Operação
 
