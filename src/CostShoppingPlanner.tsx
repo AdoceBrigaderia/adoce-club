@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { planDemand, shoppingQuantity, shoppingReceipt, displayShoppingQuantity, type PlanWorkspace, type PlanInvoice } from "./lib/purchase-planner";
+import { planDemand, shoppingQuantity, shoppingReceipt, displayShoppingQuantity, predominantBatterColor, type PlanWorkspace, type PlanInvoice } from "./lib/purchase-planner";
 import { useShoppingPlanSync } from "./lib/shopping-plan-sync";
 import { queuePrint } from "./lib/print-queue";
 import { requireSupabase } from "./lib/supabase";
@@ -43,6 +43,7 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   }catch(error){setImportNotice(error instanceof Error?error.message:"Não foi possível importar. Tente novamente.");}
   finally{setImporting(false);}
  };
+ const batterColors=useMemo(()=>Object.fromEntries(flavors.map(flavor=>[flavor.id,predominantBatterColor(flavor.id,workspace)])),[flavors,workspace]);
  const demand=useMemo(()=>planDemand(workspace,cakes),[workspace,cakes]);
  const combined=useMemo(()=>planDemand(workspace,cakes,extras),[workspace,cakes,extras]);
  const total=Object.values(cakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
@@ -72,7 +73,7 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   <div className="adoce-items-filters"><label>Ordenar itens<select value={sort} onChange={event=>setSort(event.target.value)}><option value="name">Nome A–Z</option><option value="code">Código</option><option value="quantity">Maior quantidade necessária</option></select></label></div>
   <div className="adoce-shopping-week-controls"><label>Selecionar semana<select value={week} disabled={saving} onChange={event=>setWeek(event.target.value)}>{[...new Set(weeks.map(option=>option.group))].map(group=><optgroup label={group} key={group}>{weeks.filter(option=>option.group===group).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>)}</select></label><button type="button" disabled={saving} onClick={()=>setWeek(shiftDate(week,-7))}>Semana anterior</button><button type="button" disabled={saving} onClick={()=>setWeek(weekStart(localShoppingDate()))}>Semana vigente</button><button type="button" disabled={saving} onClick={()=>setWeek(shiftDate(week,7))}>Próxima semana</button><button type="button" disabled={!ready||saving||total>0} onClick={()=>void copyPrevious(shiftDate(week,-7))}>Copiar semana anterior como modelo</button></div>
   <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
-  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change}/>
+  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change} batterColors={batterColors}/>
   <div className="adoce-shopping-import">
    <h4>Importar planejamento para o site</h4>
    <p>Para cada dia marcado no período, cria um lote de 13 fatias por torta planejada, disponível a partir das 18h. Não reduz reservas que clientes já fizeram.</p>
