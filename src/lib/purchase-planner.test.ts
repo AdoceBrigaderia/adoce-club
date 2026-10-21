@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import {planDemand,purchaseReference, shoppingQuantity, compositionUsage, shoppingReceipt, type PlanWorkspace} from "./purchase-planner";
+import {planDemand,purchaseReference, shoppingQuantity, compositionUsage, shoppingReceipt, predominantBatterColor, type PlanWorkspace} from "./purchase-planner";
 const item={id:"sugar",name:"Açúcar",internal_code:"INS1",item_kind:"ingredient",consumption_unit:"g",active:true,reference_quantity:1000,reference_unit:"g",reference_package_name:"pacote"};
 const workspace:PlanWorkspace={items:[item],recipes:[{id:"cake",name:"Torta",flavor_id:"flavor",active:true},{id:"mass",name:"Massa",flavor_id:null,active:true}],versions:[{id:"cake-v",recipe_id:"cake",version_number:1,size_code:"G",yield_quantity:13,yield_unit:"slice"},{id:"mass-v",recipe_id:"mass",version_number:1,size_code:null,yield_quantity:650,yield_unit:"g"}],components:[{recipe_version_id:"cake-v",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"mass-v",quantity:1950,unit:"g"},{recipe_version_id:"cake-v",component_kind:"item",item_id:"sugar",child_recipe_version_id:null,quantity:50,unit:"g"},{recipe_version_id:"mass-v",component_kind:"item",item_id:"sugar",child_recipe_version_id:null,quantity:150,unit:"g"}]};
 describe("planejamento de compras",()=>{
@@ -66,4 +66,47 @@ describe("planejamento de compras",()=>{
   expect(reference.equivalent).toBe(5.4);expect(reference.perPackage).toBe(5000);expect(reference.packages).toBe(2);expect(reference.unitPrice).toBe(100);
  });
  it("aceita quantidade exatamente múltipla sem uma caixa extra",()=>expect(purchaseReference(item,1000,[{issued_on:"2026-09-26",created_at:"2026-09-26",lines:[{item_id:"sugar",brand_name:"",package_layers:[{name:"pacote",quantity:"1"}],normalized_quantity:1000,normalized_unit:"g",outer_unit_price:25,gross_total:25,net_total:25}]}]).packages).toBe(1));
+ it("calcula a massa predominante entre os três discos de bolo",()=>{
+  const batterWorkspace:PlanWorkspace={
+   items:[],
+   recipes:[
+    {id:"cake",name:"Torta",flavor_id:"flavor",active:true},
+    {id:"branca",name:"MASSA AMANTEIGADA",flavor_id:null,active:true,batter_color:"Branca"},
+    {id:"choc",name:"MASSA CHOCOLATE",flavor_id:null,active:true,batter_color:"Chocolate"},
+   ],
+   versions:[
+    {id:"cake-v1",recipe_id:"cake",version_number:1,yield_quantity:13,yield_unit:"slice",size_code:"G"},
+    {id:"cake-v2",recipe_id:"cake",version_number:2,yield_quantity:13,yield_unit:"slice",size_code:"G"},
+    {id:"branca-v",recipe_id:"branca",version_number:1,yield_quantity:650,yield_unit:"g",size_code:null},
+    {id:"choc-v",recipe_id:"choc",version_number:1,yield_quantity:650,yield_unit:"g",size_code:null},
+   ],
+   components:[
+    {recipe_version_id:"cake-v1",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"choc-v",quantity:650,unit:"g",placement:"Discos de bolo"},
+    {recipe_version_id:"cake-v2",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"branca-v",quantity:650,unit:"g",placement:"Discos de bolo"},
+    {recipe_version_id:"cake-v2",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"branca-v",quantity:650,unit:"g",placement:"Discos de bolo"},
+    {recipe_version_id:"cake-v2",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"choc-v",quantity:650,unit:"g",placement:"Discos de bolo"},
+   ],
+  };
+  // a versao mais recente (v2) tem 2 discos de massa branca e 1 de chocolate
+  expect(predominantBatterColor("flavor",batterWorkspace)).toBe("Branca");
+ });
+ it("ignora discos sem cor de massa definida e componentes de outros placements",()=>{
+  const batterWorkspace:PlanWorkspace={
+   items:[],
+   recipes:[
+    {id:"cake",name:"Torta",flavor_id:"flavor",active:true},
+    {id:"semcor",name:"MASSA SEM COR",flavor_id:null,active:true,batter_color:null},
+   ],
+   versions:[
+    {id:"cake-v",recipe_id:"cake",version_number:1,yield_quantity:13,yield_unit:"slice",size_code:"G"},
+    {id:"semcor-v",recipe_id:"semcor",version_number:1,yield_quantity:650,yield_unit:"g",size_code:null},
+   ],
+   components:[
+    {recipe_version_id:"cake-v",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"semcor-v",quantity:650,unit:"g",placement:"Discos de bolo"},
+    {recipe_version_id:"cake-v",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"semcor-v",quantity:1,unit:"un",placement:"Recheios"},
+   ],
+  };
+  expect(predominantBatterColor("flavor",batterWorkspace)).toBeNull();
+  expect(predominantBatterColor("sabor-inexistente",batterWorkspace)).toBeNull();
+ });
 });

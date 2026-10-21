@@ -18,7 +18,7 @@ import "./operation-costs.css";
 
 type Flavor = { id: string; name: string; base_price: number | null; active: boolean };
 type Item = { id: string; internal_code: string; name: string; item_kind: string; purchase_unit: string; consumption_unit: string; reference_package_name: string | null; reference_quantity: number | null; reference_unit: BaseUnit | null; data_status: string; active: boolean; price: null | { purchase_price: number; purchased_quantity: number; purchase_unit: string; useful_quantity: number | null; data_status: string; effective_at: string } };
-type Recipe = { id: string; name: string; recipe_kind: "intermediate" | "final_product"; flavor_id: string | null; active: boolean };
+type Recipe = { id: string; name: string; recipe_kind: "intermediate" | "final_product"; flavor_id: string | null; active: boolean; batter_color?: string | null };
 type Version = { id: string; recipe_id: string; version_number: number; version_status: string; yield_quantity: number | null; yield_unit: string | null; size_code: string | null; created_at: string; preparation_minutes?: number | null; cooking_minutes?: number | null; cooling_minutes?: number | null };
 type Row = { id: string; recipe_version_id: string; component_kind: "item" | "recipe_version"; item_id: string | null; child_recipe_version_id: string | null; quantity: number | null; unit: string; placement: string; sort_order: number };
 type Price = { id: string; item_id: string; purchase_price: number; purchased_quantity: number; purchase_unit: string; useful_quantity: number | null; data_status: string; effective_at: string; source_note: string };

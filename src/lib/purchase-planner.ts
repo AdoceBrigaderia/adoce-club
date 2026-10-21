@@ -1,7 +1,30 @@
 export type PlanItem = { id:string; name:string; internal_code:string; item_kind:string; consumption_unit:string; active:boolean; reference_quantity:number|null; reference_unit:string|null; reference_package_name:string|null };
 export type PlanVersion = { id:string; recipe_id:string; version_number:number; yield_quantity:number|null; yield_unit:string|null; size_code:string|null };
-export type PlanComponent = { recipe_version_id:string; component_kind:string; item_id:string|null; child_recipe_version_id:string|null; quantity:number|null; unit:string };
-export type PlanWorkspace = { items:PlanItem[]; recipes:{id:string; name:string; flavor_id:string|null; active:boolean}[]; versions:PlanVersion[]; components:PlanComponent[] };
+export type PlanComponent = { recipe_version_id:string; component_kind:string; item_id:string|null; child_recipe_version_id:string|null; quantity:number|null; unit:string; placement?:string };
+export type PlanRecipe = { id:string; name:string; flavor_id:string|null; active:boolean; batter_color?:string|null };
+export type PlanWorkspace = { items:PlanItem[]; recipes:PlanRecipe[]; versions:PlanVersion[]; components:PlanComponent[] };
+export const BATTER_COLORS = ["Branca","Chocolate","Black","Red","Outra"] as const;
+export type BatterColor = typeof BATTER_COLORS[number];
+export function predominantBatterColor(flavorId:string, workspace:PlanWorkspace):string|null {
+ const recipe=workspace.recipes.find(r=>r.flavor_id===flavorId&&r.active);
+ if(!recipe)return null;
+ const versions=workspace.versions.filter(v=>v.recipe_id===recipe.id);
+ if(!versions.length)return null;
+ const version=versions.reduce((latest,current)=>current.version_number>latest.version_number?current:latest);
+ const discs=workspace.components.filter(c=>c.recipe_version_id===version.id&&c.component_kind==="recipe_version"&&c.placement==="Discos de bolo"&&c.child_recipe_version_id);
+ const counts=new Map<string,number>();
+ for(const disc of discs){
+  const childVersion=workspace.versions.find(v=>v.id===disc.child_recipe_version_id);
+  if(!childVersion)continue;
+  const childRecipe=workspace.recipes.find(r=>r.id===childVersion.recipe_id);
+  const color=childRecipe?.batter_color;
+  if(!color)continue;
+  counts.set(color,(counts.get(color)||0)+1);
+ }
+ let predominant:string|null=null,max=0;
+ for(const[color,count]of counts){if(count>max){max=count;predominant=color;}}
+ return predominant;
+}
 export type PlanPurchase = { item_id:string; brand_name:string; package_layers:{name:string; quantity:string}[]; normalized_quantity:number; normalized_unit:string; outer_unit_price:number|null; gross_total:number; net_total:number };
 export type PlanInvoice = { issued_on:string; created_at:string; supplier_name?:string; lines:PlanPurchase[] };
 export function physicalUnit(unit:string):{dimension:string;factor:number}|null {
