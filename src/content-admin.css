@@ -665,6 +665,9 @@
 .admin-list-toolbar .admin-primary { min-height: 48px; margin: 0; }
 .admin-list-count { margin: 0 0 10px; color: #6f5249; font-size: 14px; }
 .availability-search { margin: 8px 0 10px; }
+.availability-date-picker { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
+.availability-date-picker button { min-height: 44px; min-width: 44px; padding: 0 14px; border: 1px solid #e0c3b2; border-radius: 10px; background: #fff; color: #6a382d; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; }
+.availability-date-picker input[type="date"] { min-height: 44px; padding: 0 12px; border: 1px solid #e0c3b2; border-radius: 10px; background: #fff; color: #35130d; font: 500 15px Inter, system-ui, sans-serif; }
 .availability-summary { margin: 0 0 10px; color: #4d342c; font: 600 15px Inter, system-ui, sans-serif; }
 
 .availability-list article { grid-template-columns: auto minmax(160px, 1fr) minmax(170px, 210px) minmax(220px, 1.2fr); padding: 0.7rem 0; }

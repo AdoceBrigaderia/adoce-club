@@ -32,8 +32,14 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   try{
    const {data,error}=await requireSupabase().rpc("manager_import_shopping_plan_availability",{start_date:importStart,end_date:importEnd});
    if(error)throw error;
-   const result=data as {imported_count:number;skipped_count:number};
-   setImportNotice(result.imported_count?`${result.imported_count} sabor(es)/dia importado(s) para o site${result.skipped_count?`, ${result.skipped_count} ignorado(s) por sabor inexistente`:""}.`:"Nenhum sabor com torta marcada nesse período.");
+   const result=data as {imported_count:number;skipped_count:number;removed_count:number;removal_blocked_count:number};
+   const parts=[
+    result.imported_count?`${result.imported_count} sabor(es)/dia importado(s)`:null,
+    result.removed_count?`${result.removed_count} removido(s) do site (não estão mais no planejamento)`:null,
+    result.skipped_count?`${result.skipped_count} ignorado(s) por sabor inexistente`:null,
+    result.removal_blocked_count?`${result.removal_blocked_count} não pôde(ram) ser removido(s) por já ter fatia reservada`:null,
+   ].filter(Boolean);
+   setImportNotice(parts.length?parts.join(", ")+".":"Nenhuma mudança: ninguém marcado nem removido nesse período.");
   }catch(error){setImportNotice(error instanceof Error?error.message:"Não foi possível importar. Tente novamente.");}
   finally{setImporting(false);}
  };

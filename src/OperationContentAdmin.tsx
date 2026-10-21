@@ -192,6 +192,12 @@ function todayInFortaleza() {
   }).format(new Date());
 }
 
+function shiftDay(date: string, amount: number) {
+  const result = new Date(`${date}T12:00:00Z`);
+  result.setUTCDate(result.getUTCDate() + amount);
+  return result.toISOString().slice(0, 10);
+}
+
 export default function OperationContentAdmin({
   session,
   role,
@@ -213,6 +219,7 @@ export default function OperationContentAdmin({
   const [images, setImages] = useState<FlavorImage[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [availabilityBatches, setAvailabilityBatches] = useState<AdminAvailabilityBatch[]>([]);
+  const [selectedDate, setSelectedDate] = useState(todayInFortaleza());
   const [batchDrafts, setBatchDrafts] = useState<Record<string, { time: string; quantity: string }>>({});
   const sortedAvailabilityFlavors = useMemo(
     () => sortFlavorsByAvailability(flavors, availability),
@@ -271,6 +278,7 @@ export default function OperationContentAdmin({
     setBusy(true);
     const supabase = requireSupabase();
     const today = todayInFortaleza();
+    const viewedDate = selectedDate;
     const [
       flavorResult,
       imageResult,
@@ -299,11 +307,11 @@ export default function OperationContentAdmin({
       supabase
         .from("flavor_availability")
         .select("id,flavor_id,status,note,quantity_available,quantity_reserved")
-        .eq("service_date", today),
+        .eq("service_date", viewedDate),
       supabase
         .from("flavor_availability_batches")
         .select("id,flavor_id,service_date,available_from,quantity_available,quantity_reserved,active")
-        .eq("service_date", today)
+        .eq("service_date", viewedDate)
         .eq("active", true)
         .order("available_from"),
       supabase
@@ -364,7 +372,7 @@ export default function OperationContentAdmin({
     setChannels((channelResult.data || []) as Channel[]);
     setHours((hourResult.data || []) as BusinessHour[]);
     setExceptions((exceptionResult.data || []) as BusinessHourException[]);
-  }, []);
+  }, [selectedDate]);
 
   useEffect(() => {
     void load();
@@ -380,17 +388,16 @@ export default function OperationContentAdmin({
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => { void load(); }, 1500);
     };
-    const today = todayInFortaleza();
     const channel = requireSupabase()
       .channel("operation-content-admin-availability")
-      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability", filter: `service_date=eq.${today}` }, scheduleReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability_batches", filter: `service_date=eq.${today}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability", filter: `service_date=eq.${selectedDate}` }, scheduleReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "flavor_availability_batches", filter: `service_date=eq.${selectedDate}` }, scheduleReload)
       .subscribe();
     return () => {
       if (timeout) clearTimeout(timeout);
       requireSupabase().removeChannel(channel);
     };
-  }, [load]);
+  }, [load, selectedDate]);
 
   const saveFlavor = async () => {
     if (draft.name.trim().length < 2)
@@ -565,7 +572,7 @@ export default function OperationContentAdmin({
       .upsert(
         {
           flavor_id: flavor.id,
-          service_date: todayInFortaleza(),
+          service_date: selectedDate,
           status,
           updated_by: session.user.id,
           updated_at: new Date().toISOString(),
@@ -599,7 +606,7 @@ export default function OperationContentAdmin({
       {
         target_batch_id: batch?.id || null,
         target_flavor_id: flavor.id,
-        target_service_date: todayInFortaleza(),
+        target_service_date: selectedDate,
         target_available_from: availableFrom,
         target_quantity_available: quantity,
       },
@@ -992,8 +999,9 @@ export default function OperationContentAdmin({
               <small>Adoce Hoje</small>
               <h2>
                 Disponibilidade de{" "}
-                {new Date(todayInFortaleza() + "T12:00:00").toLocaleDateString(
+                {new Date(selectedDate + "T12:00:00").toLocaleDateString(
                   "pt-BR",
+                  { weekday: "long", day: "2-digit", month: "2-digit" },
                 )}
               </h2>
               <p>
@@ -1002,7 +1010,39 @@ export default function OperationContentAdmin({
               </p>
             </div>
           </div>
-          {canSeeCosts ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
+          <div className="availability-date-picker">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setSelectedDate(shiftDay(selectedDate, -1))}
+              aria-label="Dia anterior"
+            >
+              ←
+            </button>
+            <label>
+              <span className="sr-only">Escolher dia</span>
+              <input
+                type="date"
+                value={selectedDate}
+                disabled={busy}
+                onChange={(event) => event.target.value && setSelectedDate(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setSelectedDate(shiftDay(selectedDate, 1))}
+              aria-label="Próximo dia"
+            >
+              →
+            </button>
+            {selectedDate !== todayInFortaleza() ? (
+              <button type="button" disabled={busy} onClick={() => setSelectedDate(todayInFortaleza())}>
+                Voltar para hoje
+              </button>
+            ) : null}
+          </div>
+          {canSeeCosts && selectedDate === todayInFortaleza() ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
           <label className="admin-search availability-search">
             <span className="sr-only">Buscar sabor</span>
             <input
