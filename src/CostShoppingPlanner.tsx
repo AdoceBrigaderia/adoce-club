@@ -25,26 +25,26 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
  const [tabletMode,setTabletMode]=useState(false);
  const [reportMode,setReportMode]=useState(false);
  const [printNotice,setPrintNotice]=useState("");
- const [importStart,setImportStart]=useState(week);
- const [importEnd,setImportEnd]=useState(shiftDate(week,6));
- const [importing,setImporting]=useState(false);
- const [importNotice,setImportNotice]=useState("");
- const runImport=async()=>{
-  setImporting(true);setImportNotice("");
+ const [syncing,setSyncing]=useState(false);
+ const [syncNotice,setSyncNotice]=useState("");
+ const [pendingBlocked,setPendingBlocked]=useState<{flavor_id:string;flavor_name:string;service_date:string;reason:string}[]>([]);
+ const runSync=async(force=false)=>{
+  setSyncing(true);
   try{
-   const {data,error}=await requireSupabase().rpc("manager_import_shopping_plan_availability",{start_date:importStart,end_date:importEnd});
+   const {data,error}=await requireSupabase().rpc("manager_import_shopping_plan_availability",{start_date:week,end_date:shiftDate(week,6),force});
    if(error)throw error;
-   const result=data as {imported_count:number;skipped_count:number;removed_count:number;removal_blocked_count:number};
+   const result=data as {imported_count:number;skipped_count:number;removed_count:number;removal_blocked_count:number;blocked:{flavor_id:string;flavor_name:string;service_date:string;reason:string}[]};
    const parts=[
-    result.imported_count?`${result.imported_count} sabor(es)/dia importado(s)`:null,
-    result.removed_count?`${result.removed_count} removido(s) do site (não estão mais no planejamento)`:null,
+    result.imported_count?`${result.imported_count} sabor(es)/dia atualizado(s) no site`:null,
+    result.removed_count?`${result.removed_count} removido(s) do site`:null,
     result.skipped_count?`${result.skipped_count} ignorado(s) por sabor inexistente`:null,
-    result.removal_blocked_count?`${result.removal_blocked_count} não pôde(ram) ser removido(s) por já ter fatia reservada`:null,
    ].filter(Boolean);
-   setImportNotice(parts.length?parts.join(", ")+".":"Nenhuma mudança: ninguém marcado nem removido nesse período.");
-  }catch(error){setImportNotice(error instanceof Error?error.message:"Não foi possível importar. Tente novamente.");}
-  finally{setImporting(false);}
+   setSyncNotice(parts.length?parts.join(", ")+".":"Site já estava sincronizado com o planejamento salvo.");
+   setPendingBlocked(result.removal_blocked_count?result.blocked:[]);
+  }catch(error){setSyncNotice(error instanceof Error?error.message:"Não foi possível sincronizar o site. Tente novamente.");}
+  finally{setSyncing(false);}
  };
+ const handleSave=async()=>{await save();await runSync(false);};
  const batterColors=useMemo(()=>Object.fromEntries(flavors.map(flavor=>[flavor.id,predominantBatterColor(flavor.id,workspace)])),[flavors,workspace]);
  const demand=useMemo(()=>planDemand(workspace,savedCakes),[workspace,savedCakes]);
  const combined=useMemo(()=>planDemand(workspace,savedCakes,saved.extras),[workspace,savedCakes,saved.extras]);
@@ -69,7 +69,9 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
  return <section className="adoce-preparation-list adoce-shopping-planner">
   <h4>Planejamento das compras da semana</h4><p>Marque os dias de cada sabor: cada dia selecionado vale uma torta G. A lista acrescenta 20% de segurança ao consumo previsto, desconta o estoque aproveitável e só então arredonda os pacotes.</p>
   <p role="status">{status}</p><button type="button" onClick={retry}>Tentar novamente / atualizar</button>
-  {dirty&&<div className="adoce-cost-pending" role="alert"><strong>Há alterações não salvas.</strong> A lista de compras só é recalculada depois de salvar.<div className="adoce-section-actions"><button type="button" disabled={saving} onClick={()=>void save()}>{saving?"Salvando…":"Salvar planejamento"}</button><button type="button" disabled={saving} onClick={discard}>Descartar alterações</button></div></div>}
+  {dirty&&<div className="adoce-cost-pending" role="alert"><strong>Há alterações não salvas.</strong> A lista de compras só é recalculada depois de salvar.<div className="adoce-section-actions"><button type="button" disabled={saving||syncing} onClick={()=>void handleSave()}>{saving?"Salvando…":syncing?"Sincronizando com o site…":"Salvar planejamento"}</button><button type="button" disabled={saving||syncing} onClick={discard}>Descartar alterações</button></div></div>}
+  {syncNotice&&<p role="status">{syncNotice}</p>}
+  {pendingBlocked.length>0&&<div className="adoce-cost-pending" role="alert"><strong>Alguns sabores não foram removidos do site</strong><ul>{pendingBlocked.map((item,index)=><li key={index}>{item.flavor_name} em {shortShoppingDate(item.service_date)}: {item.reason==="reserved"?"já tem fatia reservada por cliente (remover cancela o pedido do cliente)":item.reason==="carryover"?"é estoque sobrado do dia anterior, ainda não vendido":"não foi possível remover"}</li>)}</ul><div className="adoce-section-actions"><button type="button" disabled={syncing} onClick={()=>void runSync(true)}>Sim, remover mesmo assim</button><button type="button" disabled={syncing} onClick={()=>setPendingBlocked([])}>Manter no site por enquanto</button></div></div>}
   <button type="button" disabled={!ready} onClick={()=>{setTabletMode(current=>!current);setReportMode(false);}}>{tabletMode?'Voltar ao planejamento':'Modo compras no tablet'}</button>
   <button type="button" onClick={()=>{setReportMode(current=>!current);setTabletMode(false);}}>{reportMode?'Voltar ao planejamento':'Comprado por semana'}</button>
   {tabletMode&&combined.errors.length>0&&<div className="adoce-cost-pending" role="alert"><strong>Lista incompleta: revise as fichas antes de comprar.</strong><ul>{combined.errors.map(error=><li key={error}>{error}</li>)}</ul></div>}
@@ -79,12 +81,9 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
   <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change} batterColors={batterColors}/>
   <div className="adoce-shopping-import">
-   <h4>Importar planejamento para o site</h4>
-   <p>Para cada dia marcado no período, cria um lote de 13 fatias por torta planejada, disponível a partir das 18h. Não reduz reservas que clientes já fizeram.</p>
-   <label>De<input type="date" value={importStart} onChange={event=>setImportStart(event.target.value)} /></label>
-   <label>Até<input type="date" value={importEnd} onChange={event=>setImportEnd(event.target.value)} /></label>
-   <button type="button" disabled={importing||!importStart||!importEnd} onClick={()=>void runImport()}>{importing?"Importando…":"Importar planejamento para o site"}</button>
-   {importNotice&&<p role="status">{importNotice}</p>}
+   <h4>Sincronização com o site</h4>
+   <p>Ao salvar o planejamento, o cardápio da semana no site é atualizado automaticamente: 13 fatias por torta planejada, disponíveis a partir das 18h. Remover um sabor com fatia já reservada ou com estoque sobrado do dia anterior pede confirmação.</p>
+   <button type="button" disabled={syncing} onClick={()=>void runSync(false)}>{syncing?"Sincronizando…":"Sincronizar esta semana agora"}</button>
   </div>
   <button type="button" disabled={!ready||printing||!hasMenu||menuLines.length>=600} onClick={()=>void print(true)}>Imprimir cardápio da semana</button>
   <details><summary>Prévia do cardápio da semana</summary><ThermalShoppingPreview lines={menuLines}/></details>
