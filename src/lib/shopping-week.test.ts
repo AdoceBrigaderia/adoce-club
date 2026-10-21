@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {weekStart,weekDates,shiftDate,weeklyTotals,applyDailyQuantity,weeklyMenuReceipt,requiredDayWarnings,emptyShoppingWeek,shoppingWeekLabel,shoppingWeekOptions} from "./shopping-week";
+import {weekStart,weekDates,shiftDate,weeklyTotals,applyDailyQuantity,weeklyMenuReceipt,requiredDayWarnings,diffShoppingWeekDrafts,emptyShoppingWeek,shoppingWeekLabel,shoppingWeekOptions} from "./shopping-week";
 describe("planejamento diário de tortas",()=>{
  it("identifica semanas completas pelo mês da segunda-feira, sem repetir datas",()=>{
   expect(shoppingWeekLabel("2026-10-05")).toBe("Outubro — semana 1 · 05/10 a 11/10");
@@ -43,5 +43,14 @@ describe("planejamento diário de tortas",()=>{
   const ok={...emptyShoppingWeek(),requiredDays:{"2026-10-12":true},daily:{"2026-10-12|a":1,"2026-10-12|b":1,"2026-10-12|c":1,"2026-10-12|d":1,"2026-10-12|e":1,"2026-10-12|f":1}};
   expect(requiredDayWarnings(ok,"2026-10-12",flavors,batterColors)).toEqual([]);
   expect(requiredDayWarnings({...emptyShoppingWeek(),daily:ok.daily},"2026-10-12",flavors,batterColors)).toEqual([]);
+ });
+ it("so envia ao salvar os campos de planejamento que realmente mudaram, sem tocar em grupos operacionais",()=>{
+  const saved={...emptyShoppingWeek(),cakes:{f:2},extras:{sugar:5},stock:{sugar:1000},selected:{sugar:true},inCart:{sugar:true}};
+  const draft={...saved,cakes:{f:3},extras:{sugar:5},selected:{sugar:false},inCart:{sugar:false}};
+  const changes=diffShoppingWeekDrafts(saved,draft);
+  expect(changes).toEqual(expect.arrayContaining([{group:"cakes",key:"f",value:3},{group:"selected",key:"sugar",value:false}]));
+  expect(changes.some(change=>change.group==="extras")).toBe(false);
+  expect(changes.some(change=>(change.group as string)==="inCart")).toBe(false);
+  expect(changes.length).toBe(2);
  });
 });

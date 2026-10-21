@@ -29,6 +29,18 @@ export function applyDailyQuantity(plan:ShoppingWeek,date:string,flavor:string,v
  const key=`${date}|${flavor}`;const added=Math.max(0,value-(plan.daily[key]||0));
  return {...plan,daily:{...plan.daily,[key]:value},cakes:{...plan.cakes,[flavor]:Math.max(0,(plan.cakes[flavor]||0)-added)}};
 }
+export const DRAFT_GROUPS=["cakes","daily","extras","stock","selected","requiredDays"] as const;
+export function diffShoppingWeekDrafts(saved:ShoppingWeek,draft:ShoppingWeek){
+ const changes:{group:typeof DRAFT_GROUPS[number];key:string;value:unknown}[]=[];
+ for(const group of DRAFT_GROUPS){
+  const draftGroup=(draft[group]||{}) as Record<string,unknown>;
+  const savedGroup=(saved[group]||{}) as Record<string,unknown>;
+  for(const [key,value] of Object.entries(draftGroup)){
+   if(JSON.stringify(savedGroup[key])!==JSON.stringify(value))changes.push({group,key,value});
+  }
+ }
+ return changes;
+}
 export function requiredDayWarnings(plan:ShoppingWeek,start:string,flavors:{id:string}[],batterColors:Record<string,string|null>){
  const warnings:{date:string;flavorCount:number;whiteCount:number}[]=[];
  for(const date of weekDates(start)){
