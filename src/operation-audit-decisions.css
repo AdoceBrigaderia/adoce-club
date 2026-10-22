@@ -1,0 +1,162 @@
+.audit-decisions {
+  padding: 16px 16px 96px;
+  max-width: 100%;
+}
+
+.audit-decisions-heading {
+  margin-bottom: 20px;
+}
+
+.audit-decisions-heading span {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--operation-muted, #8a7a6b);
+}
+
+.audit-decisions-heading h1 {
+  margin: 4px 0 8px;
+}
+
+.audit-decisions-heading p {
+  max-width: 70ch;
+  color: var(--operation-muted, #6b5a4b);
+}
+
+.audit-decisions-message {
+  margin-top: 8px;
+  font-weight: 600;
+}
+
+.audit-decisions-section {
+  margin-bottom: 32px;
+}
+
+.audit-decisions-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.audit-decisions-section h2 small {
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--operation-chip-bg, #f3e7da);
+  color: var(--operation-chip-fg, #6b4a2e);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.audit-decisions-table-wrap {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid var(--operation-border, #e7ddd2);
+  border-radius: 12px;
+}
+
+.audit-decisions-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 1100px;
+  font-size: 0.9rem;
+}
+
+.audit-decisions-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--operation-surface, #fffaf4);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--operation-border, #e7ddd2);
+  white-space: nowrap;
+}
+
+.audit-decisions-table tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--operation-border, #efe5da);
+  vertical-align: top;
+}
+
+.audit-decisions-table tbody tr:hover td {
+  background: var(--operation-row-hover, #fbf3ea);
+}
+
+.audit-decisions-decision-col {
+  min-width: 220px;
+}
+
+.audit-decisions-decision-col select,
+.audit-decisions-decision-col textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  border-radius: 8px;
+  border: 1px solid var(--operation-border, #d9ccbb);
+  padding: 6px 8px;
+}
+
+.audit-decisions-decision-col select {
+  margin-bottom: 6px;
+}
+
+.audit-decisions-decision-col textarea {
+  min-height: 44px;
+  resize: vertical;
+}
+
+.audit-decision-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--operation-chip-bg, #e7f3df);
+  color: var(--operation-chip-fg, #345c2b);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.audit-decisions-table-decided button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  border: 1px solid var(--operation-border, #d9ccbb);
+  background: transparent;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.audit-decisions-floating-save {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-radius: 999px;
+  border: none;
+  background: var(--operation-accent, #c0392b);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.audit-decisions-floating-save:disabled {
+  background: var(--operation-muted, #9c8f80);
+  cursor: default;
+  box-shadow: none;
+}
+
+@media (max-width: 720px) {
+  .audit-decisions-floating-save {
+    left: 16px;
+    right: 16px;
+    justify-content: center;
+  }
+}

@@ -136,6 +136,7 @@ import "./customer-account-reference-2026.css";
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
 const OperationArchive = lazy(() => import("./OperationArchive"));
+const OperationAuditDecisions = lazy(() => import("./OperationAuditDecisions"));
 const OperationDashboard = lazy(() => import("./OperationDashboard"));
 const OperationNotificationCenter = lazy(() => import("./OperationNotificationCenter"));
 const OperationNotificationPreview = lazy(() =>
@@ -181,7 +182,7 @@ function readClubOrderInviteDraft() {
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
 type ClubView = "card" | "share" | "group" | "help" | "install" | "profile";
-type OperationView = "dashboard" | "orders" | "products" | "attend" | "purchasing_inventory" | "history" | "settings" | "management";
+type OperationView = "dashboard" | "orders" | "products" | "attend" | "purchasing_inventory" | "history" | "settings" | "management" | "audit";
 type OperationCommercialTab = "sales" | "requests" | "catalog";
 type OperationNavigationLocation = {
   view: OperationView;
@@ -2948,6 +2949,7 @@ function OperationHome({ session }: { session: Session }) {
     if (path.includes("/operacao/historico")) return "history";
     if (path.includes("/operacao/gestao") || path.includes("/operacao/financeiro")) return "management";
     if (path.includes("/operacao/compras")) return "purchasing_inventory";
+    if (path.includes("/operacao/auditoria")) return "audit";
     if (path.includes("/operacao/produtos")) return "products";
     if (path.includes("/operacao/pedidos") || path.includes("/operacao/caixa")) return "orders";
     return "dashboard";
@@ -3645,6 +3647,7 @@ function OperationHome({ session }: { session: Session }) {
       management: "/operacao/gestao",
       purchasing_inventory: "/operacao/compras",
       history: "/operacao/historico",
+      audit: "/operacao/auditoria",
     };
     return paths[nextView];
   }, []);
@@ -3672,6 +3675,7 @@ function OperationHome({ session }: { session: Session }) {
       management: "/operacao/gestao",
       purchasing_inventory: "/operacao/compras",
       history: "/operacao/historico",
+      audit: "/operacao/auditoria",
     };
     window.history.replaceState(null, "", viewPaths[next]);
     setSelected(null);
@@ -3785,6 +3789,9 @@ function OperationHome({ session }: { session: Session }) {
       : []),
     ...(canManageOperation
       ? [{ view: "management" as const, label: "Gestão", shortLabel: "Gestão", icon: BarChart3, open: () => void openView("management") }]
+      : []),
+    ...(role === "owner"
+      ? [{ view: "audit" as const, label: "Auditoria do site", shortLabel: "Auditoria", icon: ClipboardCheck, open: () => void openView("audit") }]
       : []),
   ];
   const goBackInOperation = useCallback(() => {
@@ -4910,6 +4917,9 @@ function OperationHome({ session }: { session: Session }) {
           )}
           {view === "history" && (role === "owner" || role === "manager") && (
             <Suspense fallback={<p>Carregando histórico...</p>}><OperationArchive /></Suspense>
+          )}
+          {view === "audit" && role === "owner" && (
+            <Suspense fallback={<p>Carregando auditoria do site...</p>}><OperationAuditDecisions /></Suspense>
           )}
           {view === "settings" && (role === "owner" || role === "manager") && (
             <div className="operation-settings-workspace">
