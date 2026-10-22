@@ -47,12 +47,15 @@ describe("Cartão Clube Adoce em grupo", () => {
 });
 
 describe("catálogo administrável e ordenado", () => {
-  it("usa o preço comum da torta G e preserva a exceção da Torta de Pudim", () => {
-    expect(admin).toContain("whole_cake_price");
+  it("usa o preço comum da torta G de uma única fonte (commercial_products) e preserva a exceção da Torta de Pudim", () => {
     expect(admin).toContain('cakeGPrice');
+    expect(admin).toContain('from("commercial_products")');
+    expect(admin).not.toContain("whole_cake_price");
     expect(admin).toContain('isPriceOnRequest(draft.name)');
     expect(admin).toContain('"whole_cake"');
     expect(today).toContain("flavor.wholeCakePrice");
+    expect(today).toContain('from("commercial_products")');
+    expect(today).not.toContain("whole_cake_price");
     expect(today).not.toContain("pessoas por R$ 195,00");
     expect(today).not.toContain("fallbackWholeCakes");
     expect(migration).not.toContain("whole_cake_price = 195");

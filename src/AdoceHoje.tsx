@@ -548,11 +548,12 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         { data: promotionData },
         { data: weeklyMenuData },
         { data: weekBatchData },
+        { data: cakePriceData },
       ] = await Promise.all([
         supabase
           .from("flavors")
           .select(
-            "id,name,category,short_description,description,ingredients,image_path,base_price,whole_cake_price,whole_cake_image_path,whole_cake_available",
+            "id,name,category,short_description,description,ingredients,image_path,base_price,whole_cake_image_path,whole_cake_available",
           )
           .eq("active", true)
           .order("name"),
@@ -603,7 +604,9 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
               end_date: scheduleEnd,
             })
           : Promise.resolve({ data: null }),
+        supabase.from("commercial_products").select("base_price").eq("slug", "torta-g").maybeSingle(),
       ]);
+      const wholeCakePrice = cakePriceData?.base_price ? Number(cakePriceData.base_price) : undefined;
       if (catalog?.length) {
         const photos = (imageData || []) as FlavorPhoto[];
         setFlavors(
@@ -636,9 +639,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
               quantityReserved: status?.quantity_reserved || 0,
               availabilityBatches: itemBatches,
               photos: photos.filter((photo) => photo.flavor_id === item.id),
-              wholeCakePrice: item.whole_cake_price
-                ? Number(item.whole_cake_price)
-                : undefined,
+              wholeCakePrice: wholeCakePrice,
               wholeCakeImage: item.whole_cake_image_path || undefined,
               wholeCakeAvailable: Boolean(item.whole_cake_available),
             };

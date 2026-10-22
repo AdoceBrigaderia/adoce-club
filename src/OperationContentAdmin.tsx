@@ -40,7 +40,6 @@ type Flavor = {
   ingredients: string | null;
   base_price: number | null;
   image_path: string | null;
-  whole_cake_price: number | null;
   whole_cake_image_path: string | null;
   whole_cake_original_image_path: string | null;
   whole_cake_available: boolean;
@@ -308,7 +307,7 @@ export default function OperationContentAdmin({
       supabase
         .from("flavors")
         .select(
-          "id,name,short_name,category,short_description,description,ingredients,base_price,image_path,whole_cake_price,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
+          "id,name,short_name,category,short_description,description,ingredients,base_price,image_path,whole_cake_image_path,whole_cake_original_image_path,whole_cake_available,active,sort_order",
         )
         .order("name"),
       supabase
@@ -486,7 +485,6 @@ export default function OperationContentAdmin({
       description: draft.description.trim() || null,
       ingredients: draft.ingredients.trim() || null,
       base_price: consultationOnly ? null : Number(draft.base_price.replace(",", ".")) || null,
-      whole_cake_price: consultationOnly ? null : cakeGPrice,
       whole_cake_available: consultationOnly ? false : draft.whole_cake_available,
       active: draft.active,
     };
@@ -1040,9 +1038,9 @@ export default function OperationContentAdmin({
                   {flavor.short_description ||
                     "Descrição curta ainda não informada."}
                 </p>
-                {isPriceOnRequest(flavor.name) ? <p>Fatia e tortas: valor a consultar</p> : flavor.whole_cake_price && (
+                {isPriceOnRequest(flavor.name) ? <p>Fatia e tortas: valor a consultar</p> : flavor.whole_cake_available && cakeGPrice != null && (
                   <p>
-                    Torta G: {flavor.whole_cake_price.toLocaleString("pt-BR", {
+                    Torta G: {cakeGPrice.toLocaleString("pt-BR", {
                       style: "currency",
                       currency: "BRL",
                     })}
