@@ -26,6 +26,39 @@ Os arquivos Markdown listados em `docs/documentation-manifest.json` são a fonte
 - Mudanças em tabelas públicas do Supabase exigem RLS, permissões mínimas e validação das políticas.
 - Exclusões operacionais devem respeitar as regras de histórico e auditoria documentadas.
 
+## Fonte única de dados por produto — decisão do proprietário em 22/10/2026
+
+Todo dado que descreve um produto (preço, nome, foto, disponibilidade, descrição — qualquer informação sobre aquele
+produto) mora em **uma única tabela, uma única coluna**, nunca duplicado nem copiado para outro lugar do banco.
+
+- Proibido copiar um valor de uma tabela para outra "para facilitar a leitura". Se uma tela precisa do preço de
+  outra tabela, ela faz um `select`/join naquela tabela na hora de exibir — nunca grava uma cópia.
+- Proibido um mesmo fato de negócio (ex: "preço da Torta G") existir em duas colunas de duas tabelas diferentes,
+  mesmo que uma seja escrita a partir da outra no código da aplicação. Isso é exatamente o padrão que já causou um
+  incidente real em produção: `flavors.whole_cake_price` era gravado a cada salvamento como cópia de
+  `commercial_products.base_price` (slug `torta-g`) — quando um preço mudou só na tabela de origem, o Catálogo 2026
+  (`commercial_products`) e o Adoce Hoje (`flavors`) passaram a mostrar valores diferentes para o mesmo produto,
+  sem ninguém perceber até o cliente comparar as duas páginas. Corrigido em 22/10/2026
+  (`supabase/migrations/20261022130000_remove_duplicated_whole_cake_price_single_source.sql`): a coluna duplicada
+  foi removida do banco e o código passou a ler direto da fonte.
+- Antes de criar qualquer coluna nova que repita um dado que já existe em outra tabela, pare e pergunte: "esse valor
+  já existe em algum outro lugar do banco?" Se sim, a solução é um `select`/join na hora de ler, nunca uma coluna
+  nova com uma cópia.
+- Ao encontrar uma duplicação já existente no banco (coluna que é cópia de outra tabela), isso é sempre um defeito a
+  corrigir, mesmo que os valores estejam batendo no momento em que for encontrado — "bater agora" não significa
+  "está certo", significa apenas que a divergência ainda não aconteceu.
+- Toda tabela de produto (tortas, docinhos, fatias/sabores, etc.) precisa ter um identificador único e estável
+  (`id`/`slug`) e deve ser a única fonte consultada por qualquer tela, pública ou de Operação, para qualquer dado
+  daquele produto. Catálogos estáticos/impressos (ex: `CatalogPage2026.tsx`) são a exceção documentada: quando por
+  decisão de produto um catálogo precisar ser uma peça de marketing estática (não ligada ao banco), isso precisa
+  estar escrito explicitamente no código e na documentação do capítulo correspondente, com o processo manual de
+  atualização descrito — nunca por omissão.
+- O inventário completo de telas/funções do sistema, usado como base para a reformulação da marca, está em
+  `docs/25-inventario-funcional-completo.md` e na tela `/operacao/auditoria` (tabela `product_audit_items` no
+  Supabase). Qualquer IA que continuar este trabalho deve ler esse documento antes de propor remoção, fusão ou
+  redesenho de qualquer tela, e deve procurar ativamente por outras duplicações de fonte de dados (não só preço de
+  torta) seguindo o mesmo critério acima — essa varredura completa ainda não foi concluída.
+
 ## Regra de validação
 
 Não declare uma correção como concluída apenas porque o código compilou ou um teste isolado passou.
