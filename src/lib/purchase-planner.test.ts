@@ -1,5 +1,5 @@
 import { describe,it,expect } from "vitest";
-import {planDemand,purchaseReference, shoppingQuantity, compositionUsage, shoppingReceipt, predominantBatterColor, type PlanWorkspace} from "./purchase-planner";
+import {planDemand,purchaseReference, shoppingQuantity, compositionUsage, shoppingReceipt, itemEstimatedTotal, shoppingGrandTotal, predominantBatterColor, type PlanWorkspace} from "./purchase-planner";
 const item={id:"sugar",name:"Açúcar",internal_code:"INS1",item_kind:"ingredient",consumption_unit:"g",active:true,reference_quantity:1000,reference_unit:"g",reference_package_name:"pacote"};
 const workspace:PlanWorkspace={items:[item],recipes:[{id:"cake",name:"Torta",flavor_id:"flavor",active:true},{id:"mass",name:"Massa",flavor_id:null,active:true}],versions:[{id:"cake-v",recipe_id:"cake",version_number:1,size_code:"G",yield_quantity:13,yield_unit:"slice"},{id:"mass-v",recipe_id:"mass",version_number:1,size_code:null,yield_quantity:650,yield_unit:"g"}],components:[{recipe_version_id:"cake-v",component_kind:"recipe_version",item_id:null,child_recipe_version_id:"mass-v",quantity:1950,unit:"g"},{recipe_version_id:"cake-v",component_kind:"item",item_id:"sugar",child_recipe_version_id:null,quantity:50,unit:"g"},{recipe_version_id:"mass-v",component_kind:"item",item_id:"sugar",child_recipe_version_id:null,quantity:150,unit:"g"}]};
 describe("planejamento de compras",()=>{
@@ -66,6 +66,25 @@ describe("planejamento de compras",()=>{
   expect(reference.equivalent).toBe(5.4);expect(reference.perPackage).toBe(5000);expect(reference.packages).toBe(2);expect(reference.unitPrice).toBe(100);
  });
  it("aceita quantidade exatamente múltipla sem uma caixa extra",()=>expect(purchaseReference(item,1000,[{issued_on:"2026-09-26",created_at:"2026-09-26",lines:[{item_id:"sugar",brand_name:"",package_layers:[{name:"pacote",quantity:"1"}],normalized_quantity:1000,normalized_unit:"g",outer_unit_price:25,gross_total:25,net_total:25}]}]).packages).toBe(1));
+ it("calcula o valor estimado do item pelo preço por kg e soma o total geral da semana",()=>{
+  const invoices=[{issued_on:"2026-10-10",created_at:"2026-10-10",lines:[{item_id:"sugar",brand_name:"",package_layers:[{name:"caixa",quantity:"2"}],normalized_quantity:10,normalized_unit:"kg",outer_unit_price:100,gross_total:200,net_total:180}]}];
+  const row={item,...shoppingQuantity(item,2500,700,invoices)};
+  expect(itemEstimatedTotal(row)).toBeCloseTo(2.3*18,5);
+  expect(shoppingGrandTotal([row])).toBeCloseTo(2.3*18,5);
+ });
+ it("não soma itens sem preço cadastrado no total geral",()=>{
+  const row={item,...shoppingQuantity(item,2500,700,[])};
+  expect(itemEstimatedTotal(row)).toBeNull();
+  expect(shoppingGrandTotal([row])).toBe(0);
+ });
+ it("imprime o valor estimado por item e o total geral no recibo",()=>{
+  const invoices=[{issued_on:"2026-10-10",created_at:"2026-10-10",lines:[{item_id:"sugar",brand_name:"",package_layers:[{name:"caixa",quantity:"2"}],normalized_quantity:10,normalized_unit:"kg",outer_unit_price:100,gross_total:200,net_total:180}]}];
+  const row={item,...shoppingQuantity(item,2500,700,invoices)};
+  const text=shoppingReceipt(5,[row]).join("\n");
+  expect(text).toContain("Estimado: R$ 41,40");
+  expect(text).toContain("TOTAL ESTIMADO: R$ 41,40");
+  expect(shoppingReceipt(5,[row]).every(line=>line.length<=32)).toBe(true);
+ });
  it("calcula a massa predominante entre os três discos de bolo",()=>{
   const batterWorkspace:PlanWorkspace={
    items:[],

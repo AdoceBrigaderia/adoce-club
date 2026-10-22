@@ -111,6 +111,14 @@ export function displayShoppingQuantity(value:number,unit:string) {
  const amount=unit==="g"||unit==="ml"?value/1000:value;
  return `${amount.toLocaleString("pt-BR",{maximumFractionDigits:3})} ${unit==="g"?"kg":unit==="ml"?"l":unit==="unit"?"un":unit}`;
 }
+export function itemEstimatedTotal(row:{item:PlanItem}&ReturnType<typeof shoppingQuantity>):number|null {
+ if(!row.lastPrice||!row.buy)return row.lastPrice?0:null;
+ const buyInMeasure=row.item.consumption_unit==="g"||row.item.consumption_unit==="ml"?row.buy/1000:row.buy;
+ return buyInMeasure*row.lastPrice.perMeasure;
+}
+export function shoppingGrandTotal(rows:({item:PlanItem}&ReturnType<typeof shoppingQuantity>)[]):number {
+ return rows.reduce((sum,row)=>sum+(itemEstimatedTotal(row)||0),0);
+}
 export function shoppingReceipt(total:number,rows:({item:PlanItem}&ReturnType<typeof shoppingQuantity>)[]) {
  const lines=["LISTA DE COMPRAS",`Total: ${total} tortas`,"--------------------------------"];
  const money=(value:number)=>`R$ ${value.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
@@ -125,9 +133,12 @@ export function shoppingReceipt(total:number,rows:({item:PlanItem}&ReturnType<ty
    const plannedPackage=row.item.reference_quantity&&row.item.reference_unit?convertQuantity(row.item.reference_quantity,row.item.reference_unit,row.item.consumption_unit):price.packageQuantity;
    if(price.packageQuantity&&price.packageQuantity!==plannedPackage)lines.push(`Emb. última compra: ${displayShoppingQuantity(price.packageQuantity,row.item.consumption_unit)}`);
    if(price.perPackage==null)lines.push("Preço/embalagem: não cadastrado");
+   const itemTotal=itemEstimatedTotal(row);
+   if(itemTotal!=null)lines.push(`Estimado: ${money(itemTotal)}`);
   }else lines.push("Preço: não cadastrado");
   lines.push("--------------------------------");
  }
+ lines.push(`TOTAL ESTIMADO: ${money(shoppingGrandTotal(rows))}`,"--------------------------------");
  return lines.flatMap(line=>line.match(/.{1,32}/gu)||[""]);
 }
 export function compositionUsage(workspace:PlanWorkspace) {
