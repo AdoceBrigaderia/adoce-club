@@ -117,7 +117,6 @@ export default function CakeCatalogPage() {
           </div>
         ) : <p>Consulte os tamanhos com a Adoce.</p>}
         <p className="cake-flavors-note">Os valores acima valem para os sabores regulares. Para a Torta de Pudim, fatia e tamanhos P, M e G têm valor a consultar.</p>
-        <a className="cake-request-link" href="/encomendas/solicitar">Prefere registrar pelo site? Solicite uma pré-reserva</a>
       </section>
 
       <section className="cake-flavors" aria-labelledby="cake-flavors-title">

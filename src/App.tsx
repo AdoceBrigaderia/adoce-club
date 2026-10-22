@@ -17,8 +17,7 @@ const FeedbackPage = lazy(() => import("./FeedbackPage"));
 const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const AdoceHomeCatalog = lazy(() => import("./AdoceHomeCatalog"));
-const SliceMenuPage = lazy(() => import("./SliceMenuPage"));
-const FlavorCatalogRoute = lazy(() => import("./FlavorCatalogRoute"));
+const CatalogPage2026 = lazy(() => import("./CatalogPage2026"));
 const AccessApp = lazy(() => import("./AccessApp"));
 
 const loading = <main className="access-loading"><p>Abrindo a experiência Adoce...</p></main>;
@@ -42,8 +41,6 @@ export default function App(){
         ? "Adoce Operação"
           : routeHash.startsWith("#adoce-hoje")
             ? "Fatias · Adoce Brigaderia"
-          : routeHash.startsWith("#cardapio-fatias")
-            ? "Cardápio de Fatias · Adoce Brigaderia"
           : routeHash.startsWith("#cadastro")
             ? "Cadastro · Clube Adoce"
           : routeHash.startsWith("#docinhos")
@@ -62,6 +59,8 @@ export default function App(){
                   ? "Termos do Clube Adoce"
                 : routeHash.startsWith("#fale-com-a-adoce")
                   ? "Fale com a Adoce"
+                : routeHash.startsWith("#catalogo")
+                  ? "Catálogo de Tortas e Docinhos 2026 · Adoce Brigaderia"
                 : "Adoce Brigaderia | Fatias artesanais e Clube Adoce em Fortaleza";
       window.scrollTo({ top: 0, behavior: "instant" });
     };
@@ -81,11 +80,6 @@ export default function App(){
   const retiredDemoRoutes = ["#prototipo", "#membro-demo", "#operacao-demo", "#operacao-v2", "#restauracao-demo", "#home-antiga"];
   if (retiredDemoRoutes.includes(routeHash)) return <PublicSurface active="home"><AdoceHome /></PublicSurface>;
   if (tokenDoMagicLink(location.hash)) return <CustomerSurface><AccessApp surface="client"/></CustomerSurface>;
-  if (routeHash === "#sabores") {
-    window.location.replace("/sabores/");
-    return <>{loading}</>;
-  }
-  if ((location.pathname.replace(/\/+$/, "") || "/") === "/sabores") return <PublicSurface active="today"><FlavorCatalogRoute /></PublicSurface>;
   if(routeHash.startsWith("#campanha-") || routeHash.startsWith("#lancamento-")) return <PublicSurface active="home"><AdoceHome /></PublicSurface>;
   if (location.pathname === "/operacao" || location.pathname.startsWith("/operacao/") || host.startsWith("operacao.") || socialAuthReturn === "operacao" || routeHash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation"/></Suspense>;
   // Login por WhatsApp: a tela existe mas o envio de codigo ainda nao esta
@@ -95,16 +89,14 @@ export default function App(){
   if(routeHash.startsWith("#clube") || routeHash.startsWith("#indicar"))return <PublicSurface active="club"><AdoceClube/></PublicSurface>;
   if (host.startsWith("clube.") || socialAuthReturn === "clube" || routeHash.startsWith("#entrar") || routeHash.startsWith("#cadastro") || routeHash.startsWith("#minha-conta") || routeHash.startsWith("#acesso-direto")) return <CustomerSurface><AccessApp surface="client"/></CustomerSurface>;
   if(routeHash.startsWith("#adoce-hoje"))return <PublicSurface active="today"><AdoceHoje/></PublicSurface>;
-  if(routeHash.startsWith("#cardapio-fatias"))return <PublicSurface active="orders"><SliceMenuPage/></PublicSurface>;
   if(routeHash.startsWith("#carrinho"))return <PublicSurface active="cart"><AdoceHoje openCartOnLoad/></PublicSurface>;
-  if(routeHash.startsWith("#encomendas/solicitar"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="cakes" requestOnly/></PublicSurface>;
   if(routeHash.startsWith("#encomendas"))return <PublicSurface active="orders"><CakeCatalogPage/></PublicSurface>;
   if(routeHash.startsWith("#docinhos"))return <PublicSurface active="orders"><CommercialCatalog initialSegment="sweets"/></PublicSurface>;
-  if(routeHash.startsWith("#pede-junto") || routeHash.startsWith("#compra-em-grupo"))return <PublicSurface active="today"><AdoceHoje/></PublicSurface>;
   if(routeHash.startsWith("#politica-de-pedidos"))return <PublicSurface active="orders"><OrderPolicyPage/></PublicSurface>;
   if(routeHash.startsWith("#fale-com-a-adoce"))return <PublicSurface><FeedbackPage/></PublicSurface>;
   if(routeHash.startsWith("#termos"))return <PublicSurface><LegalPage kind="terms"/></PublicSurface>;
   if(routeHash.startsWith("#privacidade"))return <PublicSurface><LegalPage kind="privacy"/></PublicSurface>;
+  if(routeHash.startsWith("#catalogo"))return <PublicSurface active="orders"><CatalogPage2026/></PublicSurface>;
   if(import.meta.env.DEV && routeHash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
   return <PublicSurface active="home"><AdoceHomeCatalog/></PublicSurface>
 }

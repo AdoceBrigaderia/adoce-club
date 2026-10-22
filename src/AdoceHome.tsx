@@ -108,7 +108,7 @@ export default function AdoceHome() {
           <span>Adoce</span>
         </div>
         <div className="ah-acoes">
-          <a href="/cardapio-fatias" aria-label="Buscar sabores"><Search /></a>
+          <a href="/adoce-hoje" aria-label="Buscar sabores"><Search /></a>
           <a href="/entrar" aria-label="Minha conta"><User /></a>
         </div>
       </header>
@@ -135,7 +135,7 @@ export default function AdoceHome() {
           <div className="ah-esgotado">
             <p><strong>As fatias de hoje já acabaram</strong></p>
             <p>Amanhã tem mais, feito na hora.</p>
-            <a className="ah-secundario" href="/cardapio-fatias">Ver o cardápio da semana</a>
+            <a className="ah-secundario" href="/adoce-hoje">Ver o cardápio da semana</a>
           </div>
         ) : (
           <>
@@ -160,7 +160,7 @@ export default function AdoceHome() {
               ))}
             </ul>
             {sabores.length > visiveis.length && (
-              <a className="ah-ver-todos" href="/cardapio-fatias">
+              <a className="ah-ver-todos" href="/adoce-hoje">
                 Ver os {sabores.length} sabores de hoje
               </a>
             )}

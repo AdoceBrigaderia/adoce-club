@@ -6,7 +6,6 @@ import { useConnectedClubSummary } from "./ConnectedClubSummary";
 const publicLinks = [
   ["Início", "/"],
   ["Fatias", "/adoce-hoje"],
-  ["Cardápio de fatias", "/cardapio-fatias"],
   ["Tortas", "/encomendas"],
   ["Docinhos", "/docinhos"],
 ] as const;
