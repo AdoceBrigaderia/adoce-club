@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { requireSupabase } from "./lib/supabase";
 import { CostEngine, calculateSale, decimal, money as costMoney, type Component, type Ingredient, type Preparation, type Quantity, type Unit } from "./lib/cost-engine";
-import { moneyFromTypedDigits, referenceQuantityInBase, type BaseUnit } from "./lib/purchase-invoice";
+import { moneyFromTypedDigits, type BaseUnit } from "./lib/purchase-invoice";
 import CostPurchaseInvoice from "./CostPurchaseInvoice";
-import CostItemEditor from "./CostItemEditor";
-import CostRecordArchiveDialog from "./CostRecordArchiveDialog";
 import CostItemCreator from "./CostItemCreator";
 import CostShoppingPlanner from "./CostShoppingPlanner";
 import CostSheetTable from "./CostSheetTable";
@@ -13,29 +11,24 @@ import { cakeSections, selectedComponentQuantity, slicePackagingSection, packagi
 import { ingredientFromPurchase } from "./lib/cost-purchase-reference";
 import { requiredCakePreparations } from "./lib/cake-required-preparations";
 import { defaultIdealSalePrice, parseIdealSalePrice, idealSaleMargin, parsePaymentFeePercent, weightedPaymentFeePercent } from "./lib/ideal-sale-price";
-import { compactCostHeader, describeItemUsage, firstProblemRow } from "./table-and-sheet-ui";
+import { compactCostHeader, firstProblemRow } from "./table-and-sheet-ui";
+import { formatCurrency, formatQuantity, formatUnitCost } from "./lib/cost-format";
+import CostItemsPanel from "./CostItemsPanel";
 import "./operation-costs.css";
 
 type Flavor = { id: string; name: string; base_price: number | null; active: boolean };
-type Item = { id: string; internal_code: string; name: string; item_kind: string; purchase_unit: string; consumption_unit: string; reference_package_name: string | null; reference_quantity: number | null; reference_unit: BaseUnit | null; data_status: string; active: boolean; price: null | { purchase_price: number; purchased_quantity: number; purchase_unit: string; useful_quantity: number | null; data_status: string; effective_at: string } };
+export type Item = { id: string; internal_code: string; name: string; item_kind: string; purchase_unit: string; consumption_unit: string; reference_package_name: string | null; reference_quantity: number | null; reference_unit: BaseUnit | null; data_status: string; active: boolean; price: null | { purchase_price: number; purchased_quantity: number; purchase_unit: string; useful_quantity: number | null; data_status: string; effective_at: string } };
 type Recipe = { id: string; name: string; recipe_kind: "intermediate" | "final_product"; flavor_id: string | null; active: boolean; batter_color?: string | null };
 type Version = { id: string; recipe_id: string; version_number: number; version_status: string; yield_quantity: number | null; yield_unit: string | null; size_code: string | null; created_at: string; preparation_minutes?: number | null; cooking_minutes?: number | null; cooling_minutes?: number | null };
 type Row = { id: string; recipe_version_id: string; component_kind: "item" | "recipe_version"; item_id: string | null; child_recipe_version_id: string | null; quantity: number | null; unit: string; placement: string; sort_order: number };
-type Price = { id: string; item_id: string; purchase_price: number; purchased_quantity: number; purchase_unit: string; useful_quantity: number | null; data_status: string; effective_at: string; source_note: string };
+export type Price = { id: string; item_id: string; purchase_price: number; purchased_quantity: number; purchase_unit: string; useful_quantity: number | null; data_status: string; effective_at: string; source_note: string };
 type IdealPrice = { recipe_id: string; size_code: string; ideal_sale_price: number };
 type MarginSettings = { payment_fee_percent: number; reference_sales_total: number; reference_fees_total: number };
-type Workspace = { flavors: Flavor[]; items: Item[]; prices: Price[]; recipes: Recipe[]; versions: Version[]; components: Row[]; ideal_prices: IdealPrice[] };
+export type Workspace = { flavors: Flavor[]; items: Item[]; prices: Price[]; recipes: Recipe[]; versions: Version[]; components: Row[]; ideal_prices: IdealPrice[] };
 type PurchaseLine = { item_id: string; brand_name: string; package_layers: { name: string; quantity: string }[]; normalized_quantity: number; normalized_unit: string; outer_unit_price: number | null; gross_total: number; net_total: number; useful_quantity: number | null };
-type PurchaseInvoice = { id: string; issued_on: string; created_at: string; lines: PurchaseLine[] };
+export type PurchaseInvoice = { id: string; issued_on: string; created_at: string; lines: PurchaseLine[] };
 type DraftRow = { kind: "item" | "recipe_version"; id: string; quantity: string; unit: Unit; placement: string };
 const units: Unit[] = ["g", "kg", "ml", "l", "unit"];
-const costUnits: Unit[] = ["unit", "g", "ml"];
-const costKinds = ["ingredient", "packaging"] as const;
-const formatCurrency = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const formatQuantity = (value: number) => value.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
-const formatUnitCost = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: value < 0.01 ? 5 : 2, maximumFractionDigits: 6 });
-const formatDate = (date: string) => date.split("-").reverse().join("/");
-const referenceUnits = (base: string): BaseUnit[] => base === "g" ? ["g", "kg"] : base === "ml" ? ["ml", "l"] : base === "unit" ? ["unit"] : [];
 const newRow = (): DraftRow => ({ kind: "item", id: "", quantity: "", unit: "g", placement: "composition" });
 
 export default function OperationCosts() {
@@ -43,29 +36,14 @@ export default function OperationCosts() {
   const preserveComposer = useRef(false);
   const focusedModal = useRef(false);
   const [creatingItemAt, setCreatingItemAt] = useState<number | null>(null);
-  const [archivingItem, setArchivingItem] = useState<Item | null>(null);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [data, setData] = useState<Workspace | null>(null);
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
   const [tab, setTab] = useState<"invoices" | "items" | "preparations" | "sheets" | "shopping">("invoices");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
-  const [itemKind, setItemKind] = useState<(typeof costKinds)[number]>("ingredient");
-  const [itemName, setItemName] = useState("");
-  const [itemCode, setItemCode] = useState("");
-  const [itemUnit, setItemUnit] = useState<Unit | "">("");
-  const [itemReferenceName, setItemReferenceName] = useState("");
-  const [itemReferenceQuantity, setItemReferenceQuantity] = useState("");
-  const [itemReferenceUnit, setItemReferenceUnit] = useState<BaseUnit | "">("");
-  const [editingReference, setEditingReference] = useState<{ itemId: string; name: string; quantity: string; unit: BaseUnit | "" } | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState("");
-  const [itemSearch, setItemSearch] = useState("");
-  const [itemFilter, setItemFilter] = useState("all");
-  const [itemSort, setItemSort] = useState("name");
   const [recipeSort, setRecipeSort] = useState("pending");
   const usage = useMemo(() => data ? compositionUsage(data) : null, [data]);
-  const [itemDirection, setItemDirection] = useState("asc");
   const [recipeName, setRecipeName] = useState("");
   const [selectedRecipeId, setSelectedRecipeId] = useState("");
   const [flavorId, setFlavorId] = useState("");
@@ -220,6 +198,12 @@ export default function OperationCosts() {
   }, [data]);
 
 
+  const marginPercentFor = useCallback((recipe: Recipe, result: ReturnType<CostEngine["cake"]>) => {
+    if (marginFeePercent == null) return null;
+    const unitCost = result.status === "CALCULADA" && result.sliceMicros != null ? Number(result.sliceMicros) / 1000000 : null;
+    const price = data?.flavors.find(f => f.id === recipe.flavor_id)?.base_price ?? null;
+    return idealSaleMargin(unitCost, price ?? null, marginFeePercent)?.percent ?? null;
+  }, [data, marginFeePercent]);
   const sheetEntries = useMemo(() => {
     if (!data) return [];
     return data.recipes.filter(recipe => recipe.active && recipe.recipe_kind === "final_product").flatMap(recipe =>
@@ -229,8 +213,33 @@ export default function OperationCosts() {
         const result = engine.cake({ size: sizeCode as "P" | "M" | "G" | "GG", sections: [{ name: recipe.name, components: data.components.filter(c => c.recipe_version_id === version.id).map(toComponent) }] }, version.yield_unit === "slice" ? version.yield_quantity ?? 0 : 0);
         return [{recipe, sizeCode, version, result}];
       })
-    ).sort((a,b) => (recipeSort === "pending" ? Number(b.result.status !== "CALCULADA") - Number(a.result.status !== "CALCULADA") : 0) || (recipeSort === "desc" ? -1 : 1) * a.recipe.name.localeCompare(b.recipe.name,"pt-BR") || a.sizeCode.localeCompare(b.sizeCode));
-  }, [data, engine, latest, recipeSort]);
+    ).sort((a,b) => {
+      if (recipeSort === "margin") {
+        const marginA = marginPercentFor(a.recipe, a.result), marginB = marginPercentFor(b.recipe, b.result);
+        if (marginA == null && marginB == null) return a.recipe.name.localeCompare(b.recipe.name, "pt-BR") || a.sizeCode.localeCompare(b.sizeCode);
+        if (marginA == null) return 1;
+        if (marginB == null) return -1;
+        return marginB - marginA;
+      }
+      return (recipeSort === "pending" ? Number(b.result.status !== "CALCULADA") - Number(a.result.status !== "CALCULADA") : 0) || (recipeSort === "desc" ? -1 : 1) * a.recipe.name.localeCompare(b.recipe.name,"pt-BR") || a.sizeCode.localeCompare(b.sizeCode);
+    });
+  }, [data, engine, latest, recipeSort, marginPercentFor]);
+
+  const flavorEconomics = useMemo(() => {
+    const map: Record<string, { salePrice: number | null; unitCost: number | null; marginPercent: number | null; slicesPerCake: number | null }> = {};
+    for (const entry of sheetEntries) {
+      if (!entry.recipe.flavor_id || entry.result.status !== "CALCULADA" || entry.result.sliceMicros == null) continue;
+      const unitCost = Number(entry.result.sliceMicros) / 1_000_000;
+      const salePrice = data?.flavors.find(f => f.id === entry.recipe.flavor_id)?.base_price ?? null;
+      map[entry.recipe.flavor_id] = {
+        salePrice,
+        unitCost,
+        marginPercent: marginPercentFor(entry.recipe, entry.result),
+        slicesPerCake: entry.version.yield_unit === "slice" ? entry.version.yield_quantity ?? null : null,
+      };
+    }
+    return map;
+  }, [sheetEntries, data, marginPercentFor]);
 
   const calculated = useMemo(() => {
     if (tab !== "sheets" || !flavorId) return null;
@@ -256,50 +265,6 @@ export default function OperationCosts() {
     } catch (error) { return { status: "ERRO" as const, missing: [(error as Error).message] }; }
   }, [calculated, slicePrice, itemPackaging, orderPackaging, discount, feePercent, fixedFee, rewardCost]);
 
-  const saveItem = async (event: FormEvent) => {
-    event.preventDefault();
-    if ((itemReferenceName || itemReferenceQuantity || itemReferenceUnit) &&
-      (!itemReferenceName.trim() || !itemReferenceQuantity || !itemReferenceUnit ||
-        referenceQuantityInBase(itemReferenceQuantity, itemReferenceUnit, itemUnit as BaseUnit) == null))
-      return setNotice("Preencha nome, conteúdo e unidade compatível da embalagem de referência.");
-    setBusy(true);
-    const { error } = await requireSupabase().rpc("manager_create_costing_item_with_reference", {
-      next_internal_code: itemCode.trim().toUpperCase(), next_name: itemName.trim(),
-      next_item_kind: itemKind, next_consumption_unit: itemUnit,
-      next_package_name: itemReferenceName.trim() || null,
-      next_quantity: itemReferenceQuantity ? Number(itemReferenceQuantity) : null,
-      next_unit: itemReferenceUnit || null,
-    });
-    setBusy(false);
-    if (error) return setNotice(error.message);
-    setItemName(""); setItemCode(""); setItemUnit(""); setItemReferenceName(""); setItemReferenceQuantity(""); setItemReferenceUnit(""); await load(); setNotice("Item salvo. Registre e confira seu preço em uma nota de compra para calcular.");
-  };
-  const saveReference = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!editingReference) return;
-    const item = data?.items.find(candidate => candidate.id === editingReference.itemId);
-    if ((editingReference.name || editingReference.quantity || editingReference.unit) &&
-      (!editingReference.name.trim() || !editingReference.quantity || !editingReference.unit ||
-        !item || referenceQuantityInBase(editingReference.quantity, editingReference.unit, item.consumption_unit as BaseUnit) == null))
-      return setNotice("Preencha nome, conteúdo e unidade compatível da embalagem de referência.");
-    setBusy(true);
-    const { error } = await requireSupabase().rpc("manager_set_costing_item_reference", {
-      target_item_id: editingReference.itemId,
-      next_package_name: editingReference.name.trim() || null,
-      next_quantity: editingReference.quantity ? Number(editingReference.quantity) : null,
-      next_unit: editingReference.unit || null,
-    });
-    setBusy(false);
-    if (error) return setNotice(error.message);
-    setEditingReference(null); await load(); setNotice("Embalagem de referência atualizada para comparação visual.");
-  };
-  const validateItem = async (id: string) => {
-    setBusy(true);
-    const { error } = await requireSupabase().rpc("manager_validate_costing_item", { target_item_id: id });
-    setBusy(false);
-    if (error) return setNotice(error.message);
-    await load(); setNotice("Item conferido e validado.");
-  };
   const saveRecipe = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const startNew = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value === "save-and-new";
@@ -394,8 +359,6 @@ export default function OperationCosts() {
     </nav>
     {notice && <p className="adoce-cost-notice" role="status">{notice}</p>}
     {!data && <p>{busy ? "Carregando custos..." : "Não foi possível carregar custos."}</p>}
-    {archivingItem && <CostRecordArchiveDialog kind="item" id={archivingItem.id} name={archivingItem.name} restore={!archivingItem.active} linked={!!data?.components.some(component => component.item_id === archivingItem.id)} onClose={() => setArchivingItem(null)} onSaved={load} />}
-    {editingItemId && <CostItemEditor itemId={editingItemId} onClose={() => setEditingItemId(null)} onSaved={async () => { await load(); setNotice("Cadastro atualizado. Histórico de compras e preços preservado."); }} />}
     {creatingItemAt !== null && <CostItemCreator itemKind={rows[creatingItemAt]?.placement === slicePackagingSection ? "packaging" : "ingredient"} onClose={() => setCreatingItemAt(null)} onCreated={item => {
       preserveComposer.current = true;
       setData(current => current ? { ...current, items: [...current.items, item].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")) } : current);
@@ -403,74 +366,10 @@ export default function OperationCosts() {
       setNotice(`${item.name} cadastrado e selecionado. Informe a quantidade usada; os demais campos da preparação foram mantidos.`);
     }} />}
     {data && tab === "invoices" && <CostPurchaseInvoice items={data.items} onSaved={load} />}
-    {data && tab === "items" && <div className="adoce-cost-grid adoce-items-layout">
-      <form className="adoce-item-create" onSubmit={saveItem}><h4>Novo insumo ou embalagem</h4>
-        <label>Tipo<select value={itemKind} onChange={e => setItemKind(e.target.value as typeof itemKind)}><option value="ingredient">Insumo</option><option value="packaging">Embalagem</option></select></label>
-        <label>Nome<input required maxLength={160} value={itemName} onChange={e => setItemName(e.target.value)} /></label>
-        <label>Código interno<input required maxLength={40} pattern="[A-Za-z0-9][A-Za-z0-9._-]*" value={itemCode} onChange={e => setItemCode(e.target.value)} /></label>
-        <label>Calcular custo e uso por<select required value={itemUnit} onChange={e => { setItemUnit(e.target.value as Unit); setItemReferenceUnit(""); }}><option value="">Escolha a unidade</option>{costUnits.map(unit => <option key={unit} value={unit}>{unit === "unit" ? "unidade" : unit === "g" ? "grama" : "mililitro"}</option>)}</select></label>
-        <small>Esta unidade também será usada na ficha técnica. A nota converte caixas, pacotes, kg e litros para ela.</small>
-        <fieldset className="adoce-reference-fields"><legend>Embalagem de referência para comparar preços</legend>
-          <label>Nome da embalagem<input required={Boolean(itemReferenceName || itemReferenceQuantity || itemReferenceUnit)} maxLength={60} value={itemReferenceName} onChange={e => setItemReferenceName(e.target.value)} placeholder="Ex.: caixinha" /></label>
-          <div><label>Conteúdo padrão<input required={Boolean(itemReferenceName || itemReferenceQuantity || itemReferenceUnit)} type="number" min="0.000001" step="any" value={itemReferenceQuantity} onChange={e => setItemReferenceQuantity(e.target.value)} placeholder="Ex.: 395" /></label>
-          <label>Unidade<select required={Boolean(itemReferenceName || itemReferenceQuantity || itemReferenceUnit)} value={itemReferenceUnit} onChange={e => setItemReferenceUnit(e.target.value as BaseUnit)}><option value="">Escolha</option>{referenceUnits(itemUnit).map(unit => <option key={unit} value={unit}>{unit === "unit" ? "unidade" : unit}</option>)}</select></label></div>
-          <small>Opcional. Mostra o equivalente de preço da embalagem comum; não altera o custo da ficha.</small>
-        </fieldset>
-        <button type="submit" disabled={busy}>Cadastrar</button>
-      </form>
-      <div className="adoce-cost-list adoce-items-table-panel"><h4>Itens cadastrados</h4>
-        <div className="adoce-items-filters"><label>Buscar nome, código ou marca<input type="search" value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder="Digite para encontrar" /></label><label>Filtrar<select value={itemFilter} onChange={e => setItemFilter(e.target.value)}><option value="all">Itens ativos</option><option value="archived">Excluídos · restaurar</option><option value="ingredient">Insumos</option><option value="packaging">Embalagens</option><option value="validated">Com preço de compra</option><option value="pending">Cálculo incompleto</option><option value="no_purchase">Sem compra registrada</option><option value="unused">Sem uso em composição</option></select></label><label>Ordenar por<select value={itemSort} onChange={e => setItemSort(e.target.value)}><option value="name">Nome</option><option value="brand">Marca da última compra</option><option value="date">Data da última compra</option><option value="total">Total da última compra</option><option value="cost">Custo por unidade de uso</option><option value="unused">Sem uso primeiro</option></select></label><label>Ordem<select value={itemDirection} onChange={e => setItemDirection(e.target.value)}><option value="asc">Crescente</option><option value="desc">Decrescente</option></select></label></div>
-        <div className="adoce-items-table-scroll"><table className="adoce-items-table"><thead><tr>{["Produto", "Última compra", "Marca", "Média semanal", "Embalagem comprada", "Custo de uso", "Referência", "Composição das tortas", "Situação e ações"].map(title => <th key={title} scope="col">{title}</th>)}</tr></thead><tbody>{data.items.filter(item => {
-          const purchases = purchaseInvoices.flatMap(invoice => invoice.lines.filter(line => line.item_id === item.id));
-          const validated = !!ingredientFromPurchase(item).purchased;
-          const text = `${item.name} ${item.internal_code || ""} ${purchases.map(line => line.brand_name).join(" ")}`.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-          return (itemFilter === "archived" ? !item.active : item.active) && text.includes(itemSearch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim()) && (itemFilter === "all" || itemFilter === "archived" || itemFilter === item.item_kind || itemFilter === "validated" && validated || itemFilter === "pending" && !validated || itemFilter === "no_purchase" && !purchases.length || itemFilter === "unused" && !usage?.items[item.id]?.used);
-        }).sort((a, b) => {
-          const last = (id: string) => purchaseInvoices.flatMap(invoice => invoice.lines.filter(line => line.item_id === id).map(line => ({ ...line, date: invoice.issued_on }))).sort((x, y) => y.date.localeCompare(x.date))[0];
-          const x = last(a.id), y = last(b.id);
-          const compared = itemSort === "unused" ? Number(usage?.items[a.id]?.used || false) - Number(usage?.items[b.id]?.used || false) || a.name.localeCompare(b.name, "pt-BR") : itemSort === "total" ? Number(x?.net_total || 0) - Number(y?.net_total || 0) : itemSort === "cost" ? (x ? x.net_total / Number(x.useful_quantity || x.normalized_quantity) : 0) - (y ? y.net_total / Number(y.useful_quantity || y.normalized_quantity) : 0) : (itemSort === "brand" ? x?.brand_name || "" : itemSort === "date" ? x?.date || "" : a.name).localeCompare(itemSort === "brand" ? y?.brand_name || "" : itemSort === "date" ? y?.date || "" : b.name, "pt-BR", { numeric: true });
-          return (itemDirection === "desc" ? -1 : 1) * compared;
-        }).map(item => {
-        const reference = referenceQuantityInBase(item.reference_quantity, item.reference_unit, item.consumption_unit as BaseUnit);
-        const equivalent = reference && item.price ? item.price.purchase_price / Number(item.price.useful_quantity || item.price.purchased_quantity) * reference : null;
-        const purchases = purchaseInvoices.flatMap(invoice => invoice.lines.filter(line => line.item_id === item.id).map(line => ({ ...line, issued_on: invoice.issued_on, created_at: invoice.created_at })));
-        purchases.sort((a, b) => b.issued_on.localeCompare(a.issued_on) || b.created_at.localeCompare(a.created_at));
-        const last = purchases[0];
-        const firstDate = purchases.length ? purchases[purchases.length - 1].issued_on : null;
-        const firstDay = firstDate ? Date.parse(`${firstDate}T00:00:00Z`) : NaN;
-        const today = new Date();
-        const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-        const weeks = firstDate ? Math.max(1, Math.ceil((Math.max(0, Math.floor((todayUtc - firstDay) / 86400000)) + 1) / 7)) : 0;
-        const weeklyAverage = weeks ? purchases.reduce((sum, line) => sum + Number(line.normalized_quantity), 0) / weeks : null;
-        const packageCount = Number(last?.package_layers[0]?.quantity);
-        const packageName = last?.package_layers[0]?.name || "embalagem";
-        const packageQuantity = last && packageCount > 0 ? Number(last.normalized_quantity) / packageCount : null;
-        const packageCost = last && packageCount > 0 ? Number(last.net_total) / packageCount : null;
-        const unitCost = last ? Number(last.net_total) / Number(last.useful_quantity || last.normalized_quantity) : null;
-        return <tr key={item.id}><td data-label="Produto"><strong>{item.name}</strong><small>Código: {item.internal_code}</small><button type="button" disabled={busy} onClick={() => setEditingItemId(item.id)} aria-label={`Editar ${item.name}`}>Editar nome e cadastro</button><button type="button" disabled={busy} onClick={() => setArchivingItem(item)}>{item.active ? "Excluir produto" : "Restaurar produto"}</button><small>{item.item_kind === "packaging" ? "Embalagem" : "Insumo"}</small></td>
-          <td data-label="Última compra">{last ? <>{formatDate(last.issued_on)}<strong>{formatCurrency(Number(last.net_total))}</strong><small>{formatQuantity(Number(last.normalized_quantity))} {last.normalized_unit}</small></> : "Sem compra"}</td>
-          <td data-label="Marca">{last?.brand_name || "Não informada"}</td>
-          <td data-label="Média semanal">{weeklyAverage == null ? "Aguardando compra" : <>{formatQuantity(weeklyAverage)} {item.consumption_unit}/semana<small>Desde {formatDate(firstDate!)}</small></>}</td>
-          <td data-label="Embalagem comprada">{last && packageQuantity != null && packageCost != null ? <>{packageName} de {formatQuantity(packageQuantity)} {last.normalized_unit}<strong>{formatCurrency(packageCost)}</strong></> : "—"}</td>
-          <td data-label="Custo de uso">{unitCost == null ? "—" : `${formatUnitCost(unitCost)} / ${item.consumption_unit}`}</td>
-          <td data-label="Referência">{reference ? <span className="adoce-reference-result">{item.reference_package_name} de {item.reference_quantity} {item.reference_unit}: {equivalent == null ? "aguardando preço" : `${formatCurrency(equivalent)} (equivalente)`}</span> : "Sem referência"}</td>
-          <td data-label="Composição das tortas">{describeItemUsage(
-            { id: item.id, name: item.name, internalCode: item.internal_code },
-            usage?.items[item.id],
-            data.items.map(candidate => ({ item: { id: candidate.id, name: candidate.name, internalCode: candidate.internal_code }, usage: usage?.items[candidate.id] || { used: false, cakes: [] } })),
-          )}</td><td data-label="Situação e ações">
-
-          <small>{ingredientFromPurchase(item).purchased ? item.price?.useful_quantity == null ? "Custo pela quantidade comprada" : "Custo pela quantidade útil" : "Sem preço de compra disponível"}</small>
-          <button type="button" disabled={busy} onClick={() => setEditingReference({ itemId: item.id, name: item.reference_package_name || "", quantity: item.reference_quantity == null ? "" : String(item.reference_quantity), unit: item.reference_unit || "" })}>Editar embalagem de referência</button>
-          {editingReference?.itemId === item.id && <form onSubmit={saveReference} className="adoce-reference-editor"><label>Nome da embalagem<input maxLength={60} value={editingReference.name} onChange={e => setEditingReference({ ...editingReference, name: e.target.value })} placeholder="Ex.: caixinha" /></label><div><label>Conteúdo padrão<input type="number" min="0.000001" step="any" value={editingReference.quantity} onChange={e => setEditingReference({ ...editingReference, quantity: e.target.value })} /></label><label>Unidade<select value={editingReference.unit} onChange={e => setEditingReference({ ...editingReference, unit: e.target.value as BaseUnit })}><option value="">Escolha</option>{referenceUnits(item.consumption_unit).map(unit => <option key={unit} value={unit}>{unit === "unit" ? "unidade" : unit}</option>)}</select></label></div><button type="submit" disabled={busy}>Salvar referência</button><button type="button" onClick={() => setEditingReference(null)}>Cancelar</button></form>}
-          {item.active && item.data_status !== "validated" && item.price?.data_status === "validated" && <button type="button" disabled={busy} onClick={() => void validateItem(item.id)}>Validar item conferido</button>}
-        </td></tr>;
-      })}</tbody></table></div><p className="adoce-items-empty">Use a busca e os filtros para encontrar os itens. Se nenhum resultado aparecer, altere os filtros.</p></div>
-      <div className="adoce-cost-list"><h4>Histórico de preços</h4><label>Item<select value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)}><option value="">Selecione</option>{data.items.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{selectedItemId ? (data.prices || []).filter(price => price.item_id === selectedItemId).map(price => <div key={price.id}><strong>{new Date(price.effective_at).toLocaleDateString("pt-BR")}</strong><span>{formatCurrency(price.purchase_price)} / {price.purchased_quantity} {price.purchase_unit} · útil: {price.useful_quantity ?? "não informada"}</span><small>{price.useful_quantity == null ? "Base: quantidade comprada" : "Base: quantidade útil"} · {price.source_note}</small></div>) : <p>Selecione um item para consultar o histórico.</p>}</div>
-    </div>}
-    {data && <div style={{display:tab === "shopping" ? undefined : "none"}}><CostShoppingPlanner active={tab === "shopping"} workspace={data} invoices={purchaseInvoices} flavors={data.flavors} /></div>}
+    {data && tab === "items" && <CostItemsPanel data={data} usage={usage} purchaseInvoices={purchaseInvoices} busy={busy} setBusy={setBusy} setNotice={setNotice} load={load} />}
+    {data && <div style={{display:tab === "shopping" ? undefined : "none"}}><CostShoppingPlanner active={tab === "shopping"} workspace={data} invoices={purchaseInvoices} flavors={data.flavors} flavorEconomics={flavorEconomics} /></div>}
     {data && (tab === "preparations" || tab === "sheets") && <div className={`adoce-cost-grid ${tab === "sheets" ? "adoce-sheet-layout" : ""}`}>
-      {tab === "sheets" && <section className="adoce-preparation-list"><h4>Fichas cadastradas</h4><label>Ordenar<select value={recipeSort} onChange={e => setRecipeSort(e.target.value)}><option value="pending">Custos incompletos primeiro</option><option value="name">Nome A–Z</option><option value="desc">Nome Z–A</option></select></label><p>Margens após ingredientes, finalização, descartáveis por fatia e taxa média estimada de pagamento. Embalagens compartilhadas do pedido, gás e outros custos comerciais ainda não estão incluídos.</p><div className="adoce-margin-fee"><label>Taxa média estimada de pagamento (%)<input type="text" inputMode="decimal" value={marginFeeValue} disabled={!marginSettings || savingMarginFee} onChange={e => { setMarginFeeDraft(e.target.value); setMarginFeeNotice("Prévia recalculada. Salve para aplicar o percentual nas próximas consultas."); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void saveMarginFee(); } }} /></label><button type="button" disabled={!marginSettings || savingMarginFee} onClick={() => void saveMarginFee()}>{savingMarginFee ? "Salvando..." : "Salvar taxa"}</button>{marginSettings && <small>Estimativa inicial de 1%, baseada no relatório enviado: {formatCurrency(Number(marginSettings.reference_sales_total))} em vendas e {formatCurrency(Number(marginSettings.reference_fees_total))} em taxas, equivalentes a {weightedPaymentFeePercent([{ amount: Number(marginSettings.reference_sales_total), fee: Number(marginSettings.reference_fees_total) }])?.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}% do total. Ajuste quando a proporção dos pagamentos ou as tarifas mudar.</small>}{marginFeeNotice && <small role="status" aria-live="polite">{marginFeeNotice}</small>}</div><p>O preço de venda ideal é uma referência interna por fatia. Edite o valor e saia do campo ou pressione Enter para salvar. O preço de venda atual permanece no cadastro comercial.</p><CostSheetTable><table className="adoce-items-table adoce-cost-summary-table"><thead><tr>{["Sabor / tamanho", "Rendimento", "Ingredientes da torta", "Ingredientes por fatia", "Descartáveis por fatia", "Finalização por fatia", "Custo total por fatia", "Venda por fatia", "Margem após custos e taxas", "Preço de venda ideal", "Margem no preço ideal", "Situação"].map(title => <th key={title}>{compactCostHeader(title).split("\n").map((line, index) => <span key={line}>{line}{index === 0 && compactCostHeader(title).includes("\n") ? <br /> : null}</span>)}</th>)}</tr></thead><tbody>{sheetEntries.map(({recipe,sizeCode,version,result}) => {
+      {tab === "sheets" && <section className="adoce-preparation-list"><h4>Fichas cadastradas</h4><label>Ordenar<select value={recipeSort} onChange={e => setRecipeSort(e.target.value)}><option value="pending">Custos incompletos primeiro</option><option value="name">Nome A–Z</option><option value="desc">Nome Z–A</option><option value="margin">Margem após custos e taxas</option></select></label><p>Margens após ingredientes, finalização, descartáveis por fatia e taxa média estimada de pagamento. Embalagens compartilhadas do pedido, gás e outros custos comerciais ainda não estão incluídos.</p><div className="adoce-margin-fee"><label>Taxa média estimada de pagamento (%)<input type="text" inputMode="decimal" value={marginFeeValue} disabled={!marginSettings || savingMarginFee} onChange={e => { setMarginFeeDraft(e.target.value); setMarginFeeNotice("Prévia recalculada. Salve para aplicar o percentual nas próximas consultas."); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void saveMarginFee(); } }} /></label><button type="button" disabled={!marginSettings || savingMarginFee} onClick={() => void saveMarginFee()}>{savingMarginFee ? "Salvando..." : "Salvar taxa"}</button>{marginSettings && <small>Estimativa inicial de 1%, baseada no relatório enviado: {formatCurrency(Number(marginSettings.reference_sales_total))} em vendas e {formatCurrency(Number(marginSettings.reference_fees_total))} em taxas, equivalentes a {weightedPaymentFeePercent([{ amount: Number(marginSettings.reference_sales_total), fee: Number(marginSettings.reference_fees_total) }])?.toLocaleString("pt-BR", { maximumFractionDigits: 4 })}% do total. Ajuste quando a proporção dos pagamentos ou as tarifas mudar.</small>}{marginFeeNotice && <small role="status" aria-live="polite">{marginFeeNotice}</small>}</div><p>O preço de venda ideal é uma referência interna por fatia. Edite o valor e saia do campo ou pressione Enter para salvar. O preço de venda atual permanece no cadastro comercial.</p><CostSheetTable><table className="adoce-items-table adoce-cost-summary-table"><thead><tr>{["Sabor / tamanho", "Rendimento", "Ingredientes da torta", "Ingredientes por fatia", "Descartáveis por fatia", "Finalização por fatia", "Custo total por fatia", "Venda por fatia", "Margem após custos e taxas", "Preço de venda ideal", "Margem no preço ideal", "Situação"].map(title => <th key={title}>{compactCostHeader(title).split("\n").map((line, index) => <span key={line}>{line}{index === 0 && compactCostHeader(title).includes("\n") ? <br /> : null}</span>)}</th>)}</tr></thead><tbody>{sheetEntries.map(({recipe,sizeCode,version,result}) => {
         const flavor = data.flavors.find(candidate => candidate.id === recipe.flavor_id);
         const packagingRows = data.components.filter(component => component.recipe_version_id === version.id && component.placement === slicePackagingSection);
         const packagingCost = engine.components(packagingRows.map(toComponent));

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { planDemand, shoppingQuantity, shoppingReceipt, displayShoppingQuantity, predominantBatterColor, type PlanWorkspace, type PlanInvoice } from "./lib/purchase-planner";
+import { planDemand, shoppingQuantity, shoppingReceipt, displayShoppingQuantity, itemEstimatedTotal, shoppingGrandTotal, predominantBatterColor, type PlanWorkspace, type PlanInvoice } from "./lib/purchase-planner";
 import { useShoppingPlanSync } from "./lib/shopping-plan-sync";
 import { queuePrint } from "./lib/print-queue";
 import { requireSupabase } from "./lib/supabase";
@@ -9,8 +9,11 @@ import TabletShoppingList from "./TabletShoppingList";
 import PurchaseWeeklyReport from "./PurchaseWeeklyReport";
 import ThermalShoppingPreview, {brandedThermalLines} from "./ThermalShoppingPreview";
 import {weekStart,localShoppingDate,weekDates,shiftDate,shortShoppingDate,weeklyTotals,weeklyMenuReceipt,shoppingWeekOptions} from "./lib/shopping-week";
+import { formatCurrency } from "./lib/cost-format";
 
-export default function CostShoppingPlanner({ workspace, invoices, flavors, active = true }: { active?: boolean; workspace: PlanWorkspace; invoices: PlanInvoice[]; flavors: { id: string; name: string; active: boolean }[] }) {
+type FlavorEconomics = { salePrice: number | null; unitCost: number | null; marginPercent: number | null; slicesPerCake: number | null };
+
+export default function CostShoppingPlanner({ workspace, invoices, flavors, flavorEconomics = {}, active = true }: { active?: boolean; workspace: PlanWorkspace; invoices: PlanInvoice[]; flavors: { id: string; name: string; active: boolean }[]; flavorEconomics?: Record<string, FlavorEconomics> }) {
  const [week,setWeek]=useState(()=>weekStart(localShoppingDate()));
  const weeks=useMemo(()=>shoppingWeekOptions(week),[week]);
  const {plan,saved,ready,saving,dirty,status,change,save,discard,retry,copyPrevious}=useShoppingPlanSync(week);
@@ -52,6 +55,8 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
  const savedTotal=Object.values(savedCakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
  const items=workspace.items.filter(item=>item.active||extras[item.id]>0).sort((a,b)=>sort==="code"?a.internal_code.localeCompare(b.internal_code,"pt-BR",{numeric:true}):sort==="quantity"?(demand.quantities[b.id]||0)-(demand.quantities[a.id]||0):a.name.localeCompare(b.name,"pt-BR"));
  const rows=items.filter(item=>(demand.quantities[item.id]>0&&saved.selected[item.id]!==false)||saved.extras[item.id]>0).map(item=>({item,...shoppingQuantity(item,(saved.selected[item.id]!==false?demand.quantities[item.id]||0:0)+(saved.extras[item.id]||0),saved.stock[item.id]||0,invoices)}));
+ const grandTotal=shoppingGrandTotal(rows);
+ const purchasedTotal=Object.values(plan.procurement||{}).reduce((sum,state)=>sum+state.purchases.reduce((rowSum,entry)=>rowSum+entry.totalPrice,0),0);
  const lines=shoppingReceipt(savedTotal,rows);
  lines.splice(1,0,`Semana: ${shortShoppingDate(week)} a ${shortShoppingDate(shiftDate(week,6))}`);
  const menuLines=weeklyMenuReceipt(week,plan,flavors);
@@ -79,7 +84,7 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   <div className="adoce-items-filters"><label>Ordenar itens<select value={sort} onChange={event=>setSort(event.target.value)}><option value="name">Nome A–Z</option><option value="code">Código</option><option value="quantity">Maior quantidade necessária</option></select></label></div>
   <div className="adoce-shopping-week-controls"><label>Selecionar semana<select value={week} disabled={saving} onChange={event=>changeWeek(event.target.value)}>{[...new Set(weeks.map(option=>option.group))].map(group=><optgroup label={group} key={group}>{weeks.filter(option=>option.group===group).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>)}</select></label><button type="button" disabled={saving} onClick={()=>changeWeek(shiftDate(week,-7))}>Semana anterior</button><button type="button" disabled={saving} onClick={()=>changeWeek(weekStart(localShoppingDate()))}>Semana vigente</button><button type="button" disabled={saving} onClick={()=>changeWeek(shiftDate(week,7))}>Próxima semana</button><button type="button" disabled={!ready||saving||total>0} onClick={()=>void copyPrevious(shiftDate(week,-7))}>Copiar semana anterior como modelo</button></div>
   <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
-  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change} batterColors={batterColors}/>
+  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change} batterColors={batterColors} flavorEconomics={flavorEconomics}/>
   <div className="adoce-shopping-import">
    <h4>Sincronização com o site</h4>
    <p>Ao salvar o planejamento, o cardápio da semana no site é atualizado automaticamente: 13 fatias por torta planejada, disponíveis a partir das 18h. Remover um sabor com fatia já reservada ou com estoque sobrado do dia anterior pede confirmação.</p>
@@ -96,12 +101,13 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, acti
   <h4>Itens extras</h4><label>Adicionar item extra<select disabled={!ready} value={extraId} onChange={event=>setExtraId(event.target.value)}><option value="">Escolha um item no menu</option>{items.filter(item=>item.active).map(item=><option key={item.id} value={item.id}>{item.name} · {item.internal_code}</option>)}</select></label>
   {items.filter(item=>item.id===extraId||extras[item.id]>0).map(item=><div className="adoce-shopping-extra" key={item.id}><strong>{item.name}{!item.active && " · produto excluído"}</strong><label>Quantidade extra ({item.consumption_unit==="unit"?"unidades":item.consumption_unit})<input disabled={!ready} type="number" min="0" step="any" inputMode="decimal" value={extras[item.id]||""} placeholder="0" onChange={event=>{const value=Number(event.target.value);if(Number.isFinite(value)&&value>=0)change("extras",item.id,value);}} /></label>{!demand.quantities[item.id]&&stockField(item.id,item.consumption_unit)}<button disabled={!ready} type="button" onClick={()=>{change("extras",item.id,0);setExtraId("");}}>Remover extra</button></div>)}
   <h4>Relatório de compras · {savedTotal} tortas</h4>{dirty&&<p className="adoce-cost-pending" role="status">Calculado a partir do último planejamento salvo, não do rascunho atual.</p>}<p>Pacotes completos arredondados para cima, conforme a embalagem de referência cadastrada; na ausência, usa a última compra.</p>
+  <p className="adoce-shopping-grand-total" role="status"><strong>Valor total estimado: {formatCurrency(grandTotal)}</strong><small>Pelo preço da última compra de cada item; itens sem preço cadastrado não entram na soma.</small></p>
   <button type="button" disabled={!ready||printing||!rows.length||combined.errors.length>0||lines.length>=600} onClick={()=>void print()}>{printing?"Enviando…":"Imprimir lista de compras"}</button>
   {lines.length>=600 && <p role="alert">A lista excede o limite de impressão. Reduza a seleção para imprimir.</p>}
   {printNotice&&<p role="status">{printNotice}</p>}
-  <div className="adoce-items-table-scroll"><table className="adoce-items-table"><thead><tr>{["Produto","Consumo previsto","Margem 20%","Necessidade ajustada","Estoque aproveitável","Comprar","Pacotes"].map(title=><th key={title}>{title}</th>)}</tr></thead><tbody>{rows.map(row=><tr key={row.item.id}><td data-label="Produto">{row.item.name}</td><td data-label="Consumo previsto">{displayShoppingQuantity(row.required,row.item.consumption_unit)}</td><td data-label="Margem 20%">{displayShoppingQuantity(row.safetyMargin,row.item.consumption_unit)}</td><td data-label="Necessidade ajustada">{displayShoppingQuantity(row.adjustedRequired,row.item.consumption_unit)}</td><td data-label="Estoque aproveitável">{displayShoppingQuantity(row.stock,row.item.consumption_unit)}</td><td data-label="Comprar"><strong>{displayShoppingQuantity(row.buy,row.item.consumption_unit)}</strong></td><td data-label="Pacotes">{row.packages==null?"Embalagem não cadastrada":`${row.packages} ${row.packageName}`}</td></tr>)}</tbody></table></div>
+  <div className="adoce-items-table-scroll"><table className="adoce-items-table"><thead><tr>{["Produto","Consumo previsto","Margem 20%","Necessidade ajustada","Estoque aproveitável","Comprar","Pacotes","Valor estimado"].map(title=><th key={title}>{title}</th>)}</tr></thead><tbody>{rows.map(row=>{const itemTotal=itemEstimatedTotal(row);return <tr key={row.item.id}><td data-label="Produto">{row.item.name}</td><td data-label="Consumo previsto">{displayShoppingQuantity(row.required,row.item.consumption_unit)}</td><td data-label="Margem 20%">{displayShoppingQuantity(row.safetyMargin,row.item.consumption_unit)}</td><td data-label="Necessidade ajustada">{displayShoppingQuantity(row.adjustedRequired,row.item.consumption_unit)}</td><td data-label="Estoque aproveitável">{displayShoppingQuantity(row.stock,row.item.consumption_unit)}</td><td data-label="Comprar"><strong>{displayShoppingQuantity(row.buy,row.item.consumption_unit)}</strong></td><td data-label="Pacotes">{row.packages==null?"Embalagem não cadastrada":`${row.packages} ${row.packageName}`}</td><td data-label="Valor estimado">{itemTotal==null?"Preço não cadastrado":formatCurrency(itemTotal)}</td></tr>;})}</tbody></table></div>
   <details><summary>Prévia da lista térmica</summary><ThermalShoppingPreview lines={lines}/></details>
   </>}
-  {active && createPortal(<div className="adoce-shopping-total" role="status" aria-live="polite"><strong>{total}</strong><span>tortas na semana</span></div>,document.body)}
+  {active && createPortal(<div className="adoce-shopping-total" role="status" aria-live="polite">{tabletMode?<><strong>{formatCurrency(purchasedTotal)}</strong><span>comprado até agora</span></>:<><strong>{total}</strong><span>tortas na semana</span></>}</div>,document.body)}
  </section>;
 }
