@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const header = readFileSync(new URL("./PublicHeader.tsx", import.meta.url), "utf8");
-const landing = readFileSync(new URL("./MarketingLanding.tsx", import.meta.url), "utf8");
 const mobileNav = readFileSync(new URL("./PublicMobileNav.tsx", import.meta.url), "utf8");
 const app = readFileSync(new URL("./App.tsx", import.meta.url), "utf8");
 const orderPolicy = readFileSync(new URL("./OrderPolicyPage.tsx", import.meta.url), "utf8");
@@ -35,14 +34,6 @@ describe("navegação pública Mobile First", () => {
     expect(orderPolicy).toContain("Quinta a sábado");
     expect(orderPolicy).toContain("Domingos");
     expect(orderPolicy).toContain("/site/politica-de-pedidos.jpeg");
-  });
-
-  it("leva os produtos reais e a ação principal para o início da experiência", () => {
-    expect(landing).toContain('className="home-reference-card slices" href="/adoce-hoje"');
-    expect(landing).toContain('className="home-reference-card cakes" href="/encomendas"');
-    expect(landing).toContain("/adoce-hoje/chocolatudo.webp");
-    expect(landing).toContain("Fazer meu pedido");
-    expect(landing).toContain("Ver fatias disponíveis");
   });
 });
 

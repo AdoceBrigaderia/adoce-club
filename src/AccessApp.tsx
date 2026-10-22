@@ -145,7 +145,6 @@ const OperationNotificationPreview = lazy(() =>
 );
 const DirectorPlanChecklist = lazy(() => import("./DirectorPlanChecklist"));
 const StaffProfileAdmin = lazy(() => import("./StaffProfileAdmin"));
-const WhatsAppAuthPilot = lazy(() => import("./WhatsAppAuthPilot"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";
 const passkeysEnabled = import.meta.env.VITE_ENABLE_PASSKEYS === "true";

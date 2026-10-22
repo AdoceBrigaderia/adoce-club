@@ -7,15 +7,15 @@ const source = (path: string) =>
 describe("Clube conectado na página inicial", () => {
   it("lê a sessão persistida e mostra o saldo real do cliente", () => {
     const summary = source("./ConnectedClubSummary.tsx");
-    const landing = source("./MarketingLanding.tsx");
+    const home = source("./AdoceHomeCatalog.tsx");
     const header = source("./PublicHeader.tsx");
 
     expect(summary).toContain("supabase.auth.getSession()");
     expect(summary).toContain("supabase.auth.onAuthStateChange");
     expect(summary).toContain('.from("loyalty_tracks")');
     expect(summary).toContain("Meus carimbos");
-    expect(landing).not.toContain("ConnectedHomeClubCard");
-    expect(landing).not.toContain("<PublicHeader");
+    expect(home).not.toContain("ConnectedHomeClubCard");
+    expect(home).not.toContain("<PublicHeader");
     expect(header).toContain("public-member-greeting");
     expect(header).toContain("progress} de 14 carimbos");
     expect(header).not.toContain('view=qr');

@@ -165,13 +165,4 @@ describe("fundação do login por WhatsApp", () => {
     expect(migration).not.toContain("code_hash");
     expect(migration).not.toContain("phone_e164");
   });
-
-  it("mantem a tela do piloto subordinada a flag e aos papeis internos", () => {
-    const access = read("./AccessApp.tsx");
-    const pilot = read("./WhatsAppAuthPilot.tsx");
-    expect(access).toContain("VITE_WHATSAPP_AUTH_PILOT_ENABLED");
-    expect(access).toContain('(role === "owner" || role === "manager")');
-    expect(pilot).toContain("Authorization: `Bearer ${accessToken}`");
-    expect(pilot).not.toContain("setSession");
-  });
 });
