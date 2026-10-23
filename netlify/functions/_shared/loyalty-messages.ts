@@ -67,7 +67,7 @@ async function recordConversation(admin: SupabaseClient, phone: string, sid: str
 }
 
 export async function sendStampMessage(admin: SupabaseClient, opts: {
-  fullName: string; phone: string; stampsAdded: number; progress: number; newRewards: number; actorUserId: string;
+  fullName: string; phone: string; stampsAdded: number; progress: number; newRewards: number; actorUserId: string; purchaseReference?: string;
 }): Promise<MessageResult> {
   const setup = twilioSetup();
   if (!setup || !env("AUTH_RATE_LIMIT_HMAC_SECRET")) return { ok: false, error: "Envio do WhatsApp não configurado." };
@@ -75,7 +75,19 @@ export async function sendStampMessage(admin: SupabaseClient, opts: {
   const body = buildStampMessage(opts.fullName, opts.stampsAdded, opts.progress, opts.newRewards);
   try {
     const withinWindow = await hasRecentInboundMessage(setup.client, { from: setup.from, to });
-    const template = buildStampTemplate(opts.fullName, opts.stampsAdded, opts.progress, opts.newRewards);
+    let template = buildStampTemplate(opts.fullName, opts.stampsAdded, opts.progress, opts.newRewards);
+    const purchaseSid = env("TWILIO_LOYALTY_PURCHASE_CONTENT_SID") || "";
+    if (!withinWindow && opts.newRewards === 0 && opts.purchaseReference && purchaseSid && await templateApproved(setup.client, purchaseSid)) {
+      template = {
+        contentSid: purchaseSid,
+        contentVariables: {
+          "1": firstName(opts.fullName).slice(0, 60),
+          "2": stampText(opts.stampsAdded),
+          "3": compactTemplateValue(opts.purchaseReference, 60),
+          "4": String(opts.progress),
+        },
+      };
+    }
     if (!withinWindow && !template.contentSid) return { ok: false, error: "Carimbos lançados, mas a mensagem exige modelo aprovado da Twilio." };
     const sent = await setup.client.messages.create({
       from: setup.from, to,
@@ -99,9 +111,7 @@ async function templateApproved(client: ReturnType<typeof twilio>, contentSid: s
   }
 }
 
-// Boas-vindas com explicação do programa e link para criar a senha.
-// Ordem de preferência: modelo aprovado de boas-vindas → texto livre (janela de
-// 24 h) → modelo antigo só com o link de acesso.
+// Boas-vindas com link de acesso ao cadastro.
 export async function sendClubWelcome(admin: SupabaseClient, opts: {
   fullName: string; phone: string; stamps: number; access: AccessLink; actorUserId: string;
 }): Promise<MessageResult> {
@@ -111,6 +121,25 @@ export async function sendClubWelcome(admin: SupabaseClient, opts: {
   const body = buildWelcomeMessage(opts.fullName, opts.stamps, opts.access.loginUrl);
   const configuredWelcomeSid = env("TWILIO_CLUB_WELCOME_CONTENT_SID") || "";
   try {
+    if (await hasRecentInboundMessage(setup.client, { from: setup.from, to })) {
+      const sent = await setup.client.messages.create({ from: setup.from, to, body });
+      const stored = buildWelcomeMessage(opts.fullName, opts.stamps, "[link pessoal de acesso]");
+      await recordConversation(admin, opts.phone, sent.sid, stored, opts.actorUserId).catch(() => undefined);
+      return { ok: true };
+    }
+    // O modelo de acesso, quando habilitado e aprovado, comunica apenas a
+    // criação da conta. A explicação promocional permanece no fluxo existente.
+    if (env("TWILIO_ACCESS_LINK_ENABLED") === "true") {
+      const accessSid = env("TWILIO_ACCESS_LINK_CONTENT_SID") || "";
+      if (accessSid && await templateApproved(setup.client, accessSid)) {
+        const delivery = await deliverAccessLink(opts.fullName, opts.phone, opts.access);
+        if (delivery.status === "accepted") {
+          const stored = `Olá, ${firstName(opts.fullName)}! Seu acesso ao Clube Adoce está pronto. [link pessoal de acesso]`;
+          if (delivery.messageSid) await recordConversation(admin, opts.phone, delivery.messageSid, stored, opts.actorUserId).catch(() => undefined);
+          return { ok: true };
+        }
+      }
+    }
     // A Twilio aceita o envio de modelo ainda não aprovado e só falha depois;
     // por isso o modelo de boas-vindas só é usado quando a Meta já aprovou.
     const welcomeSid = configuredWelcomeSid && await templateApproved(setup.client, configuredWelcomeSid) ? configuredWelcomeSid : "";
@@ -124,9 +153,6 @@ export async function sendClubWelcome(admin: SupabaseClient, opts: {
           "2": opts.access.querySuffix,
         }),
       });
-      sid = sent.sid;
-    } else if (await hasRecentInboundMessage(setup.client, { from: setup.from, to })) {
-      const sent = await setup.client.messages.create({ from: setup.from, to, body });
       sid = sent.sid;
     } else {
       const delivery = await deliverAccessLink(opts.fullName, opts.phone, opts.access);

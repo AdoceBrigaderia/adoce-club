@@ -115,6 +115,7 @@ export default async (request: Request) => {
   if (slices > 0) {
     const stamps = await sendStampMessage(admin, {
       fullName: customer.fullName, phone: customer.phone, stampsAdded: slices, progress, newRewards, actorUserId,
+      purchaseReference: order.order_number ? `nº ${order.order_number}` : undefined,
     });
     stampsMessageSent = stamps.ok;
     if (!stamps.ok) warnings.push(stamps.error);
