@@ -1,53 +1,34 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CakeSlice,
   Check,
-  Clock3,
   Heart,
   Images,
   MessageCircle,
-  PackageCheck,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import {
-  businessDateAfter,
   commercialProductPriceLabel,
   commercialWhatsAppMessage,
-  CommercialRequestField,
   CommercialProduct,
   CommercialProductOption,
-  PreorderBusinessHour,
-  PreorderBusinessHourException,
   CommercialSegment,
-  formatCommercialDate,
-  leadTimeMessage,
   money,
-  normalizeBrazilianPhone,
   segmentLabels,
-  ServiceRequestResult,
-  validateCommercialRequest,
 } from "./commercial";
 import CommercialMediaCarousel from "./CommercialMediaCarousel";
 import type { CommercialMediaItem } from "./commercial-media";
 import "./commercial-catalog.css";
 import "./commercial-product-options.css";
 import "./commercial-editorial.css";
-import "./commercial-validation.css";
 import "./commercial-gallery.css";
 import "./commercial-reference-2026.css";
 import { trackPublicEvent } from "./analytics";
 import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 import PublicCatalogNav from "./PublicCatalogNav";
 import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
-import {
-  ajustarParaMultiplo,
-  descreverComposicao,
-  ehQuantidadeValida,
-  MULTIPLO,
-} from "./pacotes-de-docinhos";
 
 type SegmentMedia = {
   segment: CommercialSegment;
@@ -166,53 +147,27 @@ const experienceCopy: Record<CommercialSegment, ExperienceCopy> = {
   },
 };
 
-export default function CommercialCatalog({ initialSegment = "cakes", requestOnly = false }: { initialSegment?: CommercialSegment; requestOnly?: boolean }) {
+export default function CommercialCatalog({ initialSegment = "cakes" }: { initialSegment?: CommercialSegment }) {
   const orderWhatsAppNumber = useOrderWhatsAppNumber();
   const [products, setProducts] = useState<CommercialProduct[]>([]);
   const [viewedImage, setViewedImage] = useState<ProductImage | null>(null);
   const [segmentMedia, setSegmentMedia] = useState<SegmentMedia[]>([]);
   const [galleryMedia, setGalleryMedia] = useState<CommercialMediaItem[]>([]);
-  const [preorderHours, setPreorderHours] = useState<PreorderBusinessHour[]>([]);
-  const [preorderExceptions, setPreorderExceptions] = useState<PreorderBusinessHourException[]>([]);
   const [sizeGalleryOpen, setSizeGalleryOpen] = useState(false);
   const [segment, setSegment] = useState<CommercialSegment>(initialSegment);
-  const [selected, setSelected] = useState<CommercialProduct | null>(null);
   const [loading, setLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [catalogReload, setCatalogReload] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<CommercialRequestField, string>>>({});
-  const [result, setResult] = useState<ServiceRequestResult | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    quantity: 1,
-    date: "",
-    time: "10:00",
-    location: "",
-    preferences: "",
-    notes: "",
-    privacy: false,
-  });
-  const minimumDate = selected ? businessDateAfter(new Date(), selected.lead_business_days) : "";
-  const clearFieldError = (field: CommercialRequestField) => {
-    setFieldErrors((current) => ({ ...current, [field]: undefined }));
-    setNotice("");
-  };
 
   useEffect(() => {
     void (async () => {
       setLoading(true);
       setCatalogError("");
-      const [productResult, optionResult, mediaResult, galleryResult, hoursResult, exceptionsResult] = await Promise.all([
+      const [productResult, optionResult, mediaResult, galleryResult] = await Promise.all([
         requireSupabase().from("commercial_products").select("*").eq("active", true).eq("published", true).order("sort_order"),
         requireSupabase().from("commercial_product_options").select("*").eq("active", true).order("sort_order"),
         requireSupabase().from("commercial_segment_media").select("segment,image_url,alt_text"),
         requireSupabase().from("commercial_media_items").select("*").eq("active", true).order("sort_order"),
-        requireSupabase().from("business_hours").select("channel_slug,weekday,opens_at,closes_at,active").eq("channel_slug", "preorders"),
-        requireSupabase().from("business_hour_exceptions").select("channel_slug,service_date,closed,opens_at,closes_at").eq("channel_slug", "preorders").gte("service_date", new Date().toISOString().slice(0, 10)),
       ]);
       if (productResult.error || optionResult.error) setCatalogError("Não conseguimos abrir as opções agora. Sua comemoração continua importante para a gente — tente novamente ou fale com a Adoce pelo WhatsApp.");
       else {
@@ -223,8 +178,6 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
         })));
         if (!mediaResult.error) setSegmentMedia((mediaResult.data || []) as SegmentMedia[]);
         if (!galleryResult.error) setGalleryMedia((galleryResult.data || []) as CommercialMediaItem[]);
-        if (!hoursResult.error) setPreorderHours((hoursResult.data || []) as PreorderBusinessHour[]);
-        if (!exceptionsResult.error) setPreorderExceptions((exceptionsResult.data || []) as PreorderBusinessHourException[]);
       }
       setLoading(false);
     })();
@@ -234,9 +187,6 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
     setSegment(initialSegment);
     setViewedImage(null);
     setSizeGalleryOpen(false);
-    setSelected(null);
-    setNotice("");
-    setResult(null);
   }, [initialSegment]);
 
   const visibleProducts = useMemo(
@@ -267,96 +217,12 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
       };
     })
     .filter((group) => group.media.length), [visibleProducts, galleryMedia]);
-  const openRequest = (product: CommercialProduct) => {
+  const contactAbout = (product: CommercialProduct) => {
     trackPublicEvent("product_view", { product_id: product.id, product_slug: product.slug, segment: product.segment });
-    trackPublicEvent("prebook_start", { product_id: product.id, product_slug: product.slug, segment: product.segment });
-    setSelected(product);
-    setResult(null);
-    setNotice("");
-    setFieldErrors({});
-    setForm((current) => ({
-      ...current,
-      quantity: product.segment === "sweets"
-        ? ajustarParaMultiplo(Math.max(MULTIPLO, product.minimum_quantity))
-        : product.minimum_quantity,
-      date: businessDateAfter(new Date(), product.lead_business_days),
-      preferences: "",
-      notes: "",
-    }));
-    requestAnimationFrame(() =>
-      document.getElementById("solicitar-encomenda")?.scrollIntoView({ behavior: "smooth" }),
-    );
+    trackPublicEvent("whatsapp_click", { product_id: product.id, product_slug: product.slug, segment: product.segment });
   };
+  const whatsappUrlFor = (product: CommercialProduct) => orderWhatsAppUrl(orderWhatsAppNumber, commercialWhatsAppMessage(product));
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!selected) return;
-    const errors = validateCommercialRequest(
-      form,
-      selected.minimum_quantity,
-      minimumDate,
-      selected.lead_business_days,
-      { hours: preorderHours, exceptions: preorderExceptions },
-    );
-    if (selected.segment === "sweets" && !ehQuantidadeValida(form.quantity)) {
-      errors.quantity = "Docinhos são vendidos somente em múltiplos de 25 unidades.";
-    }
-    const firstInvalidField = (Object.keys(errors) as CommercialRequestField[])[0];
-    if (firstInvalidField) {
-      trackPublicEvent("prebook_error", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment, result: "validation" });
-      setFieldErrors(errors);
-      setNotice("Falta só um pequeno ajuste. Confira o campo indicado para enviarmos sua solicitação.");
-      requestAnimationFrame(() => document.getElementById(`commercial-${firstInvalidField}`)?.focus());
-      return;
-    }
-    setFieldErrors({});
-    const phone = normalizeBrazilianPhone(form.phone);
-    const start = new Date(`${form.date}T${form.time}:00-03:00`);
-    const durationHours = 2;
-    const end = new Date(start.getTime() + durationHours * 60 * 60 * 1000);
-    setSubmitting(true);
-    setNotice("");
-    trackPublicEvent("prebook_submit", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment });
-    const { data, error } = await requireSupabase().rpc("submit_service_request", {
-      requested_product_id: selected.id,
-      requested_customer_name: form.name.trim(),
-      requested_customer_phone: phone,
-      requested_customer_email: form.email.trim() || null,
-      requested_quantity: form.quantity,
-      requested_start: start.toISOString(),
-      requested_end: end.toISOString(),
-      requested_location: form.location.trim(),
-      requested_selections: { preferences: form.preferences.trim() },
-      requested_notes: form.notes.trim(),
-    });
-    setSubmitting(false);
-    if (error) {
-      trackPublicEvent("prebook_error", { product_id: selected.id, product_slug: selected.slug, segment: selected.segment, result: "database" });
-      const friendlyError = /antecedência mínima/i.test(error.message)
-        ? leadTimeMessage(selected.lead_business_days, minimumDate)
-        : /data ou horário inválido/i.test(error.message)
-          ? "Não conseguimos reconhecer essa data ou esse horário. Confira os campos e tente novamente."
-          : /quantidade mínima/i.test(error.message)
-            ? `Esta opção começa com ${selected.minimum_quantity} unidade(s).`
-            : "Não conseguimos registrar a pré-reserva agora. Tente novamente em instantes ou fale com a Adoce pelo WhatsApp para não perder sua data.";
-      if (/antecedência mínima/i.test(error.message)) setFieldErrors({ date: friendlyError });
-      setNotice(friendlyError);
-      return;
-    }
-    const nextResult = data as ServiceRequestResult;
-    setResult(nextResult);
-    trackPublicEvent(nextResult.accepted ? "prebook_success" : "prebook_error", {
-      product_id: selected.id,
-      product_slug: selected.slug,
-      segment: selected.segment,
-      result: nextResult.accepted ? "accepted" : "rejected",
-    });
-    if (!nextResult.accepted) setNotice(nextResult.message);
-  };
-
-  const whatsappUrl = selected
-    ? orderWhatsAppUrl(orderWhatsAppNumber, commercialWhatsAppMessage(selected, result?.request_number))
-    : "";
   const presentation = catalogPresentation[segment];
   const viewerImages = displayedProducts.flatMap((product) => {
     const media = productGallery(product.id)
@@ -403,28 +269,8 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
   }));
 
   return (
-    <main className={`commercial-page${requestOnly ? " commercial-request-only" : ""}`}>
+    <main className="commercial-page">
 
-      {requestOnly ? (
-        <section className="commercial-request-picker" aria-labelledby="commercial-request-picker-title">
-          <a href="/encomendas">← Voltar às tortas</a>
-          <h1 id="commercial-request-picker-title">Solicitar torta por encomenda</h1>
-          <p>Escolha o tamanho e registre sua solicitação. A Adoce confirma o sabor, a data e o valor antes de preparar. Tortas inteiras não ficam disponíveis para pronta entrega.</p>
-          {catalogError ? <p role="alert">{catalogError}</p> : null}
-          {loading ? <p>Carregando tamanhos…</p> : (
-            <div className="commercial-request-picker-grid">
-              {displayedProducts.map((product) => (
-                <button type="button" key={product.id} onClick={() => openRequest(product)}>
-                  <strong>{product.name}</strong>
-                  <span>{commercialProductPriceLabel(product)}</span>
-                  <small>{product.short_description}</small>
-                  <b>Solicitar pré-reserva</b>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-      ) : <>
 
       <PublicCatalogNav active={segment} />
 
@@ -485,7 +331,7 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
                   <div className="commercial-reference-card-copy">
                     <h2>{product.name}</h2>
                     <strong>{commercialProductPriceLabel(product)}</strong>
-                    <button type="button" onClick={() => openRequest(product)}><MessageCircle aria-hidden="true" /> {presentation.action}</button>
+                    <a className="commercial-whatsapp-cta" href={whatsappUrlFor(product)} target="_blank" rel="noreferrer" onClick={() => contactAbout(product)}><MessageCircle aria-hidden="true" /> {presentation.action}</a>
                   </div>
                 </article>
               );
@@ -508,12 +354,12 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
         <aside className="commercial-hero-compare" aria-label={activeExperience.compareTitle}>
           <h2>{activeExperience.compareTitle}</h2>
           {loading ? <p>Carregando opções...</p> : visibleProducts.slice(0, 4).map((product) => (
-            <button type="button" key={product.id} onClick={() => openRequest(product)}>
+            <a key={product.id} href={whatsappUrlFor(product)} target="_blank" rel="noreferrer" onClick={() => contactAbout(product)}>
               <span>
                 <strong>{product.name}</strong>
               </span>
               <b>{commercialProductPriceLabel(product)}</b>
-            </button>
+            </a>
           ))}
           {!loading && visibleProducts.length === 0 ? <p>As opções desta categoria serão publicadas em breve.</p> : null}
         </aside>
@@ -581,9 +427,9 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
                   </strong>
                 </div>
                 <ProductDetails product={product} />
-                <button onClick={() => openRequest(product)}>
+                <a className="commercial-whatsapp-cta" href={whatsappUrlFor(product)} target="_blank" rel="noreferrer" onClick={() => contactAbout(product)}>
                   Quero esta opção <ArrowRight />
-                </button>
+                </a>
               </article>
             )})}
           </div>
@@ -592,191 +438,7 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
         )}
       </section>
 
-      </>}
-
-      {selected ? (
-        <section className="commercial-request" id="solicitar-encomenda">
-          <div className="commercial-request-copy">
-            <span>Sua solicitação</span>
-            <h2>{selected.name}</h2>
-            <p>
-              Isto ainda não é cobrança nem confirmação definitiva. A Adoce confirma com você
-              os detalhes, o horário e o valor antes do sinal.
-            </p>
-            <div>
-              <Clock3 /> Antecedência mínima: {selected.lead_business_days} dia(s) útil(eis)
-            </div>
-            <div>
-              <ShieldCheck /> Seus dados são protegidos e usados somente nesta solicitação
-            </div>
-          </div>
-
-          {result?.accepted ? (
-            <div className="commercial-success" role="status">
-              <PackageCheck />
-              <span>Pré-reserva registrada</span>
-              <h3>{result.request_number}</h3>
-              <p>{result.message}</p>
-              <a href={whatsappUrl} target="_blank" rel="noreferrer">
-                <MessageCircle /> Continuar no WhatsApp
-              </a>
-              <button onClick={() => setSelected(null)}>Ver outras opções</button>
-            </div>
-          ) : (
-            <form onSubmit={submit} noValidate>
-              <div className="commercial-form-grid">
-                <label>
-                  Seu nome
-                  <input
-                    id="commercial-name"
-                    required
-                    value={form.name}
-                    aria-invalid={Boolean(fieldErrors.name)}
-                    onChange={(event) => { setForm({ ...form, name: event.target.value }); clearFieldError("name"); }}
-                    autoComplete="name"
-                  />
-                  {fieldErrors.name ? <small className="commercial-field-error" role="alert">{fieldErrors.name}</small> : null}
-                </label>
-                <label>
-                  WhatsApp com DDD
-                  <input
-                    id="commercial-phone"
-                    required
-                    value={form.phone}
-                    aria-invalid={Boolean(fieldErrors.phone)}
-                    onChange={(event) => { setForm({ ...form, phone: event.target.value }); clearFieldError("phone"); }}
-                    inputMode="tel"
-                    autoComplete="tel"
-                  />
-                  {fieldErrors.phone ? <small className="commercial-field-error" role="alert">{fieldErrors.phone}</small> : null}
-                </label>
-                <label>
-                  E-mail <small>(opcional)</small>
-                  <input
-                    id="commercial-email"
-                    type="email"
-                    value={form.email}
-                    aria-invalid={Boolean(fieldErrors.email)}
-                    onChange={(event) => { setForm({ ...form, email: event.target.value }); clearFieldError("email"); }}
-                    autoComplete="email"
-                  />
-                  {fieldErrors.email ? <small className="commercial-field-error" role="alert">{fieldErrors.email}</small> : null}
-                </label>
-                <label>
-                  Quantidade
-                  <input
-                    id="commercial-quantity"
-                    required
-                    type="number"
-                    min={selected.segment === "sweets" ? MULTIPLO : selected.minimum_quantity}
-                    step={selected.segment === "sweets" ? MULTIPLO : 1}
-                    value={form.quantity}
-                    aria-invalid={Boolean(fieldErrors.quantity)}
-                    onChange={(event) => { setForm({ ...form, quantity: Number(event.target.value) }); clearFieldError("quantity"); }}
-                    onBlur={() => {
-                      if (selected.segment !== "sweets") return;
-                      setForm((current) => ({ ...current, quantity: ajustarParaMultiplo(current.quantity) }));
-                    }}
-                  />
-                  {selected.segment === "sweets" && ehQuantidadeValida(form.quantity) ? (
-                    <small>Pacotes: {descreverComposicao(form.quantity)}.</small>
-                  ) : null}
-                  {fieldErrors.quantity ? <small className="commercial-field-error" role="alert">{fieldErrors.quantity}</small> : null}
-                </label>
-                <label>
-                  Data desejada
-                  <input
-                    id="commercial-date"
-                    required
-                    type="date"
-                    min={minimumDate}
-                    value={form.date}
-                    aria-invalid={Boolean(fieldErrors.date)}
-                    aria-describedby="commercial-date-guidance"
-                    onInput={(event) => {
-                      const date = event.currentTarget.value;
-                      setForm({ ...form, date });
-                      setNotice("");
-                      setFieldErrors((current) => ({
-                        ...current,
-                        date: date && date < minimumDate
-                          ? leadTimeMessage(selected.lead_business_days, minimumDate)
-                          : undefined,
-                      }));
-                    }}
-                  />
-                  <span className="commercial-date-guidance" id="commercial-date-guidance">
-                    <Clock3 /> Primeira data disponível: <strong>{formatCommercialDate(minimumDate)}</strong>
-                  </span>
-                  {fieldErrors.date ? <span className="commercial-date-error" role="alert">
-                    <strong>{fieldErrors.date}</strong>
-                    <button type="button" onClick={() => {
-                      setForm({ ...form, date: minimumDate });
-                      clearFieldError("date");
-                    }}>Usar esta primeira data</button>
-                  </span> : null}
-                </label>
-                <label>
-                  Horário desejado
-                  <input
-                    id="commercial-time"
-                    required
-                    type="time"
-                    value={form.time}
-                    aria-invalid={Boolean(fieldErrors.time)}
-                    onChange={(event) => { setForm({ ...form, time: event.target.value }); clearFieldError("time"); }}
-                  />
-                  {fieldErrors.time ? <small className="commercial-field-error" role="alert">{fieldErrors.time}</small> : null}
-                </label>
-              </div>
-              <label>
-                Local ou referência <small>(quando aplicável)</small>
-                <input
-                  value={form.location}
-                  onChange={(event) => setForm({ ...form, location: event.target.value })}
-                  placeholder="Bairro ou local de retirada"
-                />
-              </label>
-              <label>
-                Suas escolhas
-                <textarea
-                  value={form.preferences}
-                  onChange={(event) => setForm({ ...form, preferences: event.target.value })}
-                  placeholder="Ex.: massa de chocolate, recheios Ninho e brigadeiro; tema e cores..."
-                />
-              </label>
-              <label>
-                Observações
-                <textarea
-                  value={form.notes}
-                  onChange={(event) => setForm({ ...form, notes: event.target.value })}
-                  placeholder="Conte o que é importante para prepararmos sua comemoração."
-                />
-              </label>
-              <label className="commercial-consent">
-                <input
-                  id="commercial-privacy"
-                  type="checkbox"
-                  checked={form.privacy}
-                  aria-invalid={Boolean(fieldErrors.privacy)}
-                  onChange={(event) => { setForm({ ...form, privacy: event.target.checked }); clearFieldError("privacy"); }}
-                />
-                <span>
-                  Li a <a href="/privacidade">Política de Privacidade</a> e autorizo o contato
-                  sobre esta solicitação.
-                </span>
-              </label>
-              {fieldErrors.privacy ? <small className="commercial-field-error" role="alert">{fieldErrors.privacy}</small> : null}
-              {notice ? <p className="commercial-notice" role="alert">{notice}</p> : null}
-              <button className="commercial-submit" disabled={submitting}>
-                {submitting ? "Enviando solicitação..." : "Solicitar pré-reserva"} <ArrowRight />
-              </button>
-            </form>
-          )}
-        </section>
-      ) : null}
-
-      {!requestOnly && sizeGalleryOpen ? (
+      {sizeGalleryOpen ? (
         <div className="commercial-size-gallery-modal" role="dialog" aria-modal="true" aria-label="Galeria de Tortas por tamanho" onClick={() => setSizeGalleryOpen(false)}>
           <section onClick={(event) => event.stopPropagation()}>
             <header>
@@ -792,7 +454,7 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
           </section>
         </div>
       ) : null}
-      {!requestOnly ? <ProductImageViewer
+      <ProductImageViewer
         image={viewedImage}
         images={categoryGalleryEnabled && categoryGalleryImages.length
           ? categoryGalleryImages
@@ -800,7 +462,7 @@ export default function CommercialCatalog({ initialSegment = "cakes", requestOnl
             ? viewerImages
             : cakeGalleryGroups.flatMap((group) => group.media)}
         onClose={() => setViewedImage(null)}
-      /> : null}
+      />
 
     </main>
   );
