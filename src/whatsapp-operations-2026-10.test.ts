@@ -25,7 +25,7 @@ describe("pedidos online e WhatsApp operacional", () => {
   it("ordena por atividade e permite arquivamento logico em lote", () => {
     expect(inbox).toContain("selectedThreadIds");
     expect(inbox).toContain("Selecionar todas desta página");
-    expect(inbox).toContain("Arquivar selecionadas");
+    expect(inbox).toContain("Encerrar selecionadas");
     expect(api).toContain("server_archive_whatsapp_support_threads");
   });
 

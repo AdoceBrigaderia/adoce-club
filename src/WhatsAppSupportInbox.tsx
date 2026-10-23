@@ -52,6 +52,11 @@ type OrderNotificationHealth = { pending: number; failed: number; last_failure?:
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const departmentLabel = (department: SupportThreadSummary["department"]) =>
   department === "festival" ? "Festival de Fatias" : "Orçamento";
+const threadBelongsToView = (item: SupportThreadSummary, view: "active" | "history") =>
+  view === "history" ? item.status === "closed" : item.status !== "closed";
+const messageDateTime = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit",
+});
 const nextHourValue = () => {
   const date = new Date(Date.now() + 60 * 60 * 1000);
   date.setMinutes(0, 0, 0);
@@ -70,12 +75,11 @@ export async function supportRequest(path = "", init?: RequestInit) {
   // de fetch (cuja ordem de instalação vs. CapacitorHttp não é garantida).
   const native = Capacitor.isNativePlatform();
   const base = native ? productionApiOrigin : "";
-  // O CapacitorHttp do Android guarda a resposta deste GET e ignora
-  // Cache-Control: no-store, o header de request e o cache:"no-store" do
-  // fetch -- o tablet servia uma lista de atendimentos congelada e os
-  // clientes só apareciam no site. Só uma URL única por chamada fura esse
-  // cache. A função ignora query params desconhecidos.
-  const bust = native ? `${path.includes("?") ? "&" : "?"}_ts=${Date.now()}` : "";
+  // Uma URL única por GET evita respostas antigas no WebView do tablet e no
+  // cache instalado por versões anteriores do service worker do site.
+  const bust = !init?.method || init.method === "GET"
+    ? `${path.includes("?") ? "&" : "?"}_ts=${Date.now()}`
+    : "";
   const response = await fetch(`${base}/api/whatsapp/support${path}${bust}`, {
     ...init,
     cache: "no-store",
@@ -95,6 +99,7 @@ export default function WhatsAppSupportInbox() {
   const [threads, setThreads] = useState<SupportThreadSummary[]>([]);
   const [hasMoreThreads, setHasMoreThreads] = useState(false);
   const nextThreadsCursorRef = useRef<{ at: string; id: string } | null>(null);
+  const loadSequenceRef = useRef(0);
   const [selectedThreadIds, setSelectedThreadIds] = useState<Set<string>>(new Set());
   const [view, setView] = useState<"active" | "history">("active");
   const [search, setSearch] = useState("");
@@ -133,15 +138,19 @@ export default function WhatsAppSupportInbox() {
       threadRef.current = next;
       return next;
     });
-    if(payload.thread) setThreads((items)=>items.map((item)=>item.id===threadId?{...item,automation_mode:payload.thread.automation_mode,status:payload.thread.status,assigned_staff_user_id:payload.thread.assigned_staff_user_id}:item));
+    if (payload.thread) setThreads((items) => items.map((item) => item.id === threadId
+      ? { ...item, automation_mode: payload.thread.automation_mode, status: payload.thread.status, assigned_staff_user_id: payload.thread.assigned_staff_user_id }
+      : item));
   }, []);
 
   const load = useCallback(async (quiet = false, append = false) => {
+    const sequence = ++loadSequenceRef.current;
     if (!quiet) setLoading(true);
     try {
       const cursor = append ? nextThreadsCursorRef.current : null;
       const base = view === "history" ? "?view=history" : "?view=active";
       const payload = await supportRequest(`${base}${cursor ? `&cursorAt=${encodeURIComponent(cursor.at)}&cursorId=${cursor.id}` : ""}`);
+      if (sequence !== loadSequenceRef.current) return;
       const nextThreads = (payload.threads || []) as SupportThreadSummary[];
       setThreads((existing) => append ? [...existing, ...nextThreads.filter((item) => !existing.some((old) => old.id === item.id))] : nextThreads);
       setHasMoreThreads(Boolean(payload.hasMore));
@@ -162,13 +171,14 @@ export default function WhatsAppSupportInbox() {
       }
       setNotice("");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Não foi possível carregar os atendimentos.");
+      if (sequence === loadSequenceRef.current) setNotice(error instanceof Error ? error.message : "Não foi possível carregar os atendimentos.");
     } finally {
-      if (!quiet) setLoading(false);
+      if (!quiet && sequence === loadSequenceRef.current) setLoading(false);
     }
   }, [loadThread, view]);
 
   useEffect(() => {
+    loadSequenceRef.current++;
     nextThreadsCursorRef.current = null;
     setSelectedThreadIds(new Set());
   }, [view]);
@@ -389,27 +399,30 @@ export default function WhatsAppSupportInbox() {
   };
 
   const waitingCount = useMemo(
-    () => threads.filter((item) => item.status === "waiting" && item.automation_mode !== "bot").length,
-    [threads],
+    () => view === "active" ? threads.filter((item) => item.status === "waiting" && item.automation_mode !== "bot").length : 0,
+    [threads, view],
   );
-  const visibleThreads = useMemo(() => threads.filter((item) =>
+  const visibleThreads = useMemo(() => threads.filter((item) => threadBelongsToView(item, view) && (
     !search.trim() || item.phone_last4.includes(search.trim()) ||
     (item.phone_e164 || "").includes(search.replace(/\D/g, "") || "#") ||
     (item.customer_name || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")) ||
     (item.last_message || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR"))
-  ), [threads, search]);
+  )), [threads, search, view]);
   const allVisibleSelected = visibleThreads.length > 0 && visibleThreads.every((item) => selectedThreadIds.has(item.id));
   const archiveSelected = async () => {
     const ids = [...selectedThreadIds];
-    if (!ids.length || !window.confirm(`Arquivar ${ids.length} conversa(s)? O histórico será preservado.`)) return;
+    if (!ids.length || !window.confirm(`Encerrar ${ids.length} conversa(s)? Elas sairão de Em atendimento e ficarão no Histórico.`)) return;
     setBusy(true);
     try {
       const result = await supportRequest("", { method: "POST", body: JSON.stringify({ action: "batchArchive", threadIds: ids }) });
       setSelectedThreadIds(new Set());
       await load();
-      setNotice(`${Number(result.archived || 0)} conversa(s) arquivada(s).`);
+      const closed = Number(result.archived || 0);
+      setNotice(closed === ids.length
+        ? `${closed} conversa(s) encerrada(s). Consulte o Histórico quando precisar.`
+        : `${closed} de ${ids.length} conversa(s) encerrada(s). Atualize a lista e confira as restantes.`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Não foi possível arquivar as conversas.");
+      setNotice(error instanceof Error ? error.message : "Não foi possível encerrar as conversas.");
     } finally { setBusy(false); }
   };
 
@@ -459,32 +472,32 @@ export default function WhatsAppSupportInbox() {
       <div className="whatsapp-support-layout">
         <aside className="whatsapp-support-list" aria-label={view === "history" ? "Histórico de conversas" : "Conversas em atendimento"}>
           <div className="whatsapp-support-list-title">
-            <strong>{view === "history" ? "Histórico de conversas" : `${threads.filter(item => item.has_customer_messages).length} conversas com clientes`}</strong>
+            <strong>{view === "history" ? "Histórico de conversas" : `${threads.filter(item => threadBelongsToView(item, "active")).length} conversas em atendimento`}</strong>
             {waitingCount ? <span>{waitingCount} aguardando</span> : null}
           </div>
           <div className="whatsapp-support-list-controls">
             <button type="button" aria-pressed={view === "active"} onClick={() => { setView("active"); setSearch(""); }}>Em atendimento</button>
             <button type="button" aria-pressed={view === "history"} onClick={() => { setView("history"); setSearch(""); }}>Histórico</button>
             <input aria-label="Buscar conversa por nome, telefone ou mensagem" placeholder="Buscar nome, telefone ou mensagem" value={search} onChange={(event) => setSearch(event.target.value)} />
-            <button type="button" onClick={() => setSelectedThreadIds(allVisibleSelected ? new Set() : new Set(visibleThreads.map((item) => item.id)))}>
+            {view === "active" ? <button type="button" onClick={() => setSelectedThreadIds(allVisibleSelected ? new Set() : new Set(visibleThreads.map((item) => item.id)))}>
               {allVisibleSelected ? "Desmarcar todas" : "Selecionar todas desta página"}
-            </button>
-            {selectedThreadIds.size ? <button type="button" onClick={() => void archiveSelected()} disabled={busy}>Arquivar selecionadas ({selectedThreadIds.size})</button> : null}
+            </button> : null}
+            {view === "active" && selectedThreadIds.size ? <button type="button" onClick={() => void archiveSelected()} disabled={busy}>Encerrar selecionadas ({selectedThreadIds.size})</button> : null}
           </div>
           {!loading && !notice && !visibleThreads.length ? (
             <p className="whatsapp-support-empty">{search ? "Nenhuma conversa corresponde à busca." : view === "history" ? "Nenhuma conversa encerrada registrada." : "Nenhum cliente aguardando agora."}</p>
           ) : null}
           {visibleThreads.map((item) => (
             <div className="whatsapp-support-list-row" key={item.id}>
-              <input type="checkbox" aria-label={`Selecionar conversa de ${item.customer_name || contactPhoneLabel(item)}`} checked={selectedThreadIds.has(item.id)} onChange={() => setSelectedThreadIds((current) => { const next=new Set(current); if(next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />
+              {view === "active" ? <input type="checkbox" aria-label={`Selecionar conversa de ${item.customer_name || contactPhoneLabel(item)}`} checked={selectedThreadIds.has(item.id)} onChange={() => setSelectedThreadIds((current) => { const next=new Set(current); if(next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} /> : null}
               <button type="button" className={selectedId === item.id ? "is-selected" : ""} onClick={() => void selectThread(item.id)}>
               <MessageCircle />
               <span>
                 <strong>{item.customer_name || contactPhoneLabel(item)}</strong>
-                <small>{item.customer_name ? `${contactPhoneLabel(item)} · ` : ""}{departmentLabel(item.department)} · {item.status === "closed" ? "Encerrada" : !item.has_customer_messages ? "Somente avisos do pedido" : item.automation_mode === "bot" ? "Com o robô" : item.assigned_staff_user_id ? "Com a equipe" : "Aguardando equipe"}</small>
+                <small>{item.customer_name ? `${contactPhoneLabel(item)} · ` : ""}{departmentLabel(item.department)} · {item.status === "closed" ? "Encerrada" : !item.has_customer_messages ? "Somente mensagens enviadas" : item.automation_mode === "bot" ? "Com o robô" : item.assigned_staff_user_id ? "Com a equipe" : "Aguardando equipe"}</small>
                 <em>{item.last_message || "Nova solicitação"}</em>
               </span>
-              <time>{new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(item.last_message_at))}</time>
+              <time dateTime={item.last_message_at}>{messageDateTime.format(new Date(item.last_message_at))}</time>
               </button>
             </div>
           ))}

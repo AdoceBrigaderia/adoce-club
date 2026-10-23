@@ -68,7 +68,7 @@
 .whatsapp-support-list-row > button span { min-width: 0; display: grid; gap: .2rem; }
 .whatsapp-support-list-row > button small { color: #8e5c50; }
 .whatsapp-support-list-row > button em { overflow: hidden; color: #6c5048; font-size: .82rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
-.whatsapp-support-list-row > button time { color: #9b7469; font-size: .72rem; }
+.whatsapp-support-list-row > button time { color: #9b7469; font-size: .72rem; white-space: nowrap; }
 .whatsapp-support-load-more { margin: .65rem; border: 1px solid #d9b9aa; border-radius: .5rem; background: #fff; color: #3b160f; padding: .6rem; }
 .whatsapp-support-empty { margin: auto; padding: 2rem; text-align: center; color: #8e5c50; }
 .whatsapp-support-conversation { display: grid; grid-template-rows: auto 1fr auto; }
