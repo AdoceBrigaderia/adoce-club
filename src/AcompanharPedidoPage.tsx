@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AcompanharPedido from "./AcompanharPedido";
 import type { Etapa, Pedido } from "./jornada-do-pedido";
+import { useOrderWhatsAppNumber } from "./order-whatsapp";
 
 type OrderResponse = {
   order_number: string;
@@ -38,6 +39,7 @@ export default function AcompanharPedidoPage() {
   const params = new URLSearchParams(location.search);
   const orderNumber = (params.get("pedido") || "").trim();
   const token = (params.get("token") || "").trim();
+  const whatsapp = useOrderWhatsAppNumber();
   const [order, setOrder] = useState<OrderResponse | null>(null);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -69,5 +71,5 @@ export default function AcompanharPedidoPage() {
 
   if (carregando) return <main className="acompanha"><p>Carregando seu pedido...</p></main>;
   if (erro || !order) return <main className="acompanha"><p role="alert">{erro || "Pedido não encontrado."}</p></main>;
-  return <AcompanharPedido pedido={paraPedido(order)} retiradaEm={order.reserved_until} criadoEm={null} />;
+  return <AcompanharPedido pedido={paraPedido(order)} retiradaEm={order.reserved_until} criadoEm={null} whatsapp={whatsapp} />;
 }

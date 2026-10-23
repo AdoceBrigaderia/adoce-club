@@ -65,7 +65,7 @@ export function progresso(cartao: CartaoDeIndicacao) {
 }
 
 /** WhatsApp oficial da Adoce, so digitos. */
-export const ZAP_DA_ADOCE = "5585982156026";
+export const ZAP_DA_ADOCE = "5585981994370";
 
 /**
  * O link que o amigo vai tocar. Ele NAO leva ao site: leva direto a conversa

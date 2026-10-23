@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { MessageCircle, X } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaWhatsapp } from "react-icons/fa";
-import { publicContactLinks, shouldShowPublicContactDock } from "./public-contact-links";
+import { publicContactLinks, publicContactWhatsAppMessage, shouldShowPublicContactDock } from "./public-contact-links";
+import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 import "./public-contact-dock.css";
 
 export default function PublicContactDock() {
   const [, refreshRoute] = useState(0);
   const [open, setOpen] = useState(false);
   const dockRef = useRef<HTMLElement>(null);
+  const whatsappPrimary = orderWhatsAppUrl(useOrderWhatsAppNumber(), publicContactWhatsAppMessage);
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -38,7 +40,7 @@ export default function PublicContactDock() {
 
   return (
     <nav ref={dockRef} className="public-contact-dock" aria-label="Canais de contato da Adoce">
-      <a className="public-whatsapp-direct" href={publicContactLinks.whatsappPrimary} target="_blank" rel="noreferrer">
+      <a className="public-whatsapp-direct" href={whatsappPrimary} target="_blank" rel="noreferrer">
         <FaWhatsapp aria-hidden="true" /> <span>Converse com a Adoce</span>
       </a>
       {open ? (
@@ -60,7 +62,7 @@ export default function PublicContactDock() {
             <FaInstagram aria-hidden="true" />
             <span><strong>Instagram</strong><small>Novidades e bastidores</small></span>
           </a>
-          <a className="whatsapp" href={publicContactLinks.whatsappPrimary} target="_blank" rel="noreferrer">
+          <a className="whatsapp" href={whatsappPrimary} target="_blank" rel="noreferrer">
             <FaWhatsapp aria-hidden="true" />
             <span><strong>WhatsApp principal</strong><small>Pedidos e atendimento</small></span>
           </a>

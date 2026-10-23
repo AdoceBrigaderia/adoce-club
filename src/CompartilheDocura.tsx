@@ -23,10 +23,12 @@ import {
   progresso,
   type CartaoDeIndicacao,
 } from "./compartilhe-docura";
+import { useOrderWhatsAppNumber } from "./order-whatsapp";
 import "./compartilhe-docura.css";
 
 export default function CompartilheDocura({ cartao }: { cartao: CartaoDeIndicacao }) {
   const [copiado, setCopiado] = useState(false);
+  const zap = useOrderWhatsAppNumber();
   const carimbos = carimbosNaCartela(cartao);
   const jaProvaram = confirmadas(cartao);
   const convidados = aguardando(cartao);
@@ -39,7 +41,7 @@ export default function CompartilheDocura({ cartao }: { cartao: CartaoDeIndicaca
 
   const copiar = async () => {
     try {
-      await navigator.clipboard.writeText(convitePorMensagem(cartao));
+      await navigator.clipboard.writeText(convitePorMensagem(cartao, zap));
       setCopiado(true);
     } catch {
       // Sem area de transferencia o texto continua visivel abaixo.
@@ -85,7 +87,7 @@ export default function CompartilheDocura({ cartao }: { cartao: CartaoDeIndicaca
         </p>
 
         <div className="doc-acoes">
-          <a className="doc-enviar" href={linkDeWhatsApp(cartao)} target="_blank" rel="noreferrer">
+          <a className="doc-enviar" href={linkDeWhatsApp(cartao, zap)} target="_blank" rel="noreferrer">
             <Share2 aria-hidden="true" /> Convidar pelo WhatsApp
           </a>
           <button type="button" className="doc-copiar" onClick={() => void copiar()}>
@@ -96,7 +98,7 @@ export default function CompartilheDocura({ cartao }: { cartao: CartaoDeIndicaca
 
         <details className="doc-previa">
           <summary>Ver a mensagem</summary>
-          <pre>{convitePorMensagem(cartao)}</pre>
+          <pre>{convitePorMensagem(cartao, zap)}</pre>
         </details>
       </section>
 

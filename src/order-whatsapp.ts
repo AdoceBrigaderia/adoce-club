@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 
-export const fallbackOrderWhatsApp = "5585982156026";
+export const fallbackOrderWhatsApp = "5585981994370";
 
 export type WhatsAppOrderItem = {
   name: string;

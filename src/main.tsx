@@ -14,7 +14,6 @@ import "./adoce-app-2026.css";
 import "./adoce-mobile-first-2026.css";
 import "./home-reference-2026.css";
 import "./public-shell-2026.css";
-import "./catalogo-de-sabores.css";
 // Fonte unica da identidade. Entra por ultimo de proposito: os apelidos
 // (--pink, --access-coral, --m-coral...) precisam vencer as declaracoes
 // antigas para que a paleta correta da logo alcance as 68 folhas.

@@ -11,6 +11,7 @@ import {
   X,
 } from "lucide-react";
 import "./weekly-schedule.css";
+import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 
 export type WeeklyMenuItem = {
   id: string;
@@ -50,8 +51,6 @@ type ScheduleException = {
 };
 
 type ScheduleChannel = WeeklyMenuItem["channel_slug"];
-
-const whatsappBase = "https://wa.me/5585982156026?text=";
 
 function parseDate(date: string) {
   return new Date(`${date}T12:00:00Z`);
@@ -182,6 +181,7 @@ export default function WeeklyScheduleDialog({
   const [selectedDate, setSelectedDate] = useState(firstAvailableDate);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const whatsappNumber = useOrderWhatsAppNumber();
 
   useEffect(() => {
     if (!open) return;
@@ -216,11 +216,10 @@ export default function WeeklyScheduleDialog({
     (total, item) => total + (quantities[item.id] || 0),
     0,
   );
-  const onlineLink =
-    whatsappBase +
-    encodeURIComponent(
-      `Olá, Adoce! Vi a programação da semana e quero conhecer os sabores disponíveis para retirada em ${dayTitle(selectedDate)}.`,
-    );
+  const onlineLink = orderWhatsAppUrl(
+    whatsappNumber,
+    `Olá, Adoce! Vi a programação da semana e quero conhecer os sabores disponíveis para retirada em ${dayTitle(selectedDate)}.`,
+  );
   const reservationText = selectedItems
     .filter((item) => (quantities[item.id] || 0) > 0)
     .map(
@@ -228,11 +227,10 @@ export default function WeeklyScheduleDialog({
         `${quantities[item.id]}x ${item.flavor?.name} (${item.channel_slug === "in_person" ? "Cantinho da Adoce" : "retirada"})`,
     )
     .join(", ");
-  const reservationLink =
-    whatsappBase +
-    encodeURIComponent(
-      `Olá, Adoce! Quero solicitar uma reserva para ${dayTitle(selectedDate)}: ${reservationText}. Sei que a reserva será confirmada pela Adoce no WhatsApp.`,
-    );
+  const reservationLink = orderWhatsAppUrl(
+    whatsappNumber,
+    `Olá, Adoce! Quero solicitar uma reserva para ${dayTitle(selectedDate)}: ${reservationText}. Sei que a reserva será confirmada pela Adoce no WhatsApp.`,
+  );
 
   const renderFlavorList = (channel: ScheduleChannel, channelActive: boolean) => {
     const isToday = selectedDate === today;

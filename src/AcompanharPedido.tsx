@@ -19,6 +19,7 @@ import {
   vistaDoCliente,
 } from "./acompanhar-pedido";
 import { encerrado, type Pedido } from "./jornada-do-pedido";
+import { fallbackOrderWhatsApp } from "./order-whatsapp";
 import "./acompanhar-pedido.css";
 import { formatarDataHora } from "./lib/datas";
 
@@ -31,7 +32,7 @@ export default function AcompanharPedido({
   pedido,
   retiradaEm,
   criadoEm,
-  whatsapp = "5585982156026",
+  whatsapp = fallbackOrderWhatsApp,
 }: {
   pedido: Pedido;
   /** Momento combinado da retirada, ISO. */

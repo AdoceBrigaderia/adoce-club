@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
+import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 import { isPriceOnRequest } from "./consultation-pricing";
 import { serviceStatusMessage } from "./service-status";
 import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialog";
@@ -455,16 +456,8 @@ const fallback: Flavor[] = [
   },
 ];
 
-const whatsappBase = "https://wa.me/5585982156026?text=";
 const maps =
   "https://www.google.com/maps/search/?api=1&query=Festival%20de%20Fatias%20Adoce%20Brigaderia";
-const orderLink = (flavor?: string) =>
-  whatsappBase +
-  encodeURIComponent(
-    flavor
-      ? `Olá, Adoce! Quero saber se a fatia ${flavor} está disponível.`
-      : "Olá, Adoce! Quero conhecer os sabores disponíveis hoje.",
-  );
 
 function Brand() {
   return (
@@ -507,6 +500,13 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
   const cartAutoOpened = useRef(false);
   const [initialOrderFlavorId, setInitialOrderFlavorId] = useState<string | null>(null);
   const [updated, setUpdated] = useState(false);
+  const whatsappNumber = useOrderWhatsAppNumber();
+  const orderLink = (flavor?: string) => orderWhatsAppUrl(
+    whatsappNumber,
+    flavor
+      ? `Olá, Adoce! Quero saber se a fatia ${flavor} está disponível.`
+      : "Olá, Adoce! Quero conhecer os sabores disponíveis hoje.",
+  );
   useEffect(() => {
     document.title = "Fatias · Adoce Brigaderia";
   }, []);
