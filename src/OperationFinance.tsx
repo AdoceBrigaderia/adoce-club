@@ -4,7 +4,6 @@ import { requireSupabase } from "./lib/supabase";
 import "./operation-commerce-tools.css";
 import "./operation-print.css";
 import { printOperation } from "./lib/operation-print";
-import OperationCosts from "./OperationCosts";
 
 type SummaryRow = { code?: string; label?: string; sale_date?: string; orders: number; gross: number; fees: number; net: number };
 type Summary = { from: string; to: string; orders: number; gross: number; fees: number; net: number; by_method: SummaryRow[]; by_day: SummaryRow[] };
@@ -13,7 +12,6 @@ const monthStart = () => `${today().slice(0, 8)}01`;
 const money = (value: number) => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function OperationFinance() {
-  const [section, setSection] = useState<"sales" | "costs">("sales");
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(today());
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -30,9 +28,7 @@ export default function OperationFinance() {
   const average = useMemo(() => summary?.orders ? summary.gross / summary.orders : 0, [summary]);
 
   return <section className="commerce-finance-page print-scope">
-    <div className="instant-order-view-switch" role="group" aria-label="Área financeira"><button type="button" className={section === "sales" ? "active" : ""} onClick={() => setSection("sales")}>Vendas e recebimentos</button><button type="button" className={section === "costs" ? "active" : ""} onClick={() => setSection("costs")}>Custos e fichas técnicas</button></div>
-    {section === "costs" ? <OperationCosts /> : <>
-    <header className="commerce-tool-heading"><div><small>Vendas e recebimentos</small><h2>Financeiro</h2><p>Faturamento bruto, taxas e valor líquido no período escolhido.</p></div><button onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button></header>
+    <header className="commerce-tool-heading"><div><small>Vendas e recebimentos</small><h2>Financeiro</h2><p>Faturamento bruto, taxas e valor líquido no período escolhido. Custos, fichas técnicas e o DRE completo ficam em Compras e Estoque / Gestão.</p></div><button onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button></header>
     <div className="commerce-period-filter"><label><CalendarRange /> De<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label><label>Até<input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label><button onClick={() => void load()} disabled={busy}><RefreshCw /> Atualizar</button></div>
     {notice ? <p className="operation-commercial-notice">{notice}</p> : null}
     {summary ? <>
@@ -44,6 +40,5 @@ export default function OperationFinance() {
         <section className="commerce-tool-card"><header><CircleDollarSign /><div><small>Movimento</small><h3>Vendas por dia</h3></div></header><table><thead><tr><th>Dia</th><th>Vendas</th><th>Bruto</th><th>Líquido</th></tr></thead><tbody>{summary.by_day.map((row) => <tr key={row.sale_date}><td data-label="Dia">{new Date(`${row.sale_date}T12:00:00`).toLocaleDateString("pt-BR")}</td><td data-label="Vendas">{row.orders}</td><td data-label="Bruto">{money(row.gross)}</td><td data-label="Líquido" className="net">{money(row.net)}</td></tr>)}</tbody></table></section>
       </div>
     </> : null}
-    </>}
   </section>;
 }

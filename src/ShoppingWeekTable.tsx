@@ -1,6 +1,7 @@
-import {useState,useRef} from "react";
+import {useState} from "react";
 import {dayLabel,requiredDayWarnings,shiftDate,shortShoppingDate,weekDates,type ShoppingWeek} from "./lib/shopping-week";
 import {formatCurrency} from "./lib/cost-format";
+import CostSheetTable from "./CostSheetTable";
 
 type FlavorEconomics = { salePrice: number | null; unitCost: number | null; marginPercent: number | null; slicesPerCake: number | null };
 
@@ -14,7 +15,6 @@ export const canMarkFlavorOnDay=(date:string,plan:ShoppingWeek)=>date<REQUIRED_D
 
 export default function ShoppingWeekTable({week,plan,totals,flavors,disabled,onChange,batterColors={},flavorEconomics={}}:{week:string;plan:ShoppingWeek;totals:Record<string,number>;flavors:{id:string;name:string;active:boolean}[];disabled:boolean;onChange:(group:"daily"|"cakes"|"requiredDays",key:string,value:number|boolean)=>void;batterColors?:Record<string,string|null>;flavorEconomics?:Record<string,FlavorEconomics>}){
  const [order,setOrder]=useState("name");
- const scroll=useRef<HTMLDivElement>(null);
  const dates=weekDates(week);
  const massaCompare=(a:{id:string;name:string},b:{id:string;name:string})=>{
   const colorA=batterColors[a.id]||"";
@@ -60,8 +60,7 @@ export default function ShoppingWeekTable({week,plan,totals,flavors,disabled,onC
   {dates.some(date=>date>=REQUIRED_DAY_RULE_START)&&<p className="adoce-cost-pending">A partir de {shortShoppingDate(REQUIRED_DAY_RULE_START)}, só é possível marcar um sabor num dia depois de marcar esse dia como "obrigatório". Desmarcar continua liberado em qualquer dia.</p>}
   {unassigned&&<p className="adoce-cost-pending">Há quantidades do planejamento anterior a distribuir. Preencha os dias: essas quantidades serão distribuídas automaticamente, sem contar duas vezes. O cardápio e os lotes usam somente os dias preenchidos.</p>}
   {legacy&&<p className="adoce-cost-pending">Há dias com mais de uma torta salvos anteriormente. Eles foram preservados. Desmarque e marque novamente para passar a uma torta naquele dia.</p>}
-  <div className="adoce-table-scroll-controls"><button type="button" onClick={()=>scroll.current?.scrollBy({left:-280,behavior:"smooth"})}>← Dias anteriores</button><button type="button" onClick={()=>scroll.current?.scrollBy({left:280,behavior:"smooth"})}>Próximos dias →</button></div>
-  <div ref={scroll} className="adoce-shopping-week-scroll" tabIndex={0} aria-label={`Planejamento de ${shortShoppingDate(week)} a ${shortShoppingDate(shiftDate(week,6))}`}>
+  <CostSheetTable scrollAmount={280} prevLabel="← Dias anteriores" nextLabel="Próximos dias →" className="adoce-shopping-week-scroll" label={`Planejamento de ${shortShoppingDate(week)} a ${shortShoppingDate(shiftDate(week,6))}`}>
    <table className="adoce-shopping-week-table"><thead>
     <tr><th scope="col">Sabor</th><th scope="col">Massa predominante</th><th scope="col">Margem da fatia</th>{dates.map(date=><th scope="col" key={date}>{dayLabel(date)}</th>)}{unassigned&&<th scope="col">A distribuir</th>}<th scope="col">Total da semana</th></tr>
     <tr><th scope="row">Dia obrigatório</th><td></td><td></td>{dates.map(date=><td key={date}><label><input type="checkbox" disabled={disabled} checked={Boolean(plan.requiredDays?.[date])} onChange={event=>onChange("requiredDays",date,event.target.checked)} /> obrigatório</label></td>)}{unassigned&&<td></td>}<td></td></tr>
@@ -75,7 +74,7 @@ export default function ShoppingWeekTable({week,plan,totals,flavors,disabled,onC
      <tr className="adoce-shopping-result-row"><th scope="row">Resultado (%)</th><td></td><td></td>{dayResults.map(({date,revenue,cost})=><td key={date}><strong>{revenue>0?formatPercent((revenue-cost)/revenue*100):"—"}</strong></td>)}{unassigned&&<td></td>}<td><strong>{weekTotal.revenue>0?formatPercent((weekTotal.revenue-weekTotal.cost)/weekTotal.revenue*100):"—"}</strong></td></tr>
     </tfoot>
    </table>
-  </div><p className="adoce-shopping-scroll-hint">No celular, deslize a tabela para ver todos os dias. O sabor e o total continuam visíveis.</p>
+  </CostSheetTable><p className="adoce-shopping-scroll-hint">No celular, deslize a tabela para ver todos os dias. O sabor e o total continuam visíveis.</p>
   {anyMissingEconomics&&<p className="adoce-cost-pending">Previsão de venda/custo/resultado não inclui sabor(es) sem ficha de custo completa (custo da fatia, preço de venda e rendimento em fatias por torta cadastrados). Complete a ficha na aba "Fichas por sabor" para entrar no cálculo.</p>}
   {warnings.length>0&&<div className="adoce-cost-pending" role="alert"><strong>Dias obrigatórios fora da regra (mínimo de 6 sabores, sendo ao menos 1/3 de massa branca)</strong><ul>{warnings.map(warning=><li key={warning.date}>{dayLabel(warning.date)}: {warning.flavorCount} sabor(es), {warning.whiteCount} de massa branca</li>)}</ul></div>}
  </>;
