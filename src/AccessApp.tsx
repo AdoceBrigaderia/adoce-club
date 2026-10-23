@@ -111,7 +111,6 @@ import {
   staffAccessMessage,
   type StaffAccessCode,
 } from "./staff-access-code";
-import ProductionRollbackPanel from "./ProductionRollbackPanel";
 import {
   currentConsent,
   isCustomerOnboardingComplete,
@@ -144,7 +143,6 @@ const OperationNotificationPreview = lazy(() =>
     default: module.OperationNotificationPreview,
   })),
 );
-const DirectorPlanChecklist = lazy(() => import("./DirectorPlanChecklist"));
 const StaffProfileAdmin = lazy(() => import("./StaffProfileAdmin"));
 const metaWhatsAppEnabled =
   import.meta.env.VITE_META_WHATSAPP_ENABLED === "true";

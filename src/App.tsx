@@ -1,6 +1,4 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import AdoceHome from "./AdoceHome";
-const AdoceEntrar = lazy(() => import("./AdoceEntrar"));
 const AdoceClube = lazy(() => import("./AdoceClube"));
 import PublicHeader from "./PublicHeader";
 import PublicMobileNav, { type PublicMobileArea } from "./PublicMobileNav";
@@ -77,15 +75,8 @@ export default function App(){
   const routeHash = currentRouteHash();
   const host = location.hostname.toLowerCase();
   const socialAuthReturn = new URLSearchParams(location.search).get("auth_return");
-  const retiredDemoRoutes = ["#prototipo", "#membro-demo", "#operacao-demo", "#operacao-v2", "#restauracao-demo", "#home-antiga"];
-  if (retiredDemoRoutes.includes(routeHash)) return <PublicSurface active="home"><AdoceHome /></PublicSurface>;
   if (tokenDoMagicLink(location.hash)) return <CustomerSurface><AccessApp surface="client"/></CustomerSurface>;
-  if(routeHash.startsWith("#campanha-") || routeHash.startsWith("#lancamento-")) return <PublicSurface active="home"><AdoceHome /></PublicSurface>;
   if (location.pathname === "/operacao" || location.pathname.startsWith("/operacao/") || host.startsWith("operacao.") || socialAuthReturn === "operacao" || routeHash.startsWith("#operacao")) return <Suspense fallback={loading}><AccessApp surface="operation"/></Suspense>;
-  // Login por WhatsApp: a tela existe mas o envio de codigo ainda nao esta
-  // ligado (falta a Cloud API da Meta). Ate la, #entrar continua no fluxo
-  // atual que funciona, e a tela nova fica visivel so em #entrar-novo.
-  if(routeHash.startsWith("#entrar-novo"))return <PublicSurface active="club"><AdoceEntrar/></PublicSurface>;
   if(routeHash.startsWith("#clube") || routeHash.startsWith("#indicar"))return <PublicSurface active="club"><AdoceClube/></PublicSurface>;
   if (host.startsWith("clube.") || socialAuthReturn === "clube" || routeHash.startsWith("#entrar") || routeHash.startsWith("#cadastro") || routeHash.startsWith("#minha-conta") || routeHash.startsWith("#acesso-direto")) return <CustomerSurface><AccessApp surface="client"/></CustomerSurface>;
   if(routeHash.startsWith("#adoce-hoje"))return <PublicSurface active="today"><AdoceHoje/></PublicSurface>;
