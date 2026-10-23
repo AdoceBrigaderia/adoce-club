@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
+  LayoutDashboard,
   PackageCheck,
   MessageCircle,
   RefreshCw,
@@ -21,7 +22,8 @@ export type DashboardDestination =
   | "requests"
   | "catalog"
   | "availability"
-  | "low-stock";
+  | "low-stock"
+  | "painel-do-dia";
 
 type DashboardData = {
   activeSales: number;
@@ -328,6 +330,7 @@ export default function OperationDashboard({
         <div><small>Acesso rápido</small><h2>Outras tarefas</h2></div>
         <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span>Encomendas<small>Pedidos futuros e retiradas</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span>Produção de hoje<small>Liberar sabores e quantidades</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("painel-do-dia")}><LayoutDashboard /><span>Painel do dia (novo)<small>Visão única: ações, sabores e pedidos</small></span><ArrowRight /></button>
       </div>
 
       <RemotePrintTrigger />
