@@ -478,6 +478,7 @@ export default function InstantOrderPanel({
           <dl><div><dt>Total</dt><dd>{money(result!.total || 0)}</dd></div><div><dt>Retirada</dt><dd>{result!.pickup_requested_time || pickupTime}</dd></div><div><dt>Próximo passo</dt><dd>Confira o WhatsApp</dd></div></dl>
           {result!.pickup_address ? <div className="instant-order-pickup"><MapPin /><span><strong>{result!.pickup_label}</strong><small>{result!.pickup_address}</small></span><button type="button" onClick={() => void navigator.clipboard.writeText(result!.pickup_address || "")}><Copy /> Copiar</button></div> : null}
           <a href={orderWhatsAppUrl(orderWhatsAppNumber, whatsappMessage)} target="_blank" rel="noreferrer"><MessageCircle /> Finalizar pelo WhatsApp</a>
+          {result!.token ? <a className="instant-order-track" href={`/acompanhar?pedido=${encodeURIComponent(result!.order_number || "")}&token=${encodeURIComponent(result!.token)}`}>Acompanhar meu pedido</a> : null}
           <button type="button" className="instant-order-finish" onClick={reset}>Concluir</button>
         </section>}
       </aside>

@@ -2,7 +2,7 @@ const routePrefixes = [
   "operacao", "clube", "entrar", "cadastro", "minha-conta",
   "adoce-hoje", "carrinho", "encomendas", "docinhos",
   "politica-de-pedidos", "fale-com-a-adoce",
-  "termos", "privacidade", "indicar", "entrar-novo", "inicio", "catalogo",
+  "termos", "privacidade", "indicar", "inicio", "catalogo", "acompanhar",
 ];
 
 export function pathFromLegacyHash(hash: string): string | null {

@@ -16,6 +16,7 @@ const PilotApp = lazy(() => import("./PilotApp"));
 const AdoceHoje = lazy(() => import("./AdoceHoje"));
 const AdoceHomeCatalog = lazy(() => import("./AdoceHomeCatalog"));
 const CatalogPage2026 = lazy(() => import("./CatalogPage2026"));
+const AcompanharPedidoPage = lazy(() => import("./AcompanharPedidoPage"));
 const AccessApp = lazy(() => import("./AccessApp"));
 
 const loading = <main className="access-loading"><p>Abrindo a experiência Adoce...</p></main>;
@@ -59,6 +60,8 @@ export default function App(){
                   ? "Fale com a Adoce"
                 : routeHash.startsWith("#catalogo")
                   ? "Catálogo de Tortas e Docinhos 2026 · Adoce Brigaderia"
+                : routeHash.startsWith("#acompanhar")
+                  ? "Acompanhar pedido · Adoce Brigaderia"
                 : "Adoce Brigaderia | Fatias artesanais e Clube Adoce em Fortaleza";
       window.scrollTo({ top: 0, behavior: "instant" });
     };
@@ -88,6 +91,7 @@ export default function App(){
   if(routeHash.startsWith("#termos"))return <PublicSurface><LegalPage kind="terms"/></PublicSurface>;
   if(routeHash.startsWith("#privacidade"))return <PublicSurface><LegalPage kind="privacy"/></PublicSurface>;
   if(routeHash.startsWith("#catalogo"))return <PublicSurface active="orders"><CatalogPage2026/></PublicSurface>;
+  if(routeHash.startsWith("#acompanhar"))return <PublicSurface><AcompanharPedidoPage/></PublicSurface>;
   if(import.meta.env.DEV && routeHash.startsWith("#festival"))return <Suspense fallback={loading}><PilotApp/></Suspense>;
   return <PublicSurface active="home"><AdoceHomeCatalog/></PublicSurface>
 }
