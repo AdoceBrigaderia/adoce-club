@@ -52,6 +52,7 @@ import {
   Heart,
   History,
   ImagePlus,
+  Images,
   LayoutDashboard,
   LogOut,
   Mail,
@@ -138,6 +139,7 @@ const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin")
 const OperationArchive = lazy(() => import("./OperationArchive"));
 const OperationAuditDecisions = lazy(() => import("./OperationAuditDecisions"));
 const PainelDoDiaPage = lazy(() => import("./PainelDoDiaPage"));
+const OperationVisualSettings = lazy(() => import("./OperationVisualSettings"));
 const OperationDashboard = lazy(() => import("./OperationDashboard"));
 const OperationNotificationCenter = lazy(() => import("./OperationNotificationCenter"));
 const OperationNotificationPreview = lazy(() =>
@@ -2974,7 +2976,7 @@ function OperationHome({ session }: { session: Session }) {
   const [manualQr, setManualQr] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"store" | "hours" | "team">("store");
+  const [settingsTab, setSettingsTab] = useState<"store" | "hours" | "team" | "visual">("store");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const customerResultsRef = useRef<HTMLDivElement | null>(null);
@@ -4945,6 +4947,7 @@ function OperationHome({ session }: { session: Session }) {
                 <button className={settingsTab === "store" ? "active" : ""} onClick={() => setSettingsTab("store")}><Settings2 /> Loja e pagamentos</button>
                 <button className={settingsTab === "hours" ? "active" : ""} onClick={() => setSettingsTab("hours")}><Clock3 /> Funcionamento</button>
                 {role === "owner" ? <button className={settingsTab === "team" ? "active" : ""} onClick={() => setSettingsTab("team")}><ShieldCheck /> Equipe</button> : null}
+                <button className={settingsTab === "visual" ? "active" : ""} onClick={() => setSettingsTab("visual")}><Images /> Fotos do site</button>
               </nav>
               {settingsTab === "store" ? (
                 <>
@@ -4962,6 +4965,15 @@ function OperationHome({ session }: { session: Session }) {
               {settingsTab === "team" && role === "owner" ? (
                 <Suspense fallback={<p>Carregando cadastro da equipe...</p>}>
                   <StaffProfileAdmin session={session} staff={team} />
+                </Suspense>
+              ) : null}
+              {settingsTab === "visual" ? (
+                <Suspense fallback={<p>Carregando fotos do site...</p>}>
+                  <OperationVisualSettings
+                    session={session}
+                    onOpenFlavorImages={() => { setProductArea("flavors"); setContentTab("catalog"); void openView("products"); }}
+                    onOpenProductImages={() => openCommercial("catalog")}
+                  />
                 </Suspense>
               ) : null}
             </div>
