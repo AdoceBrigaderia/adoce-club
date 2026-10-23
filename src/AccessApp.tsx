@@ -13,6 +13,7 @@ import CashDayGuard from "./CashDayGuard";
 import {  operationNavigateEvent, type OperationAreaRequest, type StampSale  } from "./lib/operation-navigation";
 import {  describeOperationMessage, type OperationMessageKind  } from "./lib/operation-feedback";
 import NativePrinterSettings from "./NativePrinterSettings";
+import OperationSliceAlerts from "./OperationSliceAlerts";
 import {  syncNativeOperationSession  } from "./lib/native-operation";
 import {  productionApiOrigin  } from "./lib/native-api";
 import "./cash-register-layout.css";
@@ -4339,6 +4340,7 @@ function OperationHome({ session }: { session: Session }) {
                   <Camera /> Ler QR do membro
                 </button>
               </div>
+              <OperationSliceAlerts />
               <div className="operation-member-counts operation-member-counts-simple" aria-label="Quantidade de clientes ativos">
                 <button type="button" className={memberStatusFilter === "active" ? "active" : ""} aria-pressed={memberStatusFilter === "active"} onClick={() => void showCustomersByStatus("active")}>
                   <b>{memberCounts.active}</b><span>ativos</span>

@@ -20,7 +20,10 @@ describe("avisos de disponibilidade e imagens de produto", () => {
   });
 
   it("leva a fatia avisada diretamente ao carrinho", () => {
-    expect(operation).toContain("/pedido?flavor=");
+    // /pedido nunca foi uma rota valida (nao esta em route-paths.ts); o
+    // fluxo real que de fato abre o carrinho com o sabor e /carrinho com
+    // openCartOnLoad, que le ?flavor= em AdoceHoje.tsx.
+    expect(operation).toContain("/carrinho?flavor=");
     expect(today).toContain('get("flavor")');
   });
 
