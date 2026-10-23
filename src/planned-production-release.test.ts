@@ -9,7 +9,7 @@ const migration = readFileSync(
   "utf8",
 );
 const admin = readFileSync(
-  new URL("./WeeklyMenuAdmin.tsx", import.meta.url),
+  new URL("./ProductionReleasePanel.tsx", import.meta.url),
   "utf8",
 );
 const dashboard = readFileSync(

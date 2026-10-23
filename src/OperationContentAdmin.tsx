@@ -25,6 +25,7 @@ import {
 import ImageEditor, { PRODUCT_IMAGE_PRESET } from "./ImageEditor";
 import ClipboardImageInput from "./ClipboardImageInput";
 import ShoppingBatchSuggestions from "./ShoppingBatchSuggestions";
+import ProductionReleasePanel from "./ProductionReleasePanel";
 import { currentLocalTime, normalizeTime, type AvailabilityBatch } from "./availability-batches";
 import { weekStart, shiftDate } from "./lib/shopping-week";
 import "./content-admin.css";
@@ -1164,6 +1165,7 @@ export default function OperationContentAdmin({
               </button>
             ) : null}
           </details>
+          {selectedDate === todayInFortaleza() ? <ProductionReleasePanel today={todayInFortaleza()} onReleased={load} /> : null}
           {canSeeCosts && selectedDate === todayInFortaleza() ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
           <label className="admin-search availability-search">
             <span className="sr-only">Buscar sabor</span>
