@@ -1,4 +1,4 @@
-const CACHE = "clube-adoce-v5";
+const CACHE = "clube-adoce-v6";
 const SHELL = [
   "/site/logo.webp",
   "/manifest-clube.webmanifest",
@@ -23,8 +23,12 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
-  if (new URL(event.request.url).origin !== self.location.origin) return;
-  if (event.request.mode === "navigate" || new URL(event.request.url).pathname.startsWith("/assets/")) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  // Respostas da API podem conter dados privados e mudam a cada atendimento.
+  // Cache-Control/no-store do fetch não impede a resposta salva pelo service worker.
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/.netlify/functions/")) return;
+  if (event.request.mode === "navigate" || url.pathname.startsWith("/assets/")) return;
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
     if (response.ok) {
       const copy = response.clone();
