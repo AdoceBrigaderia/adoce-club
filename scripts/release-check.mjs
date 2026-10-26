@@ -27,7 +27,7 @@ for (const [label, args] of stages) {
   }
 }
 
-console.log("\nAPROVADO PARA HOMOLOGACAO VISUAL");
-console.log("1. Conferir as telas alteradas no computador e no celular.");
-console.log("2. Confirmar textos, links, imagens e dados reais.");
-console.log("3. Somente depois usar npm run release:prod.\n");
+console.log("\nAPROVADO PARA VALIDACAO LOCAL");
+console.log("1. Conferir localmente as telas alteradas no computador e no celular.");
+console.log("2. Confirmar textos, links, imagens e fluxos sem criar ambiente online alternativo.");
+console.log("3. Pedir autorizacao explicita antes de usar npm run release:prod.\n");

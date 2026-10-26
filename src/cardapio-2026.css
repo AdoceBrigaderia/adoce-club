@@ -1,0 +1,212 @@
+.public-app-shell-today {
+  --cardapio-chocolate: #51200f;
+  --cardapio-rosa: #f7a6b4;
+  --cardapio-pink: #f22c62;
+  --cardapio-creme: #fff9f1;
+  min-height: 100vh;
+  background: var(--cardapio-creme);
+  color: #3f1c10;
+}
+
+body:has(.public-app-shell-today) {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  background: var(--cardapio-creme);
+}
+
+.public-app-shell-today > .public-shell-header {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 30;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 205px !important;
+  max-width: none;
+  margin: 0;
+  padding: 26px max(48px, calc((100vw - 1024px) / 2 + 48px)) 24px !important;
+  display: grid !important;
+  grid-template-columns: 190px 1fr 190px !important;
+  grid-template-rows: 104px 48px !important;
+  align-items: center;
+  border: 0;
+  background: var(--cardapio-creme) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.public-app-shell-today .public-brand {
+  position: relative !important;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: start;
+  justify-self: start;
+  width: 130px !important;
+  height: 130px !important;
+  margin-top: -16px;
+  border: 0;
+  background: transparent;
+}
+
+.public-app-shell-today .public-brand img { width: 100%; height: 100%; object-fit: contain; clip-path: circle(49% at 50% 50%); }
+.public-app-shell-today .public-member-greeting {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  align-self: end;
+  font-size: 1.08rem;
+  color: #3f1c10;
+  text-decoration: none;
+}
+
+.public-app-shell-today .public-cardapio-desktop-nav {
+  position: static !important;
+  grid-column: 2;
+  grid-row: 1;
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(92px, 1fr));
+  gap: 12px;
+  align-self: center;
+  justify-self: center;
+  width: min(100%, 470px);
+  max-height: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.public-app-shell-today .public-cardapio-desktop-nav a {
+  min-height: 74px;
+  padding: 10px 8px;
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  gap: 4px;
+  border-radius: 18px;
+  color: #3f1c10;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.public-app-shell-today .public-cardapio-desktop-nav a.active { color: var(--cardapio-pink); background: #ffdce3; }
+.public-app-shell-today .public-cardapio-desktop-nav svg { width: 25px; height: 25px; }
+.public-app-shell-today .public-header-actions { grid-column: 3; grid-row: 1 / 3; align-self: start; justify-self: end; padding-top: 0; }
+.public-app-shell-today .public-menu { color: #fff; background: transparent; box-shadow: none; }
+.public-app-shell-today .public-menu svg { width: 38px; height: 38px; stroke-width: 2.6; }
+.public-app-shell-today .public-member-status { position: absolute; right: 50px; top: 150px; }
+.public-app-shell-today .public-member-progress { min-width: 120px; min-height: 44px; display: grid; place-items: center; border-radius: 999px; background: #fff9f1; color: #3f1c10; text-decoration: none; }
+.public-app-shell-today .public-shell-header > nav:not(.public-cardapio-desktop-nav) { top: 82px; right: 38px; }
+
+.public-app-shell-today > .today-page {
+  max-width: 1024px;
+  margin: 0 auto;
+  min-height: auto;
+  background: var(--cardapio-creme);
+}
+
+.public-app-shell-today .today-page > .today-flavors {
+  padding: 0 54px 80px !important;
+  border: 0;
+  background: var(--cardapio-creme) !important;
+}
+
+.public-app-shell-today .today-compact-intro {
+  position: relative;
+  min-height: 152px;
+  margin: 0 -54px 0;
+  padding: 40px 76px 30px;
+  display: grid;
+  align-content: center;
+  background: var(--cardapio-rosa) url('/brand-2026/cardapio/adoce_cardapio_assets/svg/decoracoes/onda-rosa.svg') center / 100% 100% no-repeat;
+}
+
+.public-app-shell-today .today-compact-intro::after {
+  content: '';
+  position: absolute;
+  right: 55px;
+  top: 23px;
+  width: 125px;
+  height: 100px;
+  background: url('/brand-2026/cardapio/adoce_cardapio_assets/svg/decoracoes/selo-fatias.svg') center / contain no-repeat;
+}
+
+.public-app-shell-today .today-compact-date { margin: 0 0 8px; color: #b83b4e; font-size: .88rem; }
+.public-app-shell-today .today-compact-title {
+  max-width: 720px;
+  margin: 0;
+  font-family: 'Comic Sans MS', 'Segoe Print', cursive;
+  font-size: clamp(2rem, 4vw, 3.05rem);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  color: #35170d;
+}
+
+.public-app-shell-today .today-compact-subtitle { display: none; }
+.public-app-shell-today .today-week-tabs { max-width: 690px; margin: 0; padding: 18px 0 16px; gap: 8px; }
+.public-app-shell-today .today-week-tab { min-width: 76px; min-height: 70px; border: 0; border-radius: 15px; background: #fff1ea; }
+.public-app-shell-today .today-week-tab.active { background: #e84d69; color: #fff; }
+.public-app-shell-today .today-card-grid { max-width: none; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 18px !important; }
+.public-app-shell-today .today-flavor-card { min-width: 0; border-radius: 18px !important; border: 1px solid #f0d8d3 !important; box-shadow: 0 9px 24px rgba(88,37,19,.07) !important; background: #fff !important; }
+.public-app-shell-today .today-card-image { min-height: 0 !important; aspect-ratio: 1.18 / .86 !important; }
+.public-app-shell-today .today-card-image img { object-fit: cover !important; object-position: center !important; }
+.public-app-shell-today .today-card-body { padding: 13px 14px 9px !important; }
+.public-app-shell-today .today-card-body h3 { margin: 5px 0 3px; font-family: Georgia, serif; font-size: 1.05rem !important; line-height: 1.04; }
+.public-app-shell-today .today-card-body p { display: none; }
+.public-app-shell-today .today-card-price { margin-top: 5px; color: var(--cardapio-pink); font-size: 1.05rem; }
+.public-app-shell-today .today-stock-count { display: block !important; font-size: .67rem !important; }
+.public-app-shell-today .today-status-pill { left: 10px; right: auto; top: auto; bottom: 8px; padding: 6px 10px; border-radius: 999px; background: #15945d; color: #fff; font-size: .66rem; }
+.public-app-shell-today .today-order-flavor { min-height: 42px !important; margin: 0 12px 8px !important; border: 0 !important; border-radius: 11px !important; background: var(--cardapio-pink) !important; color: #fff !important; font-size: .68rem !important; }
+.public-app-shell-today .today-gallery-link { min-height: 30px; margin: 0 12px 10px; color: #a94632; font-size: .78rem; }
+.public-app-shell-today .today-week-empty-note { min-height: 86px; }
+.public-app-shell-today > .ah-secao { display: none; }
+.public-app-shell-today > .public-signature { display: none; }
+
+.public-app-shell-today > .public-shell-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 60;
+  max-width: 1024px;
+  margin: 0 auto;
+  min-height: 86px;
+  padding: 12px 60px;
+  border-radius: 34px 34px 0 0;
+  background: rgba(255,250,245,.98);
+  border: 1px solid #f2d9d3;
+}
+
+.public-app-shell-today::after {
+  content: '';
+  display: block;
+  max-width: 1024px;
+  height: 74px;
+  margin: -160px auto 0;
+  background: url('/brand-2026/cardapio/adoce_cardapio_assets/svg/decoracoes/onda-rodape.svg') center bottom / 100% 74px no-repeat;
+}
+
+@media (max-width: 760px) {
+  .public-app-shell-today > .public-shell-header { position: relative; inset: auto; width: 100%; height: auto; min-height: 145px; padding: 18px 16px 16px; grid-template-columns: 90px 1fr 70px; grid-template-rows: 78px 36px; background-size: auto 64px; }
+  .public-app-shell-today .public-brand { width: 88px; height: 88px; margin-top: -10px; }
+  .public-app-shell-today .public-cardapio-desktop-nav { display: none; }
+  .public-app-shell-today .public-member-greeting { grid-column: 1 / 3; font-size: .95rem; }
+  .public-app-shell-today .public-menu svg { width: 30px; height: 30px; }
+  .public-app-shell-today .public-member-status { right: 58px; top: 89px; }
+  .public-app-shell-today .public-member-progress { min-width: 88px; min-height: 36px; font-size: .78rem; }
+  .public-app-shell-today .today-page > .today-flavors { padding: 0 14px 100px !important; }
+  .public-app-shell-today .today-compact-intro { min-height: 132px; margin: 0 -14px; padding: 28px 20px 24px; }
+  .public-app-shell-today .today-compact-intro::after { right: 10px; top: 20px; width: 78px; height: 76px; opacity: .9; }
+  .public-app-shell-today .today-compact-title { max-width: 280px; font-size: 2rem; }
+  .public-app-shell-today .today-week-tabs { padding-top: 14px; }
+  .public-app-shell-today .today-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+  .public-app-shell-today .today-flavor-card { display: flex !important; }
+  .public-app-shell-today .today-card-image { aspect-ratio: 1.18 / .95 !important; }
+  .public-app-shell-today .today-card-body { padding: 10px 10px 7px !important; }
+  .public-app-shell-today .today-card-body h3 { font-size: .92rem !important; }
+  .public-app-shell-today .today-order-flavor { margin: 0 8px 7px !important; }
+  .public-app-shell-today > .public-shell-nav { position: fixed; min-height: 76px; padding: 8px 10px; left: 0; right: 0; }
+}
+
+@media (max-width: 380px) {
+  .public-app-shell-today .today-card-grid { grid-template-columns: 1fr !important; }
+}

@@ -1,6 +1,7 @@
 import twilio from "twilio";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { env } from "./whatsapp-auth";
+import { PRODUCTION_SITE_ORIGIN } from "./production-origin";
 
 export type AccessLink = {
   email: string;
@@ -15,9 +16,6 @@ export type AccessLinkDelivery = {
   error?: string;
 };
 
-const configuredSiteUrl = () =>
-  (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-
 const whatsappAddress = (value: string) =>
   value.startsWith("whatsapp:") ? value : `whatsapp:${value}`;
 
@@ -30,7 +28,7 @@ const safeTwilioError = (error: unknown) => {
 export const buildAccessLink = (
   email: string,
   code: string,
-  baseUrl = configuredSiteUrl(),
+  baseUrl = PRODUCTION_SITE_ORIGIN,
 ): AccessLink => {
   const normalizedEmail = email.trim().toLowerCase();
   const normalizedCode = code.replace(/\D/g, "").slice(0, 6);
@@ -64,7 +62,7 @@ export async function generateAccessLink(
   const { data, error } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: normalizedEmail,
-    options: { redirectTo: `${configuredSiteUrl()}/clube` },
+    options: { redirectTo: `${PRODUCTION_SITE_ORIGIN}/clube` },
   });
   const code = data?.properties?.email_otp;
   if (error || !code) throw new Error("access_link_generation_failed");

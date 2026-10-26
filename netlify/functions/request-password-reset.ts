@@ -5,6 +5,7 @@ import {
   normalizeBrazilPhone,
   whatsappAuthEnabled,
 } from "./_shared/whatsapp-auth";
+import { isAllowedAppOrigin } from "./_shared/production-origin";
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 
@@ -23,22 +24,7 @@ const json = (body: unknown, status = 200, extraHeaders: Record<string, string> 
   });
 
 const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
+  return isAllowedAppOrigin(request.headers.get("origin"));
 };
 
 const maskPhone = (phone: string) =>

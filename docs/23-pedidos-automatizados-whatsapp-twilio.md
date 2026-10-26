@@ -1,7 +1,7 @@
 ---
 title: Pedidos automatizados pelo WhatsApp com Twilio
-description: Jornada conversacional, integraÃ§Ã£o com o estoque real, seguranÃ§a, idempotÃªncia, homologaÃ§Ã£o e operaÃ§Ã£o assistida.
-status: Implementado localmente; migraÃ§Ã£o, homologaÃ§Ã£o externa e ativaÃ§Ã£o pendentes
+description: Jornada conversacional, integraÃ§Ã£o com o estoque real, seguranÃ§a, idempotÃªncia, validaÃ§Ã£o e operaÃ§Ã£o assistida.
+status: Implementado localmente; migraÃ§Ã£o, validaÃ§Ã£o controlada e ativaÃ§Ã£o pendentes
 ---
 
 # Pedidos automatizados pelo WhatsApp com Twilio

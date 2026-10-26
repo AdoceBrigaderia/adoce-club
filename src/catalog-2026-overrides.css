@@ -1,0 +1,5 @@
+.catalog-sweets-grid article > img {
+  object-fit: contain;
+  border-radius: 0;
+  filter: none;
+}

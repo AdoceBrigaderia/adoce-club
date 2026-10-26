@@ -11,6 +11,15 @@ Os arquivos Markdown listados em `docs/documentation-manifest.json` são a fonte
 - Antes de desenvolvimento, testes, compilação ou publicação, executar a verificação de fonte única prevista nos comandos do projeto.
 - Não contornar os bloqueios de fonte única e de recursos operacionais. Publicação em produção continua exigindo autorização explícita.
 
+## Ambiente online único e autorização de produção — decisão do proprietário em 24/10/2026
+
+- O único ambiente online permitido é a produção em `https://www.adocebrigaderia.com.br`.
+- O antigo site de homologação online está definitivamente desativado e não pode ser recriado, reutilizado, referenciado ou receber deploy.
+- São proibidos Deploy Previews, branch deploys, aliases públicos de revisão e qualquer site online de teste conectado aos dados ou credenciais deste produto.
+- Desenvolvimento, testes e validações anteriores à produção acontecem somente na pasta principal e em ambiente local. Dados reais não podem ser expostos em uma URL alternativa.
+- Toda e qualquer modificação futura exige perguntar explicitamente ao proprietário se pode ser aplicada em produção. Autorização para desenvolver, testar ou revisar não autoriza publicar.
+- Só apresente uma solução como concluída depois de comprovar a causa, validar a correção e, quando autorizada, confirmar o comportamento no domínio oficial após a publicação.
+
 ## Antes de alterar qualquer coisa
 
 1. Leia este arquivo e `docs/documentation-manifest.json`.

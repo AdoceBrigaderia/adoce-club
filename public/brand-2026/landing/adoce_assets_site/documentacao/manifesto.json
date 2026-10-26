@@ -1,0 +1,31 @@
+{
+  "total": 26,
+  "arquivos": [
+    "documentacao/LEIA-ME.md",
+    "icones/cartao-fidelidade.svg",
+    "icones/cartao-pagamento.svg",
+    "icones/cesta-menu.svg",
+    "icones/coracao-vantagens.svg",
+    "icones/estrela-carimbos.svg",
+    "icones/fatia-bolo.svg",
+    "icones/fatia-premio.svg",
+    "icones/localizacao.svg",
+    "icones/menu-hamburguer.svg",
+    "icones/orcamento-personalizado.svg",
+    "icones/prancheta-encomenda.svg",
+    "icones/presente-kits.svg",
+    "icones/relogio.svg",
+    "icones/seta-direita.svg",
+    "icones/torta-inteira.svg",
+    "icones/whatsapp.svg",
+    "logos/logo-adoce-original.png",
+    "logos/logo-adoce-transparente.png",
+    "ornamentos/coracao-desenhado.svg",
+    "ornamentos/fundo-circular-creme.svg",
+    "ornamentos/fundo-circular-rosa.svg",
+    "ornamentos/onda-rodape.svg",
+    "ornamentos/onda-separadora.svg",
+    "ornamentos/pingos-chocolate.svg",
+    "ornamentos/selo-fatias-tortas.svg"
+  ]
+}

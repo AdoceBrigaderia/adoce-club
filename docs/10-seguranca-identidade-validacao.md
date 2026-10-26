@@ -96,7 +96,7 @@ Uma mudança só pode ser declarada pronta quando houver evidência de:
 11. sessão lembrada e sessão temporária testadas;
 12. recuperação por e-mail testada;
 13. revisão visual no computador e no celular;
-14. aprovação da prévia antes da publicação;
+14. aprovação da prévia local antes da publicação;
 15. verificação final nos domínios oficiais após a publicação.
 
 Pedidos públicos utilizam número rastreável e token aleatório de acesso, sem expor consultas por telefone ou dados de outros clientes. O vínculo com o Clube só pode ser consultado por sessão autenticada ou pela equipe. Mudanças para pronto ou entregue exigem pagamento aprovado no próprio banco, independentemente do botão usado pela interface.

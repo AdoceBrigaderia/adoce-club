@@ -39,12 +39,12 @@ npm run build
 npm run release:check
 ```
 
-`release:check` é o portão obrigatório antes de homologação ou produção. Além dos testes automáticos, mudanças visuais precisam de conferência real em computador, celular e, quando envolverem a operação, tablet.
+`release:check` é o portão obrigatório antes de produção. Não existe homologação online: validações anteriores ao deploy acontecem somente no ambiente local. Além dos testes automáticos, mudanças visuais precisam de conferência real em computador, celular e, quando envolverem a operação, tablet. Toda publicação exige autorização explícita do proprietário.
 
 ## Publicação
 
 ```bash
-npm run release:preview
+npm run release:check
 npm run release:prod
 ```
 

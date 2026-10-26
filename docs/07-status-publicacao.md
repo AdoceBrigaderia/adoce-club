@@ -6,6 +6,14 @@ status: Produção em evolução
 
 # Status da publicação
 
+## 24/10/2026 — incidente de link para homologação e decisão de ambiente único
+
+Foi confirmado que uma versão publicada das Netlify Functions havia capturado `SITE_URL` apontando para o antigo ambiente de homologação. No cadastro de cliente pela Operação, a geração segura do link recusava essa origem, mas a mensagem manual de contingência continuava usando o valor incorreto e podia copiar para o WhatsApp um endereço de homologação. O problema também expôs que contextos de preview e branch deploy compartilhavam as credenciais públicas e o projeto Supabase da produção.
+
+Decisão definitiva do proprietário: o único ambiente online permitido é `https://www.adocebrigaderia.com.br`. O antigo site de homologação, aliases e branch deploys devem permanecer desativados; nenhuma URL alternativa pode acessar dados reais. Testes e validações anteriores à produção acontecem localmente em `D:\AdoceOnLine`.
+
+Toda modificação futura deve pedir autorização explícita antes de ser aplicada em produção. Uma solução só pode ser apresentada como concluída depois de a causa e a correção terem sido comprovadas e, quando a publicação for autorizada, o domínio oficial tiver sido verificado.
+
 ## 21/10/2026 (continuação) — massa predominante, dia obrigatório, rascunho com botão salvar e sincronização automática
 
 Completadas as 5 fases combinadas com o proprietário (listadas como pendentes na entrada anterior desta mesma data):
@@ -94,14 +102,14 @@ Estado atual: código implementado, revisão da cadeia de pedido concluída, tes
 
 Antes de entrar no próximo deploy, é obrigatório:
 
-1. aplicar a migração `20260815110239_add_inventory_availability_batches.sql` em homologação;
-2. cadastrar lotes por horário usando uma conta real da equipe;
-3. concluir um pedido real contendo estoque imediato e futuro;
-4. validar reserva, pagamento, cancelamento e devolução do estoque;
-5. executar novamente `npm run release:check`;
-6. obter autorização explícita antes da publicação em produção.
+1. ensaiar localmente a migração `20260815110239_add_inventory_availability_batches.sql` em banco local isolado e descartável;
+2. validar localmente os lotes por horário com dados fictícios;
+3. executar novamente `npm run release:check`;
+4. obter autorização explícita antes da aplicação da migração e da publicação em produção;
+5. depois da autorização, executar um pedido controlado no domínio oficial contendo estoque imediato e futuro;
+6. validar reserva, pagamento, cancelamento e devolução do estoque em produção, sem efetuar cobrança real.
 
-### 22/07/2026 — pedidos imediatos em homologação
+### 22/07/2026 — registro histórico de pedidos imediatos no antigo ambiente
 
 Foi criada a fundação dos pedidos individuais de fatias para retirada. O cliente monta quantidades a partir do Adoce Hoje, recebe um número de pedido e continua o atendimento pelo WhatsApp. A operação ganhou uma fila própria de Vendas com confirmação, reserva transacional de estoque, pagamento manual, separação, retirada, cancelamento e histórico. O endereço de retirada fica registrado no pedido, evitando divergência quando houver mais de um local de atendimento.
 
@@ -180,7 +188,7 @@ A consulta somente de leitura ao banco de produção em 08/10/2026 confirmou 27 
 
 O módulo completo e suas dependências foram recuperados na pasta principal, preservando uma cópia dos arquivos anteriores. A compilação agora executa `scripts/verify-operation-release.mjs`, que bloqueia o pacote quando faltam referências obrigatórias de preparações, tempos, insumos, fornecedores, notas, edição e histórico. A verificação percorre apenas os arquivos alcançáveis pelo ponto de entrada; arquivos antigos soltos não podem satisfazer o bloqueio. Testes reproduzem a versão simplificada, a ausência de cada referência e a presença de um pacote antigo desconectado.
 
-Essa barreira identifica a perda estrutural observada neste incidente; não comprova o funcionamento completo dos fluxos nem substitui homologação autenticada. A pasta principal `D:\AdoceOnLine` deve concentrar o código mantido e os comandos de publicação deste produto. Cópias de release não devem ser usadas como fontes independentes para publicar no mesmo site. Uma publicação direta que contorne a compilação também contorna essa barreira.
+Essa barreira identifica a perda estrutural observada neste incidente; não comprova o funcionamento completo dos fluxos nem substitui validação autenticada local e, quando autorizada, a conferência controlada no domínio oficial. A pasta principal `D:\AdoceOnLine` deve concentrar o código mantido e os comandos de publicação deste produto. Cópias de release não devem ser usadas como fontes independentes para publicar no mesmo site. Uma publicação direta que contorne a compilação também contorna essa barreira.
 
 Estado: recuperação local com validação automatizada; publicação de produção e validação visual autenticada em computador, celular e tablet ainda pendentes. Não houve alteração de dados nem nova publicação durante o diagnóstico.
 
@@ -211,7 +219,7 @@ A pasta de trabalho `D:\AdoceOnLine-NF` foi removida. A exclusão das demais pas
 
 ### 13/10/2026 — fonte física única e reconstrução conferida
 
-O inventário encontrou a fonte oficial, cópias de release, uma cópia externa completa, projetos antigos incorporados à pasta principal e artefatos de homologação. A cópia completa era de 06/10/2026 e continha módulos anteriores à Operação atual; nenhum código exclusivo válido ficou fora da fonte oficial. As cópias inventariadas, builds, APKs e capturas temporárias foram removidos. O projeto Android permanece dentro de `D:\AdoceOnLine` como parte do mesmo produto.
+O inventário encontrou a fonte oficial, cópias de release, uma cópia externa completa, projetos antigos incorporados à pasta principal e artefatos históricos do ambiente hoje desativado. A cópia completa era de 06/10/2026 e continha módulos anteriores à Operação atual; nenhum código exclusivo válido ficou fora da fonte oficial. As cópias inventariadas, builds, APKs e capturas temporárias foram removidos. O projeto Android permanece dentro de `D:\AdoceOnLine` como parte do mesmo produto.
 
 O verificador de fonte única passou a detectar também cópias irmãs completas no mesmo volume, além de cópias internas e execução fora do caminho canônico. A regra está fixada em `AGENTS.md`, neste guia e em teste automatizado. O código consolidado passou por 926 testes, verificação de tipos, build e verificação dos recursos obrigatórios da Operação.
 

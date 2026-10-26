@@ -17,7 +17,7 @@ status: Norma oficial
 
 ## Instrução recomendada
 
-> Compare documentação, código, banco e interface. Não trate afirmações históricas como evidência atual. Preserve a separação entre cliente e operação. Classifique cada conclusão como implementada, automaticamente validada, visualmente validada, funcionalmente validada, confirmada em produção, parcial ou bloqueada. Não publique sem autorização.
+> Compare documentação, código, banco e interface. Não trate afirmações históricas como evidência atual. Preserve a separação entre cliente e operação. Classifique cada conclusão como implementada, automaticamente validada, visualmente validada, funcionalmente validada, confirmada em produção, parcial ou bloqueada. Não crie homologação online, Deploy Preview, branch deploy ou alias público. Antes de toda modificação em produção, peça autorização explícita ao proprietário. Só apresente a solução como concluída depois de comprová-la e, quando a publicação for autorizada, verificá-la no domínio oficial.
 
 ## O que uma revisão deve procurar
 
@@ -50,7 +50,7 @@ Não confie apenas na documentação ou no histórico do Git local para decidir 
 
 - Não corrigir dados reais de forma destrutiva sem autorização.
 - Não afirmar conclusão usando apenas build.
-- Não confundir prévia com produção.
+- Não confundir prévia local com produção e nunca publicar uma prévia online.
 - Não editar manualmente o HTML consolidado.
 - Não colocar linguagem, métricas ou rotinas da equipe no site público.
 

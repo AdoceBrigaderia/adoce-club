@@ -1,0 +1,19 @@
+/* Adoce Brigaderia — tokens e aplicação dos assets da página Minha Conta */
+:root {
+  --adoce-rosa: #fa2464;
+  --adoce-rosa-claro: #f8b6c0;
+  --adoce-creme: #fff9f4;
+  --adoce-chocolate: #4c251a;
+  --adoce-borda: #f9d4cc;
+  --adoce-raio: 24px;
+}
+.adoce-pagina { background: var(--adoce-creme); color: var(--adoce-chocolate); }
+.adoce-topo-chocolate {
+  background: url('../decoracoes/chocolate-topo.svg') top center / 100% auto no-repeat;
+}
+.adoce-onda-rosa { background: url('../decoracoes/onda-rosa-superior.svg') center / 100% 100% no-repeat; }
+.adoce-rodape { background: url('../decoracoes/onda-rosa-inferior.svg') bottom center / 100% 100% no-repeat; }
+.adoce-card { border: 1px solid var(--adoce-borda); border-radius: var(--adoce-raio); background: #fffaf6; }
+.adoce-icone { width: 24px; height: 24px; object-fit: contain; }
+.adoce-carimbo { width: clamp(30px, 5vw, 48px); aspect-ratio: 1; }
+.adoce-logo { width: clamp(70px, 11vw, 130px); height: auto; }

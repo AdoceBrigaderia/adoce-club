@@ -31,6 +31,19 @@ export const batchFree = (batch: AvailabilityBatch) =>
 export const totalBatchFree = (batches: AvailabilityBatch[]) =>
   batches.reduce((total, batch) => total + batchFree(batch), 0);
 
+export const isAvailableForSale = (
+  status: string | null | undefined,
+  quantityAvailable: number | null | undefined,
+  quantityReserved = 0,
+  batches: AvailabilityBatch[] = [],
+) => {
+  if (!status || !["available", "last_units", "preorder_only"].includes(status)) {
+    return false;
+  }
+  const aggregateFree = Math.max(0, Number(quantityAvailable || 0) - Number(quantityReserved || 0));
+  return aggregateFree > 0 || totalBatchFree(batches) > 0;
+};
+
 export function batchAvailabilityLines(
   batches: AvailabilityBatch[],
   nowTime = currentLocalTime(),

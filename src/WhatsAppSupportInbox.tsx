@@ -47,7 +47,21 @@ type ScheduledSupportMessage = {
   last_error?: string | null;
 };
 type SupportThread = SupportThreadSummary & { messages: SupportMessage[]; scheduled_messages?: ScheduledSupportMessage[]; has_more_messages?: boolean };
-type OrderNotificationHealth = { pending: number; failed: number; last_failure?: string | null };
+type OrderNotificationIssue = {
+  order_id: string;
+  order_number: string;
+  recipient: string;
+  status: "pending" | "processing" | "failed";
+  attempts: number;
+  error?: string | null;
+  updated_at: string;
+};
+type OrderNotificationHealth = {
+  pending: number;
+  failed: number;
+  last_failure?: string | null;
+  issues?: OrderNotificationIssue[];
+};
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const departmentLabel = (department: SupportThreadSummary["department"]) =>
@@ -467,6 +481,24 @@ export default function WhatsAppSupportInbox() {
         <p className="whatsapp-support-order-pending" role="status">
           {orderHealth.pending} aviso(s) de pedido aguardando confirmação do WhatsApp.
         </p>
+      ) : null}
+      {orderHealth?.issues?.length ? (
+        <details className="whatsapp-support-order-sources">
+          <summary>Ver os pedidos e a origem desses avisos</summary>
+          <div>
+            {orderHealth.issues.map((issue) => (
+              <article key={`${issue.order_id}:${issue.recipient}`}>
+                <strong>{issue.order_number}</strong>
+                <span>
+                  {issue.status === "failed" ? "Falhou" : issue.status === "processing" ? "Enviando" : "Aguardando envio"}
+                  {` · destinatário ${issue.recipient} · ${issue.attempts} tentativa(s)`}
+                </span>
+                {issue.error ? <small>Motivo informado pelo envio: {issue.error}</small> : null}
+                <time dateTime={issue.updated_at}>{messageDateTime.format(new Date(issue.updated_at))}</time>
+              </article>
+            ))}
+          </div>
+        </details>
       ) : null}
 
       <div className="whatsapp-support-layout">

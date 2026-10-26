@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { isAllowedAppOrigin } from "./production-origin";
 
 // Compartilhado somente entre funcoes; nao deve ser publicado como endpoint.
 
@@ -32,22 +33,7 @@ export const whatsappAuthAccessMode = () => {
 };
 
 export const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
+  return isAllowedAppOrigin(request.headers.get("origin"));
 };
 
 export const normalizeBrazilPhone = (value: string) => {

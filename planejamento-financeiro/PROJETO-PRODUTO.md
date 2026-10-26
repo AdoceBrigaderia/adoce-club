@@ -1,5 +1,7 @@
 # Projeto: transformar o Planejamento Financeiro em produto
 
+> **Decisão superveniente de 24/10/2026:** qualquer proposta deste documento que dependa de homologação online está revogada. O produto Adoce tem somente o ambiente online oficial de produção; testes anteriores ao deploy são locais e a publicação exige autorização explícita do proprietário.
+
 Documento de decisão. Nada aqui foi construído em produção nem gerou custo — a homologação está de pé dentro do projeto Supabase que você já paga.
 
 ---

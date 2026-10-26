@@ -139,3 +139,36 @@
 }
 
 .whatsapp-support-messages{max-height:55dvh;min-height:15rem;overflow-y:auto;overscroll-behavior:contain}.whatsapp-support-conversation form>div{grid-template-columns:minmax(0,1fr) auto}@media(max-width:760px){.whatsapp-support-conversation form>div{grid-template-columns:1fr}}
+.whatsapp-support-order-sources {
+  margin: .75rem 0;
+  border: 1px solid #e8c9b9;
+  border-radius: 14px;
+  background: #fffaf6;
+  padding: .85rem 1rem;
+}
+
+.whatsapp-support-order-sources summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: #59291d;
+}
+
+.whatsapp-support-order-sources > div {
+  display: grid;
+  gap: .65rem;
+  margin-top: .75rem;
+}
+
+.whatsapp-support-order-sources article {
+  display: grid;
+  gap: .15rem;
+  padding: .7rem;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.whatsapp-support-order-sources span,
+.whatsapp-support-order-sources small,
+.whatsapp-support-order-sources time {
+  color: #76584e;
+}

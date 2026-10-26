@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { normalizeBrazilPhone } from "./_shared/whatsapp-auth";
+import { isAllowedAppOrigin } from "./_shared/production-origin";
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 const env = (name: string) => (typeof Netlify !== "undefined" ? Netlify.env.get(name) : undefined) || process.env[name];
@@ -8,8 +9,7 @@ const invalidNames = new Set(["cliente", "cliente adoce", "adoce", "teste", "tes
 
 export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
-  const origin = request.headers.get("origin");
-  if (origin && ![env("SITE_URL")?.replace(/\/$/, ""), "https://www.adocebrigaderia.com.br", "https://clube.adocebrigaderia.com.br", "http://localhost:5173"].filter(Boolean).includes(origin)) return json({ error: "Origem não autorizada." }, 403);
+  if (!isAllowedAppOrigin(request.headers.get("origin"))) return json({ error: "Origem não autorizada." }, 403);
   const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey = env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");

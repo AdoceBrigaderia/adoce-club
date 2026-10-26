@@ -1,137 +1,422 @@
-/* Mobile-first: base rules below target small screens by default.
-   Each @media (min-width: …) block only ADDS layout for bigger screens. */
-
-.catalog-2026-page {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  margin: 0 auto;
-  padding: 16px 16px 48px;
-}
-
-.catalog-2026-toolbar {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 10px;
-}
-.catalog-2026-toolbar .public-back { padding: 8px 0; }
-.catalog-2026-toolbar .public-primary {
+.catalog-new {
+  --pink: #f20f55;
+  --cream: #fffaf4;
+  --brown: #54200e;
   width: 100%;
-  min-height: 48px;
-  justify-content: center;
+  max-width: none;
+  margin: 0;
+  background: var(--cream);
+  color: #40180d;
+  font-family: Inter, system-ui, sans-serif;
 }
-
-.catalog-2026-hero {
+.catalog-new-header {
+  height: 100px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 40px;
+  background: #fffaf4;
+}
+.catalog-new-header > img:first-of-type {
+  position: absolute;
+  width: 112px;
+  height: 112px;
+  object-fit: contain;
+  left: 50%;
+  top: 2px;
+  transform: translateX(-50%);
+  z-index: 2;
+  clip-path: circle(49% at 50% 50%);
+}
+.catalog-menu-icon {
+  width: 42px;
+  height: 42px;
+  margin-left: auto;
+}
+.catalog-new-hero {
+  min-height: 180px;
+  padding: 20px max(60px, calc((100vw - 1180px) / 2 + 60px));
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  align-items: center;
+  background: #fffaf4
+    url("/brand-2026/catalogo/decoracoes/mancha-rosa-organica.svg") center/cover no-repeat;
+}
+.catalog-new-hero h1 {
+  font:
+    700 clamp(3rem, 6vw, 5.2rem)/0.8 Georgia,
+    serif;
+  color: var(--pink);
+  margin: 0;
+}
+.catalog-new-hero h1 span {
+  font-family: Inter;
+}
+.catalog-new-hero > div p {
+  font-size: 1.5rem;
+  margin: 12px 0;
+}
+.catalog-hero-note {
+  max-width: 390px;
+  font:
+    1.15rem/1.35 "Segoe Print",
+    cursive;
+  text-align: center;
+  transform: rotate(-5deg);
+}
+.catalog-panel {
+  margin: 0 34px 12px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: #fffdfb;
+  border: 1px solid #f6dadd;
+  box-shadow: 0 7px 22px #a4513310;
+}
+.catalog-section-title {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.catalog-section-title > img {
+  width: 55px;
+  height: 55px;
+  padding: 10px;
+  border-radius: 50%;
+  background: #ffe9ec;
+}
+.catalog-section-title h2 {
+  font:
+    700 2.2rem Georgia,
+    serif;
+  margin: 0;
+}
+.catalog-section-title h2 span {
+  color: var(--pink);
+}
+.catalog-section-title p {
+  margin: 3px 0;
+  color: #67504a;
+}
+.catalog-size-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 12px;
+}
+.catalog-size-grid article {
+  padding: 8px;
+  border: 1px solid #f4d9dc;
+  border-radius: 18px;
+  text-align: center;
+}
+.catalog-cake-photo {
+  height: 265px;
+  position: relative;
+  border-radius: 15px;
+  background: #ffecef url("/brand-2026/catalogo/decoracoes/fundo-foto-rosa.svg")
+    center/cover;
+  overflow: hidden;
+}
+.catalog-cake-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.catalog-cake-photo strong {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: #fff;
+  font-size: 2.5rem;
+}
+.catalog-size-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px;
+}
+.catalog-size-meta strong {
+  color: var(--pink);
+  font: 700 1.55rem Georgia;
+}
+.catalog-size-grid article > p {
+  margin: 0 15px 6px;
+  color: #6d554e;
+}
+.catalog-wide-link,
+.catalog-whatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 13px;
+  margin-top: 10px;
+  border-radius: 15px;
+  background: linear-gradient(90deg, #ffe5e7, #ffd6de);
+  color: var(--pink);
+  font: 700 1.25rem Georgia;
+  text-decoration: none;
+}
+.catalog-wide-link img {
+  width: 30px;
+}
+.catalog-wide-link span,
+.catalog-whatsapp span {
+  margin-left: auto;
+}
+.catalog-resale {
+  border: 0;
+}
+.catalog-resale-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
+  padding: 18px 35px;
+  border-radius: 17px;
+  background: linear-gradient(100deg, #40170a, #743216);
+  color: #fff;
+}
+.catalog-resale-box > div {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 24px 16px 28px;
+  justify-content: center;
   text-align: center;
-  background: var(--adoce-rosa);
-  border: 1px solid var(--public-line);
-  border-radius: 22px;
 }
-.catalog-2026-hero h1 { margin: 0; font: 700 1.7rem/1.15 'Playfair Display', Georgia, serif; }
-.catalog-2026-tagline { margin: 0; font-size: .88rem; font-style: italic; font-family: 'Playfair Display', Georgia, serif; color: var(--public-muted); }
-
-.catalog-2026-section { display: flex; flex-direction: column; gap: 12px; }
-.catalog-2026-section > h2 { display: flex; align-items: center; gap: 10px; margin: 0; font: 700 1.25rem 'Playfair Display', Georgia, serif; }
-.catalog-2026-section > h2 span { display: flex; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--adoce-dourado); color: var(--adoce-marrom); font: 700 .82rem 'Playfair Display', Georgia, serif; }
-.catalog-2026-section > p { margin: 0; font-size: .88rem; line-height: 1.6; color: var(--public-muted); }
-
-.catalog-2026-callout { display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--adoce-rosa); border: 1px solid var(--public-line); border-radius: 14px; }
-.catalog-2026-callout strong { font-size: .92rem; }
-.catalog-2026-callout p { margin: 0; font-size: .85rem; line-height: 1.6; color: var(--public-muted); }
-
-.catalog-2026-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.catalog-2026-card { display: flex; flex-direction: column; gap: 6px; padding: 14px; background: #fff; border: 1px solid var(--public-line); border-radius: 14px; break-inside: avoid; }
-.catalog-2026-card > header { display: flex; align-items: baseline; gap: 8px; }
-.catalog-2026-card > header span { flex: none; font: 700 .78rem 'Playfair Display', Georgia, serif; color: var(--adoce-rosa-escuro); }
-.catalog-2026-card > header h3 { margin: 0; font-size: .95rem; line-height: 1.3; }
-.catalog-2026-card p { margin: 0; font-size: .8rem; line-height: 1.55; color: var(--public-muted); }
-.catalog-2026-card .catalog-2026-desc { font-style: italic; }
-.catalog-2026-card .catalog-2026-note { font-size: .7rem; font-weight: 700; color: var(--adoce-rosa-escuro); }
-.catalog-2026-soon { font-style: italic; }
-
-.catalog-2026-sizes { display: flex; flex-direction: column; gap: 10px; }
-.catalog-2026-size { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--adoce-rosa); border: 1px solid var(--public-line); border-radius: 14px; text-align: left; }
-.catalog-2026-size > span { display: flex; flex: none; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: 50%; background: var(--adoce-rosa-escuro); color: var(--adoce-rosa-claro); font: 700 1rem 'Playfair Display', Georgia, serif; }
-.catalog-2026-size small { display: block; font-size: .76rem; color: var(--public-muted); }
-.catalog-2026-size strong { margin-left: auto; flex: none; font: 700 1.2rem 'Playfair Display', Georgia, serif; }
-
-.catalog-2026-note-box { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: #fff; border-left: 3px solid var(--adoce-dourado); border-radius: 8px; }
-.catalog-2026-note-box strong { font-size: .8rem; }
-.catalog-2026-note-box p { margin: 0; font-size: .78rem; line-height: 1.6; color: var(--public-muted); }
-
-.catalog-2026-revenda { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 18px; text-align: center; background: var(--adoce-marrom); border-radius: 18px; }
-.catalog-2026-revenda > span { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--adoce-dourado); }
-.catalog-2026-revenda > strong { font: 700 1.9rem 'Playfair Display', Georgia, serif; color: var(--adoce-rosa-claro); }
-.catalog-2026-revenda > small { font-size: .74rem; color: var(--adoce-rosa-escuro); }
-.catalog-2026-revenda-divider { width: 60%; height: 1px; margin: 10px 0; background: rgba(255,255,255,.2); }
-.catalog-2026-revenda > p { margin: 0; font-size: .85rem; color: var(--adoce-rosa-claro); }
-.catalog-2026-revenda > p + small { margin-top: 4px; color: rgba(255,249,246,.6); }
-
-.catalog-2026-sweets { display: flex; flex-direction: column; gap: 10px; }
-.catalog-2026-sweet-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; background: var(--adoce-rosa); border: 1px solid var(--public-line); border-radius: 14px; }
-.catalog-2026-sweet-card > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.catalog-2026-sweet-card > header strong { font: 700 .95rem 'Playfair Display', Georgia, serif; }
-.catalog-2026-sweet-card > header span { font-weight: 700; }
-.catalog-2026-sweet-card > header small { font-weight: 500; color: var(--public-muted); }
-.catalog-2026-sweet-card ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
-.catalog-2026-sweet-card li { font-size: .82rem; color: var(--public-muted); }
-
-.catalog-2026-steps { display: flex; flex-direction: column; gap: 10px; }
-.catalog-2026-step { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: #fff; border: 1px solid var(--public-line); border-radius: 12px; }
-.catalog-2026-step > span { display: flex; flex: none; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--adoce-rosa-escuro); color: var(--adoce-rosa-claro); font-size: .74rem; font-weight: 700; }
-.catalog-2026-step strong { font-size: .86rem; }
-.catalog-2026-step p { margin: 2px 0 0; font-size: .8rem; line-height: 1.5; color: var(--public-muted); }
-
-.catalog-2026-info-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.catalog-2026-info-grid > div { display: flex; flex-direction: column; gap: 4px; padding: 14px; background: var(--adoce-rosa); border-radius: 12px; }
-.catalog-2026-info-grid strong { font-size: .8rem; }
-.catalog-2026-info-grid p { margin: 0; font-size: .78rem; line-height: 1.5; color: var(--public-muted); }
-
-.catalog-2026-whatsapp { width: 100%; justify-content: center; margin-top: 4px; }
-
-/* ---- Tablet and up ---- */
-@media (min-width: 640px) {
-  .catalog-2026-page { padding: 24px 32px 56px; gap: 36px; }
-
-  .catalog-2026-toolbar { flex-direction: row; align-items: center; justify-content: space-between; }
-  .catalog-2026-toolbar .public-primary { width: auto; min-height: 46px; }
-
-  .catalog-2026-hero { padding: 32px 24px 36px; }
-  .catalog-2026-hero h1 { font-size: 2.1rem; }
-
-  .catalog-2026-section > h2 { font-size: 1.4rem; }
-
-  .catalog-2026-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-
-  .catalog-2026-sizes { flex-direction: row; }
-  .catalog-2026-size { flex: 1; flex-direction: column; text-align: center; gap: 6px; padding: 18px 14px; }
-  .catalog-2026-size strong { margin-left: 0; font-size: 1.15rem; }
-
-  .catalog-2026-revenda > strong { font-size: 2.2rem; }
-
-  .catalog-2026-sweets { flex-direction: row; }
-  .catalog-2026-sweet-card { flex: 1; }
-
-  .catalog-2026-info-grid { grid-template-columns: repeat(3, 1fr); }
-
-  .catalog-2026-whatsapp { width: auto; }
+.catalog-resale-box > div + div {
+  border-left: 1px solid #fff8;
+  flex-direction: row;
+  gap: 20px;
 }
-
-/* ---- Desktop ---- */
-@media (min-width: 1024px) {
-  .catalog-2026-page { max-width: 1040px; padding: 28px 0 64px; }
+.catalog-resale-box > div > strong {
+  font: 700 2.8rem Georgia;
 }
-
-@media print {
-  .public-header, .public-mobile-nav, .public-signature, .catalog-2026-toolbar { display: none !important; }
-  .catalog-2026-page { max-width: none; padding: 0; gap: 26px; }
-  .catalog-2026-grid { grid-template-columns: repeat(2, 1fr); }
-  .catalog-2026-card, .catalog-2026-step, .catalog-2026-size, .catalog-2026-sweet-card { break-inside: avoid; }
-  .catalog-2026-section { break-inside: avoid-page; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.catalog-resale-box img {
+  width: 65px;
+}
+.catalog-sweets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+.catalog-sweets-grid article {
+  min-height: 210px;
+  display: grid;
+  grid-template-columns: 1fr 210px auto;
+  align-items: center;
+  padding: 12px 18px;
+  border: 1px solid #f5d5d8;
+  border-radius: 18px;
+  background: linear-gradient(110deg, #fff3f4, #ffe9eb);
+}
+.catalog-sweets-grid h3 {
+  font: 700 1.8rem Georgia;
+  margin: 0;
+}
+.catalog-sweets-grid ul {
+  margin: 5px 0;
+  padding-left: 22px;
+}
+.catalog-sweets-grid article > img {
+  width: 210px;
+  height: 180px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 12px rgba(79, 31, 17, 0.16));
+}
+.catalog-sweet-price {
+  align-self: start;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 5px;
+  align-items: end;
+}
+.catalog-sweet-price strong {
+  font-size: 1.35rem;
+}
+.catalog-sweet-price small {
+  grid-column: 1/3;
+  margin-top: 65px;
+  border: 1px solid var(--pink);
+  border-radius: 30px;
+  padding: 7px 12px;
+  width: max-content;
+}
+.catalog-sweets-rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 18px;
+  border-radius: 14px;
+  background: #ffe5e8;
+}
+.catalog-sweets-rule img {
+  width: 32px;
+}
+.catalog-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.catalog-steps article {
+  display: grid;
+  grid-template-columns: 30px 40px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #f1d9d7;
+  border-radius: 14px;
+}
+.catalog-steps article > b {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: #fff;
+}
+.catalog-steps img {
+  width: 36px;
+  height: 36px;
+}
+.catalog-steps p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+.catalog-info {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+.catalog-info article {
+  display: flex;
+  gap: 13px;
+  padding: 13px;
+  border-radius: 14px;
+  background: #ffe7e9;
+}
+.catalog-info img {
+  width: 45px;
+  height: 45px;
+}
+.catalog-info p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.catalog-info b {
+  color: var(--pink);
+}
+.catalog-whatsapp {
+  background: var(--pink);
+  color: #fff;
+  font-family: Inter;
+}
+.catalog-new-footer {
+  width: 100%;
+  min-height: 115px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 22px;
+  padding: 48px 25px 20px;
+  background: url("/brand-2026/catalogo/decoracoes/onda-chocolate-rodape.svg?v=20261025b")
+    center top/100% 48px no-repeat;
+}
+.catalog-new-footer em {
+  flex-basis: 100%;
+  text-align: center;
+  color: #7b4b3a;
+}
+@media (max-width: 700px) {
+  .catalog-new-header {
+    height: 76px;
+    padding: 0 18px;
+    background-size: auto 40px;
+  }
+  .catalog-new-header > img:first-of-type {
+    width: 82px;
+    height: 82px;
+  }
+  .catalog-menu-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .catalog-new-hero {
+    min-height: 160px;
+    padding: 20px;
+    grid-template-columns: 1fr;
+  }
+  .catalog-new-hero h1 {
+    font-size: 3.1rem;
+  }
+  .catalog-hero-note {
+    display: none;
+  }
+  .catalog-panel {
+    margin: 0 8px 10px;
+    padding: 10px;
+  }
+  .catalog-section-title h2 {
+    font-size: 1.55rem;
+  }
+  .catalog-section-title p {
+    font-size: 0.78rem;
+  }
+  .catalog-size-grid {
+    grid-template-columns: 1fr;
+  }
+  .catalog-cake-photo {
+    height: 245px;
+  }
+  .catalog-wide-link {
+    font-size: 0.95rem;
+    text-align: center;
+  }
+  .catalog-resale-box {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .catalog-resale-box > div + div {
+    border-left: 0;
+    border-top: 1px solid #fff8;
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+  .catalog-sweets-grid {
+    grid-template-columns: 1fr;
+  }
+  .catalog-sweets-grid article {
+    grid-template-columns: 1fr 95px;
+  }
+  .catalog-sweets-grid article > img {
+    width: 90px;
+    height: 90px;
+  }
+  .catalog-sweet-price {
+    grid-column: 1/3;
+    display: flex;
+    align-items: center;
+  }
+  .catalog-sweet-price small {
+    margin: 0 0 0 auto;
+  }
+  .catalog-steps {
+    grid-template-columns: 1fr;
+  }
+  .catalog-info {
+    grid-template-columns: 1fr;
+  }
+  .catalog-new-footer {
+    font-size: 0.72rem;
+    gap: 10px;
+    background-size: auto 42px;
+  }
 }

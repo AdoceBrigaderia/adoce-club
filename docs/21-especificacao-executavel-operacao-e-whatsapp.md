@@ -1,7 +1,7 @@
 ---
 title: Especificação executável da operação e autenticação por WhatsApp
 description: Telas, permissões, estados, regras, arquitetura, contratos de API, dados, segurança e aceite para tablet e iPhone.
-status: Fundação local implementada e desativada; homologação externa e publicação pendentes
+status: Fundação local implementada e desativada; validação externa autorizada em produção pendente
 ---
 
 # Especificação executável da operação e autenticação por WhatsApp
@@ -616,7 +616,7 @@ Evoluir `consent_events` de modo compatível para registrar `channel`, `purpose`
 1. Inventariar usuários Auth e perfis duplicados por telefone normalizado; não mesclar automaticamente.
 2. Adicionar colunas/tabelas e testes de RLS sem ativar envio.
 3. Implantar hook e endpoints com feature flag desligada.
-4. Provar em homologação com número de teste e dados fictícios.
+4. Provar localmente com mocks, número de teste e dados fictícios; o teste no serviço real só ocorre em produção após autorização explícita.
 5. Migrar um grupo controlado; manter login atual como fallback.
 6. Só depois desativar o OTP legado; preservar auditoria e rollback.
 
@@ -630,7 +630,7 @@ Evoluir `consent_events` de modo compatível para registrar `channel`, `purpose`
 - `WHATSAPP_AUTH_ENABLED=false`, `WHATSAPP_AUTH_ACCESS_MODE=disabled`, `VITE_WHATSAPP_AUTH_ENABLED=false` e `VITE_WHATSAPP_AUTH_PILOT_ENABLED=false` mantêm endpoints, fluxo público e tela operacional desligados por padrão.
 - `supabase/rollbacks/20260821092506_whatsapp_auth_hook_foundation.rollback.sql` remove somente as quatro funções e as duas tabelas desta fundação, sem tocar o login atual do cliente.
 - O login atual do cliente por celular/senha e recuperação existente permanece como fallback e não depende desta fundação.
-- CAPTCHA adaptativo, limite diário/dispositivo, circuit breaker, fallback SMS, conclusão transacional do cadastro e status de entrega da Meta continuam pendentes antes de homologação completa.
+- CAPTCHA adaptativo, limite diário/dispositivo, circuit breaker, fallback SMS, conclusão transacional do cadastro e status de entrega da Meta continuam pendentes antes da ativação controlada em produção.
 
 ## 12. Segurança e LGPD
 
@@ -670,7 +670,7 @@ AUTH_FALLBACK_SMS_ENABLED=false
 Regras:
 
 - Tokens e secrets nunca usam prefixo `VITE_`.
-- Variáveis são distintas em local, homologação e produção.
+- Variáveis existem somente para local e produção; não há contexto online de homologação.
 - O painel mostra presença e validade operacional, nunca valor.
 - Versão da Graph API e nome do template são configuração, não literal espalhado no código.
 
@@ -722,7 +722,7 @@ Alertas: taxa de falha do hook, 429 anormal, aumento de OTP inválido, webhook s
 Executar jornadas completas nos viewports 1280×800, 1024×600, 402×874, 390×844 e 1440×900:
 
 1. equipe entra, busca cliente, abre ficha e redefine acesso;
-2. cliente novo recebe OTP real em homologação, verifica, conclui cadastro e abre cartão;
+2. depois de autorização específica, cliente controlado recebe OTP real em produção, verifica, conclui cadastro e abre cartão;
 3. cliente existente entra sem duplicação;
 4. código inválido/expirado e rate limit;
 5. provedor falha e fallback aparece;
@@ -762,7 +762,7 @@ Validar textos, imagens, botões, modais, rolagem, teclado aberto, orientação,
 ### Fase 2 — Fundação de autenticação
 
 - Criar tabelas privadas, rate limiter, feature flags e contratos.
-- Configurar Send SMS Hook local/homologação.
+- Configurar e testar o contrato do Send SMS Hook localmente; configurar o serviço real em produção somente após autorização explícita.
 - Implementar adaptador Meta e webhook idempotente.
 
 ### Fase 3 — UX do OTP e cadastro
@@ -776,10 +776,10 @@ Validar textos, imagens, botões, modais, rolagem, teclado aberto, orientação,
 - Fechar lacunas OP-10 a OP-130 por prioridade operacional.
 - Aplicar permissão no servidor, responsividade e estados globais.
 
-### Fase 5 — Homologação externa
+### Fase 5 — Validação externa controlada em produção
 
 - Template `AUTHENTICATION` aprovado, número e token permanentes, webhook e hook configurados.
-- Teste real request → WhatsApp recebido → OTP verificado → sessão → cadastro, sem expor o código na evidência.
+- Após autorização explícita, teste real no domínio oficial: request → WhatsApp recebido → OTP verificado → sessão → cadastro, sem expor o código na evidência.
 - Testar falha e fallback.
 
 ### Fase 6 — Publicação controlada

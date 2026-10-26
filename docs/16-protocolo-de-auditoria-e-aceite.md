@@ -76,7 +76,7 @@ Cada ação deve confirmar:
 ## Publicação
 
 1. validar localmente;
-2. usar prévia somente se necessário;
+2. usar somente prévia local, sem criar ambiente online alternativo;
 3. obter aprovação;
 4. publicar uma vez;
 5. conferir domínio oficial;

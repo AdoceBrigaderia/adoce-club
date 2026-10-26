@@ -1,4 +1,6 @@
 # Revisão: arquivos locais × homologação publicada (`d3fd830`)
+
+> **Documento histórico, sem validade operacional desde 24/10/2026.** O ambiente citado abaixo foi desativado definitivamente. É proibido recriá-lo, usá-lo como destino de publicação ou seguir as recomendações antigas de envio para homologação. Toda validação anterior à produção é local e toda publicação exige autorização explícita do proprietário.
 **09/08/2026** · Somente leitura. Nada foi alterado, movido, commitado, publicado ou executado.
 
 Confirmei os seus números: **215 arquivos fora do Git**, sendo **36 idênticos**, **108 diferentes** e **71 inexistentes** na homologação. Este relatório cobre os **179** que não são cópias idênticas.
@@ -270,4 +272,4 @@ As 9 funções + os 2 testes da Lista 1. Coerência de mensagens.
 
 Comparei o conjunto local com `d3fd830` e confirmo: **nenhum arquivo da Lista 1 ou dos Pacotes A e B reintroduz `SocialCampaign`, `LaunchCampaign`, `launch-campaign.css`, `social-campaign.css` ou os andaimes de homologação.** As campanhas aposentadas não voltam por esta via.
 
-Registro adicional: o branch `adoce-oficial/homologacao-adoce` já avançou dois commits além de `d3fd830` — `974cff3` e `b78dea2`, ambos removendo telas legadas da operação. Qualquer subida deve partir do topo atual, não de `d3fd830`.
+Registro histórico: o antigo branch de homologação, hoje desativado, avançou dois commits além de `d3fd830` — `974cff3` e `b78dea2`, ambos removendo telas legadas da operação. Esse registro não autoriza reutilizar, publicar nem reativar ambiente de homologação online.

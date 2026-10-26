@@ -1,3 +1,5 @@
+import { isAllowedAppOrigin, PRODUCTION_SITE_ORIGIN } from "./_shared/production-origin";
+
 declare const Netlify:
   | { env: { get(name: string): string | undefined } }
   | undefined;
@@ -18,22 +20,7 @@ const json = (body: unknown, status = 200) =>
 const OTP_TIMEOUT_MS = 20000;
 
 const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set(
-    [
-      configured,
-      "https://www.adocebrigaderia.com.br",
-      "https://adocebrigaderia.com.br",
-      "https://clube.adocebrigaderia.com.br",
-      "https://operacao.adocebrigaderia.com.br",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-      "http://localhost:4182",
-      "http://127.0.0.1:4182",
-    ].filter(Boolean),
-  ).has(origin);
+  return isAllowedAppOrigin(request.headers.get("origin"));
 };
 
 const provisionalNames = new Set([
@@ -121,10 +108,7 @@ export default async (request: Request) => {
   const supabaseUrl = env("SUPABASE_URL") || env("VITE_SUPABASE_URL");
   const publishableKey =
     env("SUPABASE_PUBLISHABLE_KEY") || env("VITE_SUPABASE_PUBLISHABLE_KEY");
-  const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(
-    /\/$/,
-    "",
-  );
+  const siteUrl = PRODUCTION_SITE_ORIGIN;
   if (!supabaseUrl || !publishableKey)
     return json({ error: "Envio de código temporariamente indisponível." }, 503);
 

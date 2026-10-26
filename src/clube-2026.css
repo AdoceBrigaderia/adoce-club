@@ -1,0 +1,158 @@
+/* Reconstrucao fiel dos mockups Clube/Cadastro 2026. Escopo exclusivo do cliente. */
+body:has(.customer-app-shell) {
+  padding-top: 0;
+  background: #fffaf4;
+}
+
+.customer-app-shell {
+  min-height: 100vh;
+  background: #fffaf4;
+}
+
+.customer-app-shell .access-page.client.registering {
+  min-height: 1536px;
+  padding: 145px 24px 205px;
+  background: #fffaf4 url('/brand-2026/cadastro/adoce_cadastro_fidelidade_assets/decoracoes/onda-rodape.svg') center bottom 70px / 100% 150px no-repeat;
+}
+
+.customer-app-shell .access-page.client.registering > header {
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  height: 145px;
+  padding: 28px 40px 0;
+  border: 0;
+  background: #fffaf4 !important;
+  box-shadow: none !important;
+}
+
+.customer-app-shell .access-page.client.registering > header .access-back-button { display: none; }
+.customer-app-shell .access-page.client.registering > header .access-brand { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); }
+.customer-app-shell .access-page.client.registering > header .access-brand img { width: 118px; height: 118px; border: 0; box-shadow: 0 8px 24px rgba(82,31,15,.15); }
+.customer-app-shell .access-page.client.registering > header .access-brand strong { display: none; }
+.customer-app-shell .access-page.client.registering > header::after { content: 'Olá, Cliente!'; position: absolute; left: 40px; bottom: 10px; font: 750 1.08rem/1 system-ui,sans-serif; color: #35170d; }
+
+.customer-app-shell .access-page.client.registering .access-auth-shell {
+  min-height: 0;
+  max-width: 976px;
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(360px, .95fr);
+  gap: 28px;
+  align-items: start;
+  background: transparent;
+}
+
+.customer-app-shell .access-page.client.registering .access-auth-copy {
+  min-height: 720px !important;
+  height: 720px !important;
+  padding: 90px 42px 48px !important;
+  align-self: start !important;
+  display: block;
+  border-radius: 26px;
+  background-color: #f6a6af !important;
+  background-image: linear-gradient(180deg,rgba(255,203,207,.22),rgba(244,134,148,.04)), url('/brand-2026/cadastro/adoce_cadastro_fidelidade_assets/referencias/hero-cartao-fidelidade.png') !important;
+  background-position: center, center bottom !important;
+  background-size: cover, 100% auto !important;
+  box-shadow: inset 0 0 0 1px rgba(239,82,113,.12);
+  overflow: hidden;
+}
+
+.customer-app-shell .access-page.client.registering .access-auth-copy > span,
+.customer-app-shell .access-page.client.registering .access-promise { display: none; }
+.customer-app-shell .access-page.client.registering .access-auth-copy h1 {
+  width: 390px;
+  max-width: 82%;
+  margin: 0;
+  color: #ed1e57;
+  font: 700 clamp(4rem,6.6vw,6.25rem)/.88 Georgia,'Times New Roman',serif;
+  letter-spacing: -.06em;
+}
+.customer-app-shell .access-page.client.registering .access-auth-copy > p {
+  position: absolute;
+  left: 42px;
+  bottom: 44px;
+  width: 360px;
+  max-width: 58%;
+  margin: 0;
+  color: #3f1b12;
+  font: 650 1rem/1.32 system-ui,sans-serif;
+  text-shadow: 0 1px rgba(255,255,255,.55);
+}
+
+.customer-app-shell .access-page.client.registering .access-auth-card {
+  width: 100%;
+  max-height: none;
+  margin: 20px 0 0;
+  padding: 34px 30px 26px;
+  overflow: visible;
+  border-radius: 28px;
+  background: rgba(255,255,255,.93);
+  box-shadow: 0 18px 50px rgba(82,31,15,.1);
+}
+.customer-app-shell .access-page.client.registering .access-auth-card > img,
+.customer-app-shell .access-page.client.registering .access-auth-card > p { display: none; }
+.customer-app-shell .access-page.client.registering .access-auth-card h2 { margin: 0 0 24px; font: 700 2.5rem/.96 Georgia,serif; letter-spacing: -.04em; }
+.customer-app-shell .access-page.client.registering .access-auth-card form { gap: 14px; }
+.customer-app-shell .access-page.client.registering .access-auth-card label { gap: 7px; font-size: .84rem; font-weight: 800; }
+.customer-app-shell .access-page.client.registering .access-auth-card input { min-height: 54px; border-radius: 14px; background: #fff; }
+.customer-app-shell .access-page.client.registering .access-consents { padding: 6px 0; border: 0; background: transparent; }
+.customer-app-shell .access-page.client.registering .access-consents label { padding: 0; border: 0; background: transparent; font-weight: 500; line-height: 1.45; }
+.customer-app-shell .access-page.client.registering .access-primary { min-height: 58px; background: linear-gradient(90deg,#f80e54,#ed2f68); }
+.customer-app-shell .access-page.client.registering .access-switch { background: #fff; }
+.customer-app-shell .access-page.client.registering .access-privacy { display: flex; justify-content: center; align-items: center; text-align: center; }
+.customer-app-shell .access-page.client.registering .access-feedback-link { display: block; text-align: center; }
+
+.customer-app-shell > .public-shell-nav { z-index: 800; }
+
+/* Estado autenticado */
+.customer-app-shell .club-home {
+  width: 100%;
+  max-width: 1024px;
+  min-height: 1536px;
+  margin: 0 auto;
+  padding: 280px 30px 210px;
+  background: #fffaf4 url('/brand-2026/cadastro/adoce_cadastro_fidelidade_assets/decoracoes/onda-rodape.svg') center bottom 74px / 100% 150px no-repeat;
+}
+.customer-app-shell .club-home > header {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 280px;
+  padding: 150px 44px 0;
+  display: block;
+  border: 0;
+  background: #fffaf4;
+}
+.customer-app-shell .club-home > header::after { content:''; position:absolute; left:0; right:0; bottom:0; height:105px; background:#f8b3bd url('/brand-2026/clube/adoce_clube_assets/decoracoes/onda-rosa-superior.svg') center/cover no-repeat; z-index:0; }
+.customer-app-shell .club-home > header .access-brand { position:absolute; left:52px; top:12px; z-index:2; }
+.customer-app-shell .club-home > header .access-brand img { width:118px; height:118px; border:0; }
+.customer-app-shell .club-home > header .access-brand strong { display:none; }
+.customer-app-shell .club-header-greeting { position:relative; z-index:2; font-size:1.18rem; font-weight:750; }
+.customer-app-shell .club-header-actions { position:absolute; right:42px; bottom:18px; z-index:3; }
+.customer-app-shell .club-header-actions button:first-child { min-height:52px; padding:0 20px; border:0; border-radius:14px; background:#ef2861; color:#fff; font-weight:800; }
+.customer-app-shell .club-header-actions button:last-child { display:none; }
+.customer-app-shell .club-account-reference { gap:18px; }
+.customer-app-shell .club-account-loyalty { border-radius:26px; padding:26px 24px; background:#fffaf4; }
+.customer-app-shell .club-account-loyalty small { font:800 2.15rem/1 system-ui,sans-serif; }
+.customer-app-shell .club-account-loyalty h2 { font-size:1.45rem; }
+.customer-app-shell .club-account-stamps svg { padding:4px; }
+.customer-app-shell .club-account-actions a { min-height:138px; }
+
+@media (max-width: 760px) {
+  .customer-app-shell .access-page.client.registering { min-height: 100svh; padding: 120px 14px 120px; background-size:100% 100px; }
+  .customer-app-shell .access-page.client.registering > header { height:120px; padding-inline:18px; background-size:auto 62px; }
+  .customer-app-shell .access-page.client.registering > header .access-brand img { width:88px; height:88px; }
+  .customer-app-shell .access-page.client.registering > header::after { left:18px; font-size:.96rem; }
+  .customer-app-shell .access-page.client.registering .access-auth-shell { grid-template-columns:1fr; gap:14px; }
+  .customer-app-shell .access-page.client.registering .access-auth-copy { min-height:480px !important; height:auto !important; padding:50px 24px 32px !important; background-size:cover; }
+  .customer-app-shell .access-page.client.registering .access-auth-copy h1 { max-width:88%; font-size:3.7rem !important; }
+  .customer-app-shell .access-page.client.registering .access-auth-copy > p { left:24px; bottom:26px; max-width:68%; font-size:.84rem; }
+  .customer-app-shell .access-page.client.registering .access-auth-card { margin:0 0 28px !important; padding:26px 20px; }
+  .customer-app-shell .club-home { min-height:100svh; padding:220px 14px 120px; background-size:100% 100px; }
+  .customer-app-shell .club-home > header { height:220px; padding:118px 18px 0; background-size:auto 62px; }
+  .customer-app-shell .club-home > header .access-brand { left:18px; top:8px; }
+  .customer-app-shell .club-home > header .access-brand img { width:88px; height:88px; }
+  .customer-app-shell .club-home > header::after { height:85px; }
+  .customer-app-shell .club-header-actions { right:16px; bottom:16px; }
+}

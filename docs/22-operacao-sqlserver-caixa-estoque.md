@@ -120,7 +120,7 @@ Nenhum cálculo histórico será recalculado silenciosamente quando preço de in
 
 ## 4. Princípios invioláveis
 
-- Produção, homologação e desenvolvimento possuem bancos, chaves, buckets e usuários distintos.
+- Produção e desenvolvimento local possuem bancos, chaves, buckets e usuários distintos; não existe ambiente online de homologação.
 - Cliente nunca recebe rota, métrica, nota interna, custo, margem, estoque reservado por terceiros ou link administrativo.
 - SQL Server não aceita conexão da internet pública; a API usa credencial própria com permissão mínima.
 - Valores monetários usam `decimal(19,4)`; quantidades usam `decimal(19,6)`; nunca `float` ou `money`.
@@ -1002,7 +1002,7 @@ Responsável: {{responsavel}}
 ### Fase 4 — Clientes, colaboradores e acesso
 
 - migração controlada, Identity, reset/link, papéis, consentimentos e auditoria;
-- nenhum dado real em homologação.
+- nenhum dado real fora da produção; testes locais usam dados fictícios.
 
 ### Fase 5 — Pedidos e pré-reservas
 
@@ -1020,7 +1020,7 @@ Responsável: {{responsavel}}
 
 ### Fase 8 — Piloto fechado
 
-- um turno completo em homologação com usuários fake; tablet e iPhone reais;
+- um turno completo no ambiente local com usuários fictícios; tablet e iPhone reais;
 - simular internet lenta, popup bloqueado, falha do WhatsApp e divergência.
 
 ### Fase 9 — Migração/cutover
@@ -1104,4 +1104,4 @@ Responsável: {{responsavel}}
 - Arquitetura SQL Server e especificação: **documentadas, ainda não implementadas**.
 - Banco SQL Server/VM/API: **dependentes da escolha e provisionamento da infraestrutura**.
 - Auditoria visual da tela atual: **bloqueada nesta sessão pela indisponibilidade do navegador integrado**; não foi substituída por afirmação sem evidência.
-- Produção e homologação: **não alteradas por este capítulo**.
+- Produção: **não alterada por este capítulo**; não existe homologação online.

@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { PRODUCTION_SITE_ORIGIN } from "./_shared/production-origin";
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 
@@ -102,15 +103,14 @@ export default async (request: Request) => {
       type: "magiclink",
       email: profile.email,
       options: {
-        redirectTo: `${(env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "")}/minha-conta`,
+        redirectTo: `${PRODUCTION_SITE_ORIGIN}/minha-conta`,
       },
     });
   const accessCode = linkData?.properties?.email_otp;
   if (linkError || !accessCode) {
     return json({ error: "Não foi possível gerar o código de acesso." }, 502);
   }
-  const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-  const loginUrl = `${siteUrl}/acesso-direto`;
+  const loginUrl = `${PRODUCTION_SITE_ORIGIN}/acesso-direto`;
 
   const { error: auditError } = await adminClient.from("audit_events").insert({
     actor_user_id: userData.user.id,

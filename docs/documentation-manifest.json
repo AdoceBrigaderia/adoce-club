@@ -1,8 +1,8 @@
 {
   "title": "Clube Adoce — Documentação do Produto",
   "subtitle": "Uma experiência digital que começa na carteira e continua todos os dias.",
-  "version": "4.34",
-  "updatedAt": "22/10/2026",
+  "version": "4.37",
+  "updatedAt": "25/10/2026",
   "files": [
     "00-visao-do-produto.md",
     "01-regras-de-negocio.md",
@@ -29,6 +29,7 @@
     "22-operacao-sqlserver-caixa-estoque.md",
     "23-pedidos-automatizados-whatsapp-twilio.md",
     "24-operacao-integrada-clientes-pedidos-estoque.md",
-    "25-inventario-funcional-completo.md"
+    "25-inventario-funcional-completo.md",
+    "26-arquitetura-publica-e-redesign-visual.md"
   ]
 }

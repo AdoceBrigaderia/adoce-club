@@ -1,18 +1,19 @@
-import { ClipboardCheck, House, LayoutGrid, UserRound } from "lucide-react";
+import { BookOpen, ClipboardCheck, House, LayoutGrid, UserRound } from "lucide-react";
 import "./public-mobile-nav.css";
 
-export type PublicMobileArea = "home" | "today" | "orders" | "cart" | "club" | "none";
+export type PublicMobileArea = "home" | "today" | "catalog" | "orders" | "cart" | "club" | "none";
 
 export default function PublicMobileNav({ active = "none" }: { active?: PublicMobileArea }) {
   const items = [
     { key: "home", href: "/", label: "Início", icon: House, selected: active === "home" },
     {
-      key: "catalog",
-      href: "/adoce-hoje",
+      key: "cardapio",
+      href: "/cardapio",
       label: "Cardápio",
       icon: LayoutGrid,
-      selected: active === "today" || active === "orders",
+      selected: active === "today",
     },
+    { key: "catalog", href: "/catalogo", label: "Catálogo", icon: BookOpen, selected: active === "catalog" || active === "orders" },
     { key: "orders", href: "/carrinho", label: "Pedidos", icon: ClipboardCheck, selected: active === "cart" },
     { key: "account", href: "/minha-conta", label: "Conta", icon: UserRound, selected: active === "club" },
   ] as const;

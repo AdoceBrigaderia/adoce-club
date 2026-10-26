@@ -6,6 +6,7 @@ import {
   type CatalogProductRow,
   type MetaSyncOrigin,
 } from "./_meta-catalog";
+import { isAllowedAppOrigin, PRODUCTION_SITE_ORIGIN } from "./_shared/production-origin";
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 
@@ -16,16 +17,7 @@ export const json = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set([
-    configured,
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ].filter(Boolean)).has(origin);
+  return isAllowedAppOrigin(request.headers.get("origin"));
 };
 
 export type MetaServiceContext = {
@@ -44,7 +36,7 @@ const serverConfiguration = () => {
   const accessToken = env("META_ACCESS_TOKEN") || "";
   const catalogId = env("META_CATALOG_ID") || "";
   const apiVersion = env("META_GRAPH_API_VERSION") || "24.0";
-  const productBaseUrl = env("META_CATALOG_PRODUCT_BASE_URL") || env("SITE_URL") || "";
+  const productBaseUrl = env("META_CATALOG_PRODUCT_BASE_URL") || PRODUCTION_SITE_ORIGIN;
   return { supabaseUrl, publishableKey, secretKey, accessToken, catalogId, apiVersion, productBaseUrl };
 };
 

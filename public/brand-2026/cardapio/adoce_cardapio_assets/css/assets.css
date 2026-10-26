@@ -1,0 +1,7 @@
+/* Elementos gráficos separados do layout. Adapte os caminhos ao seu projeto. */
+:root { --adoce-chocolate:#4A2115; --adoce-rosa:#F7AEB3; --adoce-rosa-acao:#EE315F; --adoce-creme:#FFF9F1; }
+.adoce-topo { background: var(--adoce-creme) url('../svg/decoracoes/chocolate-topo.svg') top center/100% auto no-repeat; }
+.adoce-onda-rodape { background: url('../svg/decoracoes/onda-rodape.svg') top center/100% 100% no-repeat; }
+.adoce-icone { width:24px; height:24px; object-fit:contain; }
+.adoce-logo { width:clamp(72px, 10vw, 130px); height:auto; }
+/* Cards, fotos, botões, textos, status e navegação devem permanecer em HTML/CSS. */

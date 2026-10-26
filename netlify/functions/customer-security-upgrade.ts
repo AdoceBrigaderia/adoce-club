@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { isAllowedAppOrigin } from "./_shared/production-origin";
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 
@@ -16,16 +17,7 @@ const json = (body: unknown, status = 200) =>
   });
 
 const allowedOrigin = (request: Request) => {
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
-  const configured = env("SITE_URL")?.replace(/\/$/, "");
-  return new Set([
-    configured,
-    "https://www.adocebrigaderia.com.br",
-    "https://clube.adocebrigaderia.com.br",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-  ].filter(Boolean)).has(origin);
+  return isAllowedAppOrigin(request.headers.get("origin"));
 };
 
 const normalizePhone = (value: string) => {

@@ -1,7 +1,7 @@
 ---
 title: Integração do catálogo com a Meta e o WhatsApp Business
-description: Arquitetura, segurança, operação, homologação e rollback da sincronização do catálogo comercial.
-status: Implementado, dependente de configuração e homologação externas
+description: Arquitetura, segurança, operação, validação controlada e rollback da sincronização do catálogo comercial.
+status: Implementado, dependente de configuração externa autorizada em produção
 ---
 
 # Integração do catálogo com a Meta e o WhatsApp Business
@@ -83,7 +83,7 @@ Nenhuma dessas variáveis pode usar o prefixo `VITE_`. O telefone público já e
 1. Criar ou selecionar o portfólio empresarial, aplicativo Meta, catálogo de comércio e WABA.
 2. Criar um usuário do sistema e conceder somente os ativos necessários: catálogo e WABA.
 3. Emitir token do usuário do sistema com as permissões necessárias ao cenário. Para gerenciamento do WhatsApp, a documentação oficial indica `whatsapp_business_management`; para mensagens futuras, `whatsapp_business_messaging`; consultas ao portfólio podem exigir `business_management`. Confirmar no App Review as permissões efetivamente usadas pelo catálogo.
-4. Preencher as variáveis no contexto de homologação da Netlify, sem copiá-las para o navegador ou para arquivos versionados.
+4. Preparar e validar os contratos localmente com mocks. As variáveis reais só podem ser preenchidas no contexto de produção da Netlify depois de autorização explícita, sem copiá-las para o navegador ou para arquivos versionados.
 5. No WhatsApp Manager, selecionar a WABA, abrir **Catálogo**, escolher o catálogo criado e confirmar **Conectar catálogo**.
 6. Confirmar `is_catalog_visible` e, somente se aprovado comercialmente, `is_cart_enabled` nas configurações de comércio do número.
 
@@ -94,11 +94,11 @@ Referências oficiais consultadas em julho de 2026:
 - [Commerce Settings do WhatsApp](https://www.postman.com/meta/whatsapp-business-platform/folder/4ylu23z/commerce-settings)
 - [Facebook Marketing API oficial no Postman](https://www.postman.com/meta/facebook-marketing-api/overview)
 
-## Homologação
+## Validação local e ativação controlada em produção
 
-1. Aplicar a migration no projeto de homologação.
-2. Configurar token, catálogo, WABA, número e versão somente em homologação.
-3. Criar um produto de teste real com preço, foto pública e “Exibir no WhatsApp”.
+1. Ensaiar a migration em banco local isolado e executar os testes com mocks da Meta.
+2. Obter autorização explícita para aplicar migration e configurar token, catálogo, WABA, número e versão em produção.
+3. Criar, já no ambiente oficial e em janela controlada, um produto de teste identificado com preço, foto pública e “Exibir no WhatsApp”.
 4. Salvar e confirmar que o status passa de `pending` para `submitted`.
 5. Executar a reconciliação manual da função ou aguardar a consulta do lote e confirmar `synced`.
 6. Verificar o item no Commerce Manager, inclusive preço, imagem, link e disponibilidade.

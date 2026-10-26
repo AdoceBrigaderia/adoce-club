@@ -57,7 +57,7 @@ Toda mudança comercial deve passar por esta sequência:
 6. verificar que a área pública não revela ferramentas ou informações internas da operação;
 7. executar testes automatizados, análise do código e build de produção;
 8. aplicar as alterações de banco necessárias;
-9. publicar a prévia e comparar visualmente com as referências aprovadas;
+9. abrir a prévia local e comparar visualmente com as referências aprovadas;
 10. somente então publicar e conferir os endereços oficiais.
 
 Uma alteração não deve ser anunciada como publicada enquanto qualquer item obrigatório permanecer sem evidência.

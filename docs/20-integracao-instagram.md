@@ -80,24 +80,24 @@ INSTAGRAM_AI_CLASSIFICATION_ENABLED=false
 META_INSTAGRAM_ACCOUNT_ID=
 META_INSTAGRAM_APP_SECRET=
 META_INSTAGRAM_VERIFY_TOKEN=
-META_ENVIRONMENT=staging
+META_ENVIRONMENT=production
 ```
 
 `SUPABASE_URL` e `SUPABASE_SECRET_KEY` já fazem parte da camada de servidor. Nenhuma variável acima pode receber o prefixo `VITE_`.
 
 ## Checklist do proprietário
 
-Estas ações só devem ser feitas quando a homologação técnica estiver publicada.
+Estas ações só devem ser feitas depois dos testes locais e de autorização explícita para a configuração controlada em produção. Não se publica homologação online.
 
 | AÇÃO | ONDE CLICAR | DADO NECESSÁRIO | RESULTADO ESPERADO | COMO VALIDAR |
 | --- | --- | --- | --- | --- |
 | Confirmar conta profissional | Instagram > Configurações > Tipo e ferramentas da conta | Login oficial | Conta Business ou Creator | O painel profissional aparece no Instagram |
 | Selecionar aplicativo | [Meta for Developers](https://developers.facebook.com/apps/) | Conta Meta proprietária | Aplicativo da Adoce aberto | O ID do aplicativo corresponde ao ambiente |
 | Adicionar Instagram | Aplicativo > Adicionar produto > Instagram | Conta profissional | Instagram configurado no app | A conta aparece entre os ativos permitidos |
-| Configurar webhook de homologação | Aplicativo > Instagram > Webhooks | URL e token entregues pelo suporte | Desafio retorna sucesso | O painel mostra a inscrição ativa |
+| Configurar webhook oficial | Aplicativo > Instagram > Webhooks | URL oficial e token inserido com autorização | Desafio retorna sucesso | O painel mostra a inscrição ativa |
 | Autorizar permissões | App Review > Permissions and Features | Justificativas e gravação do fluxo | Permissões aprovadas quando necessárias | Status `Advanced Access` nas permissões usadas |
 | Confirmar negócio | Business Settings > Security Center | Dados oficiais da empresa | Verificação concluída, se solicitada | Status verificado no portfólio |
-| Teste final | Instagram oficial e painel de homologação | Mensagem `sabores` | Um único evento aparece na fila | Nenhuma duplicidade após reenviar o evento |
+| Teste final | Instagram oficial e painel de produção | Mensagem `sabores` | Um único evento aparece na fila | Nenhuma duplicidade após reenviar o evento |
 
 Não envie token ou segredo por mensagem. Eles serão inseridos diretamente nas variáveis protegidas da Netlify.
 

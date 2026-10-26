@@ -1,0 +1,12 @@
+/* Adoce — cadastro do cartão fidelidade. Componentes e textos permanecem HTML. */
+:root { --adoce-chocolate:#4A251A; --adoce-rosa:#F52461; --adoce-creme:#FFF9F5; --adoce-rosa-claro:#F9B4C1; --adoce-borda:#F4D8D6; }
+.adoce-page { background:var(--adoce-creme); color:var(--adoce-chocolate); }
+.adoce-header { background-image:url("../decoracoes/topo-chocolate.svg"); background-position:top center; background-repeat:no-repeat; background-size:100% auto; }
+.adoce-hero { background: url("../decoracoes/fundo-painel-rosa.svg") center / cover; border-radius:28px; overflow:hidden; }
+.adoce-hero-wave { background:url("../decoracoes/onda-cartao.svg") bottom / 100% 100% no-repeat; }
+.adoce-footer-wave { background:url("../decoracoes/onda-rodape.svg") bottom / 100% 100% no-repeat; }
+.adoce-form { background:white; border:1px solid #F9E8E7; border-radius:28px; box-shadow:0 14px 45px #4a251a13; }
+.adoce-input { border:1px solid var(--adoce-borda); border-radius:14px; padding:14px 16px; width:100%; box-sizing:border-box; }
+.adoce-primary { background:var(--adoce-rosa); color:white; border-radius:14px; border:0; padding:15px 22px; }
+.adoce-icon { width:24px; height:24px; }
+@media(max-width:720px) { .adoce-layout { display:flex; flex-direction:column; } }

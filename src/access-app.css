@@ -218,6 +218,21 @@
   padding-left: 46px;
 }
 
+/* Cadastro do cartão 2026: composição aprovada, sem alterar validações. */
+.access-page.client.registering { background:#fffaf5 url('/brand-2026/cadastro/adoce_cadastro_fidelidade_assets/decoracoes/onda-rodape.svg') center bottom/100% auto no-repeat; }
+.access-page.client.registering > header { background:#fffaf5; }
+.access-page.client.registering .access-auth-shell { gap:28px; padding:34px; }
+.access-page.client.registering .access-auth-copy { margin:auto 0; min-height:710px; border-radius:28px; color:#421d13; background:#f6a6ab url('/brand-2026/catalogo/fotos-originais/torta-G.png') right bottom/72% auto no-repeat; }
+.access-page.client.registering .access-auth-copy:after { display:none; }
+.access-page.client.registering .access-auth-copy>span { color:#ef1754; }
+.access-page.client.registering .access-auth-copy h1 { max-width:470px; color:#ef1754; font-size:clamp(4rem,7vw,7.2rem); }
+.access-page.client.registering .access-auth-copy>p { max-width:430px; color:#48251c; font-weight:600; }
+.access-page.client.registering .access-promise { color:#fff; background:#5b260fdd; border-color:#fff5; }
+.access-page.client.registering .access-auth-card { border-color:#f5d5d4; box-shadow:0 24px 70px #7d32141c; }
+.access-page.client.registering .access-primary { background:linear-gradient(90deg,#fb1454,#ed3569); }
+
+@media(max-width:900px){.access-page.client.registering .access-auth-shell{padding:15px}.access-page.client.registering .access-auth-copy{min-height:430px;background-size:70% auto}.access-page.client.registering .access-auth-copy h1{font-size:4rem}.access-page.client.registering .access-auth-card{margin:0 auto 30px}}
+
 .access-social-login {
   display: grid;
   gap: 12px;

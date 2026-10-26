@@ -27,7 +27,6 @@ import "./commercial-gallery.css";
 import "./commercial-reference-2026.css";
 import { trackPublicEvent } from "./analytics";
 import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
-import PublicCatalogNav from "./PublicCatalogNav";
 import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
 
 type SegmentMedia = {
@@ -272,7 +271,6 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
     <main className="commercial-page">
 
 
-      <PublicCatalogNav active={segment} />
 
       <section className="commercial-reference" aria-live="polite">
         <header className="commercial-reference-heading">
@@ -330,7 +328,13 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
                   ) : null}
                   <div className="commercial-reference-card-copy">
                     <h2>{product.name}</h2>
-                    <strong>{commercialProductPriceLabel(product)}</strong>
+                    <strong>
+                      {commercialProductPriceLabel(product)}
+                      {product.price_suffix
+                      && product.price_suffix.toLocaleLowerCase("pt-BR") !== "a partir de" ? (
+                        <small> ({product.price_suffix})</small>
+                      ) : null}
+                    </strong>
                     <a className="commercial-whatsapp-cta" href={whatsappUrlFor(product)} target="_blank" rel="noreferrer" onClick={() => contactAbout(product)}><MessageCircle aria-hidden="true" /> {presentation.action}</a>
                   </div>
                 </article>
@@ -422,7 +426,7 @@ export default function CommercialCatalog({ initialSegment = "cakes" }: { initia
                     {product.price_suffix
                     && product.price_suffix.toLocaleLowerCase("pt-BR") !== "a partir de"
                     && !["torta-p", "torta-m", "torta-g"].includes(product.slug) ? (
-                      <small> · {product.price_suffix}</small>
+                      <small> ({product.price_suffix})</small>
                     ) : null}
                   </strong>
                 </div>

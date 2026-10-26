@@ -220,12 +220,9 @@ export async function signInWithPhonePassword(
   const payload = (await response.json().catch(() => ({}))) as {
     access_token?: string;
     refresh_token?: string;
-    homologation_demo?: boolean;
     must_change_password?: boolean;
     error?: string;
   };
-  if (response.ok && payload.homologation_demo)
-    return { homologationDemo: true, mustChangePassword: false };
   if (!response.ok || !payload.access_token || !payload.refresh_token)
     throw new Error(payload.error || "Não foi possível entrar agora.");
   const { data, error } = await requireSupabase().auth.setSession({
@@ -235,7 +232,6 @@ export async function signInWithPhonePassword(
   if (error) throw error;
   return {
     ...data,
-    homologationDemo: false,
     mustChangePassword: Boolean(payload.must_change_password),
   };
 }
@@ -278,11 +274,8 @@ export async function signInWithStaffPhonePassword(
     access_token?: string;
     refresh_token?: string;
     must_change_password?: boolean;
-    homologation_demo?: boolean;
     error?: string;
   };
-  if (response.ok && payload.homologation_demo)
-    return { homologationDemo: true, mustChangePassword: false };
   if (!response.ok || !payload.access_token || !payload.refresh_token)
     throw new Error(payload.error || "Não foi possível entrar agora.");
   const { data, error } = await requireSupabase().auth.setSession({
@@ -292,7 +285,6 @@ export async function signInWithStaffPhonePassword(
   if (error) throw error;
   return {
     ...data,
-    homologationDemo: false,
     mustChangePassword: Boolean(payload.must_change_password),
   };
 }

@@ -4,6 +4,7 @@ import {
   earliestPickupTimeForQuantity,
   formatBatchAvailability,
   latestRequiredPickupTime,
+  isAvailableForSale,
   totalBatchFree,
   type AvailabilityBatch,
 } from "./availability-batches";
@@ -57,5 +58,13 @@ describe("lotes de disponibilidade de fatias", () => {
       "8 fatias a partir das 17h",
       "10 fatias a partir das 20h",
     ]);
+  });
+
+  it("nunca anuncia disponibilidade quando o saldo livre chegou a zero", () => {
+    expect(isAvailableForSale("available", 0, 0, [])).toBe(false);
+    expect(isAvailableForSale("last_units", 3, 3, [])).toBe(false);
+    expect(isAvailableForSale("available", 0, 0, [batch("future", "17:00", 2)])).toBe(true);
+    expect(isAvailableForSale("sold_out", 10, 0, [batch("now", "08:00", 10)])).toBe(false);
+    expect(isAvailableForSale("preorder_only", 0, 0, [])).toBe(false);
   });
 });

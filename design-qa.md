@@ -63,7 +63,6 @@ Resultado: passed
 - Histórico de comparação P0/P1/P2: nenhuma divergência acionável encontrada na primeira comparação; não foi necessária nova iteração visual.
 
 final result: passed
-
 ## Eventos e aluguel de decoracao - carrossel e galeria - 2026-08-05
 
 - Alteracao restrita as telas Eventos e Aluguel de decoracao.
@@ -74,3 +73,78 @@ final result: passed
 - Tortas, Docinhos, Fatias e Adoce na Escola nao receberam esse novo formato de cards.
 
 Resultado: passed
+
+---
+
+# Design QA — experiência pública Adoce 2026
+
+Data: 25/10/2026
+
+## Referências comparadas
+
+- entrada principal aprovada;
+- cardápio/pedido online aprovado;
+- catálogo completo aprovado;
+- painel Clube Adoce aprovado;
+- cadastro do cartão fidelidade aprovado;
+- pacotes originais de recursos visuais fornecidos pelo proprietário.
+
+## Superfícies verificadas
+
+- `/` em 390 × 844 e 1440 × 900;
+- `/cardapio` em 390 × 844;
+- `/sabores` em 390 × 844;
+- `/catalogo` em 390 × 844;
+- `/clube/cadastro` em 390 × 844;
+- componentes do Clube preservados e reorganizados para o novo painel.
+
+## Resultado visual e funcional
+
+- identidade rosa, creme e chocolate preservada;
+- recursos fornecidos usados diretamente, sem transformar as páginas em imagens únicas;
+- fotos reais das tortas e dos docinhos usadas no catálogo;
+- hierarquia, chamadas para ação, preços, medidas, revenda e instruções equivalentes ao mockup;
+- responsividade sem rolagem horizontal indevida no cardápio e na entrada;
+- `/sabores` não exibe disponibilidade, estoque, reservas ou “Avise quando voltar”;
+- `/cardapio` não apresentou nenhum produto simultaneamente com zero em estoque e selo “Disponível hoje”;
+- links canônicos apontam para as seis rotas aprovadas;
+- console sem erro da aplicação nas rotas verificadas. A conexão de atualização automática do servidor local não é parte do pacote de produção e não afetou o carregamento.
+
+## Adaptações deliberadas
+
+- o cadastro mantém o campo de e-mail porque ele faz parte da confirmação segura já existente; removê-lo apenas para copiar o mockup quebraria o fluxo funcional;
+- rotas antigas permanecem como aliases invisíveis para não quebrar links já distribuídos;
+- o conteúdo se reorganiza verticalmente no celular, preservando ordem, textos e ações.
+
+## Estado
+
+Revisão reaberta após reprovação visual do proprietário em 25/10/2026. A entrada, o cardápio, o Clube e o cadastro precisam de nova comparação no mesmo enquadramento dos mockups antes de qualquer aceite.
+
+final result: blocked
+
+## Iteração de reconstrução visual — 25/10/2026
+
+- `/cardapio` foi recomposto em 1024 px com cabeçalho de chocolate, logomarca original em alta resolução, navegação superior, saudação, faixa rosa ondulada, seletor semanal e navegação inferior separados.
+- A comparação visual local confirmou que a composição deixou de herdar o cabeçalho fixo e o menu flutuante do layout anterior.
+- No estado real verificado, domingo 25/10 está sem produção; por integridade, a validação não criou produtos fictícios. Por isso, a grade cheia do mockup permanece dependente de um dia real com produtos liberados.
+- `/clube` sem sessão foi reconstruído no enquadramento do mockup, com cabeçalho de chocolate, logomarca central, hero e formulário lado a lado.
+- O elemento fotográfico ausente no pacote foi criado como raster independente, sem texto, marca ou controles incorporados: `public/brand-2026/cadastro/adoce_cadastro_fidelidade_assets/referencias/hero-cartao-fidelidade.png`.
+- O campo de e-mail foi preservado porque integra a confirmação segura funcional já existente.
+- `/clube` autenticado recebeu o novo enquadramento visual e o link “Fazer pedido online” passou a apontar para `/cardapio`; a comparação com dados autenticados ainda depende de uma sessão real segura.
+- Verificação automática: 159 arquivos de teste e 913 testes aprovados; compilação e geração da documentação aprovadas.
+- Não houve publicação nem alteração em produção.
+
+Resultado desta iteração: validado automaticamente e visualmente nos estados públicos disponíveis; aceite visual completo ainda depende da grade real do cardápio e do estado autenticado do Clube.
+
+
+## 25/10/2026 — separação de sabores de tortas e fotos de docinhos
+
+- Fonte visual e funcional: catálogo 2026 aprovado e correções indicadas nos prints do proprietário.
+- `/catalogo`: mantém tamanhos, preços e regras; o link de tortas abre `/sabores`; a seção de docinhos ganhou link independente para `/docinhos`.
+- `/sabores`: removidas a introdução antiga, os cartões repetidos de tamanhos/valores e toda navegação por abas; a página mostra somente busca, fotos e sabores de tortas.
+- `/docinhos`: removida a navegação por abas; a página fica separada para fotos e opções de docinhos.
+- Validação no navegador local: os dois links foram acionados a partir do catálogo e abriram os destinos corretos, sem a aba Fatias e sem os blocos apontados nos prints.
+- Validação automática: testes focados e build concluídos.
+
+final result: passed
+

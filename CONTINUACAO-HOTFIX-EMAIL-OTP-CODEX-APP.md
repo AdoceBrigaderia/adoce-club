@@ -112,3 +112,5 @@ A especificação oficial está em `https://open-api.netlify.com/swagger.json`.
 
 A caixa Gmail conectada já recebeu códigos reais do Clube Adoce até 16/08/2026, mas não apresentou novos códigos durante os testes deste incidente. Não exibir códigos OTP nem identificadores de mensagens.
 
+> **Aviso vigente desde 24/10/2026:** este é um registro histórico. Os contextos online de preview e branch deploy foram esvaziados e não podem ser reutilizados. Toda validação anterior à produção é local; qualquer publicação exige autorização explícita do proprietário.
+

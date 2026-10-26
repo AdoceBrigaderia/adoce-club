@@ -6,6 +6,12 @@ status: Proposta técnica
 
 # Publicação e domínio
 
+## Decisão definitiva de 24/10/2026: somente produção online
+
+O único ambiente online permitido para este produto é `https://www.adocebrigaderia.com.br`. O antigo site de homologação foi desativado definitivamente. É proibido recriá-lo, publicar aliases, Deploy Previews ou branch deploys, bem como conectar qualquer endereço alternativo aos dados e credenciais de produção.
+
+Desenvolvimento, testes e validações anteriores à publicação acontecem localmente em `D:\AdoceOnLine`. Toda modificação futura exige autorização explícita e específica do proprietário antes de ser aplicada em produção. Uma autorização para investigar, desenvolver, testar ou revisar não autoriza publicação. A solução só pode ser apresentada como concluída depois da validação automática pertinente e da confirmação no domínio oficial quando a publicação tiver sido autorizada.
+
 ## Regra atual de endereços
 
 As páginas do site, do Clube Adoce, do Adoce Hoje e da Adoce Operação usam caminhos no endereço, sem fragmentos `#`. A entrada da equipe é `/operacao`, e as telas internas usam caminhos abaixo de `/operacao/`. O servidor entrega a aplicação nessas rotas, e o frontend seleciona a superfície correta pelo caminho. A validação no domínio oficial deve ser feita após cada publicação.
@@ -32,7 +38,7 @@ Atendimento e administração podem usar caminhos no mesmo domínio, desde que a
 
 ## Hospedagem recomendada para o frontend
 
-Usar uma plataforma gerenciada, inicialmente Netlify, para obter implantação por versão, URL temporária de revisão, CDN, HTTPS automático, redirecionamentos e retorno rápido a uma versão anterior.
+Usar a Netlify exclusivamente para a publicação versionada do domínio oficial, CDN, HTTPS e redirecionamentos. Revisões anteriores à produção são locais; URLs temporárias públicas são proibidas.
 
 O banco, autenticação, API e segredos não devem ser simulados no frontend. Eles serão publicados na infraestrutura definida para a implementação funcional.
 
@@ -41,14 +47,10 @@ O banco, autenticação, API e segredos não devem ser simulados no frontend. El
 1. Preparar configurações de build e rotas.
 2. Compilar e testar localmente.
 3. Criar o projeto de hospedagem.
-4. Publicar uma URL temporária de prévia.
-5. Revisar desktop, celular, formulários, rotas e acessibilidade.
-6. Publicar a versão de produção ainda no endereço temporário.
-7. Adicionar `www.adocebrigaderia.com.br` à plataforma.
-8. Obter da plataforma os registros DNS definitivos.
-9. No Registro.br, abrir o domínio, acessar a zona DNS e criar os registros solicitados.
-10. Aguardar propagação e emissão do certificado HTTPS.
-11. Validar `www`, domínio sem `www`, HTTPS, redirecionamentos e rotas internas.
+4. Revisar localmente computador, celular, tablet quando aplicável, formulários, rotas e acessibilidade.
+5. Pedir autorização explícita ao proprietário para aplicar a modificação em produção.
+6. Executar `npm run release:check` e publicar somente após a autorização.
+7. Validar `www`, domínio sem `www`, HTTPS, redirecionamentos e rotas internas no domínio oficial, sem iniciar outro deploy.
 12. Somente então divulgar o endereço.
 
 ## DNS provável mantendo Registro.br
@@ -64,7 +66,7 @@ Não criar registros antes de o projeto existir na hospedagem. Remover registros
 - preparar configuração de hospedagem e redirecionamentos;
 - atualizar o projeto para produção;
 - gerar e testar o build;
-- criar uma prévia e publicar produção após autorização;
+- preparar e validar uma prévia exclusivamente local e publicar produção após autorização;
 - verificar autenticação da ferramenta de hospedagem;
 - orientar ou acompanhar a vinculação do domínio;
 - consultar propagação DNS e HTTPS;

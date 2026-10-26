@@ -5,16 +5,19 @@ import { useConnectedClubSummary } from "./ConnectedClubSummary";
 
 const publicLinks = [
   ["Início", "/"],
-  ["Fatias", "/adoce-hoje"],
-  ["Tortas", "/encomendas"],
-  ["Docinhos", "/docinhos"],
+  ["Cardápio", "/cardapio"],
+  ["Sabores", "/sabores"],
+  ["Encomendas", "/catalogo"],
+  ["Clube Adoce", "/clube"],
 ] as const;
 
 export default function PublicHeader({
   clubSummary,
+  cardapio = false,
 }: {
   dark?: boolean;
   clubSummary?: ConnectedClubSummary | null;
+  cardapio?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const { summary: detectedClubSummary } = useConnectedClubSummary();
@@ -30,7 +33,7 @@ export default function PublicHeader({
       </a>
 
       <a className="public-brand" href="/" aria-label="Adoce Brigaderia — início">
-        <img src="/site/logo.webp" alt="Adoce Brigaderia" />
+        <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
       </a>
 
       <div className="public-header-actions">

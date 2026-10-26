@@ -6,7 +6,7 @@ Evitar que a produção seja usada como ambiente de teste e reduzir publicaçõe
 
 ## Regra principal
 
-Produção é a última etapa. Ajustes, tentativas, comparação de opções e correções acontecem primeiro no computador. A prévia on-line é usada apenas quando Rubens ou Beth precisam validar em outro aparelho. Depois da aprovação, é feita uma única publicação em produção.
+Produção é a última etapa. Ajustes, tentativas, comparação de opções e correções acontecem primeiro no computador e em outros aparelhos conectados somente ao ambiente local. Não existe mais prévia on-line. Depois da autorização explícita do proprietário, é feita uma única publicação em produção.
 
 ## Fluxo obrigatório
 
@@ -14,10 +14,10 @@ Produção é a última etapa. Ajustes, tentativas, comparação de opções e c
 2. **Trabalhar localmente:** desenvolver e revisar sem publicar a cada ajuste.
 3. **Passar pelo portão automático:** executar `npm run release:check`. O comando bloqueia a publicação se testes, verificação do código, documentação ou compilação falharem.
 4. **Validar a experiência:** conferir computador e celular, textos, links, imagens, horários, permissões, estados vazios, mensagens de erro e dados da operação.
-5. **Usar homologação somente quando necessário:** executar `npm run release:preview` quando a aprovação depender de acesso remoto ou de um aparelho real. A implantação da prévia não consome créditos de implantação, mas seu tráfego ainda pode consumir requisições e banda.
-6. **Agrupar correções:** se algo for reprovado, voltar ao ambiente local e corrigir todos os pontos antes de gerar outra prévia.
-7. **Publicar uma vez:** após aprovação final, executar `npm run release:prod`.
-8. **Fazer conferência pós-publicação:** abrir o domínio oficial, testar apenas os caminhos críticos e consultar os registros de erro. Essa conferência não gera outro deploy.
+5. **Validar somente localmente antes da produção:** não criar site, alias, Deploy Preview ou branch deploy de homologação.
+6. **Agrupar correções:** se algo for reprovado, corrigir e repetir a validação no ambiente local.
+7. **Pedir autorização explícita:** toda modificação exige uma nova confirmação do proprietário antes de `npm run release:prod`.
+8. **Publicar uma vez e conferir:** após a autorização, publicar, abrir o domínio oficial, testar os caminhos críticos e consultar os registros de erro sem iniciar outro deploy.
 
 ## Critérios mínimos de aprovação
 
@@ -37,7 +37,7 @@ Produção é a última etapa. Ajustes, tentativas, comparação de opções e c
 
 - Correção urgente que impede venda, login ou operação: publicação assim que o pacote corretivo for validado.
 - Ajustes comuns: agrupar em uma janela de publicação, preferencialmente uma ou duas vezes por semana.
-- Mudanças grandes: uma prévia final para aprovação e uma publicação em produção.
+- Mudanças grandes: uma prévia local final para aprovação e, depois de autorização explícita, uma publicação em produção.
 - Pequenos textos e detalhes visuais: acumular para o próximo pacote, salvo quando causarem informação errada ao cliente.
 
 ## Economia além dos deploys
@@ -52,4 +52,4 @@ Produção é a última etapa. Ajustes, tentativas, comparação de opções e c
 
 ## Responsabilidade da validação
 
-O Codex deve informar claramente se a versão está apenas implementada, validada localmente, em homologação ou publicada. Nunca deve declarar uma mudança como disponível aos clientes sem confirmar o domínio oficial depois da publicação.
+O Codex deve informar claramente se a versão está apenas implementada, validada localmente ou confirmada em produção. Não existe estado de homologação online. Nunca deve declarar uma mudança como disponível aos clientes sem confirmar o domínio oficial depois da publicação.

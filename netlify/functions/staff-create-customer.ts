@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { deliverAccessLink, generateAccessLink } from "./_shared/access-link";
 import { CounterCustomerError, findOrCreateCounterCustomer } from "./_shared/counter-customer";
 import { allowedOrigin, env, json, normalizeBrazilPhone } from "./_shared/whatsapp-auth";
+import { PRODUCTION_SITE_ORIGIN } from "./_shared/production-origin";
 
 const allowedRoles = new Set(["owner", "manager", "attendant"]);
 
@@ -73,8 +74,7 @@ export default async (request: Request) => {
   const temporaryPassword = customer.temporaryPassword || "";
   const membership = { account_id: customer.accountId };
 
-  const siteUrl = (env("SITE_URL") || "https://www.adocebrigaderia.com.br").replace(/\/$/, "");
-  let loginUrl = `${siteUrl}/entrar`;
+  let loginUrl = `${PRODUCTION_SITE_ORIGIN}/clube/entrar`;
   const firstName = fullName.split(/\s+/)[0] || "cliente";
   let accessMessage =
     `Olá, ${firstName}! Seu Clube Adoce já está pronto. Abra ${loginUrl} e entre com este WhatsApp e a senha temporária: ${temporaryPassword}\n\nNo primeiro acesso o site pede que você troque essa senha por uma só sua, com no mínimo 6 caracteres.`;
