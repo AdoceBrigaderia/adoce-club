@@ -8,6 +8,14 @@ const instant = readFileSync("src/OperationInstantOrders.tsx", "utf8");
 const access = readFileSync("src/AccessApp.tsx", "utf8");
 
 describe("operação em 360 px", () => {
+  it("mantém a DRE legível e as tabelas de cobertura dentro da área rolável", () => {
+    const management = readFileSync("src/operation-management.css", "utf8");
+    expect(management).toContain(".mg-result-view");
+    expect(management).toContain(".mg-result-table-wrap");
+    expect(management).toContain("overflow-x: auto");
+    expect(management).toContain(".mg-result-kpis");
+    expect(management).toContain(".mg-kpi-button:focus-visible");
+  });
   it("usa uma casca única: barra inferior no celular e menu superior a partir de 768 px", () => {
     const shell = readFileSync("src/operation-shell.css", "utf8").replace(/\r\n/g, "\n");
     expect(shell).toContain("@media (min-width: 768px)");

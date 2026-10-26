@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Eye, Printer, RefreshCw, RotateCcw, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { fortalezaDateKey } from "./cash-day-cycle";
 import { closingPrintJobs, type FullClosingReport } from "./lib/cash-reports";
 import { queuePrint, queuePrints } from "./lib/print-queue";
 import { cashNumber, channelLabel, dateOnly, money, plainText, signedMoney, timeOnly } from "./lib/thermal-format";
-import { dreValues, managementCsv, periodLabel, reportCatalog, type ManagementReport } from "./lib/management-reports";
+import { managementCsv, periodLabel, reportCatalog, type ManagementReport, type ManagementReportV2 } from "./lib/management-reports";
+import ManagementOverview from "./ManagementOverview";
+import ManagementIncomeStatement, { resultView } from "./ManagementIncomeStatement";
 import OperationArchive from "./OperationArchive";
 import "./operation-management.css";
 
@@ -30,12 +32,6 @@ const rangeFor = (preset: Preset, custom: { start: string; end: string }) => {
   if (preset === "month") return { start: `${today.slice(0, 8)}01`, end: today };
   return custom;
 };
-const variation = (current: number, previous: number) => {
-  if (!previous) return { text: "sem base anterior", className: "neutral" };
-  const value = ((current - previous) / previous) * 100;
-  return { text: `${value >= 0 ? "▲" : "▼"} ${Math.abs(value).toFixed(1).replace(".", ",")}% vs período anterior`, className: value >= 0 ? "up" : "down" };
-};
-
 function VBars({ data, label, format }: { data: Array<{ key: string; value: number; soft?: boolean }>; label: string; format: (value: number) => string }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
@@ -69,20 +65,39 @@ export default function OperationManagement() {
   const [tab, setTab] = useState<Tab>("painel");
   const [preset, setPreset] = useState<Preset>("today");
   const [custom, setCustom] = useState(() => { const today = fortalezaDateKey(new Date()); return { start: `${today.slice(0, 8)}01`, end: today }; });
-  const [report, setReport] = useState<ManagementReport | null>(null);
+  const [reportV2, setReportV2] = useState<ManagementReportV2 | null>(null);
+  // Retained tabs/receipts still consume legacy blocks in reais; no legacy RPC fallback.
+  const report = useMemo<ManagementReport | null>(() => reportV2 ? { ...reportV2, receivables: reportV2.receivables.items } : null, [reportV2]);
+  const [loadError, setLoadError] = useState("");
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const requestId = useRef(0);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [preview, setPreview] = useState<{ title: string; lines: string[] } | null>(null);
   const range = useMemo(() => rangeFor(preset, custom), [preset, custom]);
 
   const load = useCallback(async () => {
-    setBusy(true); setNotice("");
-    const { data, error } = await requireSupabase().rpc("manager_management_report", { start_date: range.start, end_date: range.end });
-    setBusy(false);
-    if (error) { setNotice(error.message); return; }
-    setReport(data as ManagementReport);
+    const id = ++requestId.current;
+    setBusy(true); setLoadError(""); setReportV2(null); setUpdatedAt(null);
+    try {
+      if (!range.start || !range.end || range.start > range.end) throw new Error("Informe um período válido.");
+      const { data, error } = await requireSupabase().rpc("manager_management_report_v2", { start_date: range.start, end_date: range.end });
+      if (id !== requestId.current) return;
+      if (error) throw error;
+      const next = data as ManagementReportV2;
+      if (next?.schema_version !== 2 || next.monetary_unit !== "BRL_cents" || !next.result || !next.coverage || !next.comparison?.result || !next.cash || !next.receivables?.items || !Array.isArray(next.warnings)) {
+        throw new Error("O relatório recebido não é compatível com a gestão atual.");
+      }
+      resultView(next);
+      setReportV2(next);
+      setUpdatedAt(new Date().toLocaleTimeString("pt-BR"));
+    } catch {
+      if (id === requestId.current) setLoadError("Não foi possível carregar o resultado deste período. Tente novamente.");
+    } finally {
+      if (id === requestId.current) setBusy(false);
+    }
   }, [range.end, range.start]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(); return () => { requestId.current += 1; }; }, [load]);
 
   const print = async (title: string, lines: string[]) => {
     try { await queuePrint(title, lines); setNotice(`"${title}" enviado para a impressora do tablet.`); }
@@ -127,23 +142,18 @@ export default function OperationManagement() {
     URL.revokeObjectURL(url);
   };
 
-  const k = report?.kpis;
-  const ticket = k && k.sales_count ? n(k.revenue) / k.sales_count : 0;
-  const revenueVar = k ? variation(n(k.revenue), n(k.previous_revenue)) : null;
-  const salesVar = k ? variation(n(k.sales_count), n(k.previous_sales_count)) : null;
   const paymentTotal = report?.payments.reduce((sum, p) => sum + n(p.amount), 0) || 0;
-  const dre = report ? dreValues(report) : null;
   const dailyData = (report?.daily || []).map((d) => ({ key: report && report.daily.length > 16 ? d.date.slice(8, 10) : dateOnly(d.date).slice(0, 5), value: n(d.revenue), soft: new Date(`${d.date}T12:00:00`).getDay() === 0 }));
   const hourlyData = (report?.hourly || []).filter((h) => h.hour >= 7 && h.hour <= 23).map((h) => ({ key: `${h.hour}h`, value: n(h.count) }));
-  const peak = [...(report?.hourly || [])].sort((a, b) => b.count - a.count)[0];
 
   return (
     <section className="operation-management">
       <div className="operation-title">
         <div>
           <span>Gestão contábil</span>
-          <h1>{tabs.find(([id]) => id === tab)?.[1] === "Painel" ? "Painel de vendas" : tabs.find(([id]) => id === tab)?.[1]}</h1>
-          <p>{report ? `${periodLabel(report)} · comparado com ${dateOnly(report.period.previous_start)} a ${dateOnly(report.period.previous_end)}` : "Carregando…"}</p>
+          <h1>{tabs.find(([id]) => id === tab)?.[1] === "Painel" ? "Painel executivo" : tabs.find(([id]) => id === tab)?.[1]}</h1>
+          <p>{report ? `${periodLabel(report)} · comparado com ${dateOnly(report.period.previous_start)} a ${dateOnly(report.period.previous_end)}` : busy ? "Carregando…" : "Resultado indisponível"}</p>
+          {updatedAt ? <p className="mg-sub">Atualizado às {updatedAt}</p> : null}
         </div>
         <div className="mg-head-actions">
           <button type="button" className="mg-btn" onClick={exportCsv} disabled={!report}><Download /> CSV para o contador</button>
@@ -171,33 +181,9 @@ export default function OperationManagement() {
       </div>
       {notice ? <p className="mg-notice" role="status">{notice}</p> : null}
 
-      {tab === "historico" ? <OperationArchive /> : !report ? <p className="mg-empty">{busy ? "Carregando os números…" : "Sem dados."}</p> : (
+      {tab === "historico" ? <OperationArchive /> : !report || !reportV2 ? <ManagementOverview report={null} loading={busy} error={loadError} onRetry={() => void load()} /> : (
         <>
-          {tab === "painel" ? (
-            <>
-              <div className="mg-kpis">
-                <div className="mg-kpi"><small>Faturamento</small><strong>{money(k!.revenue)}</strong><em className={revenueVar!.className}>{revenueVar!.text}</em></div>
-                <div className="mg-kpi"><small>Líquido após taxas</small><strong>{money(n(k!.revenue) - n(k!.fees))}</strong><em className="neutral">taxas {money(k!.fees)}</em></div>
-                <div className="mg-kpi"><small>Vendas · ticket médio</small><strong>{k!.sales_count} · {money(ticket)}</strong><em className={salesVar!.className}>{salesVar!.text}</em></div>
-                <div className="mg-kpi"><small>Fatias vendidas</small><strong>{k!.slices_sold}</strong><em className="neutral">{k!.rewards_count} cortesias do Clube</em></div>
-                <div className="mg-kpi"><small>Perdas</small><strong>{k!.losses}</strong><em className="neutral">fatias descartadas</em></div>
-                <div className="mg-kpi"><small>Diferença de caixa</small><strong className={n(k!.cash_difference) < 0 ? "down" : ""}>{signedMoney(n(k!.cash_difference))}</strong><em className="neutral">a receber {money(k!.deferred_open)}</em></div>
-              </div>
-              <div className="mg-grid-2">
-                <div className="mg-card"><h3>Faturamento por dia</h3><p className="mg-sub">Recebido no período</p><VBars data={dailyData} label="Faturamento por dia" format={money} /></div>
-                <div className="mg-card"><h3>Recebimentos por forma</h3><p className="mg-sub">Bruto e participação</p>
-                  <HBars rows={report.payments.map((p) => ({ name: p.label, value: n(p.amount), label: money(p.amount), sub: paymentTotal ? `${((n(p.amount) / paymentTotal) * 100).toFixed(1).replace(".", ",")}% · taxa ${money(p.fee)}` : undefined }))} />
-                </div>
-              </div>
-              <div className="mg-grid-2">
-                <div className="mg-card"><h3>Sabores mais vendidos</h3><p className="mg-sub">Fatias vendidas, do maior para o menor</p>
-                  <HBars rows={report.flavors.slice(0, 10).map((f) => ({ name: f.name, value: n(f.sold), label: String(f.sold), sub: money(f.revenue) }))} />
-                </div>
-                <div className="mg-card"><h3>Vendas por horário</h3><p className="mg-sub">{peak && peak.count ? `Pico às ${peak.hour}h (${peak.count} vendas)` : "Número de vendas por hora"}</p><VBars data={hourlyData} label="Vendas por horário" format={(v) => `${v} vendas`} /></div>
-              </div>
-              <SessionsTable report={report} onReprint={reprintSession} onReopen={(id, number) => { setReopenReason(""); setReopening({ id, number }); }} />
-            </>
-          ) : null}
+          {tab === "painel" ? <ManagementOverview key={`${report.period.start}-${report.period.end}`} report={reportV2} /> : null}
 
           {tab === "vendas" ? (
             <>
@@ -246,32 +232,7 @@ export default function OperationManagement() {
               </div>
           ) : null}
 
-          {tab === "resultado" && dre ? (
-            <div className="mg-grid-2">
-              <div className="mg-card"><h3>Demonstrativo do resultado</h3><p className="mg-sub">{periodLabel(report)}</p>
-                <table className="mg-table mg-dre"><tbody>
-                  <tr><td>Vendas pelo preço de tabela</td><td className="num">{money(report.dre.table_value)}</td></tr>
-                  <tr className="minus"><td>(−) Descontos concedidos</td><td className="num">− {money(report.dre.discounts)}</td></tr>
-                  <tr className="minus"><td>(−) Cortesias do Clube</td><td className="num">− {money(report.dre.rewards_value)}</td></tr>
-                  <tr className="total"><td>= Receita de vendas</td><td className="num">{money(dre.revenue)}</td></tr>
-                  <tr className="minus"><td>(−) Taxas de Pix e cartões</td><td className="num">− {money(report.dre.fees)}</td></tr>
-                  <tr className="total"><td>= Receita líquida</td><td className="num">{money(dre.net)}</td></tr>
-                  <tr className="minus"><td>(−) Custo das fatias vendidas</td><td className="num">− {money(report.dre.cogs)}</td></tr>
-                  <tr className="minus"><td>(−) Perdas e descartes (custo)</td><td className="num">− {money(report.dre.losses_cost)}</td></tr>
-                  <tr className="minus"><td>(−) Despesas lançadas no caixa</td><td className="num">− {money(report.dre.expenses)}</td></tr>
-                  <tr className="total"><td>= Resultado</td><td className={`num ${dre.result < 0 ? "down" : ""}`}>{signedMoney(dre.result)}</td></tr>
-                </tbody></table>
-                <p className="mg-sub">Custo cadastrado para {report.dre.cogs_coverage}% das fatias vendidas. Cadastre o custo de cada sabor em Produtos para o resultado ficar completo.</p>
-              </div>
-              <div className="mg-card"><h3>Ajustes na receita</h3>
-                <table className="mg-table"><tbody>
-                  <tr><td>Descontos concedidos</td><td className="num">{money(report.adjustments.discounts)}</td></tr>
-                  <tr><td>Cortesias do Clube</td><td className="num">{money(report.adjustments.rewards_value)}</td></tr>
-                  <tr><td>Cancelamentos ({report.adjustments.cancelled_count})</td><td className="num">{money(report.adjustments.cancelled_value)}</td></tr>
-                </tbody></table>
-              </div>
-            </div>
-          ) : null}
+          {tab === "resultado" ? <ManagementIncomeStatement report={reportV2} /> : null}
 
           {tab === "relatorios" ? (
             <div className="mg-reports">

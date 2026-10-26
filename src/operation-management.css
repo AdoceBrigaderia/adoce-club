@@ -108,3 +108,34 @@
 .mg-field { display: grid; gap: 6px; margin: 12px 0; font-weight: 600; }
 .mg-field input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--mg-line, #e5d9cf); border-radius: 10px; font: inherit; font-weight: 400; }
 .mg-table td .mg-link + .mg-link { margin-left: 10px; }
+
+/* Resultado v2: leitura contínua, detalhes por teclado e tabelas contidas. */
+.mg-result-view { display: grid; gap: 14px; min-width: 0; }
+.mg-result-kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.mg-kpi-button { text-align: left; color: #2d120d; font: inherit; cursor: pointer; }
+.mg-kpi-button > span, .mg-kpi-button > em { display: block; margin-top: 6px; font-size: 13px; }
+.mg-kpi-button[aria-expanded="true"] { border-color: var(--mg-series); background: #fff4eb; }
+.mg-kpi-button:focus-visible, .mg-result-view summary:focus-visible, .mg-result-table-wrap:focus-visible { outline: 3px solid #2d120d; outline-offset: 3px; }
+.mg-result-warning p { margin: 6px 0; }
+.mg-result-warning ul { margin: 6px 0; padding-left: 22px; }
+.mg-result-warning li { margin: 4px 0; }
+.mg-result-table-wrap { max-width: 100%; min-width: 0; overflow-x: auto; }
+.mg-result-view caption { text-align: left; color: var(--mg-muted); padding: 8px 0; font-size: 13px; }
+.mg-result-view .mg-table th { text-transform: none; letter-spacing: normal; }
+.mg-result-view .mg-table .num { white-space: nowrap; }
+.mg-result-view .mg-dre td:first-child { min-width: 170px; }
+.mg-result-view summary { cursor: pointer; min-height: 44px; align-content: center; }
+.mg-result-view details .mg-sub { margin-top: 8px; max-width: 48ch; }
+.mg-result-facts { display: grid; gap: 10px; }
+.mg-result-facts > div { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--mg-line); padding-bottom: 8px; }
+.mg-result-facts dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.mg-result-chart { display: grid; gap: 12px; margin-top: 14px; }
+.mg-result-chart > div { display: grid; grid-template-columns: 90px minmax(0, 1fr) 110px; gap: 10px; align-items: center; font-size: 13px; }
+.mg-result-chart b { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .mg-result-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mg-result-view .mg-card { padding: 12px; }
+  .mg-result-view .mg-kpi { padding: 12px; overflow-wrap: anywhere; }
+  .mg-result-chart > div { grid-template-columns: 72px minmax(0, 1fr) 90px; gap: 6px; font-size: 12px; }
+  .mg-result-facts > div { flex-wrap: wrap; gap: 4px; }
+}
