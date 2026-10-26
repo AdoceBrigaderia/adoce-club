@@ -1,9 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 
 const migrationUrl = new URL("../supabase/migrations/20261026144500_management_report_v2.sql", import.meta.url);
 const source = existsSync(migrationUrl) ? readFileSync(migrationUrl, "utf8") : "";
-// Static migration contract only: database execution is a separate integration gate.
+// Static RPC contracts plus executable tests of its portable rounding CTEs.
+// Full PostgreSQL RPC execution remains a separate integration gate.
 const sql = source.replace(/--[^\n]*/g, "").replace(/\s+/g, " ").toLowerCase();
 
 describe("management report v2 migration contract", () => {
@@ -57,6 +59,12 @@ describe("management report v2 migration contract", () => {
     expect(sql).toContain("case when i.is_reward then 0 else i.unit_price * i.quantity end");
   });
 
+  it("retains fractional correction precision until signed bucket reconciliation", () => {
+    expect(sql).not.toContain("round(a.quantity_delta * a.unit_price * 100)");
+    expect(sql).toContain("a.quantity_delta * a.unit_price * 100");
+    expect(sql).toContain("round(sum(revenue_cents) over (partition by period_key))");
+  });
+
   it("reconciles estimated fees by confidence bucket without declaring them actual", () => {
     expect(sql).toContain("fees_cents - sum(rounded_fee_cents) over (partition by period_key)");
     expect(sql).toContain("'fees_allocated_proportionally'");
@@ -98,5 +106,66 @@ describe("management report v2 migration contract", () => {
     expect(sql).toContain("'items', legacy->'receivables'");
     expect(sql).toContain("'receivedcents'");
     expect(sql).toContain("'cashdifferencecents'");
+  });
+});
+
+describe("fractional conference corrections execute the migration's rounding SQL", () => {
+  // These window functions and round/trunc are shared by SQLite and PostgreSQL.
+  // Execute the production CTEs verbatim, not a TypeScript copy of the algorithm.
+  const roundingCtes = sql.match(/rounded_buckets as \(.*?\), buckets as \(.*?\)(?=, bucket_totals as)/)?.[0];
+  type Correction = [period: string, confidence: string, quantity: number, unitPrice: number];
+  const cases: Array<{ name: string; rows: Correction[]; expected: Array<{ period_key: string; confidence: string; revenue_cents: number }> }> = [
+    {
+      name: "two positive 10.005 corrections reconcile to 2001 cents instead of 2002",
+      rows: [["current", "estimated_current", 1, 10.005], ["current", "missing", 1, 10.005]],
+      expected: [{ period_key: "current", confidence: "estimated_current", revenue_cents: 1001 }, { period_key: "current", confidence: "missing", revenue_cents: 1000 }],
+    },
+    {
+      name: "two negative 10.005 corrections reconcile to -2001 cents and keep signs",
+      rows: [["current", "estimated_current", -1, 10.005], ["current", "missing", -1, 10.005]],
+      expected: [{ period_key: "current", confidence: "estimated_current", revenue_cents: -1001 }, { period_key: "current", confidence: "missing", revenue_cents: -1000 }],
+    },
+    {
+      name: "fractional reversals in one bucket are aggregated before rounding",
+      rows: [["current", "estimated_current", -1, 10.005], ["current", "estimated_current", -1, 10.005]],
+      expected: [{ period_key: "current", confidence: "estimated_current", revenue_cents: -2001 }],
+    },
+    {
+      name: "opposite signed corrections retain their signed buckets and reconcile to zero",
+      rows: [["current", "estimated_current", 1, 10.005], ["current", "missing", -1, 10.005]],
+      expected: [{ period_key: "current", confidence: "estimated_current", revenue_cents: 1000 }, { period_key: "current", confidence: "missing", revenue_cents: -1000 }],
+    },
+    {
+      name: "negative fractional correction is reconciled with positive integer-cent sales",
+      rows: [["current", "historical", 1, 20], ["current", "estimated_current", -1, 1.005]],
+      expected: [{ period_key: "current", confidence: "estimated_current", revenue_cents: -100 }, { period_key: "current", confidence: "historical", revenue_cents: 2000 }],
+    },
+    {
+      name: "previous and current periods cannot exchange their rounding residual",
+      rows: [["current", "estimated_current", 1, 10.005], ["current", "missing", 1, 10.005], ["previous", "missing", -1, 10.005]],
+      expected: [{ period_key: "current", confidence: "estimated_current", revenue_cents: 1001 }, { period_key: "current", confidence: "missing", revenue_cents: 1000 }, { period_key: "previous", confidence: "missing", revenue_cents: -1001 }],
+    },
+  ];
+
+  it.each(cases)("$name", ({ rows, expected }) => {
+    expect(roundingCtes, "migration must reconcile exact bucket totals before fee allocation").toBeDefined();
+    const db = new DatabaseSync(":memory:");
+    try {
+      const query = `with corrections(period_key, confidence, quantity_delta, unit_price) as (
+        values ${rows.map(() => "(?, ?, ?, ?)").join(",")}
+      ), exact_buckets as (
+        select period_key, '{}' as report, confidence,
+          case confidence when 'historical' then 1 when 'estimated_current' then 2 else 3 end as bucket_order,
+          sum(quantity_delta) as units, sum(quantity_delta * unit_price * 100) as revenue_cents,
+          0 as cost_reais, 1 as has_activity
+        from corrections group by period_key, confidence
+      ), ${roundingCtes}
+      select period_key, confidence, revenue_cents from buckets order by period_key, confidence`;
+      expect(db.prepare(query).all(...rows.flat())).toEqual(expected);
+      // Tie-breaking must depend on bucket identity, never on row arrival order.
+      expect(db.prepare(query).all(...[...rows].reverse().flat())).toEqual(expected);
+    } finally {
+      db.close();
+    }
   });
 });

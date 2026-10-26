@@ -71,11 +71,11 @@ begin
     -- Conference adjustments have no item snapshot. Signed deltas reverse
     -- quantities, revenue and the explicitly estimated current cost together.
     select p.period_key, case when c.unit_cost is null then 'missing' else 'estimated_current' end,
-      a.quantity_delta, c.unit_cost, round(a.quantity_delta * a.unit_price * 100)
+      a.quantity_delta, c.unit_cost, a.quantity_delta * a.unit_price * 100
     from private.cash_sale_conference_corrections a
     join periods p on a.service_date between p.first_day and p.last_day
     left join public.flavor_costs c on c.flavor_id = a.flavor_id
-  ), buckets as (
+  ), exact_buckets as (
     select p.period_key, p.report, k.confidence, k.bucket_order,
       coalesce(sum(i.units), 0) as units,
       coalesce(sum(i.revenue_cents), 0) as revenue_cents,
@@ -84,6 +84,25 @@ begin
     from periods p cross join (values ('historical', 1), ('estimated_current', 2), ('missing', 3)) k(confidence, bucket_order)
     left join effective_items i on i.period_key = p.period_key and i.confidence = k.confidence
     group by p.period_key, p.report, k.confidence, k.bucket_order
+  ), rounded_buckets as (
+    -- Conference unit_price is numeric without a scale. Keep its exact signed
+    -- value until aggregation, then reconcile the rounded total of ALL sales.
+    -- Truncation plus signed largest remainders never flips a bucket's sign.
+    select *, trunc(revenue_cents) as truncated_revenue_cents,
+      round(sum(revenue_cents) over (partition by period_key))
+        - sum(trunc(revenue_cents)) over (partition by period_key) as residual_cents,
+      row_number() over (partition by period_key
+        order by revenue_cents - trunc(revenue_cents) desc, bucket_order) as positive_rank,
+      row_number() over (partition by period_key
+        order by revenue_cents - trunc(revenue_cents), bucket_order) as negative_rank
+    from exact_buckets
+  ), buckets as (
+    select period_key, report, confidence, bucket_order, units, cost_reais, has_activity,
+      truncated_revenue_cents + case
+        when residual_cents > 0 and positive_rank <= residual_cents then 1
+        when residual_cents < 0 and negative_rank <= -residual_cents then -1
+        else 0 end as revenue_cents
+    from rounded_buckets
   ), bucket_totals as (
     select *, sum(revenue_cents) over (partition by period_key) as sales_cents,
       round((report #>> '{kpis,fees}')::numeric * 100) as fees_cents
