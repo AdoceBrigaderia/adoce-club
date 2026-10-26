@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { closingPrintJobs, closingReceipt, dayReceipt, flavorsReceipt, openingReceipt, type FullClosingReport, type SessionSummary } from "./lib/cash-reports";
-import { managementCsv, reportCatalog, type ManagementReport } from "./lib/management-reports";
+import { managementCsv, periodLabel, reportCatalog, type ManagementReport, type ManagementReportV2 } from "./lib/management-reports";
+import { calculateManagementResult, classifyCoverage } from "./lib/management-accounting";
 import { pair, WIDTH } from "./lib/thermal-format";
 
 const printable = (lines: string[]) => lines.map((line) => line.replace(/^#[HB] /, ""));
@@ -100,6 +101,56 @@ describe("relatórios da aba Gestão", () => {
     const csv = managementCsv(management);
     expect(csv).toContain('"Recebimentos";"Pix";;2252,00;11,03');
     expect(csv.startsWith("﻿")).toBe(true);
+  });
+});
+
+describe("contrato do resultado gerencial v2", () => {
+  const coverage = classifyCoverage({
+    historical: { units: 2, revenueCents: 5940 },
+    estimated_current: { units: 1, revenueCents: 1980 },
+    missing: { units: 1, revenueCents: 1980 },
+  });
+  const result: ManagementReportV2["result"] = {
+    salesRevenueCents: 10000, netRevenueCents: 9900, coveredRevenueCents: 7920,
+    feesEstimatedCents: 100, feesActualCents: null, cogsCents: 2500,
+    coveredGrossProfitCents: 5420, lossesCents: 300, unabsorbedOperatingExpensesCents: 500,
+    operatingResultBeforeProLaboreCents: 4620, proLaboreCents: 0,
+    profitAfterProLaboreCents: 4620, absorbedFixedCostsCents: null,
+    ownerWithdrawalsCents: null, isPartial: true,
+  };
+  const v2: ManagementReportV2 = {
+    ...management, schema_version: 2, monetary_unit: "BRL_cents",
+    result, coverage,
+    cost_classes: {
+      variable_material_packaging: null, variable_fee: 100, direct_labor: null,
+      allocated_fixed: null, depreciation: null, unabsorbed_operating_expense: 500,
+      pro_labore: 0, unclassifiedCogsCents: 2500, allocationStatus: "unallocated_manual_total",
+    },
+    cash: { receivedCents: 8000, expenseCents: 500, withdrawalCents: 2000, supplyCents: 1000, cashDifferenceCents: -200 },
+    receivables: { basis: "current_position", totalCents: 3800, items: management.receivables },
+    comparison: { period: management.period, result, coverage, daily: management.daily },
+    warnings: ["partial_cost_coverage", "estimated_current_costs", "missing_costs", "pro_labore_not_classified", "fees_allocated_proportionally", "cost_classes_unallocated"],
+  };
+
+  it("expresses the same covered-profit formula as the accounting engine in integer cents", () => {
+    const calculated = calculateManagementResult({
+      salesRevenueCents: v2.result.salesRevenueCents, feesCents: v2.result.feesEstimatedCents,
+      cogsCents: v2.result.cogsCents, lossesCents: v2.result.lossesCents,
+      unabsorbedOperatingExpensesCents: v2.result.unabsorbedOperatingExpensesCents,
+      absorbedFixedCostsCents: 0, proLaboreCents: v2.result.proLaboreCents,
+      ownerWithdrawalsCents: v2.cash.withdrawalCents, coverage: v2.coverage,
+    });
+    expect(calculated.coveredGrossProfitCents).toBe(5420);
+    expect(calculated.profitAfterProLaboreCents).toBe(4620);
+    expect(calculated.coverage.historicalUnitsPercent).toBe(50);
+    expect(calculated.coverage.coveredUnitsPercent).toBe(75);
+    expect(calculated.coverage.isPartial).toBe(true);
+    expect(v2.result.absorbedFixedCostsCents).toBeNull();
+  });
+
+  it("preserves the shared period label while legacy reports keep their real-based contract", () => {
+    expect(periodLabel(v2)).toBe(periodLabel(management));
+    expect(managementCsv(management)).toContain('"Receita de vendas";;3280,00;');
   });
 });
 

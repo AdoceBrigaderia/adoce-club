@@ -1,4 +1,5 @@
 import type { SessionSummary } from "./cash-reports";
+import type { CostClass, CoverageSummary, ManagementWarning } from "./management-accounting";
 import {
   cashNumber, channelLabel, dashes, dateOnly, footer, header, methodLabel, money, pair, percent, signedMoney, timeOnly, title, wrap,
 } from "./thermal-format";
@@ -22,8 +23,61 @@ export type ManagementReport = {
   dre: { table_value: number; discounts: number; rewards_value: number; revenue: number; fees: number; cogs: number; cogs_coverage: number; losses_cost: number; expenses: number };
 };
 
+/** New v2 blocks use integer BRL cents. Retained legacy blocks still use BRL reais. */
+export type ManagementReportV2Warning = ManagementWarning
+  | "pro_labore_not_classified" | "fees_allocated_proportionally" | "fees_estimated_from_receipts"
+  | "cost_classes_unallocated" | "losses_estimated_current" | "missing_loss_costs"
+  | "cash_excludes_unrecorded_site_receipts";
+
+export type ManagementReportV2Result = {
+  salesRevenueCents: number;
+  netRevenueCents: number;
+  coveredRevenueCents: number;
+  feesEstimatedCents: number;
+  /** No event-level actual fee source exists in this phase. NULL is not zero. */
+  feesActualCents: number | null;
+  cogsCents: number;
+  coveredGrossProfitCents: number;
+  lossesCents: number;
+  unabsorbedOperatingExpensesCents: number;
+  operatingResultBeforeProLaboreCents: number;
+  proLaboreCents: number;
+  profitAfterProLaboreCents: number;
+  /** Informational only, already inside CMV; unavailable for manual costs. */
+  absorbedFixedCostsCents: number | null;
+  /** Not classified yet. Cash withdrawals alone do not prove a payment to the owner. */
+  ownerWithdrawalsCents: number | null;
+  isPartial: boolean;
+};
+
+export type ManagementReportV2 = Omit<ManagementReport, "receivables"> & {
+  schema_version: 2;
+  /** Applies only to the new blocks, never to retained legacy blocks or receivable items. */
+  monetary_unit: "BRL_cents";
+  result: ManagementReportV2Result;
+  coverage: CoverageSummary;
+  cost_classes: Record<CostClass, number | null> & {
+    unclassifiedCogsCents: number;
+    allocationStatus: "unallocated_manual_total";
+  };
+  /** Recorded sale/refund movements by movement date; not accrued sales. */
+  cash: {
+    receivedCents: number; expenseCents: number; withdrawalCents: number;
+    supplyCents: number; cashDifferenceCents: number;
+  };
+  /** Current outstanding position, intentionally not filtered by the selected sale period. */
+  receivables: { basis: "current_position"; totalCents: number; items: ManagementReport["receivables"] };
+  comparison: {
+    period: ManagementReport["period"];
+    result: ManagementReportV2Result;
+    coverage: CoverageSummary;
+    daily: ManagementReport["daily"];
+  };
+  warnings: ManagementReportV2Warning[];
+};
+
 const n = (value: unknown) => Number(value || 0);
-export const periodLabel = (report: ManagementReport) =>
+export const periodLabel = (report: Pick<ManagementReport, "period">) =>
   report.period.start === report.period.end ? dateOnly(report.period.start) : `${dateOnly(report.period.start)} a ${dateOnly(report.period.end)}`;
 
 export const dreValues = (report: ManagementReport) => {
