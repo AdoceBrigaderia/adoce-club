@@ -32,6 +32,60 @@ const rangeFor = (preset: Preset, custom: { start: string; end: string }) => {
   if (preset === "month") return { start: `${today.slice(0, 8)}01`, end: today };
   return custom;
 };
+
+// RPC data crosses an untyped boundary. Validate the complete consumed shape before
+// committing it to React state, including retained tabs and nested comparison data.
+type ReportCheck = (value: unknown) => boolean;
+const finite: ReportCheck = value => typeof value === "number" && Number.isFinite(value);
+const cents: ReportCheck = value => typeof value === "number" && Number.isSafeInteger(value);
+const text: ReportCheck = value => typeof value === "string";
+const boolean: ReportCheck = value => typeof value === "boolean";
+const nullable = (check: ReportCheck): ReportCheck => value => value === null || check(value);
+const list = (check: ReportCheck): ReportCheck => value => Array.isArray(value) && value.every(check);
+const fields = (names: string, check: ReportCheck) => Object.fromEntries(names.split(" ").map(name => [name, check]));
+const record = (shape: Record<string, ReportCheck>): ReportCheck => value =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+  && Object.entries(shape).every(([key, check]) => check((value as Record<string, unknown>)[key]));
+const periodCheck = record({ ...fields("start end previous_start previous_end", text), days: finite });
+const resultCheck = record({
+  ...fields("salesRevenueCents netRevenueCents coveredRevenueCents feesEstimatedCents cogsCents coveredGrossProfitCents lossesCents unabsorbedOperatingExpensesCents operatingResultBeforeProLaboreCents proLaboreCents profitAfterProLaboreCents", cents),
+  ...fields("feesActualCents absorbedFixedCostsCents ownerWithdrawalsCents", nullable(cents)), isPartial: boolean,
+});
+const coverageCheck = record({
+  ...fields("historical estimated_current missing", record({ units: cents, revenueCents: cents })),
+  ...fields("totalUnits totalRevenueCents coveredUnits coveredRevenueCents", cents),
+  ...fields("coveredUnitsPercent coveredRevenuePercent historicalUnitsPercent historicalRevenuePercent estimatedUnitsPercent estimatedRevenuePercent missingUnitsPercent missingRevenuePercent", finite),
+  isPartial: boolean,
+});
+const dailyCheck = list(record({ date: text, revenue: finite, count: finite }));
+const paymentCheck = record({ method: text, amount: finite, fee: finite });
+const reportCheck = record({
+  schema_version: value => value === 2, monetary_unit: value => value === "BRL_cents",
+  period: periodCheck, result: resultCheck, coverage: coverageCheck, warnings: list(text),
+  comparison: record({ period: periodCheck, result: resultCheck, coverage: coverageCheck, daily: dailyCheck }),
+  cost_classes: record({
+    ...fields("variable_material_packaging variable_fee direct_labor allocated_fixed depreciation unabsorbed_operating_expense pro_labore", nullable(cents)),
+    unclassifiedCogsCents: cents, allocationStatus: text,
+  }),
+  cash: record(fields("receivedCents expenseCents withdrawalCents supplyCents cashDifferenceCents", cents)),
+  receivables: record({ basis: value => value === "current_position", totalCents: cents, items: list(record({ ...fields("order_number customer_name created_at", text), remaining: finite, days: finite })) }),
+  kpis: record(fields("revenue previous_revenue sales_count previous_sales_count slices_sold rewards_count losses fees cash_difference deferred_open", finite)),
+  daily: dailyCheck, hourly: list(record({ hour: finite, count: finite })),
+  payments: list(value => paymentCheck(value) && record({ label: text })(value)),
+  flavors: list(record({ name: text, sold: finite, revenue: finite, ...fields("rewards unit_cost cost", nullable(finite)) })),
+  channels: list(record({ channel: text, count: finite, revenue: finite })),
+  sessions: list(record({
+    ...fields("id status opened_at opened_by_name", text), ...fields("closed_at closed_by_name", nullable(text)),
+    ...fields("number sales_count table_value discounts rewards_count rewards_value revenue cancelled_count cancelled_value slices_sold received fees deferred_count deferred_value pix_change losses", finite),
+    payments: list(paymentCheck), channels: list(record({ channel: text, count: finite })),
+    drawer: record({ ...fields("opening_float cash_sales supplies withdrawals cash_expenses expected", finite), ...fields("counted difference", nullable(finite)) }),
+  })),
+  expenses: list(record({ ...fields("date kind method notes", text), amount: finite })),
+  losses: list(record({ name: text, quantity: finite, cost: nullable(finite) })),
+  adjustments: record(fields("discounts rewards_value cancelled_count cancelled_value", finite)),
+  dre: record(fields("table_value discounts rewards_value revenue fees cogs cogs_coverage losses_cost expenses", finite)),
+});
+
 function VBars({ data, label, format }: { data: Array<{ key: string; value: number; soft?: boolean }>; label: string; format: (value: number) => string }) {
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
@@ -85,10 +139,11 @@ export default function OperationManagement() {
       if (id !== requestId.current) return;
       if (error) throw error;
       const next = data as ManagementReportV2;
-      if (next?.schema_version !== 2 || next.monetary_unit !== "BRL_cents" || !next.result || !next.coverage || !next.comparison?.result || !next.cash || !next.receivables?.items || !Array.isArray(next.warnings)) {
+      if (!reportCheck(next)) {
         throw new Error("O relatório recebido não é compatível com a gestão atual.");
       }
       resultView(next);
+      resultView({ ...next, result: next.comparison.result, coverage: next.comparison.coverage });
       setReportV2(next);
       setUpdatedAt(new Date().toLocaleTimeString("pt-BR"));
     } catch {

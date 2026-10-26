@@ -64,6 +64,47 @@ export function incomeRows(report: ManagementReportV2): ResultRow[] {
   ];
 }
 
+/** Numeric sources available in v2; unknown cost allocations stay explicitly unknown. */
+export function ManagementResultComposition({ report, row }: { report: ManagementReportV2; row: ResultRow }) {
+  const v = resultView(report);
+  type Part = { label: string; value: number | null; subtract?: boolean };
+  const parts: Record<string, Part[]> = {
+    sales: [
+      { label: "Vendas pelo preço de tabela", value: Math.round(report.dre.table_value * 100) },
+      { label: "Descontos", value: Math.round(report.dre.discounts * 100), subtract: true },
+      { label: "Cortesias", value: Math.round(report.dre.rewards_value * 100), subtract: true },
+    ],
+    fees: [{ label: "Taxas estimadas", value: report.result.feesEstimatedCents }, { label: "Taxas efetivas", value: report.result.feesActualCents }],
+    net: [{ label: "Receita de vendas", value: v.salesRevenueCents }, { label: "Taxas deduzidas", value: v.salesRevenueCents - v.netRevenueCents, subtract: true }],
+    uncovered: [{ label: "Receita líquida das vendas sem custo", value: v.coverage.missing.revenueCents }],
+    covered: [{ label: "Receita líquida", value: v.netRevenueCents }, { label: "Receita sem custo conhecido", value: v.coverage.missing.revenueCents, subtract: true }],
+    cogs: [
+      { label: "Materiais e embalagens", value: report.cost_classes.variable_material_packaging },
+      { label: "Mão de obra direta", value: report.cost_classes.direct_labor },
+      { label: "Custos fixos absorvidos", value: report.cost_classes.allocated_fixed },
+      { label: "Depreciação absorvida", value: report.cost_classes.depreciation },
+      { label: "CMV sem decomposição classificada", value: report.cost_classes.unclassifiedCogsCents },
+    ],
+    gross: [{ label: "Receita coberta por custos", value: v.coveredRevenueCents }, { label: "CMV conhecido", value: v.cogsCents, subtract: true }],
+    losses: report.losses.map(loss => ({ label: `${loss.name} · ${loss.quantity} unidades`, value: loss.cost === null ? null : Math.round(loss.cost * 100) })),
+    expenses: [{ label: "Despesa operacional não absorvida classificada", value: report.cost_classes.unabsorbed_operating_expense }],
+    before: [
+      { label: "Lucro bruto coberto", value: v.coveredGrossProfitCents },
+      { label: "Perdas e descartes", value: report.result.lossesCents, subtract: true },
+      { label: "Despesas operacionais não absorvidas", value: report.result.unabsorbedOperatingExpensesCents, subtract: true },
+    ],
+    prolabore: [{ label: "Remuneração classificada como pró-labore", value: report.warnings.includes("pro_labore_not_classified") ? null : report.cost_classes.pro_labore }],
+    profit: [{ label: "Resultado antes do pró-labore", value: v.operatingResultBeforeProLaboreCents }, { label: "Pró-labore deduzido", value: v.proLaboreCents, subtract: true }],
+  };
+  const components = parts[row.id] ?? [];
+  return <div className="mg-result-composition">
+    <p className="mg-sub">{row.detail}</p>
+    {components.length ? <dl className="mg-result-facts" aria-label={`Composição de ${row.label}`}>
+      {components.map(part => <div key={part.label}><dt>{part.label}</dt><dd>{part.subtract && part.value !== null ? "− " : ""}{centsMoney(part.value)}</dd></div>)}
+    </dl> : <p className="mg-sub">Composição detalhada indisponível neste relatório.</p>}
+  </div>;
+}
+
 export function ManagementCoverage({ report }: { report: ManagementReportV2 }) {
   const c = classifyCoverage(report.coverage);
   const rows = [["Histórico", c.historical, c.historicalUnitsPercent, c.historicalRevenuePercent], ["Estimado atual", c.estimated_current, c.estimatedUnitsPercent, c.estimatedRevenuePercent], ["Sem custo", c.missing, c.missingUnitsPercent, c.missingRevenuePercent]] as const;
@@ -80,7 +121,7 @@ export default function ManagementIncomeStatement({ report }: { report: Manageme
     <ManagementConfidence report={report} />
     <div className="mg-card"><h3>Demonstrativo do resultado</h3><p className="mg-sub">{periodLabel(report)} · competência das vendas · percentuais sobre a receita de vendas</p>
       <div className="mg-result-table-wrap" tabIndex={0} role="region" aria-label="Demonstrativo do resultado"><table className="mg-table mg-dre"><caption>DRE gerencial · {v.qualifier}</caption><thead><tr><th>Composição e origem</th><th className="num">Valor</th><th className="num">% receita</th></tr></thead><tbody>
-        {incomeRows(report).map(row => <tr key={row.id} className={row.total ? "total" : row.deduction ? "minus" : undefined}><td><details><summary>{row.deduction ? "(−) " : row.total ? "(=) " : ""}{row.label}{row.qualified && v.partial ? ` · ${v.qualifier}` : ""}</summary><p className="mg-sub">{row.detail}</p></details></td><td className="num">{row.deduction ? "− " : ""}{centsMoney(row.value)}</td><td className="num">{resultPercent(row.value, v.salesRevenueCents)}</td></tr>)}
+        {incomeRows(report).map(row => <tr key={row.id} className={row.total ? "total" : row.deduction ? "minus" : undefined}><td><details><summary>{row.deduction ? "(−) " : row.total ? "(=) " : ""}{row.label}{row.qualified && v.partial ? ` · ${v.qualifier}` : ""}</summary><ManagementResultComposition report={report} row={row} /></details></td><td className="num">{row.deduction ? "− " : ""}{centsMoney(row.value)}</td><td className="num">{resultPercent(row.value, v.salesRevenueCents)}</td></tr>)}
       </tbody></table></div>
     </div>
     <div className="mg-card"><h3>Informações separadas do resultado</h3><dl className="mg-result-facts"><div><dt>Custos fixos já incluídos no CMV</dt><dd>{centsMoney(report.result.absorbedFixedCostsCents)}</dd></div><div><dt>Retiradas dos sócios</dt><dd>{centsMoney(report.result.ownerWithdrawalsCents)}</dd></div><div><dt>Sangrias do caixa</dt><dd>{centsMoney(report.cash.withdrawalCents)}</dd></div></dl><p className="mg-sub">Custos absorvidos não são deduzidos novamente. Sangrias não comprovam retiradas dos sócios nem pró-labore.</p></div>

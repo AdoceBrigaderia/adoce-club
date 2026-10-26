@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import type { ManagementReportV2 } from "./lib/management-reports";
 import { dateOnly, money } from "./lib/thermal-format";
-import { centsMoney, incomeRows, ManagementConfidence, ManagementCoverage, resultView } from "./ManagementIncomeStatement";
+import { centsMoney, incomeRows, ManagementConfidence, ManagementCoverage, ManagementResultComposition, resultView } from "./ManagementIncomeStatement";
 
 type Props = { report: ManagementReportV2 | null; error?: string; loading?: boolean; onRetry?: () => void };
 const delta = (current: number, previous: number) => previous === 0 ? "Sem base anterior" : `${current >= previous ? "▲" : "▼"} ${(Math.abs(current - previous) / Math.abs(previous) * 100).toFixed(1).replace(".", ",")}% vs período anterior`;
@@ -41,7 +41,7 @@ export default function ManagementOverview({ report, error, loading, onRetry }: 
     </div>
     <section id={detailId} className={selectedCard ? "mg-card mg-result-detail" : undefined} aria-live="polite" aria-label="Detalhamento do indicador">
       {selectedCard ? <><h3>{selectedCard.label}</h3><p><strong>{centsMoney(selectedCard.value)}</strong> · {selectedCard.nature}</p>
-        {selectedRow ? <p>{selectedRow.detail}</p> : null}
+        {selectedRow ? <ManagementResultComposition report={report} row={selectedRow} /> : null}
         {selected === "cash" || selected === "difference" ? <dl className="mg-result-facts"><div><dt>Recebimentos registrados</dt><dd>{centsMoney(report.cash.receivedCents)}</dd></div><div><dt>Despesas pagas</dt><dd>{centsMoney(report.cash.expenseCents)}</dd></div><div><dt>Sangrias</dt><dd>{centsMoney(report.cash.withdrawalCents)}</dd></div><div><dt>Suprimentos</dt><dd>{centsMoney(report.cash.supplyCents)}</dd></div><div><dt>Diferença de caixa</dt><dd>{centsMoney(report.cash.cashDifferenceCents)}</dd></div></dl> : null}
         {selected === "receivables" ? <><p>Posição atual dos valores pendentes, independentemente do período de vendas selecionado.</p>{report.receivables.items.length ? <div className="mg-result-table-wrap"><table className="mg-table"><caption>Valores a receber</caption><thead><tr><th>Cliente / pedido</th><th className="num">Pendente</th></tr></thead><tbody>{report.receivables.items.map(item => <tr key={item.order_number}><td>{item.customer_name} · {item.order_number}</td><td className="num">{money(item.remaining)}</td></tr>)}</tbody></table></div> : <p>Nenhum item pendente disponível.</p>}</> : null}
         <button type="button" className="mg-btn" onClick={() => setSelected(null)}>Fechar detalhamento</button></> : null}

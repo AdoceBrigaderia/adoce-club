@@ -4,6 +4,8 @@ import ManagementOverview from "./ManagementOverview";
 import ManagementIncomeStatement from "./ManagementIncomeStatement";
 import { calculateManagementResult, classifyCoverage } from "./lib/management-accounting";
 import type { ManagementReportV2 } from "./lib/management-reports";
+import { createServer } from "vite";
+import { pathToFileURL } from "node:url";
 
 export function resultFixture(): ManagementReportV2 {
   const coverage = classifyCoverage({ historical: { units: 10, revenueCents: 100000 }, estimated_current: { units: 0, revenueCents: 0 }, missing: { units: 0, revenueCents: 0 } });
@@ -32,6 +34,12 @@ describe("resultado gerencial v2", () => {
     expect(html).toMatch(/Retiradas dos sócios[\s\S]*?R\$ 70,00/);
     expect(html).toContain("já incluídos no CMV");
     expect(html).toContain("33,0%");
+  });
+  it("inclui componentes numéricos no conteúdo expansível do lucro", () => {
+    const html = render(<ManagementIncomeStatement report={resultFixture()} />);
+    const detail = html.match(/<details><summary>\(=\) Lucro após pró-labore<\/summary>[\s\S]*?<\/details>/)?.[0];
+    expect(detail).toContain("Resultado antes do pró-labore</dt><dd>R$ 480,00");
+    expect(detail).toContain("Pró-labore deduzido</dt><dd>− R$ 150,00");
   });
   it.each(["result", "warning", "coverage"])("avisa resultado parcial antes dos indicadores por %s", (source) => {
     const report = resultFixture();
@@ -89,4 +97,81 @@ describe("resultado gerencial v2", () => {
     expect(html).not.toContain("R$");
     expect(render(<ManagementOverview report={null} loading />)).toContain("Carregando o resultado");
   });
+});
+
+// Optional browser dependency is supplied by the desktop runtime, not added to the product.
+// Run with ADOCE_MANAGEMENT_PLAYWRIGHT pointing to playwright/index.mjs.
+describe.runIf(Boolean(process.env.ADOCE_MANAGEMENT_PLAYWRIGHT))("integração da gestão no navegador", () => {
+  it("expande a composição e trata respostas incompletas sem quebrar a tela", async () => {
+    const { chromium } = await import(/* @vite-ignore */ pathToFileURL(process.env.ADOCE_MANAGEMENT_PLAYWRIGHT!).href);
+    let payload: unknown = resultFixture();
+    const rpcCalls: string[] = [];
+    const server = await createServer({
+      configFile: false, envDir: false, server: { host: "127.0.0.1", port: 0 },
+      plugins: [{
+        name: "management-test-fixture",
+        resolveId(id) { if (id === "/__management_test.tsx") return `${process.cwd()}/__management_test.tsx`; },
+        load(id) {
+          const normalized = id.replaceAll("\\", "/");
+          if (normalized.endsWith("/__management_test.tsx")) return `import React from 'react'; import {createRoot} from 'react-dom/client'; import OperationManagement from '/src/OperationManagement.tsx'; createRoot(document.getElementById('root')).render(<OperationManagement/>);`;
+          if (normalized.endsWith("/src/lib/supabase.ts")) return `export const requireSupabase=()=>({rpc:async(name)=>({data:await(await fetch('/__management_rpc?name='+name)).json(),error:null})});`;
+          if (normalized.endsWith("/src/OperationArchive.tsx")) return "export default function Archive(){return null}";
+          if (normalized.endsWith("/src/lib/print-queue.ts")) return "export const queuePrint=async()=>{}; export const queuePrints=async()=>{};";
+        },
+        configureServer(vite) {
+          vite.middlewares.use((req, res, next) => {
+            if (req.url?.startsWith("/__management_rpc")) {
+              rpcCalls.push(new URL(req.url, "http://localhost").searchParams.get("name")!);
+              res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(payload));
+            } else if (req.url === "/__management_test") {
+              res.setHeader("Content-Type", "text/html"); res.end('<div id="root"></div><script type="module" src="/__management_test.tsx"></script>');
+            } else next();
+          });
+        },
+      }],
+    });
+    await server.listen();
+    const browser = await chromium.launch({ headless: true });
+    try {
+      const page = await browser.newPage();
+      const errors: string[] = [];
+      page.on("pageerror", (error: Error) => errors.push(error.message));
+      const address = server.httpServer!.address();
+      if (!address || typeof address === "string") throw new Error("Local server unavailable");
+      await page.goto(`http://127.0.0.1:${address.port}/__management_test`);
+      await page.getByRole("button", { name: /Lucro após pró-labore/ }).click();
+      const detail = page.getByRole("region", { name: "Detalhamento do indicador" });
+      const text = (await detail.innerText()).replaceAll("\u00a0", " ");
+      expect(text).toContain("R$ 480,00");
+      expect(text).toContain("− R$ 150,00");
+      expect(text).toContain("R$ 330,00");
+      await page.getByRole("button", { name: "Resultado (DRE)", exact: true }).click();
+      const profit = page.locator("details").filter({ has: page.locator("summary", { hasText: "Lucro após pró-labore" }) });
+      await profit.locator("summary").click();
+      expect(await profit.getAttribute("open")).not.toBeNull();
+      expect((await profit.innerText()).replaceAll("\u00a0", " ")).toContain("− R$ 150,00");
+      await page.getByRole("button", { name: "Painel", exact: true }).click();
+
+      // Each missing block must be rejected in the loader before any tab renders it.
+      for (const path of ["comparison.coverage", "comparison.result", "period", "kpis", "daily", "hourly", "payments", "flavors", "channels", "sessions", "expenses", "losses", "adjustments", "dre", "cost_classes", "cash", "receivables.items"]) {
+        const incomplete = JSON.parse(JSON.stringify(resultFixture()));
+        const keys = path.split(".");
+        const parent = keys.slice(0, -1).reduce((object, key) => object[key], incomplete);
+        delete parent[keys.at(-1)!];
+        payload = incomplete;
+        await page.getByRole("button", { name: "Atualizar", exact: true }).click();
+        await page.getByRole("button", { name: "Tentar novamente", exact: true }).waitFor({ timeout: 1500 });
+        expect(await page.getByRole("alert").innerText()).toContain("Não foi possível carregar");
+        expect(await page.getByRole("button", { name: /Lucro após pró-labore/ }).count()).toBe(0);
+        payload = resultFixture();
+        await page.getByRole("button", { name: "Tentar novamente", exact: true }).click();
+        await page.getByRole("button", { name: /Lucro após pró-labore/ }).waitFor();
+      }
+      expect(errors).toEqual([]);
+      expect(rpcCalls.every(name => name === "manager_management_report_v2")).toBe(true);
+    } finally {
+      await browser.close();
+      await server.close();
+    }
+  }, 60000);
 });
