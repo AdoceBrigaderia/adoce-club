@@ -82,6 +82,18 @@
   border-color: rgba(43, 19, 13, 0.08);
 }
 
+.today-week-tab.past {
+  background: rgba(43, 19, 13, 0.04);
+  color: #b79a8e;
+  border-color: rgba(43, 19, 13, 0.06);
+}
+
+.today-week-tab.past.active {
+  background: #b79a8e;
+  border-color: #b79a8e;
+  color: #fff;
+}
+
 .today-week-tab.active {
   border-color: var(--today-coral, #ef6f73);
   background: var(--today-coral, #ef6f73);

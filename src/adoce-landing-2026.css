@@ -20,7 +20,7 @@ body:has(.landing-2026) {
   min-height: 455px;
   position: relative;
   padding: 265px 7vw 30px;
-  background: #f7a8b3;
+  background: var(--cream);
   isolation: isolate;
 }
 .landing-logo {

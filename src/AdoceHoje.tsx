@@ -28,6 +28,7 @@ import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
 import SliceAvailabilityAlert from "./SliceAvailabilityAlert";
 import {
   formatBatchAvailability,
+  isAvailableForSale,
   totalBatchFree,
   type AvailabilityBatch,
 } from "./availability-batches";
@@ -462,7 +463,7 @@ const maps =
 function Brand() {
   return (
     <a className="today-brand" href="/">
-      <img src="/site/logo.webp" alt="Adoce Brigaderia" />
+      <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
       <span>
         <strong>Adoce Brigaderia</strong>
         <small>Festival de Fatias</small>
@@ -471,7 +472,7 @@ function Brand() {
   );
 }
 
-export default function AdoceHoje({ openCartOnLoad = false, compact = false }: { openCartOnLoad?: boolean; compact?: boolean }) {
+export default function AdoceHoje({ openCartOnLoad = false, compact = false, catalogOnly = false }: { openCartOnLoad?: boolean; compact?: boolean; catalogOnly?: boolean }) {
   const [filter, setFilter] = useState<Availability>(compact ? "available" : "all");
   const [searchQuery, setSearchQuery] = useState("");
   const [flavors, setFlavors] = useState<Flavor[]>(
@@ -625,11 +626,11 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
               ingredients: item.ingredients || "",
               price: Number(item.base_price || 0),
               image: item.image_path || "/adoce-hoje/sabores-hoje.webp",
-              available: Boolean(
-                status &&
-                ["available", "last_units", "preorder_only"].includes(
-                  status.status,
-                ),
+              available: isAvailableForSale(
+                status?.status,
+                status?.quantity_available,
+                status?.quantity_reserved || 0,
+                itemBatches,
               ),
               premium: item.category === "premium",
               status: status?.status,
@@ -669,9 +670,13 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
   const compactWeekDays = useMemo(() => {
     if (!compact) return [];
     const today = getFortalezaNow().date;
+    const todayWeekday = getFortalezaNow().weekday; // 0=Sun..6=Sat
+    const daysSinceMonday = (todayWeekday + 6) % 7;
+    const weekStart = dateAfter(today, -daysSinceMonday);
     return Array.from({ length: 7 }, (_, index) => {
-      const date = dateAfter(today, index);
-      const dayBatches = weekBatches.filter((batch) => batch.service_date === date);
+      const date = dateAfter(weekStart, index);
+      const isPast = date < today;
+      const dayBatches = isPast ? [] : weekBatches.filter((batch) => batch.service_date === date);
       const freeByFlavor = new Map<string, number>();
       let earliestTime: string | undefined;
       for (const batch of dayBatches) {
@@ -691,18 +696,19 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
           return { ...flavor, freeQuantity: free };
         })
         .filter((item): item is Flavor & { freeQuantity: number } => Boolean(item));
-      return { date, isToday: index === 0, items, availableFrom: earliestTime };
+      return { date, isToday: date === today, isPast, items, availableFrom: earliestTime };
     });
   }, [compact, weekBatches, flavors]);
   useEffect(() => {
-    if (!compact || compactWeekDayUserPicked.current || visible.length > 0) return;
-    const firstWithItems = compactWeekDays.findIndex((day) => day.items.length > 0);
-    if (firstWithItems >= 0) setCompactWeekDay(firstWithItems);
-  }, [compact, compactWeekDays, visible.length]);
+    if (!compact || compactWeekDayUserPicked.current || !compactWeekDays.length) return;
+    const todayIndex = compactWeekDays.findIndex((day) => day.isToday);
+    if (todayIndex >= 0) setCompactWeekDay(todayIndex);
+  }, [compact, compactWeekDays]);
   const selectedCompactDay = compactWeekDays[compactWeekDay];
+  const showingTodayGrid = compact && Boolean(selectedCompactDay?.isToday) && visible.length > 0;
   const showPickupNotice = Boolean(
     compact &&
-      !(compactWeekDay === 0 && visible.length > 0) &&
+      !showingTodayGrid &&
       selectedCompactDay &&
       selectedCompactDay.items.length > 0 &&
       !confirmedPickupDays.has(selectedCompactDay.date),
@@ -987,20 +993,20 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         {compact && (
         <div className="today-compact-intro">
           <p className="today-compact-date">
-            {compactWeekDay === 0 || !selectedCompactDay
+            {showingTodayGrid || !selectedCompactDay
               ? compactDateLabel
               : fullDayLabel(selectedCompactDay.date)}
           </p>
           <h1 className="today-compact-title">
-            {compactWeekDay === 0 && visible.length > 0
+            {showingTodayGrid
               ? "Sabores de nossas fatias de hoje"
               : "Cardápio da semana"}
           </h1>
-          {!(compactWeekDay === 0 && visible.length > 0) && (
+          {!showingTodayGrid && (
             <p className="today-compact-subtitle">
-              {visible.length === 0
-                ? "Hoje ainda não tem produção liberada — veja o que já está planejado para os próximos dias."
-                : "Veja o que já está planejado para os próximos dias."}
+              {selectedCompactDay?.isPast
+                ? "Esse dia já passou — confira a produção de hoje ou dos próximos dias."
+                : "Hoje ainda não tem produção liberada — veja o que já está planejado para os próximos dias."}
             </p>
           )}
         </div>
@@ -1013,7 +1019,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                 type="button"
                 role="tab"
                 aria-selected={index === compactWeekDay}
-                className={`today-week-tab${index === compactWeekDay ? " active" : ""}${day.items.length ? "" : " empty"}`}
+                className={`today-week-tab${index === compactWeekDay ? " active" : ""}${day.items.length ? "" : " empty"}${day.isPast ? " past" : ""}`}
                 onClick={() => {
                   compactWeekDayUserPicked.current = true;
                   setCompactWeekDay(index);
@@ -1021,7 +1027,9 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
               >
                 <span>{weekdayShortLabel(day.date)}</span>
                 <strong>{dayMonthLabel(day.date)}</strong>
-                <small>{day.items.length ? `${day.items.length} sabores` : "sem produção"}</small>
+                <small>
+                  {day.isPast ? "já passou" : day.items.length ? `${day.items.length} sabores` : "sem produção"}
+                </small>
               </button>
             ))}
           </div>
@@ -1032,17 +1040,17 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         <div className="today-catalog-intro">
           <p className="today-kicker">Catálogo Adoce</p>
           <h1>Fatias</h1>
-          <a className="today-menu-link" href="/cardapio-fatias"><CalendarDays /> Ver cardápio semanal</a>
+          <a className="today-menu-link" href="/"><CalendarDays /> Ver cardápio da semana</a>
         </div>
-        <div className="today-category-filters" aria-label="Disponibilidade do cardápio">
+        {!catalogOnly && <div className="today-category-filters" aria-label="Disponibilidade do cardápio">
           <button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Todos os sabores</button>
           <button className={filter === "available" ? "active" : ""} onClick={() => setFilter("available")}>Disponíveis hoje</button>
-        </div>
+        </div>}
         <a className="today-whatsapp-invite" href={orderLink()} target="_blank" rel="noreferrer"><MessageCircle /> Converse com a Adoce no WhatsApp</a>
         <label className="today-search"><Search /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Buscar sabor..." /></label>
         </>
         )}
-        {compact && !(compactWeekDay === 0 && visible.length > 0) ? (
+        {compact && !showingTodayGrid ? (
           selectedCompactDay && selectedCompactDay.items.length > 0 ? (
             <div className="today-card-grid">
               {selectedCompactDay.items.map((flavor) => (
@@ -1081,6 +1089,11 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                 </article>
               ))}
             </div>
+          ) : selectedCompactDay?.isPast ? (
+            <p className="today-week-empty-note">
+              {fullDayLabel(selectedCompactDay.date)} já passou — não é possível reservar
+              para esse dia. Veja o sabor de hoje ou dos próximos dias.
+            </p>
           ) : (
             <p className="today-week-empty-note">
               Nenhum sabor liberado ainda para{" "}
@@ -1091,14 +1104,44 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
               para encomendar.
             </p>
           )
+        ) : compact ? (
+          <div className="today-card-grid">
+            {visible.map((flavor) => (
+              <article className="today-flavor-card" key={flavor.id}>
+                <div className="today-card-image">
+                  <img src={flavor.image} alt={`Fatia ${flavor.name}`} loading="lazy" />
+                  <span className="today-status-pill available">
+                    {flavor.status === "preorder_only" ? "Hoje às 19h30" : "Disponível hoje"}
+                  </span>
+                </div>
+                <div className="today-card-body">
+                  <div>
+                    <div className="today-card-status"><span className="now" /> Disponível hoje</div>
+                    <h3>{flavor.name}</h3>
+                    <p>{flavor.note}</p>
+                    <strong className="today-card-price">
+                      {isPriceOnRequest(flavor.name)
+                        ? "Valor a consultar"
+                        : flavor.price
+                          ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}`
+                          : "Consulte"}
+                    </strong>
+                  </div>
+                </div>
+                <button className="today-gallery-link" type="button" onClick={() => setSelectedFlavor(flavor)}>
+                  Conhecer o sabor
+                </button>
+              </article>
+            ))}
+          </div>
         ) : (
         <div className="today-card-grid">
           {visible.map((flavor) => (
             <article
-              className={`today-flavor-card ${flavor.available ? "" : "unavailable"}`}
+              className={`today-flavor-card ${catalogOnly || flavor.available ? "" : "unavailable"}`}
               key={flavor.id}
             >
-              {!flavor.available ? <button className="today-unavailable-prompt" type="button" onClick={() => setAlertFlavor(flavor)}>
+              {!catalogOnly && !flavor.available ? <button className="today-unavailable-prompt" type="button" onClick={() => setAlertFlavor(flavor)}>
                 <strong>Indisponível no momento</strong><span>Quer receber um aviso quando voltar?</span>
               </button> : null}
               <button className="today-card-image product-image-trigger" type="button" onClick={() => setSelectedFlavor(flavor)} aria-label={`Conhecer o sabor ${flavor.name}`}>
@@ -1107,14 +1150,14 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                   alt={`Fatia ${flavor.name}`}
                   loading="lazy"
                 />
-                <span
+                {!catalogOnly && <span
                   className={`today-status-pill ${flavor.available ? "available" : "unavailable"}`}
                   aria-label={flavor.available ? (flavor.availabilityBatches?.length ? formatBatchAvailability(flavor.availabilityBatches).join(". ") : flavor.status === "preorder_only" ? "Disponível hoje às 19h30" : "Disponível hoje") : "Indisponível no momento"}
                 >
                   {flavor.available
                     ? (flavor.status === "preorder_only" ? "Hoje às 19h30" : "Disponível hoje")
                     : "Indisponível"}
-                </span>
+                </span>}
                 {flavor.illustrative && (
                   <span className="today-illustrative">Imagem ilustrativa</span>
                 )}
@@ -1122,7 +1165,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
               </button>
               <div className="today-card-body">
                 <div>
-                  <div className="today-card-status">
+                  {!catalogOnly && <div className="today-card-status">
                     {flavor.available ? (
                       <>
                         <span className="now" />{" "}
@@ -1137,8 +1180,8 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                         <Clock3 /> Consulte antes de pedir
                       </>
                     )}
-                  </div>
-                  {flavor.available && flavor.availabilityBatches?.length ? (
+                  </div>}
+                  {!catalogOnly && flavor.available && flavor.availabilityBatches?.length ? (
                     <div className="today-batch-availability" aria-label="Disponibilidade por horário">
                       {formatBatchAvailability(flavor.availabilityBatches).map((line) => (
                         <small key={line}><Clock3 /> {line}</small>
@@ -1152,14 +1195,14 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                   <h3>{flavor.name}</h3>
                   <p>{flavor.note}</p>
                   <strong className="today-card-price">{isPriceOnRequest(flavor.name) ? "Valor a consultar" : flavor.price ? `R$ ${flavor.price.toFixed(2).replace(".", ",")}` : "Consulte"}</strong>
-                  {flavor.available && flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
+                  {!catalogOnly && flavor.available && flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
                     <small className="today-card-stock-detail">
                       {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} em estoque · {flavor.quantityReserved || 0} reservada(s)
                     </small>
                   ) : null}
                 </div>
               </div>
-              {flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
+              {!catalogOnly && (flavor.available && instantOrderFlavors.some((item) => item.id === flavor.id) ? (
                 <button className="today-order-flavor" type="button" onClick={() => openInstantOrder(flavor.id)}>
                   <ShoppingBag /> <span>Toque para pedir</span>
                 </button>
@@ -1167,7 +1210,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
                 <button className="today-order-flavor today-alert-flavor" type="button" onClick={() => setAlertFlavor(flavor)}>
                   <Bell /> <span>Avise quando voltar</span>
                 </button>
-              )}
+              ))}
               <button className="today-gallery-link" type="button" onClick={() => setSelectedFlavor(flavor)}>
                 Conhecer o sabor
               </button>
@@ -1176,7 +1219,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
         </div>
         )}
         {compact && (
-          <a className="today-see-all-link" href="/adoce-hoje">
+          <a className="today-see-all-link" href="/cardapio">
             Conhecer todas as nossas delícias Adoce
           </a>
         )}
@@ -1227,7 +1270,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false }: {
           <p className="today-kicker">Celebrações e produtos</p>
           <h2>Procurando tortas ou docinhos para encomendar?</h2>
         </div>
-        <a className="today-primary" href="/encomendas">
+        <a className="today-primary" href="/sabores">
           Ver celebrações e produtos
         </a>
       </section>
