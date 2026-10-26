@@ -25,11 +25,24 @@ export function weeklyTotals(plan:ShoppingWeek,start:string){
  for(const [key,value] of Object.entries(plan.daily)){const [date,flavor]=key.split("|");if(dates.has(date)&&Number.isSafeInteger(value)&&value>0)totals[flavor]=(totals[flavor]||0)+value;}
  return totals;
 }
+// Totais apenas dos dias escolhidos (ex.: comprar só para 1 ou 2 dias quando a
+// verba está curta). Diferente de weeklyTotals, não soma plan.cakes (as
+// quantidades "a distribuir" não pertencem a nenhum dia específico).
+export function dailyTotals(plan:ShoppingWeek,dates:string[]){
+ const totals:Record<string,number>={};const set=new Set(dates);
+ for(const [key,value] of Object.entries(plan.daily)){const [date,flavor]=key.split("|");if(set.has(date)&&Number.isSafeInteger(value)&&value>0)totals[flavor]=(totals[flavor]||0)+value;}
+ return totals;
+}
 export function applyDailyQuantity(plan:ShoppingWeek,date:string,flavor:string,value:number):ShoppingWeek{
  const key=`${date}|${flavor}`;const added=Math.max(0,value-(plan.daily[key]||0));
  return {...plan,daily:{...plan.daily,[key]:value},cakes:{...plan.cakes,[flavor]:Math.max(0,(plan.cakes[flavor]||0)-added)}};
 }
-export const DRAFT_GROUPS=["cakes","daily","extras","stock","selected","requiredDays"] as const;
+// "requiredDays" precisa ser salvo antes de "daily": o servidor so aceita marcar
+// sabor num dia que ja esteja marcado como obrigatorio (regra valida a partir de
+// 26/10/2026). Se "daily" fosse enviado primeiro, o servidor rejeitaria a troca
+// e a fila de salvamento travava para sempre nesse item, sem nunca chegar a
+// enviar o "requiredDays" que destravaria a propria troca.
+export const DRAFT_GROUPS=["requiredDays","cakes","daily","extras","stock","selected"] as const;
 export function diffShoppingWeekDrafts(saved:ShoppingWeek,draft:ShoppingWeek){
  const changes:{group:typeof DRAFT_GROUPS[number];key:string;value:unknown}[]=[];
  for(const group of DRAFT_GROUPS){

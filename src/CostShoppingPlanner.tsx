@@ -8,7 +8,7 @@ import ShoppingWeekTable from "./ShoppingWeekTable";
 import TabletShoppingList from "./TabletShoppingList";
 import PurchaseWeeklyReport from "./PurchaseWeeklyReport";
 import ThermalShoppingPreview, {brandedThermalLines} from "./ThermalShoppingPreview";
-import {weekStart,localShoppingDate,weekDates,shiftDate,shortShoppingDate,weeklyTotals,weeklyMenuReceipt,shoppingWeekOptions} from "./lib/shopping-week";
+import {weekStart,localShoppingDate,weekDates,shiftDate,shortShoppingDate,weeklyTotals,dailyTotals,weeklyMenuReceipt,shoppingWeekOptions,dayLabel} from "./lib/shopping-week";
 import { formatCurrency } from "./lib/cost-format";
 
 type FlavorEconomics = { salePrice: number | null; unitCost: number | null; marginPercent: number | null; slicesPerCake: number | null };
@@ -20,7 +20,11 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, flav
  const {extras,stock,selected}=plan;
  const cakes=useMemo(()=>weeklyTotals(plan,week),[plan,week]);
  const savedCakes=useMemo(()=>weeklyTotals(saved,week),[saved,week]);
- const changeWeek=(next:string)=>{if(dirty&&!window.confirm("Há alterações não salvas no planejamento. Elas serão descartadas. Continuar?"))return;setWeek(next);};
+ const [dayFilter,setDayFilter]=useState<string[]>([]);
+ const toggleDayFilter=(date:string)=>setDayFilter(current=>current.includes(date)?current.filter(d=>d!==date):[...current,date]);
+ const demandCakes=useMemo(()=>dayFilter.length?dailyTotals(saved,dayFilter):savedCakes,[saved,dayFilter,savedCakes]);
+ const demandTotal=Object.values(demandCakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
+ const changeWeek=(next:string)=>{if(dirty&&!window.confirm("Há alterações não salvas no planejamento. Elas serão descartadas. Continuar?"))return;setWeek(next);setDayFilter([]);};
  const [search,setSearch]=useState("");
  const [sort,setSort]=useState("name");
  const [extraId,setExtraId]=useState("");
@@ -49,16 +53,15 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, flav
  };
  const handleSave=async()=>{if(await save())await runSync(false);};
  const batterColors=useMemo(()=>Object.fromEntries(flavors.map(flavor=>[flavor.id,predominantBatterColor(flavor.id,workspace)])),[flavors,workspace]);
- const demand=useMemo(()=>planDemand(workspace,savedCakes),[workspace,savedCakes]);
- const combined=useMemo(()=>planDemand(workspace,savedCakes,saved.extras),[workspace,savedCakes,saved.extras]);
+ const demand=useMemo(()=>planDemand(workspace,demandCakes),[workspace,demandCakes]);
+ const combined=useMemo(()=>planDemand(workspace,demandCakes,saved.extras),[workspace,demandCakes,saved.extras]);
  const total=Object.values(cakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
- const savedTotal=Object.values(savedCakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
  const items=workspace.items.filter(item=>item.active||extras[item.id]>0).sort((a,b)=>sort==="code"?a.internal_code.localeCompare(b.internal_code,"pt-BR",{numeric:true}):sort==="quantity"?(demand.quantities[b.id]||0)-(demand.quantities[a.id]||0):a.name.localeCompare(b.name,"pt-BR"));
  const rows=items.filter(item=>(demand.quantities[item.id]>0&&saved.selected[item.id]!==false)||saved.extras[item.id]>0).map(item=>({item,...shoppingQuantity(item,(saved.selected[item.id]!==false?demand.quantities[item.id]||0:0)+(saved.extras[item.id]||0),saved.stock[item.id]||0,invoices)}));
  const grandTotal=shoppingGrandTotal(rows);
  const purchasedTotal=Object.values(plan.procurement||{}).reduce((sum,state)=>sum+state.purchases.reduce((rowSum,entry)=>rowSum+entry.totalPrice,0),0);
- const lines=shoppingReceipt(savedTotal,rows);
- lines.splice(1,0,`Semana: ${shortShoppingDate(week)} a ${shortShoppingDate(shiftDate(week,6))}`);
+ const lines=shoppingReceipt(demandTotal,rows);
+ lines.splice(1,0,dayFilter.length?`Dias: ${dayFilter.map(date=>shortShoppingDate(date)).join(", ")}`:`Semana: ${shortShoppingDate(week)} a ${shortShoppingDate(shiftDate(week,6))}`);
  const menuLines=weeklyMenuReceipt(week,plan,flavors);
  const hasMenu=weekDates(week).some(date=>Object.entries(plan.daily).some(([key,value])=>key.startsWith(date+"|")&&value>0));
  const print=async(menu=false)=>{
@@ -85,6 +88,15 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, flav
   <div className="adoce-shopping-week-controls"><label>Selecionar semana<select value={week} disabled={saving} onChange={event=>changeWeek(event.target.value)}>{[...new Set(weeks.map(option=>option.group))].map(group=><optgroup label={group} key={group}>{weeks.filter(option=>option.group===group).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>)}</select></label><button type="button" disabled={saving} onClick={()=>changeWeek(shiftDate(week,-7))}>Semana anterior</button><button type="button" disabled={saving} onClick={()=>changeWeek(weekStart(localShoppingDate()))}>Semana vigente</button><button type="button" disabled={saving} onClick={()=>changeWeek(shiftDate(week,7))}>Próxima semana</button><button type="button" disabled={!ready||saving||total>0} onClick={()=>void copyPrevious(shiftDate(week,-7))}>Copiar semana anterior como modelo</button></div>
   <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
   <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change} batterColors={batterColors} flavorEconomics={flavorEconomics}/>
+  <div className="adoce-shopping-day-filter">
+   <h4>Comprar para quais dias?</h4>
+   <p>Por padrão a lista de compras soma a semana inteira. Marque só os dias que você vai comprar agora para ver somente o necessário para eles.</p>
+   <div className="adoce-section-actions">
+    {weekDates(week).map(date=><label key={date}><input type="checkbox" checked={dayFilter.includes(date)} onChange={()=>toggleDayFilter(date)} />{dayLabel(date)}</label>)}
+   </div>
+   {dayFilter.length>0&&<button type="button" onClick={()=>setDayFilter([])}>Voltar para a semana inteira</button>}
+   <p role="status">{dayFilter.length?`Mostrando compras só para: ${dayFilter.map(date=>dayLabel(date)).join(", ")}.`:"Mostrando compras da semana inteira."}</p>
+  </div>
   <div className="adoce-shopping-import">
    <h4>Sincronização com o site</h4>
    <p>Ao salvar o planejamento, o cardápio da semana no site é atualizado automaticamente: 13 fatias por torta planejada, disponíveis a partir das 18h. Remover um sabor com fatia já reservada ou com estoque sobrado do dia anterior pede confirmação.</p>
@@ -100,7 +112,7 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, flav
   {!Object.values(demand.quantities).some(value=>value>0)&&<p>Informe as tortas para ver somente os itens da composição.</p>}
   <h4>Itens extras</h4><label>Adicionar item extra<select disabled={!ready} value={extraId} onChange={event=>setExtraId(event.target.value)}><option value="">Escolha um item no menu</option>{items.filter(item=>item.active).map(item=><option key={item.id} value={item.id}>{item.name} · {item.internal_code}</option>)}</select></label>
   {items.filter(item=>item.id===extraId||extras[item.id]>0).map(item=><div className="adoce-shopping-extra" key={item.id}><strong>{item.name}{!item.active && " · produto excluído"}</strong><label>Quantidade extra ({item.consumption_unit==="unit"?"unidades":item.consumption_unit})<input disabled={!ready} type="number" min="0" step="any" inputMode="decimal" value={extras[item.id]||""} placeholder="0" onChange={event=>{const value=Number(event.target.value);if(Number.isFinite(value)&&value>=0)change("extras",item.id,value);}} /></label>{!demand.quantities[item.id]&&stockField(item.id,item.consumption_unit)}<button disabled={!ready} type="button" onClick={()=>{change("extras",item.id,0);setExtraId("");}}>Remover extra</button></div>)}
-  <h4>Relatório de compras · {savedTotal} tortas</h4>{dirty&&<p className="adoce-cost-pending" role="status">Calculado a partir do último planejamento salvo, não do rascunho atual.</p>}<p>Pacotes completos arredondados para cima, conforme a embalagem de referência cadastrada; na ausência, usa a última compra.</p>
+  <h4>Relatório de compras · {demandTotal} tortas{dayFilter.length?` (dias selecionados)`:""}</h4>{dirty&&<p className="adoce-cost-pending" role="status">Calculado a partir do último planejamento salvo, não do rascunho atual.</p>}<p>Pacotes completos arredondados para cima, conforme a embalagem de referência cadastrada; na ausência, usa a última compra.</p>
   <p className="adoce-shopping-grand-total" role="status"><strong>Valor total estimado: {formatCurrency(grandTotal)}</strong><small>Pelo preço da última compra de cada item; itens sem preço cadastrado não entram na soma.</small></p>
   <button type="button" disabled={!ready||printing||!rows.length||combined.errors.length>0||lines.length>=600} onClick={()=>void print()}>{printing?"Enviando…":"Imprimir lista de compras"}</button>
   {lines.length>=600 && <p role="alert">A lista excede o limite de impressão. Reduza a seleção para imprimir.</p>}

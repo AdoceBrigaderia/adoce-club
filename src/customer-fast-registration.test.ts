@@ -24,13 +24,15 @@ describe("cadastro rápido do Clube Adoce", () => {
     expect(access).toContain("Preferências de mensagens ficam para depois.");
   });
 
-  it("cria o acesso definitivo e abre o cartão logo depois do código", () => {
-    const verifyPosition = access.indexOf("const result = await verifyEmailCode(email, code)");
+  it("cria o acesso definitivo e abre o cartão logo depois do código do WhatsApp", () => {
+    const verifyPosition = access.indexOf("const result = await verifyWhatsAppAuthCode(resetChallengeId, phone, code)");
+    const completionPosition = access.indexOf("const completeRegistration = async");
     const upgradePosition = access.indexOf("await upgradeCustomerSecurity(accessToken, phone, password)");
     const cardPosition = access.indexOf('navigateRoute("/clube")', upgradePosition);
 
     expect(verifyPosition).toBeGreaterThan(-1);
-    expect(upgradePosition).toBeGreaterThan(verifyPosition);
+    expect(completionPosition).toBeGreaterThan(-1);
+    expect(upgradePosition).toBeGreaterThan(completionPosition);
     expect(cardPosition).toBeGreaterThan(upgradePosition);
     expect(access).toContain('registering ? "Abrir meu cartão"');
     expect(access).toContain("Esqueci a senha");
@@ -38,16 +40,13 @@ describe("cadastro rápido do Clube Adoce", () => {
   });
 
   it("não reaproveita uma tentativa anterior de recuperação para pedir a senha de novo", () => {
-    const requestStart = access.indexOf("const submitEmail = async");
+    const requestStart = access.indexOf("const submitRegister = async");
     const requestEnd = access.indexOf("const submitPassword = async", requestStart);
     const requestFlow = access.slice(requestStart, requestEnd);
     const verificationStart = access.indexOf("const submitCode = async");
     const verificationEnd = access.indexOf("const confirmWhatsApp", verificationStart);
     const verificationFlow = access.slice(verificationStart, verificationEnd);
 
-    expect(requestFlow).toContain(
-      'if (surface === "client" && registering)',
-    );
     expect(requestFlow).toContain(
       "sessionStorage.removeItem(passwordRecoveryStorageKey)",
     );
@@ -58,20 +57,22 @@ describe("cadastro rápido do Clube Adoce", () => {
       'sessionStorage.setItem(passwordRecoveryStorageKey, "true")',
     );
     expect(
-      verificationFlow.indexOf(
-        "sessionStorage.removeItem(passwordRecoveryStorageKey)",
-      ),
-    ).toBeGreaterThan(
-      verificationFlow.indexOf("if (registering && result.user)"),
-    );
+      verificationFlow.indexOf("if (registering)"),
+    ).toBeGreaterThan(-1);
   });
 
-  it("não obriga a confirmação do WhatsApp nem escolhas de marketing no cadastro", () => {
+  it("não obriga a confirmação do WhatsApp extra nem escolhas de marketing no cadastro", () => {
     const registrationCompletion = access.slice(
-      access.indexOf("if (registering && result.user)"),
-      access.indexOf('location.hash = surface === "operation"'),
+      access.indexOf("const completeRegistration = async"),
+      access.indexOf("const submitCode = async"),
     );
     expect(registrationCompletion).not.toContain('setStage("whatsapp")');
     expect(access).not.toContain("Quero receber sabores e novidades. <em>Opcional</em>");
+  });
+
+  it("cadastra só com WhatsApp e nome e sobrenome, sem pedir e-mail", () => {
+    expect(access).toContain("const submitRegister = async");
+    expect(access).toContain("await requestWhatsAppAuthCode(name, phone)");
+    expect(access).not.toContain("await requestEmailCode(\n        email,\n        registering");
   });
 });

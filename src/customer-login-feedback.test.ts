@@ -31,4 +31,11 @@ describe("canal de reclamações e sugestões", () => {
     expect(app).toContain('routeHash.startsWith("#fale-com-a-adoce")');
     expect(endpoint).toContain('.from("site_feedback").insert');
   });
+
+  it("avisa o proprietario pelo WhatsApp pessoal quando chega um novo contato", () => {
+    const endpoint = source("../netlify/functions/site-feedback.ts");
+    expect(endpoint).toContain('const OWNER_WHATSAPP = "5585982156026"');
+    expect(endpoint).toContain("client.messages.create");
+    expect(endpoint).toContain("whatsapp:+${OWNER_WHATSAPP}");
+  });
 });

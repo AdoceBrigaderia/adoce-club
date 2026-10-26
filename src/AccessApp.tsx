@@ -94,6 +94,7 @@ import {
   registerCustomerPasskey,
   requestEmailCode,
   requestPasswordReset,
+  requestWhatsAppAuthCode,
   signInWithPhonePassword,
   signInWithStaffPhonePassword,
   resetUserPasswordByManager,
@@ -130,9 +131,9 @@ import "./access-app.css";
 import "./operation-dashboard.css";
 import "./operation-v3.css";
 import "./operation-tablet.css";
-import "./referral.css";
 import "./customer-v3.css";
 import "./customer-account-reference-2026.css";
+import "./clube-2026.css";
 
 const OperationContentAdmin = lazy(() => import("./OperationContentAdmin"));
 const OperationCommercialAdmin = lazy(() => import("./OperationCommercialAdmin"));
@@ -183,7 +184,7 @@ function readClubOrderInviteDraft() {
 
 type Surface = "client" | "operation";
 type AuthStage = "identify" | "code" | "whatsapp";
-type ClubView = "card" | "share" | "group" | "help" | "install" | "profile";
+type ClubView = "card" | "group" | "help" | "install" | "profile";
 type OperationView = "dashboard" | "orders" | "products" | "attend" | "purchasing_inventory" | "history" | "settings" | "management" | "audit" | "painel_do_dia";
 type OperationCommercialTab = "sales" | "requests" | "catalog";
 type OperationNavigationLocation = {
@@ -197,7 +198,8 @@ function clubViewFromLocation(): ClubView {
     "view",
   );
   if (requested === "profile") return requested;
-  return currentRouteHash().startsWith("#minha-conta") ? "profile" : "card";
+  return currentRouteHash().startsWith("#clube") ? "profile" :
+    currentRouteHash().startsWith("#minha-conta") ? "profile" : "card";
 }
 type MemberCounts = { total: number; active: number; deactivated: number; pending: number };
 type MemberStatusFilter = "all" | "active" | "deactivated" | "pending";
@@ -614,7 +616,7 @@ function Brand({ label }: { label: string }) {
   const homeHref = label === "Adoce Operação" ? "/operacao" : "/";
   return (
     <a className="access-brand" href={homeHref}>
-      <img src="/site/logo.webp" alt="Adoce Brigaderia" />
+      <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
       <span>
         <strong>{label}</strong>
         <small>Adoce Brigaderia</small>
@@ -658,135 +660,6 @@ function MemberLoyaltyCard({ snapshot }: { snapshot: ClubSnapshot }) {
   );
 }
 
-export function MemberDemo() {
-  const snapshot: ClubSnapshot = {
-    name: "Rubens Bezerra",
-    memberCode: "ADOC 2026 0000 0123",
-    progress: 8,
-    completed: 1,
-    rewards: 1,
-    referralProgress: 2,
-    referralRewards: 0,
-    referralCode: "ADOCE-DEMO",
-    pendingReferrals: 0,
-    acceptedInvites: [],
-  };
-  const requestedView = new URLSearchParams(currentRouteHash().split("?")[1] || "").get("view");
-  const initialView: ClubView = ["card", "share", "help", "profile", "group", "install"].includes(requestedView || "")
-    ? requestedView as ClubView
-    : "card";
-  const [demoView, setDemoView] = useState<ClubView>(initialView);
-  const stamps = Array.from({ length: 14 }, (_, index) => index < snapshot.referralProgress);
-  return (
-    <main className="club-home club-demo-preview">
-      <header>
-        <Brand label="Clube Adoce" />
-        <span className="club-header-greeting">Olá, Rubens!</span>
-        <div className="club-header-actions">
-          <button onClick={() => setDemoView("profile")}><Settings2 /> Preferências</button>
-        </div>
-      </header>
-      {demoView === "card" && (
-        <>
-          <section className="club-member-start">
-            <div className="club-member-welcome">
-              <span>Olá, Rubens!</span>
-              <p>Seu benefício está aqui. Acompanhe cada compra até a próxima fatia grátis.</p>
-            </div>
-            <MemberLoyaltyCard snapshot={snapshot} />
-            <a className="club-flavors-primary" href="/adoce-hoje"><CakeSlice /> Ver sabores de hoje <ArrowRight /></a>
-            <div className="club-benefit-actions">
-              <button onClick={() => setDemoView("share")}><Users /><span><strong>Indicar e ganhar</strong><small>Compartilhe seu convite</small></span><ArrowRight /></button>
-            </div>
-          </section>
-          <section className="club-grid">
-            <article className="club-how-reward">
-              <CakeSlice />
-              <div><h2>Como funciona sua recompensa</h2><p><Heart /> A cada fatia comprada, você ganha 1 carimbo.</p><p><Gift /> Complete 14 carimbos e ganhe uma fatia grátis.</p><button onClick={() => setDemoView("help")}>Ver todas as regras <ArrowRight /></button></div>
-            </article>
-            <aside className="club-side">
-              <article><Sparkles /><small>Espalhe Doçura</small><h3>2 de 14 indicações</h3><p>Seu link pessoal já leva o convite junto.</p><button onClick={() => setDemoView("share")}>Convidar alguém</button></article>
-              <article><Settings2 /><h3>Seu Clube, do seu jeito</h3><p>Atualize seus dados e preferências em um só lugar.</p><button onClick={() => setDemoView("profile")}>Abrir preferências</button></article>
-            </aside>
-          </section>
-        </>
-      )}
-      {demoView === "share" && (
-        <section className="club-panel club-referral-guide">
-          <Sparkles /><small>Espalhe Doçura</small><h1>Convide com seu link.</h1><p>Na primeira compra, você e a pessoa convidada ganham um carimbo.</p>
-          <div className="referral-track">{stamps.map((filled, index) => <span className={filled ? "confirmed" : ""} key={index}><Heart /></span>)}</div>
-          <ol><li><b>1</b><span><strong>Envie seu link pessoal</strong><small>O WhatsApp abre com uma mensagem pronta.</small></span></li><li><b>2</b><span><strong>A pessoa se cadastra</strong><small>O convite fica vinculado automaticamente.</small></span></li><li><b>3</b><span><strong>Na primeira compra, os dois ganham</strong><small>O carimbo aparece no Clube.</small></span></li></ol>
-          <button className="access-primary"><Users /> Compartilhar pelo WhatsApp</button>
-        </section>
-      )}
-      {demoView === "help" && (
-        <section className="club-panel club-help">
-          <CircleHelp /><small>Cartão Clube Adoce</small><h1>Como funciona</h1><p>Cada fatia comprada vale um carimbo. Complete 14 e ganhe uma fatia grátis.</p>
-          <div className="club-help-list"><article><Heart /><span><strong>Como ganho carimbos?</strong><small>Cada fatia tradicional ou premium vale 1 carimbo.</small></span></article><article><Search /><span><strong>Como sou identificado?</strong><small>Informe seu nome ou Código do Membro no atendimento.</small></span></article><article><Gift /><span><strong>O que acontece ao completar 14?</strong><small>Sua fatia grátis fica disponível para resgate.</small></span></article></div>
-        </section>
-      )}
-      {demoView === "profile" && (
-        <section className="club-account-reference">
-          <article className="club-account-loyalty">
-            <div>
-              <small>Clube Adoce</small>
-              <h2><strong>{snapshot.progress}</strong> de 14 carimbos</h2>
-              <div className="club-account-stamps" aria-label={`${snapshot.progress} de 14 carimbos`}>
-                {Array.from({ length: 14 }, (_, index) => <Heart key={index} className={index < snapshot.progress ? "filled" : ""} />)}
-              </div>
-              {snapshot.rewards > 0 && (
-                <div className="club-account-reward-ready" role="status">
-                  <Gift />
-                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Informe seu Código do Membro no atendimento para resgatar.</small></span>
-                </div>
-              )}
-            </div>
-            <button type="button" onClick={() => setDemoView("card")}>Ver meu cartão</button>
-          </article>
-          <div className="club-account-primary-actions" aria-label="Ações principais da conta">
-            <a href="/adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
-          </div>
-          <div className="club-account-actions">
-            <a href="/carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
-            <a href="/adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
-            <a href="#demo-profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
-            <a href="#demo-profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
-          </div>
-          <article className="club-account-order-empty">
-            <span><ShoppingCart /></span>
-            <div><strong>Nenhum pedido recente</strong><small>Quando você fizer um pedido, ele aparecerá aqui.</small></div>
-          </article>
-          <details id="demo-profile-settings" className="club-panel club-preferences-panel">
-            <summary><Settings2 /> Preferências e configurações <ChevronDown /></summary>
-            <p>Seus dados, comunicações e formas de usar o Clube ficam reunidos aqui.</p>
-            <div className="club-preference-links"><button type="button" onClick={() => setDemoView("help")}><CircleHelp /><span><strong>Como funciona o Clube</strong><small>Carimbos, recompensa e indicações</small></span><ArrowRight /></button><button type="button" onClick={() => setDemoView("group")}><Users /><span><strong>Cartão em grupo</strong><small>Compartilhar carimbos</small></span><ArrowRight /></button><button type="button" onClick={() => setDemoView("install")}><Download /><span><strong>Instalar Clube Adoce</strong><small>Criar um atalho neste aparelho</small></span><ArrowRight /></button></div>
-          </details>
-          <button className="club-account-signout" type="button"><LogOut /> Sair da conta <ArrowRight /></button>
-        </section>
-      )}
-      {demoView === "group" && (
-        <section className="club-panel club-group-panel">
-          <Users /><small>Família, amigos ou equipe</small><h1>Cartão em grupo</h1><p>Até cinco pessoas somam carimbos no mesmo cartão, cada uma com seu próprio acesso.</p>
-          <div className="group-member-list"><h2>Família Bezerra</h2><article><span>R</span><p><strong>Rubens Bezerra</strong><small>{snapshot.memberCode} · Proprietário</small></p></article><article><span>B</span><p><strong>Beth Bezerra</strong><small>ADOC 2026 0000 0124 · Membro</small></p></article></div>
-          <div className="group-invite-box"><button className="access-primary" type="button"><Users /> Convidar uma pessoa</button><small>O convite será compartilhado com segurança.</small></div>
-        </section>
-      )}
-      {demoView === "install" && (
-        <section className="club-panel club-install-panel">
-          <Download /><small>Atalho no celular</small><h1>Leve o Clube Adoce com você.</h1><p>Abra seus carimbos rapidamente, sem procurar o site toda vez.</p>
-          <div className="install-guide"><strong>Adicionar à tela inicial</strong><ol><li>Abra o menu do navegador.</li><li>Escolha “Adicionar à tela inicial”.</li><li>Confirme o nome Clube Adoce.</li></ol><button className="access-primary" type="button"><Download /> Instalar Clube Adoce</button></div>
-        </section>
-      )}
-      <nav className="club-bottom">
-        <button className={demoView === "card" ? "active" : ""} onClick={() => setDemoView("card")}><Heart /> Início</button>
-        <a href="/adoce-hoje"><CakeSlice /> Sabores</a>
-        <button className={demoView === "share" ? "active" : ""} onClick={() => setDemoView("share")}><Users /> Indicar</button>
-        <button className={demoView === "profile" ? "active" : ""} onClick={() => setDemoView("profile")}><Settings2 /> Preferências</button>
-      </nav>
-    </main>
-  );
-}
-
 export function OperationDemo() {
   const [demoView, setDemoView] = useState<"dashboard" | "attend" | "products">(
     "dashboard",
@@ -805,7 +678,7 @@ export function OperationDemo() {
           <Suspense fallback={null}>
             <OperationNotificationPreview initialOpen={currentRouteHash().includes("alertas")} />
           </Suspense>
-          <a href="/adoce-hoje"><CakeSlice /> Adoce Hoje</a>
+          <a href="/cardapio"><CakeSlice /> Adoce Hoje</a>
         </div>
       </header>
       <div className="operation-shell">
@@ -925,13 +798,7 @@ export function OperationDemo() {
   );
 }
 
-function AuthScreen({
-  surface,
-  onHomologationLogin,
-}: {
-  surface: Surface;
-  onHomologationLogin: (remember: boolean) => void;
-}) {
+function AuthScreen({ surface }: { surface: Surface }) {
   const clubOrderDraft = useMemo(() => readClubOrderInviteDraft(), []);
   const directParams = useMemo(() => {
     if (!currentRouteHash().startsWith("#acesso-direto?")) return null;
@@ -945,7 +812,7 @@ function AuthScreen({
   const manualDirectRoute = location.pathname === "/acesso-direto" && !directParams;
   const directAttempted = useRef(false);
   const [stage, setStage] = useState<AuthStage>(directParams || manualDirectRoute ? "code" : "identify");
-  const registrationRoute = currentRouteHash().startsWith("#cadastro");
+  const registrationRoute = currentRouteHash().startsWith("#cadastro") || currentRouteHash().startsWith("#clube");
   const [registering, setRegistering] = useState(
     () =>
       registrationRoute ||
@@ -1036,52 +903,50 @@ function AuthScreen({
 
   const submitEmail = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (registering && !isRealCustomerName(name)) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await requestEmailCode(email, undefined, false);
+      setStage("code");
+      setMessage("Código enviado. Ele vale por 10 minutos.");
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Não foi possível enviar o código.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitRegister = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!isRealCustomerName(name)) {
       setMessage("Informe seu nome e sobrenome para criar seu cadastro.");
       return;
     }
-    if (registering && (!name.trim() || phone.replace(/\D/g, "").length < 10 || !terms || !privacy)) {
+    if (phone.replace(/\D/g, "").length < 10 || !terms || !privacy) {
       setMessage(
-        "Informe seu nome e WhatsApp com DDD, e aceite os termos e a política de privacidade.",
+        "Informe seu WhatsApp com DDD e aceite os termos e a política de privacidade.",
       );
       return;
     }
-    if (registering && password.length < 6) {
+    if (password.length < 6) {
       setMessage("Crie uma senha com pelo menos 6 caracteres.");
       return;
     }
     setBusy(true);
     setMessage("");
     try {
-      if (surface === "client" && registering) {
-        sessionStorage.removeItem(passwordRecoveryStorageKey);
-      }
-      await requestEmailCode(
-        email,
-        registering ? name : undefined,
-        registering,
-      );
+      sessionStorage.removeItem(passwordRecoveryStorageKey);
+      const request = await requestWhatsAppAuthCode(name, phone);
+      setResetChallengeId(request.challengeId);
       setStage("code");
-      setMessage("Código enviado. Ele vale por 10 minutos.");
-    } catch (error) {
-      const safeMessage =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível enviar o código.";
-      if (
-        surface === "client" &&
-        !registering &&
-        safeMessage === "Não encontramos uma conta ativa com este e-mail."
-      ) {
-        setRegistering(true);
-        setLoginMode("email");
-        setMessage(
-          "Este e-mail ainda não tem cadastro. Complete seus dados para fazer parte.",
-        );
-        return;
-      }
       setMessage(
-        safeMessage,
+        `Enviamos um código pelo WhatsApp para ${request.maskedPhone}. Toque em "Copiar código" na mensagem e cole abaixo.`,
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error ? error.message : "Não foi possível enviar o código agora.",
       );
     } finally {
       setBusy(false);
@@ -1095,11 +960,9 @@ function AuthScreen({
     try {
       if (surface === "operation") {
         const result = await signInWithStaffPhonePassword(phone, password, rememberLogin);
-        if (result.homologationDemo) onHomologationLogin(rememberLogin);
         location.assign("/operacao");
       } else {
         const result = await signInWithPhonePassword(phone, password, rememberLogin);
-        if (result.homologationDemo) onHomologationLogin(rememberLogin);
         navigateRoute(result.mustChangePassword ? "/minha-conta" : "/clube");
       }
     } catch (error) {
@@ -1130,6 +993,73 @@ function AuthScreen({
     }
   };
 
+  const completeRegistration = async (result: Awaited<ReturnType<typeof verifyWhatsAppAuthCode>>) => {
+    if (!result.user) throw new Error("Não foi possível concluir seu acesso agora.");
+    sessionStorage.removeItem(passwordRecoveryStorageKey);
+    const supabase = requireSupabase();
+    const cleanName = name.trim();
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: { full_name: cleanName },
+    });
+    if (metadataError) throw metadataError;
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ full_name: cleanName })
+      .eq("id", result.user.id);
+    if (profileError) throw profileError;
+    const { error: consentError } = await supabase
+      .from("consent_events")
+      .insert([
+        {
+          profile_id: result.user.id,
+          consent_type: "club_terms",
+          granted: true,
+          document_version: "1.0",
+          source: "web",
+        },
+        {
+          profile_id: result.user.id,
+          consent_type: "privacy",
+          granted: true,
+          document_version: "1.0",
+          source: "web",
+        },
+        {
+          profile_id: result.user.id,
+          consent_type: "marketing",
+          granted: marketing,
+          document_version: "1.0",
+          source: "web",
+        },
+      ]);
+    if (consentError) throw consentError;
+    const { error: preferenceError } = await supabase
+      .from("notification_preferences")
+      .upsert({
+        profile_id: result.user.id,
+        ...notificationPreferences,
+        flavors: marketing && notificationPreferences.flavors,
+        festival: marketing && notificationPreferences.festival,
+        promotions: marketing && notificationPreferences.promotions,
+        club_news: marketing && notificationPreferences.club_news,
+        rewards: marketing && notificationPreferences.rewards,
+        birthday: marketing && notificationPreferences.birthday,
+        email_enabled: false,
+        push_enabled: marketing && notificationPreferences.push_enabled,
+        whatsapp_enabled:
+          marketing && notificationPreferences.whatsapp_enabled,
+      });
+    if (preferenceError) throw preferenceError;
+    const accessToken = result.session?.access_token;
+    if (!accessToken) throw new Error("Não foi possível concluir seu acesso agora.");
+    await upgradeCustomerSecurity(accessToken, phone, password);
+    await supabase.auth.refreshSession();
+    await acceptRememberedReferral();
+    sessionStorage.removeItem(clubOrderInviteDraftKey);
+    window.dispatchEvent(new Event("adoce-profile-ready"));
+    navigateRoute("/clube");
+  };
+
   const submitCode = async (event: React.FormEvent) => {
     event.preventDefault();
     if (registering && !isRealCustomerName(name)) {
@@ -1140,8 +1070,12 @@ function AuthScreen({
     setMessage("");
     if (resetChallengeId) {
       try {
-        await verifyWhatsAppAuthCode(resetChallengeId, phone, code);
+        const result = await verifyWhatsAppAuthCode(resetChallengeId, phone, code);
         setResetChallengeId("");
+        if (registering) {
+          await completeRegistration(result);
+          return;
+        }
         if (surface === "client") {
           sessionStorage.setItem(passwordRecoveryStorageKey, "true");
         }
@@ -1157,73 +1091,7 @@ function AuthScreen({
       return;
     }
     try {
-      const result = await verifyEmailCode(email, code);
-      if (registering && result.user) {
-        sessionStorage.removeItem(passwordRecoveryStorageKey);
-        const supabase = requireSupabase();
-        const cleanName = name.trim();
-        const { error: metadataError } = await supabase.auth.updateUser({
-          data: { full_name: cleanName },
-        });
-        if (metadataError) throw metadataError;
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ full_name: cleanName })
-          .eq("id", result.user.id);
-        if (profileError) throw profileError;
-        const { error: consentError } = await supabase
-          .from("consent_events")
-          .insert([
-            {
-              profile_id: result.user.id,
-              consent_type: "club_terms",
-              granted: true,
-              document_version: "1.0",
-              source: "web",
-            },
-            {
-              profile_id: result.user.id,
-              consent_type: "privacy",
-              granted: true,
-              document_version: "1.0",
-              source: "web",
-            },
-            {
-              profile_id: result.user.id,
-              consent_type: "marketing",
-              granted: marketing,
-              document_version: "1.0",
-              source: "web",
-            },
-          ]);
-        if (consentError) throw consentError;
-        const { error: preferenceError } = await supabase
-          .from("notification_preferences")
-          .upsert({
-            profile_id: result.user.id,
-            ...notificationPreferences,
-            flavors: marketing && notificationPreferences.flavors,
-            festival: marketing && notificationPreferences.festival,
-            promotions: marketing && notificationPreferences.promotions,
-            club_news: marketing && notificationPreferences.club_news,
-            rewards: marketing && notificationPreferences.rewards,
-            birthday: marketing && notificationPreferences.birthday,
-            email_enabled: marketing && notificationPreferences.email_enabled,
-            push_enabled: marketing && notificationPreferences.push_enabled,
-            whatsapp_enabled:
-              marketing && notificationPreferences.whatsapp_enabled,
-          });
-        if (preferenceError) throw preferenceError;
-        const accessToken = result.session?.access_token;
-        if (!accessToken) throw new Error("Não foi possível concluir seu acesso agora.");
-        await upgradeCustomerSecurity(accessToken, phone, password);
-        await supabase.auth.refreshSession();
-        await acceptRememberedReferral();
-        sessionStorage.removeItem(clubOrderInviteDraftKey);
-        window.dispatchEvent(new Event("adoce-profile-ready"));
-        navigateRoute("/clube");
-        return;
-      }
+      await verifyEmailCode(email, code);
       if (surface === "client") {
         sessionStorage.setItem(passwordRecoveryStorageKey, "true");
       }
@@ -1288,7 +1156,7 @@ function AuthScreen({
       <section className="access-auth-shell">
         {surface === "client" && <div className="access-auth-copy">
           <span>{invited ? "Você recebeu um convite" : registering ? "Cadastro rápido" : "Faça parte do Clube Adoce"}</span>
-          <h1>{invited ? "Você já começa mais perto da sua fatia premiada." : registering ? "Seu cartão começa aqui." : "Entrar"}</h1>
+          <h1>{invited ? "Você já começa mais perto da sua fatia premiada." : registering ? "Seu cartão fidelidade começa aqui." : "Entrar"}</h1>
           <p>{invited ? "Aceite o convite e ganhe 1 carimbo extra na primeira compra." : registering ? "Preencha seus dados uma vez, confirme o código e entre direto no seu cartão." : "Acesse sua conta para acompanhar pedidos, carimbos e recompensas do Clube Adoce."}</p>
           <div className="access-promise">
             <Heart />
@@ -1297,7 +1165,7 @@ function AuthScreen({
           </div>
         </div>}
         <div className="access-auth-card">
-          <img src="/site/logo.webp" alt="" />
+          <img src="/brand-2026/logo-adoce-transparente.png" alt="" />
           <h2>
             {stage === "code"
               ? directParams
@@ -1312,7 +1180,7 @@ function AuthScreen({
               : invited
                 ? "Aceitar convite e reservar meu carimbo"
                 : registering
-                  ? "Criar meu cartão"
+                  ? "Criar meu cartão fidelidade"
                   : loginMode === "forgot"
                     ? "Esqueci a senha"
                   : loginMode === "password"
@@ -1333,7 +1201,7 @@ function AuthScreen({
               : stage === "whatsapp"
                 ? "Esta confirmação impede cadastros duplicados e protege os benefícios do Clube."
               : registering
-                ? "Preencha uma vez. Depois, confirme o código do seu e-mail e seu cartão abrirá."
+                ? "Preencha uma vez. Depois, confirme o código enviado pelo seu WhatsApp e seu cartão abrirá."
               : loginMode === "forgot"
                 ? "Informe o WhatsApp da conta. Enviamos um código por lá para você criar a senha nova."
               : loginMode === "password" && !registering
@@ -1442,7 +1310,7 @@ function AuthScreen({
               </button>
             </form>
             ) : (
-            <form onSubmit={submitEmail}>
+            <form onSubmit={registering ? submitRegister : submitEmail}>
               {registering && (
                 <label>
                   Como podemos chamar você?
@@ -1450,24 +1318,26 @@ function AuthScreen({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     autoComplete="name"
-                    placeholder="Seu nome completo"
+                    placeholder="Seu nome e sobrenome"
                   />
                 </label>
               )}
-              <label>
-                Seu e-mail
-                <div className="input-icon">
-                  <Mail />
-                  <input
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    type="email"
-                    autoComplete="email"
-                    placeholder="voce@exemplo.com"
-                    required
-                  />
-                </div>
-              </label>
+              {!registering && (
+                <label>
+                  Seu e-mail
+                  <div className="input-icon">
+                    <Mail />
+                    <input
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="voce@exemplo.com"
+                      required
+                    />
+                  </div>
+                </label>
+              )}
               {registering && (
                 <label>
                   Seu WhatsApp com DDD
@@ -1531,7 +1401,7 @@ function AuthScreen({
                 {busy
                   ? "Enviando..."
                   : registering
-                    ? "Criar meu cartão"
+                    ? "Criar meu cartão fidelidade"
                     : surface === "operation"
                       ? "Receber código de acesso"
                       : "Receber código de segurança"}
@@ -2040,18 +1910,6 @@ function CustomerHome({ session }: { session: Session }) {
     setMessage("Perfil atualizado com sucesso.");
     await loadSnapshot();
   };
-  const shareClub = async () => {
-    const code = snapshot?.referralCode || "";
-    const url = `${location.origin}/?indicacao=${encodeURIComponent(code)}#cadastro`;
-    const text =
-      "Oi! Vem para o Clube Adoce comigo 🍰💗 Cadastre-se pelo meu link e, na sua primeira compra, você ganha 1 carimbo extra. Eu também ganho quando você experimentar!";
-    if (navigator.share)
-      await navigator.share({ title: "Convite para o Clube Adoce", text, url });
-    else {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      setMessage("Convite com seu link pessoal copiado. Agora é só enviar.");
-    }
-  };
   const startProfileWhatsAppVerification = async () => {
     setBusy(true);
     setMessage("");
@@ -2218,7 +2076,7 @@ function CustomerHome({ session }: { session: Session }) {
         </header>
         <section className="club-onboarding-shell">
           <div className="club-onboarding-copy">
-            <img src="/site/logo.webp" alt="Adoce Brigaderia" />
+            <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
             <span>Último passo</span>
             <h1>Vamos concluir sua entrada no Clube.</h1>
             <p>
@@ -2442,14 +2300,9 @@ function CustomerHome({ session }: { session: Session }) {
               <p>Seu benefício está aqui. Acompanhe cada compra até a próxima fatia grátis.</p>
             </div>
             <MemberLoyaltyCard snapshot={snapshot} />
-            <a className="club-flavors-primary" href="/adoce-hoje">
+            <a className="club-flavors-primary" href="/cardapio">
               <CakeSlice /> Ver sabores de hoje <ArrowRight />
             </a>
-            <div className="club-benefit-actions">
-              <button onClick={() => setView("share")}>
-                <Users /><span><strong>Indicar e ganhar</strong><small>Compartilhe seu convite</small></span><ArrowRight />
-              </button>
-            </div>
           </section>
           <section className="club-grid">
             <article className="club-how-reward">
@@ -2463,22 +2316,6 @@ function CustomerHome({ session }: { session: Session }) {
             </article>
             <aside className="club-side">
               <article>
-                <Sparkles />
-                <small>Espalhe Doçura</small>
-                <h3>{snapshot.referralProgress} de 14 indicações</h3>
-                {snapshot.pendingReferrals > 0 && (
-                  <p className="referral-pending">
-                    <Heart /> {snapshot.pendingReferrals} convite
-                    {snapshot.pendingReferrals === 1 ? " aceito" : "s aceitos"}{" "}
-                    aguardando primeira compra
-                  </p>
-                )}
-                <p>Seu link pessoal já leva o convite junto.</p>
-                <button onClick={() => setView("share")}>
-                  Convidar alguém
-                </button>
-              </article>
-              <article>
                 <Settings2 />
                 <h3>Seu Clube, do seu jeito</h3>
                 <p>Atualize seus dados, notificações e preferências em um só lugar.</p>
@@ -2487,93 +2324,6 @@ function CustomerHome({ session }: { session: Session }) {
             </aside>
           </section>
         </>
-      )}
-      {view === "share" && (
-        <section className="club-panel club-referral-guide">
-          <Sparkles />
-          <small>Espalhe Doçura</small>
-          <h1>Convide com seu link. O bônus fica reservado automaticamente.</h1>
-          <p>
-            A pessoa abre seu convite, conclui o cadastro e você acompanha aqui
-            enquanto ela ainda não fez a primeira compra.
-          </p>
-          <div className="referral-track">
-            {Array.from({ length: 14 }, (_, index) => (
-              <span
-                key={index}
-                className={
-                  index < snapshot.referralProgress
-                    ? "confirmed"
-                    : index <
-                        snapshot.referralProgress + snapshot.pendingReferrals
-                      ? "pending"
-                      : ""
-                }
-              >
-                <Heart />
-              </span>
-            ))}
-          </div>
-          {snapshot.acceptedInvites.length > 0 && (
-            <div className="referral-accepted-list">
-              {snapshot.acceptedInvites.map((invite, index) => (
-                <div key={`${invite.first_name}-${invite.created_at}-${index}`}>
-                  <span>{invite.first_name[0]}</span>
-                  <p>
-                    <strong>{invite.first_name} aceitou seu convite</strong>
-                    <small>
-                      {invite.status === "confirmed"
-                        ? "Primeira compra confirmada"
-                        : "Aguardando a primeira compra"}
-                    </small>
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-          <ol>
-            <li>
-              <b>1</b>
-              <span>
-                <strong>Envie seu link pessoal</strong>
-                <small>
-                  O WhatsApp já abre com uma mensagem curta e amigável.
-                </small>
-              </span>
-            </li>
-            <li>
-              <b>2</b>
-              <span>
-                <strong>A pessoa aceita e se cadastra</strong>
-                <small>
-                  O vínculo é feito automaticamente, sem digitar código na
-                  venda.
-                </small>
-              </span>
-            </li>
-            <li>
-              <b>3</b>
-              <span>
-                <strong>Acompanhe quem aceitou</strong>
-                <small>
-                  O convite fica reservado enquanto aguarda a primeira compra.
-                </small>
-              </span>
-            </li>
-            <li>
-              <b>4</b>
-              <span>
-                <strong>Na primeira compra, os dois ganham</strong>
-                <small>
-                  O sistema confirma automaticamente os dois carimbos.
-                </small>
-              </span>
-            </li>
-          </ol>
-          <button className="access-primary" onClick={() => void shareClub()}>
-            <Users /> Compartilhar meu link no WhatsApp
-          </button>
-        </section>
       )}
       {view === "group" && (
         <section className="club-panel club-group-panel">
@@ -2679,20 +2429,6 @@ function CustomerHome({ session }: { session: Session }) {
               </span>
             </article>
             <article>
-              <Sparkles />
-              <span>
-                <strong>Como funciona minha indicação?</strong>
-                <small>
-                  Compartilhe seu link pessoal. O cadastro fica vinculado
-                  automaticamente e, na primeira compra, os dois ganham 1
-                  carimbo.
-                </small>
-                <button onClick={() => setView("share")}>
-                  Ver e compartilhar meu link
-                </button>
-              </span>
-            </article>
-            <article>
               <CakeSlice />
               <span>
                 <strong>Onde vejo os sabores disponíveis?</strong>
@@ -2700,7 +2436,7 @@ function CustomerHome({ session }: { session: Session }) {
                   Abra o Adoce Hoje para consultar sabores, atendimento e
                   informações atualizadas.
                 </small>
-                <a href="/adoce-hoje">Abrir Adoce Hoje</a>
+                <a href="/cardapio">Abrir Adoce Hoje</a>
               </span>
             </article>
           </div>
@@ -2746,12 +2482,12 @@ function CustomerHome({ session }: { session: Session }) {
           </article>
 
           <div className="club-account-primary-actions" aria-label="Ações principais da conta">
-            <a href="/adoce-hoje"><ShoppingCart /><span>Fazer pedido online</span></a>
+            <a href="/cardapio"><ShoppingCart /><span>Fazer pedido online</span></a>
           </div>
 
           <div className="club-account-actions">
             <a href="/carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
-            <a href="/adoce-hoje"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
+            <a href="/cardapio"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
             <a href="#profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
             <a href="#profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
           </div>
@@ -2772,10 +2508,6 @@ function CustomerHome({ session }: { session: Session }) {
                 onChange={(event) => setProfileName(event.target.value)}
                 autoComplete="name"
               />
-            </label>
-            <label>
-              E-mail
-              <input value={session.user.email || ""} readOnly />
             </label>
             <label>
               WhatsApp com DDD
@@ -2855,15 +2587,9 @@ function CustomerHome({ session }: { session: Session }) {
         >
           <Heart /> Início
         </button>
-        <a href="/adoce-hoje">
+        <a href="/cardapio">
           <CakeSlice /> Sabores
         </a>
-        <button
-          className={view === "share" ? "active" : ""}
-          onClick={() => setView("share")}
-        >
-          <Users /> Indicar
-        </button>
         <button
           className={view === "profile" ? "active" : ""}
           onClick={() => setView("profile")}
@@ -5099,14 +4825,6 @@ function OperationHome({ session }: { session: Session }) {
 }
 
 export default function AccessApp({ surface }: { surface: Surface }) {
-  const homologationFakeEnabled =
-    import.meta.env.VITE_HOMOLOGATION_FAKE_AUTH === "true";
-  const homologationStorageKey = `adoce-homologation-fake-${surface}`;
-  const [homologationSession, setHomologationSession] = useState(() =>
-    homologationFakeEnabled &&
-    (window.localStorage.getItem(homologationStorageKey) === "true" ||
-      window.sessionStorage.getItem(homologationStorageKey) === "true"),
-  );
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const identityDecision = decidirPorta({
     sessao: Boolean(session),
@@ -5119,10 +4837,6 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     document.body.scrollTop = 0;
   }, [surface]);
   useEffect(() => {
-    if (homologationFakeEnabled) {
-      setSession(null);
-      return;
-    }
     const supabase = requireSupabase();
     const magicParams = new URLSearchParams(
       window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash,
@@ -5152,13 +4866,13 @@ export default function AccessApp({ surface }: { surface: Surface }) {
       setSession(next),
     );
     return () => data.subscription.unsubscribe();
-  }, [homologationFakeEnabled, identityDecision.porta, surface]);
+  }, [identityDecision.porta, surface]);
   useEffect(() => {
-    if (surface !== "operation" || session === undefined || homologationFakeEnabled) return;
+    if (surface !== "operation" || session === undefined) return;
     void syncNativeOperationSession(session).catch(() => {
       console.error("Não foi possível iniciar o serviço de impressão do tablet.");
     });
-  }, [surface, session, homologationFakeEnabled]);
+  }, [surface, session]);
   useEffect(() => {
     if (!session) return;
     const url = new URL(window.location.href);
@@ -5212,8 +4926,6 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     if (appleIcon) appleIcon.href = appleIconHref;
     if (appleTitle) appleTitle.content = title;
   }, [surface, title]);
-  if (homologationSession)
-    return surface === "operation" ? <OperationDemo /> : <MemberDemo />;
   if (session === undefined)
     return (
       <main className="access-loading">
@@ -5223,16 +4935,7 @@ export default function AccessApp({ surface }: { surface: Surface }) {
     );
   if (!session)
     return (
-      <AuthScreen
-        surface={surface}
-        onHomologationLogin={(remember) => {
-          window.localStorage.removeItem(homologationStorageKey);
-          window.sessionStorage.removeItem(homologationStorageKey);
-          const storage = remember ? window.localStorage : window.sessionStorage;
-          storage.setItem(homologationStorageKey, "true");
-          setHomologationSession(true);
-        }}
-      />
+      <AuthScreen surface={surface} />
     );
   return surface === "operation" ? (
     <OperationHome session={session} />

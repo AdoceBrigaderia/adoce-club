@@ -35,7 +35,7 @@ export function useShoppingPlanSync(week:string) {
     pending.current.shift();
    }
    if(mounted.current){setSaving(false);setStatus("Planejamento salvo e sincronizado");}
-  }catch{if(mounted.current)setStatus("Alteração ainda não salva. Confira a conexão e clique em tentar novamente.");}
+  }catch(error){if(mounted.current)setStatus(error instanceof Error&&error.message?`Não foi possível salvar: ${error.message}`:"Alteração ainda não salva. Confira a conexão e clique em tentar novamente.");}
   finally{running.current=false;}
  };
  useEffect(()=>{

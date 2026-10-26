@@ -412,7 +412,7 @@ export default function InstantOrderPanel({
             <ShoppingBag />
             <strong>Seu carrinho está vazio</strong>
             <p>Quando houver fatias disponíveis, escolha os sabores e volte aqui para concluir.</p>
-            <a href="/adoce-hoje" onClick={onClose}>Ver sabores</a>
+            <a href="/cardapio" onClick={onClose}>Ver sabores</a>
           </div> : <div className="instant-order-flavors">
             {flavors.map((flavor) => {
               const quantity = quantities[flavor.id] || 0;

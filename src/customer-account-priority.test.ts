@@ -18,7 +18,7 @@ describe("prioridade da Minha conta", () => {
   it("mostra pedido online entre as ações principais", () => {
     expect(profile).toContain('aria-label="Ações principais da conta"');
     expect(profile).toContain("Fazer pedido online");
-    expect(profile).toContain('href="/adoce-hoje"');
+    expect(profile).toContain('href="/cardapio"');
     expect(styles).toContain("grid-template-columns: minmax(0, 1fr)");
   });
 

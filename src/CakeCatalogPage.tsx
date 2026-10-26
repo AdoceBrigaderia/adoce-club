@@ -3,16 +3,7 @@ import { CakeSlice, MessageCircle, Search, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { isPriceOnRequest } from "./consultation-pricing";
 import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
-import PublicCatalogNav from "./PublicCatalogNav";
 import "./cake-catalog-page.css";
-
-type CakeSize = {
-  id: string;
-  name: string;
-  base_price: number;
-  short_description: string;
-  sort_order: number;
-};
 
 type CakeFlavor = {
   id: string;
@@ -24,13 +15,8 @@ type CakeFlavor = {
   whole_cake_image_path: string | null;
 };
 
-const money = (value: number) => new Intl.NumberFormat("pt-BR", {
-  style: "currency", currency: "BRL",
-}).format(value);
-
 export default function CakeCatalogPage() {
   const whatsapp = useOrderWhatsAppNumber();
-  const [sizes, setSizes] = useState<CakeSize[]>([]);
   const [flavors, setFlavors] = useState<CakeFlavor[]>([]);
   const [summaries, setSummaries] = useState<Map<string, string>>(new Map());
   const [galleryPhotos, setGalleryPhotos] = useState<Map<string, string>>(new Map());
@@ -44,11 +30,7 @@ export default function CakeCatalogPage() {
     let active = true;
     void (async () => {
       const db = requireSupabase();
-      const [sizeResult, flavorResult, summaryResult, imageResult] = await Promise.all([
-        db.from("commercial_products")
-          .select("id,name,base_price,short_description,sort_order")
-          .eq("segment", "cakes").eq("active", true).eq("published", true)
-          .order("sort_order"),
+      const [flavorResult, summaryResult, imageResult] = await Promise.all([
         db.from("flavors")
           .select("id,name,short_description,description,ingredients,image_path,whole_cake_image_path")
           .eq("active", true).order("name"),
@@ -57,10 +39,9 @@ export default function CakeCatalogPage() {
           .select("flavor_id,image_path").eq("active", true).order("sort_order"),
       ]);
       if (!active) return;
-      if (sizeResult.error || flavorResult.error) {
+      if (flavorResult.error) {
         setError("Não conseguimos carregar as tortas agora. Fale com a Adoce pelo WhatsApp.");
       } else {
-        setSizes((sizeResult.data || []) as CakeSize[]);
         setFlavors((flavorResult.data || []) as CakeFlavor[]);
         if (!summaryResult.error) setSummaries(new Map((summaryResult.data || []).map((row) => [row.flavor_id, row.resumo])));
         if (!imageResult.error) {
@@ -91,40 +72,12 @@ export default function CakeCatalogPage() {
 
   return (
     <main className="cake-catalog">
-      <PublicCatalogNav active="cakes" />
-      <header className="cake-catalog-intro">
-        <p className="cake-eyebrow">Catálogo Adoce</p>
-        <h1>Tortas</h1>
-        <p>Tortas inteiras somente por encomenda. Escolha o tamanho e conheça os sabores feitos pelas mãos da Beth. A Adoce confirma o sabor, o valor e a data antes de preparar.</p>
-        <a className="cake-whatsapp" href={contact("Olá, Adoce! Vim pelo site e gostaria de conversar sobre uma torta.")} target="_blank" rel="noreferrer">
-          <MessageCircle aria-hidden="true" /> Converse com a Adoce no WhatsApp
-        </a>
-      </header>
-
-      <section className="cake-sizes" aria-labelledby="cake-sizes-title">
-        <p className="cake-eyebrow">Escolha o tamanho</p>
-        <h2 id="cake-sizes-title">Tamanhos e valores</h2>
-        {loading ? <p>Carregando tamanhos…</p> : sizes.length ? (
-          <div className="cake-size-grid">
-            {sizes.map((size) => (
-              <article key={size.id}>
-                <span>{size.name}</span>
-                <strong>{money(Number(size.base_price))}</strong>
-                <p>{size.short_description}</p>
-                <a href={contact(`Olá, Adoce! Quero saber sobre a ${size.name}.`)} target="_blank" rel="noreferrer">Consultar este tamanho</a>
-              </article>
-            ))}
-          </div>
-        ) : <p>Consulte os tamanhos com a Adoce.</p>}
-        <p className="cake-flavors-note">Os valores acima valem para os sabores regulares. Para a Torta de Pudim, fatia e tamanhos P, M e G têm valor a consultar.</p>
-      </section>
-
       <section className="cake-flavors" aria-labelledby="cake-flavors-title">
         <div className="cake-flavors-heading">
-          <div><p className="cake-eyebrow">Feitos para celebrar</p><h2 id="cake-flavors-title">Sabores</h2></div>
+          <div><p className="cake-eyebrow">Tortas artesanais</p><h1 id="cake-flavors-title">Sabores disponíveis para tortas</h1></div>
           <label className="cake-search"><Search aria-hidden="true" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar sabor..." aria-label="Buscar sabor" /></label>
         </div>
-        <p className="cake-flavors-note">As fotos de torta inteira aparecem quando cadastradas. Todos os sabores são apresentados para consulta; tortas inteiras são feitas somente por encomenda, após confirmação da Adoce.</p>
+        <p className="cake-flavors-note">Confira os sabores das nossas tortas artesanais. A encomenda é confirmada pela Adoce conforme o tamanho, a data e a disponibilidade de produção.</p>
         {error ? <p className="cake-error" role="alert">{error}</p> : null}
         {loading ? <p>Carregando sabores…</p> : shown.length ? (
           <div className="cake-flavor-grid">

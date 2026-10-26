@@ -829,7 +829,7 @@ export default function OperationContentAdmin({
         </div>
         <a
           className="content-preview"
-          href="/adoce-hoje"
+          href="/cardapio"
           target="_blank"
           rel="noreferrer"
         >

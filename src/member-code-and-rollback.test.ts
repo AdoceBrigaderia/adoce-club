@@ -21,7 +21,7 @@ describe("terminologia do Clube Adoce", () => {
   it("mantém 14 espaços visuais e o texto completo de Como funciona", () => {
     expect(memberArea).toContain("Array.from({ length: 14 }");
     expect(memberArea).toContain("A cada fatia comprada, você recebe um carimbo no seu Cartão Clube");
-    expect(memberArea).toContain("Cada fatia tradicional ou premium vale 1 carimbo.");
+    expect(memberArea).toContain("Cada fatia comprada, tradicional ou premium, vale 1 carimbo.");
   });
 });
 

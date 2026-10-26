@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {weekStart,weekDates,shiftDate,weeklyTotals,applyDailyQuantity,weeklyMenuReceipt,requiredDayWarnings,diffShoppingWeekDrafts,emptyShoppingWeek,shoppingWeekLabel,shoppingWeekOptions} from "./shopping-week";
+import {weekStart,weekDates,shiftDate,weeklyTotals,dailyTotals,applyDailyQuantity,weeklyMenuReceipt,requiredDayWarnings,diffShoppingWeekDrafts,DRAFT_GROUPS,emptyShoppingWeek,shoppingWeekLabel,shoppingWeekOptions} from "./shopping-week";
 describe("planejamento diário de tortas",()=>{
  it("identifica semanas completas pelo mês da segunda-feira, sem repetir datas",()=>{
   expect(shoppingWeekLabel("2026-10-05")).toBe("Outubro — semana 1 · 05/10 a 11/10");
@@ -52,5 +52,23 @@ describe("planejamento diário de tortas",()=>{
   expect(changes.some(change=>change.group==="extras")).toBe(false);
   expect(changes.some(change=>(change.group as string)==="inCart")).toBe(false);
   expect(changes.length).toBe(2);
+ });
+ it("salva requiredDays antes de daily, senao o servidor rejeita o sabor marcado no mesmo lote (bug real reportado em 26/10/2026)",()=>{
+  expect(DRAFT_GROUPS.indexOf("requiredDays")).toBeLessThan(DRAFT_GROUPS.indexOf("daily"));
+  const saved=emptyShoppingWeek();
+  const draft={...saved,requiredDays:{"2026-10-26":true},daily:{"2026-10-26|f":1}};
+  const changes=diffShoppingWeekDrafts(saved,draft);
+  const requiredDaysIndex=changes.findIndex(change=>change.group==="requiredDays");
+  const dailyIndex=changes.findIndex(change=>change.group==="daily");
+  expect(requiredDaysIndex).toBeGreaterThanOrEqual(0);
+  expect(dailyIndex).toBeGreaterThanOrEqual(0);
+  expect(requiredDaysIndex).toBeLessThan(dailyIndex);
+ });
+ it("soma só os dias escolhidos, sem contar quantidades ainda não distribuídas por dia", () => {
+  const plan={...emptyShoppingWeek(),cakes:{f:9},daily:{"2026-10-12|f":2,"2026-10-13|f":3,"2026-10-14|g":1}};
+  expect(dailyTotals(plan,["2026-10-12"])).toEqual({f:2});
+  expect(dailyTotals(plan,["2026-10-12","2026-10-13"])).toEqual({f:5});
+  expect(dailyTotals(plan,["2026-10-14"])).toEqual({g:1});
+  expect(dailyTotals(plan,[])).toEqual({});
  });
 });

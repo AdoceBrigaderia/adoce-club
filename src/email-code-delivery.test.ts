@@ -92,10 +92,11 @@ describe("código de acesso por e-mail", () => {
     expect(isValidSignupFullName("Maria de Fátima")).toBe(true);
 
     const accessApp = source("./AccessApp.tsx");
-    const validationPosition = accessApp.indexOf(
-      "if (registering && !isRealCustomerName(name))",
-    );
-    const requestPosition = accessApp.indexOf("await requestEmailCode(");
+    const registerStart = accessApp.indexOf("const submitRegister = async");
+    const registerEnd = accessApp.indexOf("const submitPassword = async", registerStart);
+    const registerFlow = accessApp.slice(registerStart, registerEnd);
+    const validationPosition = registerFlow.indexOf("if (!isRealCustomerName(name))");
+    const requestPosition = registerFlow.indexOf("await requestWhatsAppAuthCode(");
     expect(validationPosition).toBeGreaterThan(-1);
     expect(requestPosition).toBeGreaterThan(validationPosition);
   });
@@ -107,14 +108,12 @@ describe("código de acesso por e-mail", () => {
     expect(accessApp).toContain('registrationRoute ||');
   });
 
-  it("encaminha automaticamente e-mail sem conta para o cadastro", () => {
+  it("cadastro não depende mais de e-mail: login por e-mail nunca autocadastra", () => {
     const accessApp = source("./AccessApp.tsx");
-    expect(accessApp).toContain(
-      'safeMessage === "Não encontramos uma conta ativa com este e-mail."',
-    );
-    expect(accessApp).toContain('setRegistering(true)');
-    expect(accessApp).toContain(
-      '"Este e-mail ainda não tem cadastro. Complete seus dados para fazer parte."',
-    );
+    const emailStart = accessApp.indexOf("const submitEmail = async");
+    const emailEnd = accessApp.indexOf("const submitRegister = async", emailStart);
+    const emailFlow = accessApp.slice(emailStart, emailEnd);
+    expect(emailFlow).not.toContain("setRegistering(true)");
+    expect(emailFlow).not.toContain("registering ? name : undefined");
   });
 });

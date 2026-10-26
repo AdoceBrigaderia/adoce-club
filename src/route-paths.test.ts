@@ -6,7 +6,9 @@ describe("endereços sem fragmento de página", () => {
     expect(pathFromLegacyHash("#operacao")).toBe("/operacao");
     expect(pathFromLegacyHash("#operacao-vendas")).toBe("/operacao/vendas");
     expect(pathFromLegacyHash("#minha-conta?view=profile")).toBe("/minha-conta?view=profile");
-    expect(pathFromLegacyHash("#adoce-hoje")).toBe("/adoce-hoje");
+    expect(pathFromLegacyHash("#cardapio")).toBe("/cardapio");
+    expect(pathFromLegacyHash("#adoce-hoje")).toBeNull();
+    expect(pathFromLegacyHash("#encomendas")).toBeNull();
   });
 
   it("preserva fragmentos de autenticação que carregam credenciais", () => {

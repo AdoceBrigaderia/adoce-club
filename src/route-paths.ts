@@ -1,8 +1,8 @@
 const routePrefixes = [
   "operacao", "clube", "entrar", "cadastro", "minha-conta",
-  "adoce-hoje", "carrinho", "encomendas", "docinhos",
+  "cardapio", "sabores", "carrinho", "docinhos",
   "politica-de-pedidos", "fale-com-a-adoce",
-  "termos", "privacidade", "indicar", "inicio", "catalogo", "acompanhar",
+  "termos", "privacidade", "inicio", "catalogo", "acompanhar",
 ];
 
 export function pathFromLegacyHash(hash: string): string | null {
@@ -16,7 +16,6 @@ export function currentRouteHash(): string {
   if (location.hash && !pathFromLegacyHash(location.hash)) return location.hash;
   const route = `${location.pathname.replace(/\/+$/, "") || "/"}${location.search}`;
   if (route === "/") return location.hash;
-  if (route === "/sabores") return "";
   if (route.startsWith("/operacao/")) return `#operacao-${route.slice("/operacao/".length)}`;
   return `#${route.slice(1)}`;
 }

@@ -1,4 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import twilio from "twilio";
+
+const OWNER_WHATSAPP = "5585982156026";
+const categoryLabels: Record<string, string> = {
+  problem: "Problema", complaint: "Reclamação", suggestion: "Sugestão", compliment: "Elogio",
+};
 
 declare const Netlify: { env: { get(name: string): string | undefined } } | undefined;
 const env = (name: string) =>
@@ -54,7 +60,34 @@ export default async (request: Request) => {
     message,
   });
   if (error) return json({ error: "Não foi possível registrar agora. Tente novamente." }, 500);
+
+  try {
+    const accountSid = env("TWILIO_ACCOUNT_SID") || "";
+    const authToken = env("TWILIO_AUTH_TOKEN") || "";
+    const from = env("TWILIO_WHATSAPP_FROM") || "";
+    if (accountSid && authToken && from) {
+      const client = twilio(accountSid, authToken, { autoRetry: false, timeout: 8000 });
+      const label = categoryLabels[category] || category;
+      const body = [
+        `Novo contato pelo site Adoce (${protocol})`,
+        `Tipo: ${label}`,
+        `Nome: ${name}`,
+        phone ? `WhatsApp: ${phone}` : null,
+        email ? `E-mail: ${email}` : null,
+        "",
+        message,
+      ].filter(Boolean).join("\n");
+      await client.messages.create({
+        from: from.startsWith("whatsapp:") ? from : `whatsapp:${from}`,
+        to: `whatsapp:+${OWNER_WHATSAPP}`,
+        body,
+      });
+    }
+  } catch (sendError) {
+    console.error("site-feedback whatsapp notify failed", sendError instanceof Error ? sendError.message : sendError);
+  }
+
   return json({ protocol }, 201);
 };
 
-export const config = { path: "/api/site-feedback" };
+export const config = { path: "/api/site-feedback", timeout: 20 };
