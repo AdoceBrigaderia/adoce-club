@@ -13,7 +13,7 @@ describe("navegação pública Mobile First", () => {
     for (const label of ["Início", "Cardápio", "Pedidos", "Conta"]) {
       expect(mobileNav).toContain(label);
     }
-    for (const destination of ["/", "/adoce-hoje", "/carrinho", "/minha-conta"]) {
+    for (const destination of ["/", "/cardapio", "/carrinho", "/minha-conta"]) {
       expect(mobileNav).toContain(destination);
       if (destination !== "/") expect(app).toContain(`#${destination.slice(1)}`);
     }
@@ -33,7 +33,7 @@ describe("navegação pública Mobile First", () => {
     expect(orderPolicy).toContain("Segunda a quarta-feira");
     expect(orderPolicy).toContain("Quinta a sábado");
     expect(orderPolicy).toContain("Domingos");
-    expect(orderPolicy).toContain("/site/politica-de-pedidos.jpeg");
+    expect(orderPolicy).toContain("institutional-2026.css");
   });
 });
 
@@ -48,7 +48,8 @@ describe("operação móvel", () => {
 
 describe("acesso direto assistido", () => {
   it("gera URL do próprio site para a tela que valida o código", () => {
-    expect(accessFunction).toContain('`${siteUrl}/acesso-direto`');
+    expect(accessFunction).toContain('`${PRODUCTION_SITE_ORIGIN}/acesso-direto`');
+    expect(accessFunction).not.toContain('env("SITE_URL")');
     expect(accessFunction).not.toContain('directParams.toString()');
     expect(app).toContain("#acesso-direto");
   });

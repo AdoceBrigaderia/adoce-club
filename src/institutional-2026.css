@@ -1,0 +1,160 @@
+/* Estilo compartilhado das páginas institucionais/suporte 2026:
+   política de pedidos, termos, privacidade, fale com a Adoce. */
+.institutional-2026 {
+  --ink-pink: #ef3b69;
+  --ink-rose: #f7a7b4;
+  --ink-cream: #fff8f0;
+  --ink-brown: #54250f;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  background: var(--ink-cream);
+  color: #3f1d10;
+  font-family: Fredoka, Inter, system-ui, sans-serif;
+}
+.institutional-hero {
+  padding: 48px 7vw 36px;
+  background: var(--ink-rose);
+}
+.institutional-kicker {
+  display: inline-block;
+  color: #80112c;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-size: .78rem;
+  margin: 0 0 10px;
+}
+.institutional-hero h1 {
+  font: 800 clamp(2.1rem, 5vw, 3.2rem)/1.08 Fredoka, sans-serif;
+  color: var(--ink-brown);
+  margin: 0 0 14px;
+}
+.institutional-hero p {
+  max-width: 640px;
+  font: 400 1.02rem/1.5 Inter, sans-serif;
+  color: #5a2a14;
+  margin: 0 0 18px;
+}
+.institutional-back {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  color: #80112c;
+  font-weight: 700;
+  text-decoration: none;
+  margin-bottom: 18px;
+  font-size: .9rem;
+}
+.institutional-back svg { width: 18px; height: 18px; }
+.institutional-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink-pink);
+  color: #fff;
+  font-weight: 700;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 24px;
+  text-decoration: none;
+  font-size: .98rem;
+}
+.institutional-body {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 36px 7vw 60px;
+  display: grid;
+  gap: 18px;
+}
+.institutional-card {
+  background: #fff;
+  border-radius: 22px;
+  padding: 26px 28px;
+  box-shadow: 0 10px 28px rgba(84, 37, 15, .06);
+}
+.institutional-card h2 {
+  font: 700 1.3rem/1.2 Fredoka, sans-serif;
+  color: var(--ink-brown);
+  margin: 0 0 10px;
+}
+.institutional-card p, .institutional-card li {
+  color: #5a4138;
+  line-height: 1.65;
+  font-family: Inter, sans-serif;
+}
+.institutional-card ul { margin: 8px 0 0; padding-left: 20px; }
+.institutional-card li { margin: 4px 0; }
+.institutional-card a:not(.institutional-cta) { color: var(--ink-pink); font-weight: 600; }
+.institutional-version {
+  color: #9a6b53;
+  font-size: .82rem;
+  font-family: Inter, sans-serif;
+}
+.institutional-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: var(--ink-brown);
+  color: #f3ddcf;
+  border-radius: 22px;
+  padding: 22px 24px;
+}
+.institutional-note svg { flex: none; color: #f7a7b4; }
+.institutional-note p { color: #f3ddcf; margin: 0; font-family: Inter, sans-serif; }
+.institutional-choice-box {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #ead2c5;
+  border-radius: 14px;
+  background: #fff8f1;
+}
+.institutional-choice-box strong { font-size: .85rem; color: #5f4037; font-family: Inter, sans-serif; }
+.institutional-choice { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.institutional-legal-footer {
+  background: #1a0c08;
+  color: #d6c2b8;
+  text-align: center;
+  padding: 26px;
+  font: 400 .78rem/1.4 Inter, sans-serif;
+}
+.institutional-choice button {
+  border: 1px solid #e7c9b8;
+  background: #fff;
+  color: #6d4d43;
+  border-radius: 999px;
+  padding: 9px 16px;
+  font: 700 .78rem/1 Inter, sans-serif;
+}
+.institutional-choice button.active { background: var(--ink-brown); border-color: var(--ink-brown); color: #fff; }
+
+.institutional-feedback-form { display: grid; gap: 16px; font-family: Inter, sans-serif; }
+.institutional-feedback-form label { display: grid; gap: 7px; font-weight: 700; font-size: .88rem; color: #3f1d10; }
+.institutional-feedback-form label small { font-weight: 400; color: #9a6b53; }
+.institutional-feedback-form input,
+.institutional-feedback-form select,
+.institutional-feedback-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #e7c9b8;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fffdfb;
+  font: inherit;
+  color: #3f1d10;
+}
+.institutional-feedback-form textarea { min-height: 150px; resize: vertical; }
+.institutional-feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.feedback-error { background: #fff0e9; color: #a13228; padding: 12px; border-radius: 10px; font-family: Inter, sans-serif; }
+.feedback-success { display: grid; gap: 12px; justify-items: start; font-family: Inter, sans-serif; }
+.feedback-success svg { width: 48px; height: 48px; color: #3f9a69; }
+.feedback-success h2 { font: 700 1.3rem Fredoka, sans-serif; color: var(--ink-brown); margin: 0; }
+.feedback-success p { font-size: 1.05rem; margin: 0; }
+.feedback-success a { color: var(--ink-pink); font-weight: 700; }
+@media (max-width: 760px) {
+  .institutional-hero { padding: 34px 20px 28px; }
+  .institutional-body { padding: 28px 16px 48px; }
+  .institutional-card { padding: 20px; border-radius: 18px; }
+  .institutional-feedback-grid { grid-template-columns: 1fr; }
+}
