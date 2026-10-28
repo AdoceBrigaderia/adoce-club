@@ -6,6 +6,11 @@ export function procurementSummary(state:ProcurementItem|undefined,required:numb
  const entries=(state?.purchases||[]).filter(valid);const purchased=entries.reduce((sum,e)=>sum+e.packages*e.contentPerPackage,0);const total=entries.reduce((sum,e)=>sum+e.totalPrice,0);
  return {purchased,total,missing:Math.max(0,required-purchased),surplus:Math.max(0,purchased-required),sufficient:purchased>=required&&required>0};
 }
+export function purchaseCompletion(state:ProcurementItem|undefined,required:number){
+ const summary=procurementSummary(state,required);
+ if(!(state?.purchases||[]).some(valid))return {state:"unrecorded" as const,missing:0};
+ return summary.sufficient?{state:"complete" as const,missing:0}:{state:"partial" as const,missing:summary.missing};
+}
 export function sortShoppingRows<T extends {item:{id:string;name:string}}>(rows:T[],states:Record<string,ProcurementItem|undefined>){
  return [...rows].sort((a,b)=>Number(Boolean(states[a.item.id]?.purchased))-Number(Boolean(states[b.item.id]?.purchased))||a.item.name.localeCompare(b.item.name,"pt-BR"));
 }

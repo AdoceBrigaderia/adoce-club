@@ -24,6 +24,8 @@ export const enrollFieldsError = (name: string, phone: string) => {
 
 export const wantsEnroll = (name: string, phone: string) => name.trim().length > 0 || phone.replace(/\D/g, "").length > 0;
 
+export const canEnrollSaleCustomer = (name: string, phone: string) => wantsEnroll(name, phone) && !enrollFieldsError(name, phone);
+
 export function enrollSummary(result: SaleEnrollResult) {
   const first = result.fullName.split(/\s+/)[0] || "Cliente";
   const stamps = result.stampsAdded === 1 ? "1 carimbo" : `${result.stampsAdded} carimbos`;

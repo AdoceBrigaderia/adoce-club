@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 const migration = readFileSync(
   new URL("../supabase/migrations/20261016142700_cash_draft_cleanup_and_lot_continuity.sql", import.meta.url),
@@ -15,6 +16,17 @@ const beforeOperation = readFileSync(
 );
 
 describe("ciclo de vida do rascunho e continuidade por lote", () => {
+  it("libera somente outros carrinhos com autorização, recálculo e auditoria",()=>{
+    const directory=join(process.cwd(),"supabase","migrations");
+    const releaseMigration=readdirSync(directory).find(name=>name.endsWith("release_other_cash_drafts.sql"));
+    expect(releaseMigration).toBeTruthy();
+    const sql=readFileSync(join(directory,releaseMigration!),"utf8");
+    expect(sql).toContain("staff_release_other_cash_drafts");
+    expect(sql).toContain("draft_key <> preserved_draft_key");
+    expect(sql).toContain("private.can_access_store");
+    expect(sql).toContain("private.recalcular_reserva_de_fatias");
+    expect(sql).toContain("cash_draft.released_by_staff");
+  });
   it("libera reservas expiradas periodicamente e recalcula o saldo", () => {
     expect(migration).toContain("expire_cash_draft_reservations");
     expect(migration).toContain("private.recalcular_reserva_de_fatias");

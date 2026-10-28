@@ -8,7 +8,8 @@ import CashSessionActions from "./CashSessionActions";
 import CashAdjustments from "./CashAdjustments";
 import CashCustomerRegistration from "./CashCustomerRegistration";
 import { validateDeferredSale, splitChange } from "./cash-receivables";
-import { enrollFieldsError, enrollSaleCustomer, enrollSummary, wantsEnroll } from "./sale-club-enroll";
+import { canEnrollSaleCustomer, enrollFieldsError, enrollSaleCustomer, enrollSummary } from "./sale-club-enroll";
+import { cashDraftRequestedItems, cashDraftStorageKey } from "./cash-draft-persistence";
 import OperationInstantOrders from "./OperationInstantOrders";
 import type { ThermalOrder } from "./lib/thermal-printer";
 import { printCashSale } from "./lib/cash-sale-print";
@@ -59,6 +60,7 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
   const [pendingCount, setPendingCount] = useState(0);
   const [pixKey,setPixKey] = useState(DEFAULT_PIX_KEY);
   const [reservationBusy, setReservationBusy] = useState(false);
+  const [releaseBusy, setReleaseBusy] = useState(false);
   const reservationLock = useRef(false);
   const quantitiesRef = useRef<Record<string, number>>({});
   const [lastSale, setLastSale] = useState<ThermalOrder | null>(null);
@@ -138,16 +140,16 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
   });
   const total = useMemo(() => flavors.reduce((sum, flavor) => sum + flavor.base_price * (quantities[flavor.id] || 0), 0), [flavors, quantities]);
   const openCashSession = workspace?.sessions.find((session) => session.status === "open") || null;
-  const draftStorageKey = openCashSession?.id ? `adoce:cash-draft:${openCashSession.id}` : "";
+  const draftStorageKey = openCashSession?.id ? cashDraftStorageKey(openCashSession.id) : "";
   useEffect(() => {
     if (!openCashSession?.id || hydratedDraftSession.current === openCashSession.id) return;
     hydratedDraftSession.current = openCashSession.id;
-    const saved = localStorage.getItem(`adoce:cash-draft:${openCashSession.id}`);
+    const saved = sessionStorage.getItem(cashDraftStorageKey(openCashSession.id));
     if (!saved) return;
     try {
       const snapshot = JSON.parse(saved) as CashDraftSnapshot;
       if (!snapshot.draftKey || Date.now() - new Date(snapshot.updatedAt).getTime() > 30 * 60 * 1000) {
-        localStorage.removeItem(`adoce:cash-draft:${openCashSession.id}`);
+        sessionStorage.removeItem(cashDraftStorageKey(openCashSession.id));
         return;
       }
       setDraftKey(snapshot.draftKey); quantitiesRef.current = snapshot.quantities || {}; setQuantities(snapshot.quantities || {});
@@ -158,26 +160,51 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
       void requireSupabase().rpc("staff_set_cash_draft_reservation", {
         target_session_id: openCashSession.id,
         target_draft_key: snapshot.draftKey,
-        requested_items: Object.entries(snapshot.quantities || {}).filter(([, quantity]) => quantity > 0).map(([flavor_id, quantity]) => ({ flavor_id, quantity })),
+        requested_items: cashDraftRequestedItems(snapshot.quantities || {}),
       }).then(({ data, error }) => {
         if (error || !data?.accepted) {
           quantitiesRef.current = {}; setQuantities({});
-          localStorage.removeItem(`adoce:cash-draft:${openCashSession.id}`);
+          sessionStorage.removeItem(cashDraftStorageKey(openCashSession.id));
           setNotice("O estoque mudou e o pedido anterior não pôde ser recuperado. Monte o pedido novamente.");
         } else setNotice("Pedido em andamento recuperado.");
         void load();
       });
     } catch {
-      localStorage.removeItem(`adoce:cash-draft:${openCashSession.id}`);
+      sessionStorage.removeItem(cashDraftStorageKey(openCashSession.id));
     }
   }, [openCashSession?.id, load]);
   useEffect(() => {
     if (!draftStorageKey || hydratedDraftSession.current !== openCashSession?.id) return;
     const hasContent = Object.values(quantities).some((value) => value > 0);
-    if (!hasContent) { localStorage.removeItem(draftStorageKey); return; }
+    if (!hasContent) { sessionStorage.removeItem(draftStorageKey); return; }
     const snapshot: CashDraftSnapshot = { draftKey, quantities, name, phone, notes, sauceChoices, discountKind, discountValue, selectedCustomer, manualRewardUnit, digitalRewardUnit, updatedAt: new Date().toISOString() };
-    localStorage.setItem(draftStorageKey, JSON.stringify(snapshot));
+    sessionStorage.setItem(draftStorageKey, JSON.stringify(snapshot));
   }, [draftStorageKey, openCashSession?.id, draftKey, quantities, name, phone, notes, sauceChoices, discountKind, discountValue, selectedCustomer, manualRewardUnit, digitalRewardUnit]);
+  useEffect(() => {
+    if (!openCashSession?.id || hydratedDraftSession.current !== openCashSession.id) return;
+    const renew = async () => {
+      const requestedItems = cashDraftRequestedItems(quantitiesRef.current);
+      if (!requestedItems.length || document.visibilityState !== "visible" || reservationLock.current || checkoutLock.current) return;
+      const { data, error } = await requireSupabase().rpc("staff_set_cash_draft_reservation", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_items: requestedItems });
+      if (error || !data?.accepted) {
+        setNotice("A reserva deste pedido precisa ser atualizada. Confira as fatias antes de finalizar.");
+        return;
+      }
+      const saved = sessionStorage.getItem(draftStorageKey);
+      if (saved) {
+        try {
+          const snapshot = JSON.parse(saved) as CashDraftSnapshot;
+          sessionStorage.setItem(draftStorageKey, JSON.stringify({ ...snapshot, updatedAt: new Date().toISOString() }));
+        } catch {
+          sessionStorage.removeItem(draftStorageKey);
+        }
+      }
+    };
+    const timer = window.setInterval(() => void renew(), 5 * 60 * 1000);
+    const onFocus = () => void renew();
+    window.addEventListener("focus", onFocus);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", onFocus); };
+  }, [draftKey, draftStorageKey, openCashSession?.id]);
   const [openSessionInfo, setOpenSessionInfo] = useState<{ session_number: number; opened_at: string } | null>(null);
   useEffect(() => {
     if (!openCashSession?.id) { setOpenSessionInfo(null); return; }
@@ -195,7 +222,7 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     const nextQuantities = { ...quantitiesRef.current, [flavor.id]: next };
     reservationLock.current = true; setReservationBusy(true); setNotice("");
     try {
-      const { data, error } = await requireSupabase().rpc("staff_set_cash_draft_reservation", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_items: Object.entries(nextQuantities).filter(([, quantity]) => quantity > 0).map(([flavor_id, quantity]) => ({ flavor_id, quantity })) });
+      const { data, error } = await requireSupabase().rpc("staff_set_cash_draft_reservation", { target_session_id: openCashSession.id, target_draft_key: draftKey, requested_items: cashDraftRequestedItems(nextQuantities) });
       if (error) throw error;
       if (!data?.accepted) throw new Error("Estoque insuficiente. Atualize os sabores disponíveis.");
       quantitiesRef.current = nextQuantities; setQuantities(nextQuantities);
@@ -208,9 +235,22 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     setBusy(true);
     try {
       if (openCashSession) { const {error} = await requireSupabase().rpc("staff_release_cash_draft_reservation", { target_session_id: openCashSession.id, target_draft_key: draftKey }); if (error) throw error; }
-      if (draftStorageKey) localStorage.removeItem(draftStorageKey);
+      if (draftStorageKey) sessionStorage.removeItem(draftStorageKey);
       quantitiesRef.current = {}; setQuantities({}); setSauceChoices({}); setName(""); setPhone(""); setNotes(""); setPrintReceipt(false); setDiscountKind("none"); setDiscountValue("0"); setDraftKey(crypto.randomUUID()); setNotice("Pedido cancelado. Estoque liberado."); await load();
     } catch (error) { setNotice((error as Error).message); } finally { setBusy(false); }
+  };
+  const releaseOtherDrafts = async () => {
+    if (!openCashSession || releaseBusy || busy) return;
+    if (!window.confirm("Liberar as reservas de outros carrinhos deste caixa? O pedido aberto nesta aba e os pedidos reais serão preservados.")) return;
+    setReleaseBusy(true); setNotice("");
+    try {
+      const { data, error } = await requireSupabase().rpc("staff_release_other_cash_drafts", { target_session_id: openCashSession.id, preserved_draft_key: draftKey });
+      if (error) throw error;
+      const releasedSlices=Number(data?.released_slices||0),releasedDrafts=Number(data?.released_drafts||0);
+      setNotice(releasedSlices ? `${releasedSlices} fatia(s) de ${releasedDrafts} carrinho(s) liberada(s). Este pedido foi preservado.` : "Nenhuma reserva de outro carrinho estava ativa. Este pedido foi preservado.");
+      await load();
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Não foi possível liberar os outros carrinhos."); }
+    finally { setReleaseBusy(false); }
   };
   const changeChannel = (next: ChannelMode) => {
     if (reservationLock.current || busy) return;
@@ -264,10 +304,9 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     if (!openCashSession) return setNotice("Abra o caixa e informe o dinheiro inicial antes da primeira venda do dia.");
     if (reservationLock.current || checkoutLock.current || busy) return;
     if (deferred && !payments.length && validateDeferredSale(saleName)) return setNotice(validateDeferredSale(saleName));
-    const clubError = mode === "sale" ? enrollFieldsError(clubName, clubPhone) : "";
-    if (clubError) return setNotice(clubError);
+    const clubError = mode === "sale" && !selectedCustomer ? enrollFieldsError(clubName, clubPhone) : "";
     if (legacyLoyalty && (deferred || payments.length)) return setNotice("Na fidelidade não há pagamento pendente nem pagamentos lançados. Remova-os.");
-    if (manualRewardUnit && wantsEnroll(clubName, clubPhone)) { setManualRewardUnit(""); return setNotice("Ao identificar ou cadastrar o cliente, a fidelidade manual é desabilitada. Confirme novamente a venda pelo Clube Adoce."); }
+    if (manualRewardUnit && (selectedCustomer || canEnrollSaleCustomer(clubName, clubPhone))) { setManualRewardUnit(""); return setNotice("Ao identificar ou cadastrar o cliente, a fidelidade manual é desabilitada. Confirme novamente a venda pelo Clube Adoce."); }
     if (mode === "sale" && !deferred && !loyalty && saleTotals.remaining > 0) return setNotice("Adicione o restante ou escolha concluir com saldo pendente.");
     try { splitChange(saleTotals.change, changePix); } catch (error) { return setNotice((error as Error).message); }
     checkoutLock.current = true; setBusy(true); setNotice("");
@@ -295,8 +334,8 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
         const completedOrder: ThermalOrder = {id:String(data.order_id),order_number:String(data.order_number || ""),customer_name:saleName,customer_phone:phone,total:Number(data.total ?? saleTotals.total),created_at:new Date().toISOString(),instant_order_items:cashLines.map(line=>({id:line.id,flavor_name:line.shortName,quantity:line.quantity,is_reward:loyalty})),payments:data.payment_allocations || payments};
         setLastSale(completedOrder); setPrintNotice(shouldPrint ? "Enviando cupom…" : "Venda finalizada sem impressão.");
         if (shouldPrint) void printCashSale(completedOrder.id).then(()=>setPrintNotice(`Cupom ${completedOrder.order_number} enviado para impressão.`)).catch(()=>setPrintNotice(`Cupom ${completedOrder.order_number} não enviado. Use Reimprimir vendas de hoje.`));
-        const enroll = wantsEnroll(clubName,clubPhone) && !data?.loyalty_recorded;
-        setEnrollNotice(enroll ? "Cadastrando cliente e lançando carimbos…" : "");
+        const enroll = canEnrollSaleCustomer(clubName,clubPhone) && !data?.loyalty_recorded;
+        setEnrollNotice(enroll ? "Cadastrando cliente e lançando carimbos…" : clubError ? `Venda concluída. Cadastro não realizado: ${clubError}` : "");
         if (enroll) void enrollSaleCustomer(completedOrder.id,clubName,clubPhone).then(result=>setEnrollNotice(enrollSummary(result))).catch((error:Error)=>setEnrollNotice(error.message));
       }
       // A próxima venda fica disponível assim que o banco confirma, sem esperar cupom ou cadastro.
@@ -310,7 +349,7 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
     } finally { checkoutLock.current = false; setBusy(false); }
   };
   return <section className="cash-register-page" aria-label="Caixa Adoce">
-    <header className="cash-register-header"><div><small>VENDAS DE FATIAS</small><h2>Caixa <em>Adoce</em></h2>{openSessionInfo ? <span className="cash-session-badge">{cashNumber(openSessionInfo.session_number)} · aberto às {timeOnly(openSessionInfo.opened_at)}</span> : null}<p>Venda presencial e pedidos recebidos pelos canais.</p></div><div className="cash-header-actions">{channel === "presential" ? <button type="button" className="commerce-secondary-action" disabled={busy || !(openCashSession?.register_id || registerId)} onClick={()=>setReprintOpen(true)}><Printer /> Reimprimir vendas de hoje</button> : null}</div></header>
+    <header className="cash-register-header"><div><small>VENDAS DE FATIAS</small><h2>Caixa <em>Adoce</em></h2>{openSessionInfo ? <span className="cash-session-badge">{cashNumber(openSessionInfo.session_number)} · aberto às {timeOnly(openSessionInfo.opened_at)}</span> : null}<p>Venda presencial e pedidos recebidos pelos canais.</p></div><div className="cash-header-actions">{openCashSession ? <button type="button" className="commerce-secondary-action" disabled={releaseBusy||busy} onClick={()=>void releaseOtherDrafts()}>{releaseBusy?"Liberando…":"Liberar reservas de outros carrinhos"}</button> : null}{channel === "presential" ? <button type="button" className="commerce-secondary-action" disabled={busy || !(openCashSession?.register_id || registerId)} onClick={()=>setReprintOpen(true)}><Printer /> Reimprimir vendas de hoje</button> : null}</div></header>
     <div className="manual-sale-channel-switch cash-register-channels" role="group" aria-label="Origem do lançamento"><button type="button" className={channel === "presential" ? "active" : ""} onClick={() => changeChannel("presential")}><Store /> Pedidos (local e online)</button><button type="button" className={channel === "official" ? "active" : ""} onClick={() => changeChannel("official")}><MessageCircle /> WhatsApp oficial {pendingCount > 0 ? <b className="cash-badge">{pendingCount}</b> : null}</button></div>
     <p className="operation-whatsapp-order-guidance">{channel === "official" ? "Atenda aqui as conversas recebidas pelo WhatsApp oficial." : "Registre a venda local e acompanhe, logo abaixo, os pedidos online que estão chegando."}</p>
     {channel === "official" ? <div className="cash-official"><WhatsAppSupportInbox /></div> : <><div className="cash-register-layout"><main><h3 ref={flavorHeading} className="cash-flavors-title">Fatias disponíveis hoje</h3>

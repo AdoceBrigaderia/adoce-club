@@ -1,9 +1,18 @@
 import {describe,expect,it} from "vitest";
-import {budgetCsv,budgetText,compareInvoicePurchase,importBudgetResponse,procurementSummary,recommendOffers,sortShoppingRows,type ProcurementItem} from "./shopping-procurement";
+import {budgetCsv,budgetText,compareInvoicePurchase,importBudgetResponse,procurementSummary,purchaseCompletion,recommendOffers,sortShoppingRows,type ProcurementItem} from "./shopping-procurement";
 
 const item=(change:Partial<ProcurementItem>={}):ProcurementItem=>({offers:[],purchases:[],...change});
 
 describe("compras e cotações",()=>{
+ it("permite concluir com um toque quando nenhum detalhe foi informado",()=>{
+  expect(purchaseCompletion(item(),1400)).toEqual({state:"unrecorded",missing:0});
+ });
+ it("mantém somente o restante pendente quando a compra informada foi parcial",()=>{
+  expect(purchaseCompletion(item({purchases:[{id:"1",supplierId:"",packages:1,contentPerPackage:900,totalPrice:0}]}),1400)).toEqual({state:"partial",missing:500});
+ });
+ it("considera concluído quando a quantidade opcional alcança o sugerido",()=>{
+  expect(purchaseCompletion(item({purchases:[{id:"1",supplierId:"",packages:2,contentPerPackage:700,totalPrice:0}]}),1400)).toEqual({state:"complete",missing:0});
+ });
  it("mantém pendentes antes dos comprados",()=>{
   const rows=[{item:{id:"b",name:"Comprado"}},{item:{id:"a",name:"Falta"}}];
   expect(sortShoppingRows(rows,{b:item({purchased:true})}).map(row=>row.item.name)).toEqual(["Falta","Comprado"]);

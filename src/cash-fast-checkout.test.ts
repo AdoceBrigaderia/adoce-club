@@ -5,9 +5,10 @@ import { singlePayment, addSplitPayment, paymentBalance, cashDayRange, partialPa
 describe("fechamento rápido do caixa", () => {
   it("preserva e recupera o pedido em andamento ao navegar", () => {
     const source = readFileSync(new URL("./OperationManualSale.tsx", import.meta.url), "utf8");
-    expect(source).toContain("adoce:cash-draft:");
-    expect(source).toContain("localStorage.setItem");
-    expect(source).toContain("localStorage.getItem");
+    expect(source).toContain("cashDraftStorageKey");
+    expect(source).toContain("sessionStorage.setItem");
+    expect(source).toContain("sessionStorage.getItem");
+    expect(source).toContain("5 * 60 * 1000");
   });
   it("mostra estoque físico, reservado, livre e a reserva do pedido atual", () => {
     const source = readFileSync(new URL("./OperationManualSale.tsx", import.meta.url), "utf8");
