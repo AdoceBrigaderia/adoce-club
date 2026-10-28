@@ -9,6 +9,7 @@ export function procurementSummary(state:ProcurementItem|undefined,required:numb
 export function purchaseCompletion(state:ProcurementItem|undefined,required:number){
  const summary=procurementSummary(state,required);
  if(!(state?.purchases||[]).some(valid))return {state:"unrecorded" as const,missing:0};
+ if(required<=0)return {state:"complete" as const,missing:0};
  return summary.sufficient?{state:"complete" as const,missing:0}:{state:"partial" as const,missing:summary.missing};
 }
 export function sortShoppingRows<T extends {item:{id:string;name:string}}>(rows:T[],states:Record<string,ProcurementItem|undefined>){

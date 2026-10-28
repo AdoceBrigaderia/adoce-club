@@ -13,6 +13,9 @@ describe("compras e cotações",()=>{
  it("considera concluído quando a quantidade opcional alcança o sugerido",()=>{
   expect(purchaseCompletion(item({purchases:[{id:"1",supplierId:"",packages:2,contentPerPackage:700,totalPrice:0}]}),1400)).toEqual({state:"complete",missing:0});
  });
+ it("permite concluir quando a necessidade sugerida é zero",()=>{
+  expect(purchaseCompletion(item({purchases:[{id:"1",supplierId:"",packages:10,contentPerPackage:1000,totalPrice:36.9}]}),0)).toEqual({state:"complete",missing:0});
+ });
  it("mantém pendentes antes dos comprados",()=>{
   const rows=[{item:{id:"b",name:"Comprado"}},{item:{id:"a",name:"Falta"}}];
   expect(sortShoppingRows(rows,{b:item({purchased:true})}).map(row=>row.item.name)).toEqual(["Falta","Comprado"]);
