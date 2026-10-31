@@ -1,0 +1,12 @@
+.public-topbar-2026 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  background: #54250f;
+}
+.public-topbar-2026 img {
+  height: 108px;
+  width: auto;
+  object-fit: contain;
+}

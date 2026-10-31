@@ -35,6 +35,14 @@ describe("gestão de membros", () => {
     expect(source).toContain("Ver lista completa");
   });
 
+  it("compacta a entrada da lista de clientes e remove o painel de avisos", () => {
+    const customerScreen = source.slice(source.indexOf("!selected && !cadastrando"));
+    expect(customerScreen).toContain('className="operation-customer-directory-bar"');
+    expect(customerScreen).toContain('<span>Lista completa, busca e ficha</span>');
+    expect(customerScreen).not.toContain('<h1>Clientes & Clube Adoce</h1>');
+    expect(customerScreen).not.toContain('<OperationSliceAlerts />');
+  });
+
   it("prioriza as acoes, depois o historico e por ultimo seguranca e privacidade", () => {
     const styles = readFileSync(new URL("./access-app.css", import.meta.url), "utf8");
     expect(styles).toContain('.operation-customer .operation-actions { order: 3; }');

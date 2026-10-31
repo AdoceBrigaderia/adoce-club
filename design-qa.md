@@ -63,6 +63,13 @@ Resultado: passed
 - Histórico de comparação P0/P1/P2: nenhuma divergência acionável encontrada na primeira comparação; não foi necessária nova iteração visual.
 
 final result: passed
+
+## 29/10/2026 — compactação da venda no Caixa
+
+- Título reduzido para “Caixa”; busca do Clube, celular e nome alinhados ao lado e antes dos sabores.
+- Removidos “Identificação do cliente”, os textos “(opcional)” e a seção duplicada “Pedidos online”.
+- Teste específico: `src/cash-checkout-layout.test.tsx`.
+- Estado: implementado localmente; publicação e atualização do tablet dependem de autorização específica do proprietário.
 ## Eventos e aluguel de decoracao - carrossel e galeria - 2026-08-05
 
 - Alteracao restrita as telas Eventos e Aluguel de decoracao.

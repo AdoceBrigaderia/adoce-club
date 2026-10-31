@@ -103,8 +103,10 @@ describe("arquitetura da Adoce Operação", () => {
     expect(commercial).toContain('title: "Pedidos"');
     expect(commercial).toContain('title: "Encomendas"');
     expect(commercial).toContain('title: "Catálogo comercial"');
-    expect(access).toContain('allowedTabs={["sales", "requests", "settings"]}');
+    expect(access).toContain('initialTab="sales"');
+    expect(access).toContain('allowedTabs={["sales"]}');
     expect(access).toContain('allowedTabs={["catalog"]}');
+    expect(access).toContain('setSettingsTab("online")');
   });
 
   it("mantém em Configurações somente ajustes permanentes", () => {

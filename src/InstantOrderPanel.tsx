@@ -3,8 +3,9 @@ import { ArrowLeft, Check, Clock3, Copy, Droplets, Gift, Heart, MapPin, MessageC
 import { requireSupabase } from "./lib/supabase";
 import { trackPublicEvent } from "./analytics";
 import { buildOrderWhatsAppMessage, orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
-import { pickupBoundsForDay, pickupWindowHint, type PickupWindow } from "./pickup-window";
+import { pickupBoundsForDay, type PickupWindow } from "./pickup-window";
 import { mascaraTelefone } from "./cadastro-rapido";
+import { readKnownOrders, rememberOrder, sameDayStatusLabel, type SameDayCheck } from "./same-day-orders";
 import {
   currentLocalTime,
   earliestPickupTimeForQuantity,
@@ -86,7 +87,11 @@ export default function InstantOrderPanel({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<SubmitResult | null>(null);
-  const [step, setStep] = useState<"details" | "sauces">("details");
+  const [step, setStep] = useState<"details" | "sauces" | "same_day">("details");
+  const [sameDay, setSameDay] = useState<SameDayCheck | null>(null);
+  const [sameDayAcknowledged, setSameDayAcknowledged] = useState(false);
+  const [complementNote, setComplementNote] = useState("");
+  const [sameDayMessage, setSameDayMessage] = useState("");
   const [sauces, setSauces] = useState<OrderSauce[]>([]);
   const [sauceChoices, setSauceChoices] = useState<Record<string, string>>({});
   const [loyaltyPreview, setLoyaltyPreview] = useState<LoyaltyPreview | null>(null);
@@ -199,7 +204,16 @@ export default function InstantOrderPanel({
     return () => { active = false; window.clearTimeout(timer); };
   }, [open, phone, totalQuantity]);
 
+  // Sem nome e WhatsApp não dá para separar nem reservar a fatia, então a
+  // identificação vem antes de montar o pedido.
+  const identified = hasFirstAndLastName(name) && phone.replace(/\D/g, "").length >= 10;
+
   const changeQuantity = (flavor: InstantOrderFlavor, delta: number) => {
+    if (delta > 0 && !identified) {
+      setNotice("Primeiro informe seu nome e sobrenome e o WhatsApp com DDD para escolher as fatias.");
+      return;
+    }
+    setNotice("");
     setQuantities((current) => {
       const maximum = flavor.free === null ? 30 : Math.max(0, flavor.free);
       const next = Math.max(0, Math.min(maximum, (current[flavor.id] || 0) + delta));
@@ -222,6 +236,10 @@ export default function InstantOrderPanel({
   pickupTimeRef.current = pickupTime;
 
   useEffect(() => {
+    if (pickupMinimum) setPickupTime((current) => (current && current >= pickupMinimum ? current : pickupMinimum));
+  }, [pickupMinimum]);
+
+  useEffect(() => {
     const escolhido = pickupTimeRef.current;
     if (escolhido && pickupMinimum && escolhido < pickupMinimum) {
       // Apenas avisa. NAO reescreve o campo: trocar o valor por baixo de quem
@@ -237,7 +255,9 @@ export default function InstantOrderPanel({
       unitNumber: index + 1,
       key: `${flavor.id}:${index + 1}`,
     }))), [flavors, quantities]);
-  const allSaucesChosen = !sauces.length || selectedUnits.every((unit) => Boolean(sauceChoices[unit.key]));
+  // A calda é escolhida no próprio card do sabor e começa em "sem calda",
+  // então não existe mais etapa separada para ela.
+  const allSaucesChosen = true;
   const rewardChoiceReady = !wantsReward || (Boolean(rewardFlavorId) && (!sauces.length || Boolean(rewardSauceId)));
 
   const detailsAreReady = () => {
@@ -251,7 +271,8 @@ export default function InstantOrderPanel({
     setNotice("");
     return true;
   };
-  const needsSauceStep = sauces.length > 0 || wantsReward;
+  // Só a fatia-presente ainda precisa de uma etapa extra para escolher sabor.
+  const needsSauceStep = wantsReward;
 
   const submit = async () => {
     if (!allSaucesChosen) return setNotice("Escolha uma opção de calda para cada fatia.");
@@ -305,6 +326,7 @@ export default function InstantOrderPanel({
     }
     const response = data as SubmitResult;
     if (!response.accepted) return setNotice(response.message);
+    if (response.order_number && response.token) rememberOrder(response.order_number, response.token);
     setResult(response);
     setShowClubInvite(Boolean(response.offer_club_invite));
     trackPublicEvent("instant_order_success", {
@@ -329,9 +351,65 @@ export default function InstantOrderPanel({
     window.location.assign(orderWhatsAppUrl(orderWhatsAppNumber, message));
   };
 
-  const continueToSauces = (event: FormEvent) => {
+  // Antes de criar outro pedido, confere se este celular ja pediu hoje.
+  const checkSameDay = async () => {
+    if (sameDayAcknowledged) return false;
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc("public_same_day_orders", {
+      requested_phone: phone,
+      known_orders: readKnownOrders().map(({ order_number, token }) => ({ order_number, token })),
+    });
+    setBusy(false);
+    // Se a verificacao falhar, o pedido segue normalmente: a Operacao ainda
+    // agrupa pedidos do mesmo celular.
+    if (error || !(data as SameDayCheck)?.has_orders) return false;
+    setSameDay(data as SameDayCheck);
+    setComplementNote(notes);
+    setSameDayMessage("");
+    setStep("same_day");
+    return true;
+  };
+
+  const sendComplement = async () => {
+    const known = sameDay?.orders[0] ? readKnownOrders().find((order) => order.order_number === sameDay.orders[0].order_number) : undefined;
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc("public_add_order_complement", {
+      requested_phone: phone,
+      requested_note: complementNote,
+      order_code: known?.order_number ?? null,
+      order_token: known?.token ?? null,
+    });
+    setBusy(false);
+    const response = data as { ok: boolean; message: string } | null;
+    if (error || !response) return setSameDayMessage("Não foi possível enviar agora. Tente novamente ou fale com a loja pelo WhatsApp.");
+    setSameDayMessage(response.message);
+    if (response.ok) setComplementNote("");
+  };
+
+  const cancelSameDayOrder = async (orderNumber: string) => {
+    const known = readKnownOrders().find((order) => order.order_number === orderNumber);
+    if (!known || !window.confirm(`Cancelar o pedido ${orderNumber}?`)) return;
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc("public_cancel_instant_order", { order_code: known.order_number, order_token: known.token });
+    setBusy(false);
+    const response = data as { ok: boolean; message: string } | null;
+    if (error || !response) return setSameDayMessage("Não foi possível cancelar agora. Fale com a loja pelo WhatsApp.");
+    setSameDayMessage(response.message);
+    if (response.ok) setSameDay((current) => current ? { ...current, orders: current.orders.filter((order) => order.order_number !== orderNumber) } : current);
+  };
+
+  const continueAsNewOrder = () => {
+    setSameDayAcknowledged(true);
+    setStep("details");
+    setSameDayMessage("");
+    if (needsSauceStep) setStep("sauces");
+    else void submit();
+  };
+
+  const continueToSauces = async (event: FormEvent) => {
     event.preventDefault();
     if (!detailsAreReady()) return;
+    if (await checkSameDay()) return;
     if (needsSauceStep) {
       setStep("sauces");
       return;
@@ -347,6 +425,10 @@ export default function InstantOrderPanel({
     setNotice("");
     setResult(null);
     setStep("details");
+    setSameDay(null);
+    setSameDayAcknowledged(false);
+    setComplementNote("");
+    setSameDayMessage("");
     setSauceChoices({});
     setLoyaltyPreview(null);
     setCheckingClub(false);
@@ -403,17 +485,20 @@ export default function InstantOrderPanel({
         <button className="instant-order-close" aria-label="Fechar" onClick={onClose}><X /></button>
         {!result && step === "details" ? <>
           <header>
-            <span><ShoppingBag /> Retirada de fatias</span>
-            <h2 id="instant-order-title">Monte seu pedido</h2>
-            <p>Oi! Que bom ter você por aqui 🍰 Já conhece as fatias da Adoce? {priceIntroduction} Não fazemos entregas. Seu pedido pode ser retirado aqui por você ou por um motorista de aplicativo que você solicitar.</p>
+            <img className="instant-order-logo" src="/brand-2026/logo-cantinho-adoce.png" alt="Cantinho da Adoce — Confeitaria Artesanal" />
+            <h2 id="instant-order-title">Carrinho</h2>
           </header>
-          <label className="instant-order-name">Para começar, qual é seu nome e sobrenome?<input required minLength={5} autoComplete="name" placeholder="Nome e sobrenome" value={name} onChange={(event) => setName(event.target.value)} /></label>
+          <div className="instant-order-identify">
+            <label className="instant-order-name">Nome e sobrenome<input required minLength={5} autoComplete="name" placeholder="Nome e sobrenome" value={name} onChange={(event) => setName(event.target.value)} /></label>
+            <label className="instant-order-name">WhatsApp com DDD<input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} /></label>
+          </div>
           {!flavors.length ? <div className="instant-order-empty">
             <ShoppingBag />
             <strong>Seu carrinho está vazio</strong>
             <p>Quando houver fatias disponíveis, escolha os sabores e volte aqui para concluir.</p>
             <a href="/cardapio" onClick={onClose}>Ver sabores</a>
           </div> : <div className="instant-order-flavors">
+            {!identified ? <p className="instant-order-identify-first" role="status">Informe seu nome e o WhatsApp acima para escolher as fatias.</p> : null}
             {flavors.map((flavor) => {
               const quantity = quantities[flavor.id] || 0;
               const readyAt = earliestPickupTimeForQuantity(flavor.batches, quantity, currentLocalTime());
@@ -423,15 +508,28 @@ export default function InstantOrderPanel({
                 <div>
                   <button type="button" aria-label={`Remover uma ${flavor.name}`} onClick={() => changeQuantity(flavor, -1)} disabled={!quantity}><Minus /></button>
                   <b>{quantity}</b>
-                  <button type="button" aria-label={`Adicionar uma ${flavor.name}`} onClick={() => changeQuantity(flavor, 1)} disabled={flavor.free !== null && quantity >= flavor.free}><Plus /></button>
+                  <button type="button" aria-label={`Adicionar uma ${flavor.name}`} onClick={() => changeQuantity(flavor, 1)} disabled={!identified || (flavor.free !== null && quantity >= flavor.free)}><Plus /></button>
                 </div>
+                {quantity > 0 && sauces.length ? <details className="instant-order-sauces-inline">
+                  <summary><Droplets /> Caldas ({quantity})</summary>
+                  {Array.from({ length: quantity }, (_, index) => <label key={index}>
+                    Fatia {index + 1}
+                    <select
+                      aria-label={`Calda da fatia ${index + 1} de ${flavor.name}`}
+                      value={sauceChoices[`${flavor.id}:${index + 1}`] || "none"}
+                      onChange={(event) => setSauceChoices((current) => ({ ...current, [`${flavor.id}:${index + 1}`]: event.target.value }))}
+                    >
+                      <option value="none">Sem calda</option>
+                      {sauces.map((sauce) => <option key={sauce.id} value={sauce.id}>{sauce.name}</option>)}
+                    </select>
+                  </label>)}
+                </details> : null}
                 {flavor.batches.length ? <p className="instant-order-release-note" role="status"><Clock3 /><span>{quantity > 0 && readyAt ? <strong>{readyAt <= currentLocalTime() ? "Sua quantidade está disponível agora" : `Sua quantidade fica pronta a partir das ${readyAt.replace(":00", "h")}`}</strong> : null}{formatBatchAvailability(flavor.batches).map((line) => <small key={line}>{line}</small>)}</span></p> : null}
               </article>;
             })}
           </div>}
           {flavors.length ? <form onSubmit={continueToSauces}>
             <div className="instant-order-total"><span>{totalQuantity} fatia(s){wantsReward ? " + 1 presente" : ""}</span><strong>{money(displayTotal)}</strong></div>
-            <label>WhatsApp com DDD<input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} /></label>
             {phone.replace(/\D/g, "").length >= 10 ? <div className={`instant-order-club-preview ${loyaltyPreview?.recognized ? "recognized" : ""}`} aria-live="polite">
               {checkingClub ? <><Heart /><span><strong>Consultando seu Clube Adoce...</strong><small>Só um instante.</small></span></> : loyaltyPreview?.recognized ? <><Heart /><span><strong>Seu Clube Adoce foi reconhecido</strong><small>Você tem {loyaltyPreview.current_progress} de 14 carimbos. Após o pagamento deste pedido, ficará com {loyaltyPreview.projected_progress} de 14.</small>{loyaltyPreview.will_unlock_reward ? <em><Gift /> Esta compra completa seu cartão e libera uma fatia-presente.</em> : null}</span></> : <><Heart /><span><strong>Cada fatia confirmada vale um carimbo</strong><small>Se este WhatsApp estiver no Clube Adoce, os carimbos serão vinculados automaticamente após o pagamento.</small></span></>}
             </div> : null}
@@ -439,12 +537,34 @@ export default function InstantOrderPanel({
             <p className="instant-order-payment-note"><strong>Pagamento por Pix.</strong> Enviaremos as orientações depois que a Adoce confirmar a disponibilidade.</p>
             <fieldset className="instant-order-pickup-choice"><legend>Quem fará a retirada?</legend><label><input type="radio" name="pickup-method" checked={pickupMethod === "customer"} onChange={() => setPickupMethod("customer")} /> Eu mesma(o)</label><label><input type="radio" name="pickup-method" checked={pickupMethod === "driver"} onChange={() => setPickupMethod("driver")} /> Entregador de aplicativo</label></fieldset>
             <label>Observação <small>(opcional)</small><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Alguma informação importante para a Adoce" /></label>
-            <label>Horário desejado para retirada<input type="time" value={pickupTime} onChange={(event) => setPickupTime(event.target.value)} />{pickupMinimum ? <small>Seu pedido completo pode ser retirado a partir das {pickupMinimum.replace(":00", "h")}.</small> : pickupWindows?.length ? <small>{pickupWindowHint(pickupWindows)}</small> : null}</label>
             {notice ? <p className="instant-order-notice" role="alert">{notice}</p> : null}
-            <button className="instant-order-submit" disabled={!totalQuantity}>{needsSauceStep ? "Escolher caldas e enviar" : "Enviar pedido"}</button>
+            <button className="instant-order-submit" disabled={!totalQuantity}>{needsSauceStep ? "Escolher minha fatia-presente" : "Enviar pedido"}</button>
             <small className="instant-order-explanation">Nenhum pagamento será solicitado antes da confirmação da disponibilidade.</small>
           </form> : null}
-        </> : !result && step === "sauces" ? <section className="instant-order-sauces">
+        </> : !result && step === "same_day" && sameDay ? <section className="instant-order-same-day" aria-labelledby="instant-order-title">
+          <button type="button" className="instant-order-back" onClick={() => { setStep("details"); setSameDayMessage(""); }}><ArrowLeft /> Voltar ao carrinho</button>
+          <header>
+            <h2 id="instant-order-title">Você já fez um pedido hoje</h2>
+            <p>{sameDay.orders.length ? "Encontramos este pedido feito neste aparelho. O que você quer fazer?" : "Já existe um pedido hoje para este número. Se esqueceu de algo, mande como complemento para não duplicar."}</p>
+          </header>
+          {sameDay.orders.map((order) => {
+            const known = readKnownOrders().find((item) => item.order_number === order.order_number);
+            return <article key={order.order_number} className="instant-order-same-day-order">
+              <strong>{order.order_number}</strong>
+              <small>{new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Fortaleza" })} · {sameDayStatusLabel[order.status] || order.status}</small>
+              <ul>{order.items.map((item) => <li key={item.name}>{item.quantity}x {item.name}</li>)}</ul>
+              <div>
+                {known ? <a href={`/acompanhar?pedido=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(known.token)}`}>Ver como está meu pedido</a> : null}
+                {order.can_cancel ? <button type="button" onClick={() => void cancelSameDayOrder(order.order_number)} disabled={busy}>Cancelar este pedido</button> : null}
+              </div>
+            </article>;
+          })}
+          <label>Esqueceu alguma informação?<textarea value={complementNote} onChange={(event) => setComplementNote(event.target.value)} placeholder="Ex.: sem calda na de Ninho, quem vai buscar é a Ana" maxLength={500} /></label>
+          <button type="button" className="instant-order-submit" onClick={() => void sendComplement()} disabled={busy || complementNote.trim().length < 2}>{busy ? "Enviando..." : "Enviar como complemento do pedido"}</button>
+          {sameDayMessage ? <p className="instant-order-notice" role="status">{sameDayMessage}</p> : null}
+          <button type="button" className="instant-order-same-day-new" onClick={continueAsNewOrder} disabled={busy}>Quero acrescentar estas fatias como um novo pedido</button>
+          <a className="instant-order-same-day-whatsapp" href={orderWhatsAppUrl(orderWhatsAppNumber, "Olá, Adoce! Quero falar sobre o meu pedido de hoje.")} target="_blank" rel="noreferrer"><MessageCircle /> Falar com a loja</a>
+        </section> : !result && step === "sauces" ? <section className="instant-order-sauces">
           <button type="button" className="instant-order-back" onClick={() => { setStep("details"); setNotice(""); }}><ArrowLeft /> Voltar ao pedido</button>
           <header>
             <span><Droplets /> Seu pedido, do seu jeito</span>

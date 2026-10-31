@@ -22,11 +22,11 @@ describe("inclusão de fotos pela área de transferência", () => {
     expect(clipboardBlobToFile(new Blob(["svg"], { type: "image/svg+xml" }))).toBeNull();
   });
 
-  it("está disponível em todas as cinco entradas de foto da operação", () => {
+  it("está disponível nas quatro entradas de foto mantidas na operação", () => {
     const commercial = readFileSync(new URL("./OperationCommercialAdmin.tsx", import.meta.url), "utf8");
     const content = readFileSync(new URL("./OperationContentAdmin.tsx", import.meta.url), "utf8");
-    expect(commercial.match(/<ClipboardImageInput/g)).toHaveLength(2);
+    expect(commercial.match(/<ClipboardImageInput/g)).toHaveLength(1);
     expect(content.match(/<ClipboardImageInput/g)).toHaveLength(3);
-    expect(`${commercial}\n${content}`.match(/type="file"/g)).toHaveLength(5);
+    expect(`${commercial}\n${content}`.match(/type="file"/g)).toHaveLength(4);
   });
 });

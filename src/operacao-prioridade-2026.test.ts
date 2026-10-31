@@ -28,9 +28,10 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(access).toContain("Editar cliente");
   });
 
-  it("expande a lista completa ao tocar na contagem de clientes", () => {
+  it("mantém lista, busca e contagem visíveis na mesma entrada", () => {
     const access = source("./AccessApp.tsx");
-    expect(access).toContain("customerListDetailsRef.current.open = true");
+    expect(access).toContain('className="operation-customer-directory-bar"');
+    expect(access).not.toContain("customerListDetailsRef.current.open = true");
     expect(access).toContain("ref={customerListDetailsRef}");
   });
 
@@ -43,11 +44,13 @@ describe("prioridade da operação: fatias e cartão fidelidade", () => {
     expect(app).toContain('surface="client"');
   });
 
-  it("pula a etapa de caldas quando não há calda para escolher", () => {
+  it("escolhe a calda no próprio card do sabor, sem etapa extra", () => {
     const panel = source("./InstantOrderPanel.tsx");
     expect(panel).toContain("needsSauceStep");
     expect(panel).toContain("Enviar pedido");
-    expect(panel).toContain("Escolher caldas e enviar");
+    expect(panel).toContain("instant-order-sauces-inline");
+    expect(panel).toContain("Sem calda");
+    expect(panel).not.toContain("Escolher caldas e enviar");
     expect(panel).toContain("mascaraTelefone");
   });
 

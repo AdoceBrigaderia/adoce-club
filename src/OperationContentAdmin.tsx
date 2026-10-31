@@ -220,7 +220,6 @@ export default function OperationContentAdmin({
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "low">(initialAvailabilityFilter);
-  const [productSearch, setProductSearch] = useState("");
   const [availabilitySearch, setAvailabilitySearch] = useState("");
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
@@ -246,10 +245,17 @@ export default function OperationContentAdmin({
     }).map((item) => item.flavor_id)),
     [availability],
   );
+  // Só mostra sabores que já foram importados do planejamento de compras pra
+  // esse dia (têm linha em flavor_availability hoje) — o resto do catálogo
+  // (sabores nunca liberados) não aparece aqui pra não poluir a lista.
+  const importedTodayFlavorIds = useMemo(
+    () => new Set(availability.map((item) => item.flavor_id)),
+    [availability],
+  );
   const visibleAvailabilityFlavors = (availabilityFilter === "low"
     ? sortedAvailabilityFlavors.filter((flavor) => lowStockFlavorIds.has(flavor.id))
     : sortedAvailabilityFlavors
-  ).filter((flavor) => matchesText(flavor, availabilitySearch));
+  ).filter((flavor) => importedTodayFlavorIds.has(flavor.id) && matchesText(flavor, availabilitySearch));
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
@@ -821,11 +827,11 @@ export default function OperationContentAdmin({
 
   return (
     <div className="content-admin">
-      <div className="operation-title content-admin-title">
+      {tab === "operation" ? <div className="operation-title content-admin-title">
         <div>
-          <span>{tab === "operation" ? "Configurações" : "Produtos"}</span>
-          <h1>{tab === "today" ? "Produção de hoje" : tab === "operation" ? "Funcionamento" : "Sabores e preços"}</h1>
-          <p>{tab === "today" ? "Libere os sabores e as quantidades que o Caixa e o site podem vender." : tab === "operation" ? "Horários e modalidades de atendimento." : "Cadastro, fotos e preços das fatias."}</p>
+          <span>Configurações</span>
+          <h1>Funcionamento</h1>
+          <p>Horários e modalidades de atendimento.</p>
         </div>
         <a
           className="content-preview"
@@ -835,7 +841,7 @@ export default function OperationContentAdmin({
         >
           <Eye /> Ver como cliente
         </a>
-      </div>
+      </div> : null}
       <nav className="content-tabs" aria-label="Áreas da administração">
         {allowedTabs.includes("catalog") ? <button
           className={tab === "catalog" ? "active" : ""}
@@ -855,35 +861,23 @@ export default function OperationContentAdmin({
         >
           <Store /> Funcionamento
         </button> : null}
+        {tab === "catalog" && !productFormOpen ? (
+          <button
+            type="button"
+            className="admin-primary content-tabs-new-flavor"
+            onClick={() => {
+              setEditing(null);
+              setDraft({ ...emptyFlavor });
+              setCreatingFlavor(true);
+            }}
+          >
+            <Plus /> Novo sabor
+          </button>
+        ) : null}
       </nav>
 
       {tab === "catalog" && (
         <>
-          <div className="admin-list-toolbar">
-            <label className="admin-search">
-              <span className="sr-only">Buscar sabor</span>
-              <input
-                type="search"
-                value={productSearch}
-                onChange={(event) => setProductSearch(event.target.value)}
-                placeholder="Buscar sabor pelo nome"
-                aria-label="Buscar sabor pelo nome"
-              />
-            </label>
-            {!productFormOpen ? (
-              <button
-                type="button"
-                className="admin-primary"
-                onClick={() => {
-                  setEditing(null);
-                  setDraft({ ...emptyFlavor });
-                  setCreatingFlavor(true);
-                }}
-              >
-                <Plus /> Novo sabor
-              </button>
-            ) : null}
-          </div>
           {productFormOpen ? <section className="admin-panel editor-panel" ref={editorPanelRef}>
             <div className="panel-heading">
               <div>
@@ -1016,10 +1010,10 @@ export default function OperationContentAdmin({
             </button>
           </section> : null}
           <p className="admin-list-count" role="status">
-            {flavors.filter((flavor) => matchesText(flavor, productSearch)).length} de {flavors.length} sabores
+            {flavors.length} sabores
           </p>
           <div className="admin-product-grid">
-            {flavors.filter((flavor) => matchesText(flavor, productSearch)).map((flavor) => (
+            {flavors.map((flavor) => (
               <article
                 key={flavor.id}
                 className={!flavor.active ? "inactive" : ""}
@@ -1031,22 +1025,11 @@ export default function OperationContentAdmin({
                     <ImagePlus />
                   )}
                 </div>
-                <small>
-                  {flavor.category === "premium" ? "Premium" : "Tradicional"}
-                </small>
                 <h3>{flavor.name}</h3>
                 <p>
                   {flavor.short_description ||
                     "Descrição curta ainda não informada."}
                 </p>
-                {isPriceOnRequest(flavor.name) ? <p>Fatia e tortas: valor a consultar</p> : flavor.whole_cake_available && cakeGPrice != null && (
-                  <p>
-                    Torta G: {cakeGPrice.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  </p>
-                )}
                 <div className="product-actions">
                   <button onClick={() => editFlavor(flavor)}>
                     <Pencil /> Editar
@@ -1063,54 +1046,46 @@ export default function OperationContentAdmin({
       )}
 
       {tab === "today" && (
-        <section className="admin-panel">
-          <div className="panel-heading">
-            <div>
-              <small>Adoce Hoje</small>
-              <h2>
-                Disponibilidade de{" "}
-                {new Date(selectedDate + "T12:00:00").toLocaleDateString(
-                  "pt-BR",
-                  { weekday: "long", day: "2-digit", month: "2-digit" },
-                )}
-              </h2>
-              <p>
-                O estoque continua de um dia para o outro e só muda com vendas,
-                reservas ou ajustes feitos por você.
-              </p>
-            </div>
-          </div>
-          <div className="availability-date-picker">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setSelectedDate(shiftDay(selectedDate, -1))}
-              aria-label="Dia anterior"
-            >
-              ←
-            </button>
-            <label>
-              <span className="sr-only">Escolher dia</span>
-              <input
-                type="date"
-                value={selectedDate}
+        <section className="admin-panel admin-panel-today-compact">
+          <div className="panel-heading availability-heading-compact">
+            <h2>
+              {new Date(selectedDate + "T12:00:00").toLocaleDateString(
+                "pt-BR",
+                { weekday: "long", day: "2-digit", month: "2-digit" },
+              )}
+            </h2>
+            <div className="availability-date-picker">
+              <button
+                type="button"
                 disabled={busy}
-                onChange={(event) => event.target.value && setSelectedDate(event.target.value)}
-              />
-            </label>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setSelectedDate(shiftDay(selectedDate, 1))}
-              aria-label="Próximo dia"
-            >
-              →
-            </button>
-            {selectedDate !== todayInFortaleza() ? (
-              <button type="button" disabled={busy} onClick={() => setSelectedDate(todayInFortaleza())}>
-                Voltar para hoje
+                onClick={() => setSelectedDate(shiftDay(selectedDate, -1))}
+                aria-label="Dia anterior"
+              >
+                ←
               </button>
-            ) : null}
+              <label>
+                <span className="sr-only">Escolher dia</span>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  disabled={busy}
+                  onChange={(event) => event.target.value && setSelectedDate(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => setSelectedDate(shiftDay(selectedDate, 1))}
+                aria-label="Próximo dia"
+              >
+                →
+              </button>
+              {selectedDate !== todayInFortaleza() ? (
+                <button type="button" disabled={busy} onClick={() => setSelectedDate(todayInFortaleza())}>
+                  Hoje
+                </button>
+              ) : null}
+            </div>
           </div>
           <details className="admin-panel availability-week-overview">
             <summary>
@@ -1167,18 +1142,8 @@ export default function OperationContentAdmin({
           </details>
           {selectedDate === todayInFortaleza() ? <ProductionReleasePanel today={todayInFortaleza()} onReleased={load} /> : null}
           {canSeeCosts && selectedDate === todayInFortaleza() ? <ShoppingBatchSuggestions today={todayInFortaleza()} onImported={load} /> : null}
-          <label className="admin-search availability-search">
-            <span className="sr-only">Buscar sabor</span>
-            <input
-              type="search"
-              value={availabilitySearch}
-              onChange={(event) => setAvailabilitySearch(event.target.value)}
-              placeholder="Buscar sabor"
-              aria-label="Buscar sabor na produção de hoje"
-            />
-          </label>
           <p className="availability-summary" role="status">
-            {availability.filter((item) => item.status !== "unavailable").length} liberado(s) para venda · {Math.max(0, flavors.filter((flavor) => flavor.active).length - availability.filter((item) => item.status !== "unavailable").length)} indisponível(is)
+            {availability.filter((item) => item.status !== "unavailable").length} liberado(s) para venda · {availability.filter((item) => item.status === "unavailable").length} indisponível(is)
           </p>
           <div className="availability-filter" role="group" aria-label="Filtrar itens por situação do estoque">
             <button type="button" className={availabilityFilter === "all" ? "active" : ""} onClick={() => setAvailabilityFilter("all")}>Todos os itens</button>

@@ -233,7 +233,7 @@
 }
 .club-account-signout svg:last-child { margin-left: auto; }
 
-@media (min-width: 768px) {
+@media not all { /* coluna de celular também no computador: o layout largo não se aplica */
   .customer-app-shell .club-home { padding-top: 30px; padding-bottom: 42px; }
   .club-account-reference { gap: 24px; }
   .club-account-identity { grid-template-columns: 128px minmax(0, 1fr) 90px; padding: 28px; }

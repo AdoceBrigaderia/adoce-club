@@ -14,8 +14,8 @@ describe("continuidade do estoque entre dias", () => {
     expect(migration).not.toContain("update public.flavor_availability");
   });
 
-  it("explica na operação que o estoque não zera com a data", () => {
-    expect(admin).toContain("O estoque continua de um dia para o outro");
+  it("mantém os lotes por horário na versão compacta da operação", () => {
+    expect(admin).toContain("admin-panel-today-compact");
     expect(admin).toContain("Lotes por horário (");
     expect(admin).toContain('<details className="availability-batches">');
   });

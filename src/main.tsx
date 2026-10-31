@@ -3,7 +3,6 @@ import { installNativeApiFetch } from "./lib/native-api";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
-import PublicContactDock from "./PublicContactDock";
 import PersistentTableHeaders from "./PersistentTableHeaders";
 import SiteVisualOverrides from "./SiteVisualOverrides";
 import { navigateRoute, normalizeLegacyRoute, pathFromLegacyHash } from "./route-paths";
@@ -18,6 +17,9 @@ import "./public-shell-2026.css";
 // (--pink, --access-coral, --m-coral...) precisam vencer as declaracoes
 // antigas para que a paleta correta da logo alcance as 68 folhas.
 import "./adoce-tokens.css";
+// Garante layout mobile-only no site público em qualquer largura real de
+// tela, vencendo @media antigas que só ativavam abaixo de certos px.
+import "./public-mobile-force.css";
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, "") || "/";
 // Links antigos enviados por WhatsApp continuam validos. A forma antiga abre
@@ -71,7 +73,6 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <SiteVisualOverrides>
         <App />
         <PersistentTableHeaders />
-        <PublicContactDock />
       </SiteVisualOverrides>
     </React.StrictMode>,
   );

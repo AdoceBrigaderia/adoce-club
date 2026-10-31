@@ -35,8 +35,18 @@ describe("operação em 360 px", () => {
 
   it("mantém um único cabeçalho e botão Atualizar na tela de vendas", () => {
     expect(commercial.match(/className="commercial-refresh"/g)).toHaveLength(1);
-    expect(instant).toContain("instant-order-subheading");
+    expect(instant).not.toContain("instant-order-subheading");
+    expect(instant).toContain("instant-order-metrics");
     expect(instant).not.toContain("commercial-refresh");
+  });
+
+  it("remove as duas faixas superiores e mantém a liberação de reservas nas ações do caixa", () => {
+    const manual = readFileSync("src/OperationManualSale.tsx", "utf8");
+    expect(access).toContain('className="operation-nav-account"');
+    expect(access).toContain("<OperationAccountMenu");
+    expect(manual).not.toContain('className="cash-register-header"');
+    expect(manual).toContain('className="cash-admin-menu"');
+    expect(manual).toContain("Liberar reservas de outros carrinhos");
   });
 
   it("usa Inter e algarismos tabulares nos números de operação", () => {

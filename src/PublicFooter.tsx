@@ -1,28 +1,59 @@
-import { Clock3, MapPin } from "lucide-react";
+import { useState } from "react";
+import { Clock3, MapPin, Phone, X } from "lucide-react";
+import { orderWhatsAppUrl } from "./order-whatsapp";
 import "./public-footer-2026.css";
 
+const WHATSAPP_NUMBER = "5585981994370";
+
+type FooterPanel = "location" | "hours" | null;
+
 export default function PublicFooter() {
+  const [panel, setPanel] = useState<FooterPanel>(null);
+
   return (
     <footer className="public-footer-2026">
-      <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
-      <div>
+      <button type="button" className="public-footer-item" onClick={() => setPanel("location")}>
         <MapPin aria-hidden="true" />
-        <p>
-          <strong>Nossa localização</strong>
-          <br />Av. da Saudade, S/N
-          <br />Em frente à Reserva dos Ipês
-          <br />Divino Espeto — Fortaleza/CE
-        </p>
-      </div>
-      <div>
+        <span>Nossa localização</span>
+      </button>
+      <button type="button" className="public-footer-item" onClick={() => setPanel("hours")}>
         <Clock3 aria-hidden="true" />
-        <p>
-          <strong>Funcionamento</strong>
-          <br />Terça a sábado
-          <br />das 17h às 23h
-          <br /><small>(ou enquanto durarem os estoques)</small>
-        </p>
-      </div>
+        <span>Horário de funcionamento</span>
+      </button>
+      <a
+        className="public-footer-item"
+        href={orderWhatsAppUrl(WHATSAPP_NUMBER, "Olá! Vim pelo site da Adoce e gostaria de atendimento.")}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <Phone aria-hidden="true" />
+        <span>Contato</span>
+      </a>
+
+      {panel ? (
+        <div className="public-footer-overlay" onClick={() => setPanel(null)}>
+          <div className="public-footer-card" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="public-footer-card-close" onClick={() => setPanel(null)} aria-label="Fechar">
+              <X aria-hidden="true" />
+            </button>
+            {panel === "location" ? (
+              <>
+                <MapPin aria-hidden="true" />
+                <h3>Nossa localização</h3>
+                <p>Av. da Saudade, S/N<br />Em frente à Reserva dos Ipês<br />Divino Espeto — Fortaleza/CE</p>
+                <p>No Waze, Maps ou Uber, basta escrever <strong>"Cantinho da Adoce"</strong> que eles encontram o local certinho.</p>
+                <p>No App 99, escreva o endereço: <strong>Rua Cento Quarto, 277, Passaré</strong>.</p>
+              </>
+            ) : (
+              <>
+                <Clock3 aria-hidden="true" />
+                <h3>Horário de funcionamento</h3>
+                <p>Terça a sábado<br />das 17h às 23h<br /><small>(ou enquanto durarem os estoques)</small></p>
+              </>
+            )}
+          </div>
+        </div>
+      ) : null}
     </footer>
   );
 }

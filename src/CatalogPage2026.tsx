@@ -1,6 +1,5 @@
 import { MessageCircle } from "lucide-react";
 import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
-import PublicFooter from "./PublicFooter";
 import "./catalog-2026.css";
 import "./catalog-2026-overrides.css";
 
@@ -25,20 +24,15 @@ export default function CatalogPage2026() {
   const whatsappNumber = useOrderWhatsAppNumber();
   const whatsapp = orderWhatsAppUrl(whatsappNumber, "Olá, Adoce! Vi o catálogo e gostaria de fazer uma encomenda.");
   return <main className="catalog-new">
-    <header className="catalog-new-header"><span>Olá, <strong>Cliente!</strong></span><img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" /><img className="catalog-menu-icon" src={`${base}/icones/menu-chocolate.svg`} alt="Menu" /></header>
-    <section className="catalog-new-hero"><div><h1>Nosso catálogo<br />de delícias <span>♡</span></h1><p>Escolha o que vai adoçar o seu dia.</p></div><p className="catalog-hero-note">Tortas artesanais, feitas com ingredientes selecionados e muito carinho em cada camada.</p></section>
+    <section className="catalog-new-hero"><div><h1>Encomendas<br />Adoce <span>♡</span></h1><p>Conheça tamanhos, valores e condições para fazer sua encomenda.</p></div></section>
     <section className="catalog-panel">
       <div className="catalog-section-title"><img src={`${base}/icones/bolo.svg`} alt="" /><div><h2>Tortas artesanais <span>♡</span></h2><p>Nossas tortas são feitas artesanalmente, com ingredientes selecionados e muito carinho em cada camada.</p></div></div>
       <div className="catalog-size-grid">{sizes.map(size => <article key={size.label}><div className="catalog-cake-photo"><img src={`${base}/fotos-recortadas/${size.photo}`} alt={`Torta tamanho ${size.label}`} /><strong>{size.label}</strong></div><div className="catalog-size-meta"><b>{size.dimensions}</b><strong>{size.price}</strong></div><p>{size.description}</p></article>)}</div>
       <a className="catalog-wide-link" href="/sabores"><img src={`${base}/icones/bolo.svg`} alt="" />Clique aqui para conferir todos os sabores disponíveis para as tortas <span>→</span></a>
     </section>
-    <section className="catalog-panel catalog-resale">
-      <div className="catalog-section-title"><img src={`${base}/icones/loja.svg`} alt="" /><div><h2>Tortas para revenda <span>♡</span></h2><p>Condições especiais para estabelecimentos e profissionais. Exclusivamente tamanho G, com pedido mínimo de cinco unidades.</p></div></div>
-      <div className="catalog-resale-box"><div><span>Valor por torta G para revenda</span><strong>R$ 182,00</strong><small>Preço normal R$ 200,00 — desconto de 9%</small></div><div><img src={`${base}/icones/bolo.svg`} alt="" /><p>Pedido mínimo:<br /><strong>5 tortas — R$ 910,00</strong><br /><small>Antes de eventuais adicionais de morangos frescos.</small></p></div></div>
-    </section>
     <section className="catalog-panel">
       <div className="catalog-section-title"><img src={`${base}/icones/brigadeiro.svg`} alt="" /><div><h2>Nossos docinhos <span>♡</span></h2><p>Docinhos artesanais para aniversários, confraternizações, celebrações e eventos.</p></div></div>
-      <div className="catalog-sweets-grid">{sweets.map(sweet => <article key={sweet.title}><div><h3>{sweet.title}</h3><ul>{sweet.items.map(item => <li key={item}>{item}</li>)}</ul></div><img src={sweet.photo} alt={`Docinhos ${sweet.title.toLowerCase()}`} /><div className="catalog-sweet-price"><strong>{sweet.price}</strong><span>/ 50 un.</span><small>15g un.</small></div></article>)}</div>
+      <div className="catalog-sweets-grid">{sweets.map(sweet => <article key={sweet.title}><div><h3>{sweet.title}</h3><ul>{sweet.items.map(item => <li key={item}>{item}</li>)}</ul></div><img src={sweet.photo} alt={`Docinhos ${sweet.title.toLowerCase()}`} /><div className="catalog-sweet-price"><strong>{sweet.price}</strong><span>/ 50 un.</span><small>Peso unit. 15g</small></div></article>)}</div>
       <p className="catalog-sweets-rule"><img src={`${base}/icones/presente.svg`} alt="" /><strong>Pedidos de docinhos:</strong> A cada 50 unidades, você pode escolher até dois sabores da mesma categoria, com 25 unidades de cada.</p>
       <a className="catalog-wide-link catalog-sweets-link" href="/docinhos"><img src={`${base}/icones/brigadeiro.svg`} alt="" />Clique aqui para ver algumas fotos de docinhos <span>→</span></a>
     </section>
@@ -48,7 +42,5 @@ export default function CatalogPage2026() {
       <div className="catalog-info"><article><img src={`${base}/icones/casa.svg`} alt="" /><p><strong>Retirada e transporte</strong><br />Encomendas disponíveis para retirada no Cantinho da Adoce.<br /><b>O transporte é de total responsabilidade do cliente, não realizamos entrega de produtos.</b></p></article><article><img src={`${base}/icones/cartao.svg`} alt="" /><p><strong>Formas de pagamento</strong><br />Aceitamos Pix, dinheiro, cartão de débito e cartão de crédito.</p></article><article><img src={`${base}/icones/arquivo.svg`} alt="" /><p><strong>Alterações e cancelamentos</strong><br />Condições informadas na confirmação do pedido, conforme prazos aplicáveis.</p></article></div>
       <a className="catalog-whatsapp" href={whatsapp} target="_blank" rel="noreferrer"><MessageCircle /> Falar no WhatsApp <span>→</span></a>
     </section>
-    <footer className="catalog-new-footer"><span>♡ Feita com muito carinho</span><span>♨ Ingredientes selecionados</span><span>✿ Diversos sabores disponíveis</span><span>♧ Qualidade artesanal</span><span>🎁 Ideal para presentear</span><em>Doce feito com afeto, para celebrar cada momento.</em></footer>
-    <PublicFooter />
   </main>;
 }

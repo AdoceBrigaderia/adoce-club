@@ -784,12 +784,36 @@ body:has(.operation-home) { overflow-x: clip; }
   background: #fffdf9;
 }
 
-.operation-full-customer-list > summary {
-  min-height: 48px;
-  display: flex;
+.operation-customer-directory-bar {
+  display: grid;
+  grid-template-columns: max-content minmax(260px, 1fr) max-content;
+  gap: 14px;
   align-items: center;
-  font-weight: 750;
-  cursor: pointer;
+}
+
+.operation-customer-directory-bar > span {
+  color: var(--op-ink);
+  font-weight: 800;
+}
+
+.operation-customer-directory-bar .operation-search,
+.operation-customer-directory-bar .operation-member-counts {
+  margin: 0;
+}
+
+.operation-customer-directory-bar .operation-member-counts.operation-member-counts-simple {
+  width: auto;
+  min-width: 118px;
+}
+
+.operation-customer-directory-bar .operation-member-counts.operation-member-counts-simple > button:first-child {
+  min-height: 52px;
+}
+
+@media (max-width: 860px) {
+  .operation-customer-directory-bar {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (min-width: 721px) {

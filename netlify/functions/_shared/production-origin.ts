@@ -9,6 +9,8 @@ const allowedOrigins = new Set([
   "http://127.0.0.1:5173",
   "http://localhost:4182",
   "http://127.0.0.1:4182",
+  "http://localhost:8888",
+  "http://127.0.0.1:8888",
 ]);
 
 export const isAllowedAppOrigin = (origin: string | null) =>

@@ -665,11 +665,14 @@
 .admin-list-toolbar .admin-primary { min-height: 48px; margin: 0; }
 .admin-list-count { margin: 0 0 10px; color: #6f5249; font-size: 14px; }
 .availability-search { margin: 8px 0 10px; }
-.availability-date-picker { display: flex; align-items: center; gap: 8px; margin: 4px 0 14px; flex-wrap: wrap; }
-.availability-date-picker button { min-height: 44px; min-width: 44px; padding: 0 14px; border: 1px solid #e0c3b2; border-radius: 10px; background: #fff; color: #6a382d; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; }
-.availability-date-picker input[type="date"] { min-height: 44px; padding: 0 12px; border: 1px solid #e0c3b2; border-radius: 10px; background: #fff; color: #35130d; font: 500 15px Inter, system-ui, sans-serif; }
-.availability-week-overview { margin: 0 0 16px; }
-.availability-week-overview summary { cursor: pointer; font-weight: 700; color: #6a382d; padding: 10px 0; }
+.admin-panel-today-compact { padding: 1rem; margin-bottom: 0.8rem; }
+.availability-heading-compact { align-items: center; margin-bottom: 0; }
+.availability-heading-compact h2 { font-size: 1.15rem; margin: 0; }
+.availability-date-picker { display: flex; align-items: center; gap: 6px; margin: 0; flex-wrap: wrap; }
+.availability-date-picker button { min-height: 32px; min-width: 32px; padding: 0 10px; border: 1px solid #e0c3b2; border-radius: 8px; background: #fff; color: #6a382d; font: 700 12px Inter, system-ui, sans-serif; cursor: pointer; }
+.availability-date-picker input[type="date"] { min-height: 32px; padding: 0 8px; border: 1px solid #e0c3b2; border-radius: 8px; background: #fff; color: #35130d; font: 500 12px Inter, system-ui, sans-serif; }
+.availability-week-overview { margin: 10px 0 0; padding: 0.6rem 1rem; }
+.availability-week-overview summary { cursor: pointer; font-weight: 700; font-size: 0.85rem; color: #6a382d; padding: 4px 0; }
 .availability-week-table-scroll { overflow-x: auto; margin-top: 10px; }
 .availability-week-table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13px; }
 .availability-week-table th, .availability-week-table td { border: 1px solid #ecd8cd; padding: 6px 8px; text-align: center; }
@@ -681,7 +684,7 @@
 .availability-clear-week { margin-top: 12px; min-height: 44px; padding: 0 16px; border: 1px solid #a75c31; border-radius: 10px; background: #fff4e8; color: #a75c31; font: 700 14px Inter, system-ui, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .availability-clear-week svg { width: 16px; height: 16px; }
 .availability-clear-week:disabled { opacity: 0.6; cursor: wait; }
-.availability-summary { margin: 0 0 10px; color: #4d342c; font: 600 15px Inter, system-ui, sans-serif; }
+.availability-summary { margin: 10px 0 6px; color: #4d342c; font: 600 13px Inter, system-ui, sans-serif; }
 
 .availability-list article { grid-template-columns: auto minmax(160px, 1fr) minmax(170px, 210px) minmax(220px, 1.2fr); padding: 0.7rem 0; }
 .availability-list small { font-size: 13px; color: #6f5249; }

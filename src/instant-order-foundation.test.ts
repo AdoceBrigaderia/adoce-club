@@ -45,14 +45,15 @@ describe("fundação segura dos pedidos imediatos", () => {
     expect(operationQueue).toContain("Marcar como entregue");
     expect(accessApp).toContain('sales: "/operacao/caixa"');
     expect(accessApp).toContain('new URLSearchParams(location.search).get("tipo")');
-    expect(accessApp).toContain('allowedTabs={["sales", "requests", "settings"]}');
+    expect(accessApp).toContain('initialTab="sales"');
+    expect(accessApp).toContain('allowedTabs={["sales"]}');
   });
 
   it("mostra pedidos online abaixo da venda local e mantém o WhatsApp oficial separado", () => {
-    expect(manualEntry).toContain("Pedidos (local e online)");
     expect(manualEntry).toContain("Pedidos online");
     expect(manualEntry).toContain("<OperationInstantOrders />");
-    expect(manualEntry).toContain("WhatsApp oficial");
+    expect(manualEntry).toContain("<WhatsAppSupportInbox />");
+    expect(manualEntry).toContain("<OperationWhatsAppAlerts");
     expect(manualEntry).not.toContain("WhatsApp particular");
   });
 

@@ -1,13 +1,15 @@
 .public-mobile-nav { display: none; }
+.public-mobile-nav-hidden-by-footer { transform: translateX(-50%) translateY(24px); opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
 
-@media (max-width: 760px) {
+@media (max-width: 99999px) {
   body:has(.public-mobile-nav) { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
   body:has(.public-mobile-nav) { overflow-x: hidden; background: #fffaf7; }
   body:has(.public-mobile-nav) .today-mobile-bar { display: none !important; }
   .public-mobile-nav {
     position: fixed;
-    left: 10px;
-    right: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, 100vw - 20px);
     bottom: max(8px, env(safe-area-inset-bottom));
     z-index: 120;
     min-height: 64px;
@@ -20,6 +22,7 @@
     background: rgba(255, 252, 248, .96);
     box-shadow: 0 16px 42px rgba(74, 32, 23, .18);
     backdrop-filter: blur(18px);
+    transition: transform .2s ease, opacity .2s ease, visibility .2s ease;
   }
   .public-mobile-nav a {
     min-width: 0;
@@ -33,8 +36,10 @@
     color: #765b53;
     text-decoration: none;
     border-radius: 15px;
-    font: 760 .61rem/1 system-ui, sans-serif;
+    font: 760 .61rem/1.15 system-ui, sans-serif;
+    text-align: center;
   }
+  .public-mobile-nav a span { text-wrap: balance; }
   .public-mobile-nav a.active { color: #ee446a; background: #fff0f4; }
   .public-mobile-nav svg { width: 20px; height: 20px; stroke-width: 2; }
   .public-mobile-nav a.active svg { fill: rgba(238, 68, 106, .12); }
@@ -54,7 +59,7 @@
   .public-site .intent-card { min-height: 300px; border-radius: 24px; }
 
   /* Adoce Hoje: sabores antes das explicações de atendimento. */
-  .today-page { display: flex; flex-direction: column; background: #fffaf7; }
+  .today-page { display: flex; flex-direction: column; background: #54250f; }
   .today-page .today-header { order: 0; position: sticky; top: 0; z-index: 70; height: 66px; background: rgba(255,250,247,.96); }
   .today-page .today-header nav > a:not(.today-order-small),
   .today-page .today-header nav > button { display: none; }

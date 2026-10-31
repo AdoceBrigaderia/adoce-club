@@ -13,7 +13,7 @@ export type WhatsAppOrderMessageInput = {
   customerName: string;
   items: WhatsAppOrderItem[];
   total: number;
-  pickupTime: string;
+  pickupTime?: string;
   availableFrom?: string;
   pickupMethod: "customer" | "driver";
   location?: string;

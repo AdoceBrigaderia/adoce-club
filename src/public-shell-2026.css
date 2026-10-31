@@ -1,17 +1,17 @@
 :root {
-  --public-shell-top: calc(86px + env(safe-area-inset-top));
-  --public-shell-bottom: calc(82px + env(safe-area-inset-bottom));
+  --public-shell-top: 0px;
+  --public-shell-bottom: 0px;
 }
 
 body:has(.public-app-shell) {
-  padding-top: var(--public-shell-top);
-  padding-bottom: var(--public-shell-bottom);
   overflow-x: clip;
-  background: #fffaf7;
+  background: #fff;
 }
 
 .public-app-shell {
-  min-height: calc(100vh - var(--public-shell-top) - var(--public-shell-bottom));
+  max-width: 480px;
+  margin: 0 auto;
+  background: #54250f;
 }
 
 .public-shell-header.public-header {

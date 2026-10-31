@@ -5,7 +5,7 @@
   width: 100%;
   max-width: none;
   margin: 0;
-  background: var(--cream);
+  background: var(--brown);
   color: #40180d;
   font-family: Inter, system-ui, sans-serif;
 }
@@ -335,7 +335,7 @@
   text-align: center;
   color: #7b4b3a;
 }
-@media (max-width: 700px) {
+@media all { /* o site público é sempre a coluna de celular, também no computador */
   .catalog-new-header {
     height: 76px;
     padding: 0 18px;

@@ -20,7 +20,6 @@ import {
 } from "./acompanhar-pedido";
 import { encerrado, type Pedido } from "./jornada-do-pedido";
 import { fallbackOrderWhatsApp } from "./order-whatsapp";
-import PublicFooter from "./PublicFooter";
 import "./acompanhar-pedido.css";
 import { formatarDataHora } from "./lib/datas";
 
@@ -129,7 +128,6 @@ export default function AcompanharPedido({
         Esta página se atualiza sozinha. Pode guardar o link — é só seu.
       </p>
     </main>
-    <PublicFooter />
     </>
   );
 }

@@ -9,16 +9,16 @@ const operationCss = readFileSync(new URL("./access-app.css", import.meta.url), 
 const accessFunction = readFileSync(new URL("../netlify/functions/staff-access-code.ts", import.meta.url), "utf8");
 
 describe("navegação pública Mobile First", () => {
-  it("mantém os quatro destinos aprovados no rodapé fixo", () => {
-    for (const label of ["Início", "Cardápio", "Pedidos", "Conta"]) {
+  it("mantém os destinos aprovados no rodapé fixo", () => {
+    for (const label of ["Início", "Cardápio semanal", "Encomendas", "Carrinho", "Conta"]) {
       expect(mobileNav).toContain(label);
     }
-    for (const destination of ["/", "/cardapio", "/carrinho", "/minha-conta"]) {
+    for (const destination of ["/", "/cardapio", "/catalogo", "/carrinho", "/minha-conta"]) {
       expect(mobileNav).toContain(destination);
       if (destination !== "/") expect(app).toContain(`#${destination.slice(1)}`);
     }
     expect(mobileNav).toContain("public-shell-nav");
-    expect(app).toContain("<PublicHeader />");
+    expect(app).toContain("<PublicTopBar />");
   });
 
   it("identifica a marca geral como Adoce Brigaderia", () => {

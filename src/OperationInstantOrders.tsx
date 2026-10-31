@@ -13,8 +13,7 @@ import "./operation-print.css";
 import { printOperation } from "./lib/operation-print";
 import { printThermalOrder } from "./lib/thermal-printer";
 import { Capacitor } from "@capacitor/core";
-import PedidoNaEsteira from "./PedidoNaEsteira";
-import type { Pedido } from "./jornada-do-pedido";
+import { JORNADA, type Pedido } from "./jornada-do-pedido";
 import { canStartPreparation, canReceivePayment, canCancelOrder, canApplyExistingOrderReward } from "./order-actions";
 import { confirmAction } from "./lib/confirm-dialog";
 
@@ -134,6 +133,30 @@ export default function OperationInstantOrders() {
   const showStatus = (next: typeof statusFilter) => { setView("active"); setStatusFilter((current) => (current === next && next !== "all" ? "all" : next)); };
   const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
   const directFinishRef = useRef<HTMLElement>(null);
+  const [carts, setCarts] = useState<Array<{ session_id: string; draft_key: string; quantity: number; updated_at: string; abandoned: boolean }>>([]);
+  const [cartsOpen, setCartsOpen] = useState<"active" | "abandoned" | null>(null);
+  const [releasingCart, setReleasingCart] = useState("");
+  const loadCarts = useCallback(async () => {
+    const { data } = await requireSupabase().rpc("staff_list_cash_carts");
+    setCarts((data || []) as typeof carts);
+  }, []);
+  useEffect(() => { void loadCarts(); const timer = window.setInterval(() => void loadCarts(), 30000); return () => clearInterval(timer); }, [loadCarts]);
+  const abandonedCarts = carts.filter((cart) => cart.abandoned);
+  const activeCarts = carts.filter((cart) => !cart.abandoned);
+  const releaseAbandonedCart = async (cart: { session_id: string; draft_key: string }) => {
+    const confirmed = await confirmAction(
+      "Excluir este carrinho abandonado? O estoque reservado nele volta imediatamente para a disponibilidade.",
+      { confirmLabel: "Excluir carrinho" },
+    );
+    if (!confirmed) return;
+    setReleasingCart(cart.draft_key);
+    try {
+      const { error } = await requireSupabase().rpc("staff_force_release_abandoned_cash_draft", { target_session_id: cart.session_id, target_draft_key: cart.draft_key });
+      if (error) throw error;
+      await loadCarts();
+    } catch (error) { setNotice(error instanceof Error ? error.message : "Não foi possível excluir o carrinho."); }
+    finally { setReleasingCart(""); }
+  };
 
   const load = useCallback(async (background = false) => {
     if (!background) setBusy(true);
@@ -451,6 +474,9 @@ export default function OperationInstantOrders() {
       .filter((order) => view === "expired" ? order.status === "expired" : view === "finished" ? ["completed", "cancelled"].includes(order.status) : !["completed", "cancelled", "expired"].includes(order.status))
       .filter((order) => !term || `${order.order_number} ${order.customer_name} ${order.customer_phone}`.toLocaleLowerCase("pt-BR").includes(term));
   }, [orders, search, view, statusFilter]);
+  // Pedidos do mesmo celular no mesmo dia: o cliente costuma refazer o pedido
+  // so para mandar uma observacao esquecida. A etiqueta evita separar dois.
+  const sameCustomerToday = useMemo(() => sameDayOrderGroups(orders), [orders]);
   const printSelected = async () => {
     const targets = orders.filter((order) => selectedPrintIds.includes(order.id));
     if (!targets.length) return setNotice("Selecione ao menos um pedido para reimprimir.");
@@ -507,23 +533,30 @@ export default function OperationInstantOrders() {
       return { value: `${item.id}:${unit}`, label: `${item.flavor_name} · ${sauce}` };
     })) || [];
 
-  return <section className="operation-instant-orders">
-    <p className="instant-order-subheading">Pedidos enviados pelo site e reservas de estoque em uma fila única.</p>
+  const hasAnyOrders = orders.length > 0;
+  return <section className={`operation-instant-orders${hasAnyOrders ? "" : " operation-instant-orders-empty"}`}>
     <div className="instant-order-metrics" role="group" aria-label="Filtrar pedidos por etapa">
       <button type="button" aria-pressed={view === "active" && statusFilter === "all"} className={view === "active" && statusFilter === "all" ? "active" : ""} onClick={() => showStatus("all")}><strong>{active.length}</strong><small>em andamento</small></button>
       <button type="button" aria-pressed={statusFilter === "awaiting_confirmation"} className={statusFilter === "awaiting_confirmation" ? "active" : ""} onClick={() => showStatus("awaiting_confirmation")}><strong>{orders.filter((order) => order.status === "awaiting_confirmation").length}</strong><small>para conferir</small></button>
-      <button type="button" aria-pressed={statusFilter === "awaiting_payment"} className={statusFilter === "awaiting_payment" ? "active" : ""} onClick={() => showStatus("awaiting_payment")}><strong>{orders.filter((order) => order.status === "awaiting_payment").length}</strong><small>aguardando pagamento</small></button>
-      <button type="button" aria-pressed={statusFilter === "ready"} className={statusFilter === "ready" ? "active" : ""} onClick={() => showStatus("ready")}><strong>{orders.filter((order) => order.status === "ready").length}</strong><small>prontos</small></button>
+      <button type="button" className={cartsOpen === "active" ? "active" : ""} onClick={() => setCartsOpen(cartsOpen === "active" ? null : "active")}><strong>{activeCarts.length}</strong><small>carrinho{activeCarts.length === 1 ? "" : "s"}</small></button>
+      <button type="button" className={`instant-order-metric-warn${abandonedCarts.length ? "" : " is-zero"}${cartsOpen === "abandoned" ? " active" : ""}`} onClick={() => setCartsOpen(cartsOpen === "abandoned" ? null : "abandoned")}><strong>{abandonedCarts.length}</strong><small>abandonado{abandonedCarts.length === 1 ? "" : "s"}</small></button>
     </div>
+    {cartsOpen ? <div className="instant-order-carts-panel">
+      {(cartsOpen === "active" ? activeCarts : abandonedCarts).length ? (cartsOpen === "active" ? activeCarts : abandonedCarts).map((cart) => (
+        <div className="instant-order-cart-row" key={`${cart.session_id}:${cart.draft_key}`}>
+          <span><strong>{cart.quantity} {cart.quantity === 1 ? "fatia" : "fatias"}</strong><small>última alteração {formatarDataHora(cart.updated_at)}</small></span>
+          {cartsOpen === "abandoned" ? <button type="button" disabled={releasingCart === cart.draft_key} onClick={() => void releaseAbandonedCart(cart)}><Trash2 /> {releasingCart === cart.draft_key ? "Excluindo…" : "Excluir carrinho"}</button> : null}
+        </div>
+      )) : <p className="instant-order-carts-empty">{cartsOpen === "active" ? "Nenhum carrinho em andamento agora." : "Nenhum carrinho abandonado agora."}</p>}
+    </div> : null}
 
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
-    <div className="instant-order-view-switch">
+    {hasAnyOrders ? <><div className="instant-order-view-switch">
       <button className={view === "active" ? "active" : ""} onClick={() => { setView("active"); setStatusFilter("all"); }}>Em andamento</button>
       <button className={view === "expired" ? "active" : ""} onClick={() => { setView("expired"); setStatusFilter("all"); }}>Prazo encerrado ({orders.filter((order) => order.status === "expired").length})</button>
       <button className={view === "finished" ? "active" : ""} onClick={() => { setView("finished"); setSelectedPrintIds([]); }}>Finalizados e reimpressão ({orders.filter((order) => ["completed", "cancelled"].includes(order.status)).length})</button>
     </div>
-    {view === "finished" ? <div className="instant-order-reprint-toolbar"><span>Selecione as comandas que deseja reimprimir.</span><button type="button" onClick={() => void printSelected()} disabled={busy || !selectedPrintIds.length}><Printer /> Reimprimir selecionados ({selectedPrintIds.length})</button></div> : null}
-    <label className="instant-order-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar número, cliente ou celular" aria-label="Buscar pedido por número, cliente ou celular" /></label>
+    {view === "finished" ? <div className="instant-order-reprint-toolbar"><span>Selecione as comandas que deseja reimprimir.</span><button type="button" onClick={() => void printSelected()} disabled={busy || !selectedPrintIds.length}><Printer /> Reimprimir selecionados ({selectedPrintIds.length})</button></div> : null}</> : <p className="instant-order-carts-empty">Nenhum pedido no momento.</p>}
     <div className="instant-order-operation-list">
       {filtered.map((order) => {
         const pedido: Pedido = {
@@ -543,9 +576,13 @@ export default function OperationInstantOrders() {
             : null,
           pago: order.payment_status === "approved",
         };
-        return <div key={order.id} className="instant-order-row-with-select">{view === "finished" ? <label className="instant-order-reprint-select"><input type="checkbox" checked={selectedPrintIds.includes(order.id)} onChange={() => setSelectedPrintIds((current) => current.includes(order.id) ? current.filter((id) => id !== order.id) : [...current, order.id])} aria-label={`Selecionar ${order.order_number} para reimprimir`} /><span>Reimprimir</span></label> : null}<PedidoNaEsteira avisosOficiais pedido={pedido} criadoEm={order.created_at} atualizadoEm={order.updated_at} onAbrir={() => openOrder(order)} /></div>;
+        return <div key={order.id} className="instant-order-row-with-select">{view === "finished" ? <label className="instant-order-reprint-select"><input type="checkbox" checked={selectedPrintIds.includes(order.id)} onChange={() => setSelectedPrintIds((current) => current.includes(order.id) ? current.filter((id) => id !== order.id) : [...current, order.id])} aria-label={`Selecionar ${order.order_number} para reimprimir`} /><span>Reimprimir</span></label> : null}<button type="button" className="instant-order-compact-row" onClick={() => openOrder(order)}>
+          <span className="instant-order-compact-stage">{JORNADA[pedido.etapa].operacao}</span>
+          <span className="instant-order-compact-main">{pedido.numero} · {nomeLegivel(pedido.cliente)} · {formatarTelefoneBR(pedido.telefone)}</span>
+          {sameCustomerToday.get(order.id) ? <span className="instant-order-same-customer">{sameCustomerToday.get(order.id)!.position}º pedido deste cliente hoje · também {sameCustomerToday.get(order.id)!.others.join(", ")}</span> : null}
+        </button></div>;
       })}
-      {!filtered.length ? <div className="operation-empty"><ShoppingCart /><p>{statusFilter !== "all" && view === "active" ? "Nenhum pedido nesta etapa agora." : "Nenhum pedido de retirada encontrado."}</p></div> : null}
+      {!filtered.length ? <div className={`operation-empty${hasAnyOrders ? "" : " compact"}`}><ShoppingCart /><p>{statusFilter !== "all" && view === "active" ? "Nenhum pedido nesta etapa agora." : "Nenhum pedido de retirada encontrado."}</p></div> : null}
     </div>
     {selected ? <div className="instant-order-operation-layer">
       <button className="instant-order-operation-backdrop" aria-label="Fechar" onClick={() => setSelected(null)} />
@@ -560,6 +597,8 @@ export default function OperationInstantOrders() {
         </div>
         <p>{formatarTelefoneBR(selected.customer_phone)} · {labels[selected.status]}</p>
         <p><strong>Pedido em</strong> {formatarDataHora(selected.created_at)}{selected.pickup_label ? <> · <strong>Retirada</strong> {selected.pickup_label}</> : null}{selected.pickup_requested_time ? <> · <strong>Horário</strong> {selected.pickup_requested_time.slice(0, 5)} · {selected.pickup_method === "driver" ? "entregador de aplicativo" : "cliente"}</> : null}</p>
+        {selected.pickup_address ? <p><strong>Local da retirada:</strong> {selected.pickup_address}</p> : null}
+        {sameCustomerToday.get(selected.id) ? <p className="instant-order-same-customer">{sameCustomerToday.get(selected.id)!.position}º pedido deste cliente hoje. Confira também: {sameCustomerToday.get(selected.id)!.others.join(", ")}</p> : null}
         {selected.customer_notes ? <p className="thermal-pickup-note">{selected.customer_notes}</p> : null}
         <ol className="instant-order-status-track" aria-label="Andamento do pedido">
           {operationalSteps.map((step, index) => {
@@ -673,4 +712,24 @@ export default function OperationInstantOrders() {
       </aside>
     </div> : null}
   </section>;
+}
+
+export function sameDayOrderGroups(orders: Pick<InstantOrder, "id" | "order_number" | "customer_phone" | "status" | "created_at">[]) {
+  const groups = new Map<string, typeof orders>();
+  for (const order of orders) {
+    if (["cancelled", "expired"].includes(order.status) || !order.customer_phone) continue;
+    const day = new Date(order.created_at).toLocaleDateString("en-CA", { timeZone: "America/Fortaleza" });
+    const key = `${order.customer_phone.replace(/\D/g, "")}|${day}`;
+    groups.set(key, [...(groups.get(key) || []), order]);
+  }
+  const result = new Map<string, { position: number; others: string[] }>();
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const sorted = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    sorted.forEach((order, index) => result.set(order.id, {
+      position: index + 1,
+      others: sorted.filter((other) => other.id !== order.id).map((other) => other.order_number),
+    }));
+  }
+  return result;
 }

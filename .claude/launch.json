@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "5190"],
       "port": 5190
+    },
+    {
+      "name": "adoce-netlify-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "netlify-cli@26.2.0", "dev", "--no-open", "-p", "8888"],
+      "port": 8888
     }
   ]
 }

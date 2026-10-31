@@ -413,10 +413,14 @@ export default function WhatsAppSupportInbox() {
   };
 
   const waitingCount = useMemo(
-    () => view === "active" ? threads.filter((item) => item.status === "waiting" && item.automation_mode !== "bot").length : 0,
+    () => view === "active" ? threads.filter((item) => item.status === "waiting" && item.automation_mode !== "bot" && item.has_customer_messages).length : 0,
     [threads, view],
   );
-  const visibleThreads = useMemo(() => threads.filter((item) => threadBelongsToView(item, view) && (
+  // Avisos automáticos (carimbo, confirmação de pedido etc.) viram uma linha
+  // aqui mesmo sem o cliente nunca ter respondido. Isso não é atendimento —
+  // não aparece em "Em atendimento", só mensura quem de fato está
+  // conversando com a Adoce.
+  const visibleThreads = useMemo(() => threads.filter((item) => threadBelongsToView(item, view) && (view === "history" || item.has_customer_messages) && (
     !search.trim() || item.phone_last4.includes(search.trim()) ||
     (item.phone_e164 || "").includes(search.replace(/\D/g, "") || "#") ||
     (item.customer_name || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")) ||

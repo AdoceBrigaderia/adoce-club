@@ -1,0 +1,89 @@
+.operation-whatsapp-alerts {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 2px;
+}
+.operation-whatsapp-alerts-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 2px;
+  color: #765b51;
+  font-size: 0.85rem;
+}
+.operation-whatsapp-alerts-empty svg { width: 16px; height: 16px; }
+.operation-whatsapp-alert {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.operation-whatsapp-alert.waiting { background: #e8b020; }
+.operation-whatsapp-alert.failed { background: #d94c4c; }
+.operation-whatsapp-alerts > span {
+  font-size: 0.82rem;
+  color: #3a170f;
+}
+.operation-whatsapp-alert-card {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 8px);
+  left: 0;
+  width: min(320px, 90vw);
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #ead2c4;
+  border-radius: 14px;
+  background: #fffdfb;
+  box-shadow: 0 20px 44px rgba(58, 23, 15, 0.18);
+}
+.operation-whatsapp-alert-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  border: 0;
+  background: transparent;
+  color: #765b51;
+}
+.operation-whatsapp-alert-card h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-right: 24px;
+  font-size: 0.98rem;
+}
+.operation-whatsapp-alert-card h4 svg { width: 18px; height: 18px; }
+.operation-whatsapp-alert-card p {
+  margin: 0;
+  color: #765b51;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+.operation-whatsapp-alert-card ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: #3a170f;
+}
+.operation-whatsapp-alert-action {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #3a170f;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+}

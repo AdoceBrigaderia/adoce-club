@@ -10,7 +10,9 @@ const profile = access.slice(profileStart, profileEnd);
 describe("prioridade da Minha conta", () => {
   it("abre com os carimbos antes das ações secundárias", () => {
     expect(profile.indexOf("club-account-loyalty")).toBeGreaterThanOrEqual(0);
-    expect(profile.indexOf("club-account-loyalty")).toBeLessThan(profile.indexOf("club-account-actions"));
+    expect(profile.indexOf("club-account-loyalty")).toBeLessThan(profile.indexOf("club-account-primary-actions"));
+    // Os atalhos de pedidos, favoritos, endereços e pagamentos saíram da tela.
+    expect(profile).not.toContain("club-account-actions\"");
     expect(profile).not.toContain("club-account-identity");
     expect(profile).not.toContain("club-account-heading");
   });
@@ -26,7 +28,7 @@ describe("prioridade da Minha conta", () => {
     expect(profile).toContain("snapshot.rewards > 0");
     expect(profile).toContain("fatia grátis disponível");
     expect(profile).toContain("fatias grátis disponíveis");
-    expect(profile).toContain("Informe seu Código do Membro no atendimento para resgatar.");
+    expect(profile).toContain("Informe o nome e sobrenome do membro no atendimento para resgatar sua fatia!");
     expect(styles).toContain(".club-account-reward-ready");
   });
 });

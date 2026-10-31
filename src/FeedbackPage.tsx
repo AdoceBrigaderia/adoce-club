@@ -1,6 +1,5 @@
 import { FormEvent, useState } from "react";
 import { ArrowLeft, CheckCircle2, MessageSquareText, Send } from "lucide-react";
-import PublicFooter from "./PublicFooter";
 import "./institutional-2026.css";
 
 export default function FeedbackPage() {
@@ -59,7 +58,6 @@ export default function FeedbackPage() {
         </section>
       </div>
 
-      <PublicFooter />
     </main>
   );
 }

@@ -234,3 +234,15 @@ Nas fichas, títulos compactos e rolagem horizontal preservam a leitura da tabel
 
 No cadastro rápido, telefone já existente abre automaticamente o perfil encontrado e não lança carimbo apenas por ter sido aberto.
 
+# Compactação da venda no Caixa — 29/10/2026
+
+Para aproveitar melhor a altura do tablet, o título **Fatias disponíveis hoje** foi reduzido para **Caixa**. A busca do Clube Adoce, o celular e o nome do cliente ficam alinhados ao lado do título e imediatamente antes dos cards de sabores. Foram removidos o agrupador visual **Identificação do cliente** e os textos **(opcional)**, sem tornar esses dados obrigatórios. A fila de **Pedidos online** permanece abaixo da venda local, conforme a decisão operacional vigente, para que o caixa veja e trate os pedidos recebidos pelo site.
+
+# Reserva online e estado do estoque — 30/10/2026
+
+Adicionar fatias ao carrinho público ou enviar um pedido para conferência não reserva estoque. Os itens permanecem apenas selecionados até a ação explícita **Registrar reserva no estoque**, executada por uma pessoa da Operação na fila de pedidos online. Somente itens no estado técnico `reserved` entram em `quantity_reserved`; itens `selected` não entram no cálculo. Reservas temporárias do carrinho interno do próprio Caixa continuam separadas desse fluxo.
+
+Quando o saldo livre chega a zero, o estado automático é **Indisponível**, nunca **Esgotado**. Com uma a três unidades livres, o estado automático é **Últimas unidades**. Se uma reserva que havia zerado o saldo for liberada, o estado retorna automaticamente conforme o saldo disponível, sem desfazer uma indisponibilidade definida manualmente pela Operação. A continuidade para o dia seguinte só carrega saldo livre estritamente positivo e nunca carrega registros indisponíveis ou esgotados.
+
+Estado: correção implementada localmente, com testes focados e TypeScript validados. A migração ainda não foi aplicada ao banco de produção, a interface ainda não foi validada visualmente em tablet e nenhuma publicação foi feita.
+

@@ -65,9 +65,14 @@
 .cash-register-page .cash-empty-flavors strong{font:700 17px Inter,system-ui,sans-serif}
 .cash-register-page .cash-empty-flavors p{margin:0;color:#6f5249;font-size:15px;line-height:1.45}
 .cash-register-page .cash-mobile-checkout{display:none}
-.cash-register-page .cash-admin-menu{margin-top:16px;border:1px solid #eadbcc;border-radius:14px;background:#fffaf2}
-.cash-register-page .cash-admin-menu>summary{min-height:48px;padding:12px 16px;display:flex;align-items:center;font:600 15px Inter,system-ui,sans-serif;color:#432115;cursor:pointer}
-.cash-register-page .cash-admin-menu>.cash-session-actions{padding:0 16px 14px}
+.cash-register-page .cash-admin-menu{margin-top:16px;padding:14px 16px;border:1px solid #eadbcc;border-radius:14px;background:#fffaf2;display:flex;flex-wrap:wrap;gap:10px}
+.cash-register-page .cash-admin-menu>.cash-session-actions{display:contents;padding:0}
+.cash-register-page .cash-admin-menu .cash-session-actions button,
+.cash-register-page .cash-admin-menu>.cash-finished-reprint-link,
+.cash-register-page .cash-admin-menu>.cash-release-other-drafts{flex:1 1 calc(25% - 8px);min-width:160px;margin:0;justify-content:center}
+.cash-finished-reprint-link{display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 18px;border:1px solid #dcbcaf;border-radius:12px;background:#fff8ef;color:#432115}
+.cash-finished-reprint-link svg{width:16px}
+@media(max-width:700px){.cash-register-page .cash-admin-menu .cash-session-actions button,.cash-register-page .cash-admin-menu>.cash-finished-reprint-link,.cash-register-page .cash-admin-menu>.cash-release-other-drafts{flex:1 1 calc(50% - 6px)}}
 .cash-register-page .cash-modal-close svg{width:20px;height:20px}
 @media(max-width:899px){
   .cash-register-page .cash-mobile-checkout{position:sticky;z-index:40;bottom:calc(72px + env(safe-area-inset-bottom));margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 10px 10px 16px;border-radius:16px;background:#3b271b;color:#fff8ee;box-shadow:0 14px 34px rgba(40,20,12,.3)}

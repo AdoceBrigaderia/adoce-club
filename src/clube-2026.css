@@ -139,7 +139,7 @@ body:has(.customer-app-shell) {
 .customer-app-shell .club-account-stamps svg { padding:4px; }
 .customer-app-shell .club-account-actions a { min-height:138px; }
 
-@media (max-width: 760px) {
+@media all { /* o Clube é sempre a coluna de celular */
   .customer-app-shell .access-page.client.registering { min-height: 100svh; padding: 120px 14px 120px; background-size:100% 100px; }
   .customer-app-shell .access-page.client.registering > header { height:120px; padding-inline:18px; background-size:auto 62px; }
   .customer-app-shell .access-page.client.registering > header .access-brand img { width:88px; height:88px; }

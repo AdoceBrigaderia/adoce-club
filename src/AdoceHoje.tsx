@@ -486,6 +486,9 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [weeklyMenu, setWeeklyMenu] = useState<WeeklyMenuItem[]>([]);
   const [weekBatches, setWeekBatches] = useState<WeekBatch[]>([]);
+  // Até os dados chegarem, o cardápio compacto não mostra a lista de reserva
+  // (todos indisponíveis), que aparecia como uma tela antiga por um instante.
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
   const [compactWeekDay, setCompactWeekDay] = useState(0);
   const compactWeekDayUserPicked = useRef(false);
   const [confirmedPickupDays, setConfirmedPickupDays] = useState<Set<string>>(new Set());
@@ -655,6 +658,8 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
       if (weeklyMenuData) setWeeklyMenu(weeklyMenuData as WeeklyMenuItem[]);
       if (weekBatchData) setWeekBatches(weekBatchData as WeekBatch[]);
       setUpdated(!catalogError);
+      setCatalogLoaded(true);
+      setCatalogLoaded(true);
     })();
   }, [compact]);
   const visible = useMemo(
@@ -670,11 +675,8 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
   const compactWeekDays = useMemo(() => {
     if (!compact) return [];
     const today = getFortalezaNow().date;
-    const todayWeekday = getFortalezaNow().weekday; // 0=Sun..6=Sat
-    const daysSinceMonday = (todayWeekday + 6) % 7;
-    const weekStart = dateAfter(today, -daysSinceMonday);
     return Array.from({ length: 7 }, (_, index) => {
-      const date = dateAfter(weekStart, index);
+      const date = dateAfter(today, index);
       const isPast = date < today;
       const dayBatches = isPast ? [] : weekBatches.filter((batch) => batch.service_date === date);
       const freeByFlavor = new Map<string, number>();
@@ -989,26 +991,19 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
       )}
       </>
       )}
+      {compact && !catalogLoaded ? (
+        <section className="today-flavors today-flavors-loading" id="sabores" aria-busy="true"><p>Carregando o cardápio...</p></section>
+      ) : (
       <section className="today-flavors" id="sabores">
-        {compact && (
+        {compact && !showingTodayGrid && selectedCompactDay && (
         <div className="today-compact-intro">
-          <p className="today-compact-date">
-            {showingTodayGrid || !selectedCompactDay
-              ? compactDateLabel
-              : fullDayLabel(selectedCompactDay.date)}
+          <p className="today-compact-date">{fullDayLabel(selectedCompactDay.date)}</p>
+          <h1 className="today-compact-title">Cardápio da semana</h1>
+          <p className="today-compact-subtitle">
+            {selectedCompactDay.isPast
+              ? "Esse dia já passou — confira a produção de hoje ou dos próximos dias."
+              : "Hoje ainda não tem produção liberada — veja o que já está planejado para os próximos dias."}
           </p>
-          <h1 className="today-compact-title">
-            {showingTodayGrid
-              ? "Sabores de nossas fatias de hoje"
-              : "Cardápio da semana"}
-          </h1>
-          {!showingTodayGrid && (
-            <p className="today-compact-subtitle">
-              {selectedCompactDay?.isPast
-                ? "Esse dia já passou — confira a produção de hoje ou dos próximos dias."
-                : "Hoje ainda não tem produção liberada — veja o que já está planejado para os próximos dias."}
-            </p>
-          )}
         </div>
         )}
         {compact && compactWeekDays.length > 0 && (
@@ -1128,6 +1123,15 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
                     </strong>
                   </div>
                 </div>
+                {instantOrderFlavors.some((item) => item.id === flavor.id) ? (
+                  <button className="today-order-flavor" type="button" onClick={() => openInstantOrder(flavor.id)}>
+                    <ShoppingBag /> <span>Realizar pedido</span>
+                  </button>
+                ) : (
+                  <button className="today-order-flavor today-alert-flavor" type="button" onClick={() => setAlertFlavor(flavor)}>
+                    <Bell /> <span>Avise quando voltar</span>
+                  </button>
+                )}
                 <button className="today-gallery-link" type="button" onClick={() => setSelectedFlavor(flavor)}>
                   Conhecer o sabor
                 </button>
@@ -1218,12 +1222,8 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
           ))}
         </div>
         )}
-        {compact && (
-          <a className="today-see-all-link" href="/cardapio">
-            Conhecer todas as nossas delícias Adoce
-          </a>
-        )}
       </section>
+      )}
       {!compact && (
       <>
       {wholeCakes.length > 0 && (
@@ -1327,10 +1327,6 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
           </small>
         </div>
       </section>
-      <footer className="today-footer">
-        <Brand />
-        <p>Aqui na Adoce você compra a fatia e a felicidade vai junto.</p>
-      </footer>
       <div className="today-mobile-bar">
         {open ? (
           <a href={maps} target="_blank" rel="noreferrer">
@@ -1351,7 +1347,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
       )}
       <InstantOrderPanel
         open={instantOrderOpen}
-        onClose={() => setInstantOrderOpen(false)}
+        onClose={() => { if (openCartOnLoad) { window.location.href = "/"; return; } setInstantOrderOpen(false); }}
         flavors={instantOrderFlavors}
         initialFlavorId={initialOrderFlavorId}
         pickupWindows={pickupWindows}

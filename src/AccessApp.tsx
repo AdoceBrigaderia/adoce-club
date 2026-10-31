@@ -13,7 +13,6 @@ import CashDayGuard from "./CashDayGuard";
 import {  operationNavigateEvent, type OperationAreaRequest, type StampSale  } from "./lib/operation-navigation";
 import {  describeOperationMessage, type OperationMessageKind  } from "./lib/operation-feedback";
 import NativePrinterSettings from "./NativePrinterSettings";
-import OperationSliceAlerts from "./OperationSliceAlerts";
 import {  syncNativeOperationSession  } from "./lib/native-operation";
 import {  productionApiOrigin  } from "./lib/native-api";
 import "./cash-register-layout.css";
@@ -1154,16 +1153,6 @@ function AuthScreen({ surface }: { surface: Surface }) {
         {surface === "operation" && <a href="/entrar">Sou membro</a>}
       </header>
       <section className="access-auth-shell">
-        {surface === "client" && <div className="access-auth-copy">
-          <span>{invited ? "Você recebeu um convite" : registering ? "Cadastro rápido" : "Faça parte do Clube Adoce"}</span>
-          <h1>{invited ? "Você já começa mais perto da sua fatia premiada." : registering ? "Seu cartão fidelidade começa aqui." : "Entrar"}</h1>
-          <p>{invited ? "Aceite o convite e ganhe 1 carimbo extra na primeira compra." : registering ? "Preencha seus dados uma vez, confirme o código e entre direto no seu cartão." : "Acesse sua conta para acompanhar pedidos, carimbos e recompensas do Clube Adoce."}</p>
-          <div className="access-promise">
-            <Heart />
-            <strong>1 fatia = 1 carimbo</strong>
-            <small>Tradicional ou premium</small>
-          </div>
-        </div>}
         <div className="access-auth-card">
           <img src="/brand-2026/logo-adoce-transparente.png" alt="" />
           <h2>
@@ -1494,7 +1483,9 @@ function AuthScreen({ surface }: { surface: Surface }) {
                   setLoginMode("password");
                 } else {
                   setRegistering(!registering);
-                  setLoginMode("email");
+                  // Entrar sempre começa por celular e senha; o e-mail fica
+                  // como caminho secundário ("Primeiro acesso ou criar senha").
+                  setLoginMode("password");
                   if (!registering) {
                     sessionStorage.removeItem(passwordRecoveryStorageKey);
                   }
@@ -2474,7 +2465,7 @@ function CustomerHome({ session }: { session: Session }) {
               {snapshot.rewards > 0 && (
                 <div className="club-account-reward-ready" role="status">
                   <Gift />
-                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Informe seu Código do Membro no atendimento para resgatar.</small></span>
+                  <span><strong>{snapshot.rewards === 1 ? "1 fatia grátis disponível" : `${snapshot.rewards} fatias grátis disponíveis`}</strong><small>Informe o nome e sobrenome do membro no atendimento para resgatar sua fatia!</small></span>
                 </div>
               )}
             </div>
@@ -2483,13 +2474,6 @@ function CustomerHome({ session }: { session: Session }) {
 
           <div className="club-account-primary-actions" aria-label="Ações principais da conta">
             <a href="/cardapio"><ShoppingCart /><span>Fazer pedido online</span></a>
-          </div>
-
-          <div className="club-account-actions">
-            <a href="/carrinho"><span><Package /></span><strong>Meus pedidos</strong><small>Acompanhe seus pedidos e retiradas.</small><ArrowRight /></a>
-            <a href="/cardapio"><span><Heart /></span><strong>Favoritos</strong><small>Salve seus sabores e produtos preferidos.</small><ArrowRight /></a>
-            <a href="#profile-settings"><span><MapPin /></span><strong>Endereços</strong><small>Gerencie locais para retirada e referência.</small><ArrowRight /></a>
-            <a href="#profile-settings"><span><CreditCard /></span><strong>Pagamentos</strong><small>Consulte suas preferências de pagamento.</small><ArrowRight /></a>
           </div>
 
           <article className="club-account-order-empty">
@@ -2702,11 +2686,11 @@ function OperationHome({ session }: { session: Session }) {
   const [manualQr, setManualQr] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"store" | "hours" | "team" | "visual">("store");
+  const [settingsTab, setSettingsTab] = useState<"store" | "hours" | "team" | "visual" | "online">("store");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const customerResultsRef = useRef<HTMLDivElement | null>(null);
-  const customerListDetailsRef = useRef<HTMLDetailsElement | null>(null);
+  const customerListDetailsRef = useRef<HTMLDivElement | null>(null);
   const operationWorkRef = useRef<HTMLElement | null>(null);
   const operationNavigationHistoryRef = useRef<OperationNavigationLocation[]>([]);
   const scrollOperationToTop = useCallback(() => {
@@ -3353,7 +3337,6 @@ function OperationHome({ session }: { session: Session }) {
   const showCustomersByStatus = async (statusFilter: MemberStatusFilter) => {
     setMemberStatusFilter(statusFilter);
     setQuery("");
-    if (customerListDetailsRef.current) customerListDetailsRef.current.open = true;
     await search("", statusFilter);
     window.requestAnimationFrame(() => {
       customerResultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -3489,7 +3472,6 @@ function OperationHome({ session }: { session: Session }) {
     window.addEventListener(operationNavigateEvent, onNavigate);
     return () => window.removeEventListener(operationNavigateEvent, onNavigate);
   });
-  const roleLabel = role === "owner" ? "Proprietário" : role === "manager" ? "Gerente" : "Atendimento";
   const signOutOperation = useCallback(async () => {
     const confirmed = await confirmAction("Sair da operação neste aparelho? No tablet, novos pedidos deixam de ser recebidos e impressos até o próximo login.", {
       confirmLabel: "Sair da operação",
@@ -3499,6 +3481,7 @@ function OperationHome({ session }: { session: Session }) {
   }, []);
   // Um único mapa de destinos alimenta o menu superior e a barra inferior:
   // ninguém vê um botão que leva a uma tela bloqueada para o próprio perfil.
+  const roleLabel = role === "owner" ? "Proprietário" : role === "manager" ? "Gerente" : "Atendimento";
   const operationNavItems: Array<{ view: OperationView; label: string; shortLabel: string; icon: typeof LayoutDashboard; open: () => void }> = [
     { view: "dashboard", label: "Hoje", shortLabel: "Hoje", icon: LayoutDashboard, open: () => void openView("dashboard") },
     { view: "orders", label: "Pedidos", shortLabel: "Pedidos", icon: ShoppingCart, open: () => openCommercial("sales") },
@@ -3951,19 +3934,6 @@ function OperationHome({ session }: { session: Session }) {
   );
   return (
     <main className="operation-home">
-      <header>
-        <Brand label="Adoce Operação" />
-        <div>
-          <OperationAccountMenu
-            name={currentStaffBadge?.name || String(session.user.user_metadata?.full_name || session.user.user_metadata?.name || "")}
-            avatarUrl={currentStaffBadge?.avatarUrl}
-            roleLabel={roleLabel}
-            onInstall={() => setInstallGuideOpen(true)}
-            onSettings={() => void openView("settings")}
-            onSignOut={() => void signOutOperation()}
-          />
-        </div>
-      </header>
       <div className="operation-shell">
         <aside aria-label="Navegação da operação">
           {operationNavItems.map((item) => (
@@ -3977,6 +3947,16 @@ function OperationHome({ session }: { session: Session }) {
               <item.icon /> {item.label}
             </button>
           ))}
+          <div className="operation-nav-account">
+            <OperationAccountMenu
+              name={currentStaffBadge?.name || String(session.user.user_metadata?.full_name || session.user.user_metadata?.name || "")}
+              avatarUrl={currentStaffBadge?.avatarUrl}
+              roleLabel={roleLabel}
+              onInstall={() => setInstallGuideOpen(true)}
+              onSettings={() => void openView("settings")}
+              onSignOut={() => void signOutOperation()}
+            />
+          </div>
         </aside>
         <section className="operation-work">
           {selected && (
@@ -4061,27 +4041,6 @@ function OperationHome({ session }: { session: Session }) {
                 />
               ) : null}
               {!selected && !cadastrando && <>
-              <div className="operation-title">
-                <div>
-                  <span>Clientes e fidelidade</span>
-                  <h1>Clientes & Clube Adoce</h1>
-                  <p>
-                    Busque, carimbe e cadastre no balcão. Um toque por fatia.
-                  </p>
-                </div>
-                <button
-                  className="operation-scan-button"
-                  onClick={() => void startScanner()}
-                >
-                  <Camera /> Ler QR do membro
-                </button>
-              </div>
-              <OperationSliceAlerts />
-              <div className="operation-member-counts operation-member-counts-simple" aria-label="Quantidade de clientes ativos">
-                <button type="button" className={memberStatusFilter === "active" ? "active" : ""} aria-pressed={memberStatusFilter === "active"} onClick={() => void showCustomersByStatus("active")}>
-                  <b>{memberCounts.active}</b><span>ativos</span>
-                </button>
-              </div>
               {acessoDoBalcao ? (
                 <section className="cad-acesso" role="status">
                   <p>
@@ -4143,9 +4102,9 @@ function OperationHome({ session }: { session: Session }) {
                 onCadastrar={() => setCadastrando(true)}
                 carregando={busy}
               />
-              <details ref={customerListDetailsRef} className="operation-full-customer-list">
-                <summary>Lista completa, busca e ficha</summary>
-              <div className="operation-search-row">
+              <div ref={customerListDetailsRef} className="operation-full-customer-list">
+              <div className="operation-customer-directory-bar">
+                <span>Lista completa, busca e ficha</span>
                 <form
                   className="operation-search"
                   onSubmit={(e) => {
@@ -4163,6 +4122,11 @@ function OperationHome({ session }: { session: Session }) {
                     {busy ? "Buscando..." : "Buscar"}
                   </button>
                 </form>
+                <div className="operation-member-counts operation-member-counts-simple" aria-label="Quantidade de clientes ativos">
+                  <button type="button" className={memberStatusFilter === "active" ? "active" : ""} aria-pressed={memberStatusFilter === "active"} onClick={() => void showCustomersByStatus("active")}>
+                    <b>{memberCounts.active}</b><span>ativos</span>
+                  </button>
+                </div>
               </div>
               <form className="operation-customer-filters" onSubmit={(event) => { event.preventDefault(); void search(query, memberStatusFilter, 1); }}>
                 <label>Cadastro desde<input type="date" value={customerRegisteredFrom} onChange={(event) => setCustomerRegisteredFrom(event.target.value)} /></label>
@@ -4174,7 +4138,7 @@ function OperationHome({ session }: { session: Session }) {
               </form>
               {customerList}
               {customerTotal > 50 ? <nav className="operation-customer-pagination" aria-label="Paginação de clientes"><button type="button" disabled={busy || customerPage <= 1} onClick={() => void search(query, memberStatusFilter, customerPage - 1)}>← Anterior</button><span>Página {customerPage} de {Math.ceil(customerTotal / 50)}</span><button type="button" disabled={busy || customerPage * 50 >= customerTotal} onClick={() => void search(query, memberStatusFilter, customerPage + 1)}>Próxima →</button></nav> : null}
-              </details>
+              </div>
               </>}
               {selected ? (
                 <div className="operation-customer print-scope">
@@ -4609,7 +4573,7 @@ function OperationHome({ session }: { session: Session }) {
             <div className="operation-products-workspace">
               <nav className="content-tabs" aria-label="Áreas de produtos">
                 <button className={productArea === "flavors" ? "active" : ""} onClick={() => setProductArea("flavors")}><CakeSlice /> Fatias e disponibilidade</button>
-                {(role === "owner" || role === "manager") ? <button className={productArea === "commercial" ? "active" : ""} onClick={() => setProductArea("commercial")}><Package /> Encomendas e eventos</button> : null}
+                {(role === "owner" || role === "manager") ? <button className={productArea === "commercial" ? "active" : ""} onClick={() => setProductArea("commercial")}><Package /> Catálogo comercial</button> : null}
               </nav>
               {productArea === "flavors" ? (
                 <Suspense fallback={<p>Carregando produtos...</p>}>
@@ -4635,9 +4599,9 @@ function OperationHome({ session }: { session: Session }) {
               <OperationCommercialAdmin
                 session={session}
                 role={role}
-                initialTab={commercialTab}
+                initialTab="sales"
                 onTabChange={(next) => openCommercial(next as OperationCommercialTab)}
-                allowedTabs={["sales", "requests", "settings"]}
+                allowedTabs={["sales"]}
               />
             </Suspense>
           )}
@@ -4674,6 +4638,7 @@ function OperationHome({ session }: { session: Session }) {
                 <button className={settingsTab === "hours" ? "active" : ""} onClick={() => setSettingsTab("hours")}><Clock3 /> Funcionamento</button>
                 {role === "owner" ? <button className={settingsTab === "team" ? "active" : ""} onClick={() => setSettingsTab("team")}><ShieldCheck /> Equipe</button> : null}
                 <button className={settingsTab === "visual" ? "active" : ""} onClick={() => setSettingsTab("visual")}><Images /> Fotos do site</button>
+                <button className={settingsTab === "online" ? "active" : ""} onClick={() => setSettingsTab("online")}><ShoppingCart /> Reserva online</button>
               </nav>
               {settingsTab === "store" ? (
                 <>
@@ -4682,6 +4647,11 @@ function OperationHome({ session }: { session: Session }) {
                     <OperationCommerceSettings />
                   </Suspense>
                 </>
+              ) : null}
+              {settingsTab === "online" ? (
+                <Suspense fallback={<p>Carregando reserva online...</p>}>
+                  <OperationCommerceSettings area="orders" />
+                </Suspense>
               ) : null}
               {settingsTab === "hours" ? (
                 <Suspense fallback={<p>Carregando funcionamento...</p>}>
@@ -4772,19 +4742,9 @@ function OperationHome({ session }: { session: Session }) {
             </div>
           )}
           {installGuideOpen && (
-            <div
-              className="operation-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Como instalar o aplicativo"
-            >
+            <div className="operation-modal" role="dialog" aria-modal="true" aria-label="Como instalar o aplicativo">
               <div className="install-modal">
-                <InstallGuide
-                  {...installApp}
-                  appName="o Adoce Operação"
-                  onInstall={installApp.install}
-                  onClose={() => setInstallGuideOpen(false)}
-                />
+                <InstallGuide {...installApp} appName="o Adoce Operação" onInstall={installApp.install} onClose={() => setInstallGuideOpen(false)} />
               </div>
             </div>
           )}

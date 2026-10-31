@@ -10,7 +10,6 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
-import PublicFooter from "./PublicFooter";
 import "./institutional-2026.css";
 
 export default function OrderPolicyPage() {
@@ -56,7 +55,6 @@ export default function OrderPolicyPage() {
         </section>
       </div>
 
-      <PublicFooter />
     </main>
   );
 }

@@ -47,7 +47,6 @@ import { normalizeInstagramUrl, type CommercialMediaItem } from "./commercial-me
 import OperationInstantOrders from "./OperationInstantOrders";
 import OperationFinance from "./OperationFinance";
 import OperationCommerceSettings from "./OperationCommerceSettings";
-import MetaCatalogAdmin from "./MetaCatalogAdmin";
 import {
   CommercialProduct,
   CommercialProductOption,
@@ -913,7 +912,7 @@ export default function OperationCommercialAdmin({
 
   return (
     <div className="operation-commercial">
-      <div className="operation-title">
+      {tab !== "sales" ? <div className="operation-title">
         <div>
           <span>{presentation.eyebrow}</span>
           <h1>{presentation.title}</h1>
@@ -922,7 +921,7 @@ export default function OperationCommercialAdmin({
         <button className="commercial-refresh" onClick={() => void load()} disabled={busy}>
           <RefreshCw /> Atualizar
         </button>
-      </div>
+      </div> : null}
 
       {(["agenda", "requests", "crm", "feedback"] as AdminTab[]).includes(tab) ? <div className="operation-commercial-metrics">
         <span><strong>{activeRequests.length}</strong><small>pedidos ativos</small></span>
@@ -933,7 +932,7 @@ export default function OperationCommercialAdmin({
 
 
 
-      <nav className="operation-commercial-tabs"><div><span>{allowedTabs.map((area) => <button key={area} type="button" className={tab === area ? "active" : ""} onClick={() => changeTab(area)}>{tabPresentation[area].title}</button>)}</span></div></nav>
+      {allowedTabs.length > 1 ? <nav className="operation-commercial-tabs"><div><span>{allowedTabs.map((area) => <button key={area} type="button" className={tab === area ? "active" : ""} onClick={() => changeTab(area)}>{tabPresentation[area].title}</button>)}</span></div></nav> : null}
 
       {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
 
@@ -1047,69 +1046,6 @@ export default function OperationCommercialAdmin({
 
       {tab === "catalog" ? (
         <div className="operation-catalog-admin">
-          <MetaCatalogAdmin session={session} onProductsChanged={load} />
-          <section className="operation-segment-media">
-            <div>
-              <small>Fotos principais das páginas</small>
-              <h2>Galerias reais por categoria</h2>
-              <p>As fotos das categorias aparecem junto dos produtos e valores correspondentes.</p>
-            </div>
-            <div className="operation-segment-media-grid">
-              {activeCommercialSegments.filter((segment) => segment !== "sweets").map((segment) => {
-                const media = segmentMedia.find((item) => item.segment === segment);
-                return (
-                  <article key={segment}>
-                    {media ? <img src={media.image_url} alt={media.alt_text} /> : <ImagePlus />}
-                    <span><strong>{segmentLabels[segment]}</strong><small>{media ? "Foto publicada" : "Sem foto"}</small></span>
-                    <div className="operation-image-actions">
-                      <label>
-                        <ImagePlus /> Escolher foto
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          disabled={busy}
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            if (file) setPendingImage({
-                              file,
-                              kind: "gallery",
-                              segment,
-                              title: `Foto principal de ${segmentLabels[segment]}`,
-                              preset: CATEGORY_IMAGE_PRESET,
-                            });
-                            event.currentTarget.value = "";
-                          }}
-                        />
-                      </label>
-                      <ClipboardImageInput
-                        disabled={busy}
-                        onError={setNotice}
-                        onImage={(file) => setPendingImage({
-                          file,
-                          kind: "gallery",
-                          segment,
-                          title: `Foto principal de ${segmentLabels[segment]}`,
-                          preset: CATEGORY_IMAGE_PRESET,
-                        })}
-                      />
-                    </div>
-                    <CommercialMediaAdmin
-                      title={`Galeria de ${segmentLabels[segment]}`}
-                      items={galleryFor({ segment })}
-                      busy={busy}
-                      onError={setNotice}
-                      onImage={(file) => setPendingImage({ file, kind: "gallery", segment, title: `Foto de ${segmentLabels[segment]}`, preset: CATEGORY_IMAGE_PRESET })}
-                      onReplace={(item, file) => setPendingImage({ file, kind: "gallery", segment, mediaItemId: item.id, title: `Substituir foto de ${segmentLabels[segment]}`, preset: CATEGORY_IMAGE_PRESET })}
-                      onAddReel={(url, caption) => addInstagramMedia({ segment }, url, caption)}
-                      onMove={(item, direction) => void moveGalleryMedia({ segment }, item, direction)}
-                      onCover={(item) => void setGalleryCover({ segment }, item)}
-                      onRemove={(item) => void removeGalleryMedia(item)}
-                    />
-                  </article>
-                );
-              })}
-            </div>
-          </section>
           <div className="operation-product-list">
             <button className="operation-new-product" onClick={() => setSelectedProduct(newProduct())}>
               <Plus /><span><small>Cadastro</small><strong>Novo produto</strong></span><ArrowRight />
