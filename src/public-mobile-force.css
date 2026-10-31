@@ -267,3 +267,4 @@ html body .instant-order-panel .instant-order-same-day-more summary { display: f
 html body .instant-order-panel .instant-order-same-day-more summary svg { width: 18px; height: 18px; }
 html body .instant-order-panel .instant-order-same-day-more[open] summary { margin-bottom: 8px; }
 html body .instant-order-panel .instant-order-same-day-aware span { color: #fff !important; opacity: 1 !important; }
+html body .instant-order-panel .instant-order-same-day-code input { min-height: 52px; padding: 10px 14px; border-radius: 12px; border: 0; text-align: center; letter-spacing: .4em; font: 800 1.4rem Montserrat, Inter, system-ui, sans-serif; color: #3b1a0c; }

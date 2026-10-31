@@ -97,6 +97,9 @@ export default function InstantOrderPanel({
   const [editSauces, setEditSauces] = useState<Record<string, string>>({});
   const [notesMessage, setNotesMessage] = useState("");
   const [itemsMessage, setItemsMessage] = useState("");
+  const [codeSent, setCodeSent] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [codeMessage, setCodeMessage] = useState("");
   const [sauces, setSauces] = useState<OrderSauce[]>([]);
   const [sauceChoices, setSauceChoices] = useState<Record<string, string>>({});
   const [loyaltyPreview, setLoyaltyPreview] = useState<LoyaltyPreview | null>(null);
@@ -382,6 +385,7 @@ export default function InstantOrderPanel({
     setNotesMessage("");
     setItemsMessage("");
     setNewOrderAware(false);
+    setCodeMessage("");
     setStep("same_day");
     return true;
   };
@@ -457,6 +461,40 @@ export default function InstantOrderPanel({
   };
 
   // Liberado o novo pedido, a pessoa volta ao carrinho para escolher as fatias.
+  // Pedido feito em outro aparelho: o codigo chega no WhatsApp do pedido e
+  // libera a edicao completa aqui (netlify/functions/order-access-code.ts).
+  const requestAccessCode = async () => {
+    setBusy(true);
+    setCodeMessage("");
+    const response = await fetch("/api/pedidos/codigo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "send", phone }),
+    }).catch(() => null);
+    const payload = await response?.json().catch(() => ({})) as { masked_phone?: string; error?: string } | undefined;
+    setBusy(false);
+    if (!response?.ok) return setCodeMessage(payload?.error || "Não foi possível enviar o código agora.");
+    setCodeSent(payload?.masked_phone || "seu WhatsApp");
+    setAccessCode("");
+  };
+
+  const confirmAccessCode = async () => {
+    setBusy(true);
+    setCodeMessage("");
+    const response = await fetch("/api/pedidos/codigo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "verify", phone, code: accessCode }),
+    }).catch(() => null);
+    const payload = await response?.json().catch(() => ({})) as { orders?: { order_number: string; token: string }[]; error?: string } | undefined;
+    setBusy(false);
+    if (!response?.ok) return setCodeMessage(payload?.error || "Não foi possível conferir o código agora.");
+    for (const order of payload?.orders || []) rememberOrder(order.order_number, order.token);
+    setCodeSent("");
+    setAccessCode("");
+    await checkSameDay(true);
+  };
+
   const continueAsNewOrder = () => {
     setSameDayAcknowledged(true);
     setStep("details");
@@ -633,6 +671,19 @@ export default function InstantOrderPanel({
             </article>;
           })}
           {sameDayMessage ? <p className="instant-order-notice" role="status">{sameDayMessage}</p> : null}
+          {!sameDay.orders.length ? <div className="instant-order-same-day-option instant-order-same-day-code">
+            <h3>Fez o pedido em outro aparelho?</h3>
+            {codeSent ? <>
+              <p>Enviamos um código de 6 números para o WhatsApp {codeSent}. Digite aqui para ver e mudar o seu pedido.</p>
+              <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} aria-label="Código recebido no WhatsApp" placeholder="000000" value={accessCode} onChange={(event) => setAccessCode(event.target.value.replace(/\D/g, "").slice(0, 6))} />
+              <button type="button" className="instant-order-submit" onClick={() => void confirmAccessCode()} disabled={busy || accessCode.length !== 6}>{busy ? "Conferindo..." : "Confirmar código"}</button>
+              <button type="button" className="instant-order-same-day-new" onClick={() => void requestAccessCode()} disabled={busy}>Enviar outro código</button>
+            </> : <>
+              <p>Para ver os itens, mudar as fatias ou cancelar, confirme que o pedido é seu. Mandamos um código para o WhatsApp do pedido.</p>
+              <button type="button" className="instant-order-submit" onClick={() => void requestAccessCode()} disabled={busy}>{busy ? "Enviando..." : "Sou eu, quero editar meu pedido"}</button>
+            </>}
+            {codeMessage ? <p className="instant-order-notice" role="alert">{codeMessage}</p> : null}
+          </div> : null}
 
           <div className="instant-order-same-day-option">
             <h3>1. Observações do pedido</h3>
