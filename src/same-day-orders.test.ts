@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { sameDayOrderGroups } from "./OperationInstantOrders";
-import { fortalezaDay, readKnownOrders, rememberOrder } from "./same-day-orders";
+import { fortalezaDay, mergeOrderWithCart, readKnownOrders, rememberOrder } from "./same-day-orders";
 
 const memory = () => { const data: Record<string, string> = {}; return { getItem: (k: string) => data[k] ?? null, setItem: (k: string, v: string) => { data[k] = v; } }; };
 
@@ -23,5 +23,16 @@ describe("pedido repetido no mesmo dia", () => {
     storage.setItem("adoce-orders-today", JSON.stringify([{ order_number: "FAT-0", token: "t", day: "2020-01-01" }]));
     rememberOrder("FAT-9", "tok", storage);
     expect(readKnownOrders(storage)).toEqual([{ order_number: "FAT-9", token: "tok", day: fortalezaDay() }]);
+  });
+
+  it("abre o editor com as fatias do pedido mais as do carrinho, sem perder as caldas", () => {
+    const merged = mergeOrderWithCart(
+      { order_number: "FAT-1", status: "awaiting_confirmation", created_at: "", total: 32, can_cancel: true,
+        items: [{ flavor_id: "ninho", name: "Ninho", quantity: 2, sauces: [{ unit_number: 1, sauce_id: "nutella" }, { unit_number: 2, sauce_id: null }] }] },
+      { ninho: 1, limao: 2 },
+      { "ninho:1": "brigadeiro", "limao:2": "nutella" },
+    );
+    expect(merged.quantities).toEqual({ ninho: 3, limao: 2 });
+    expect(merged.sauces).toEqual({ "ninho:1": "nutella", "ninho:2": "none", "ninho:3": "brigadeiro", "limao:1": "none", "limao:2": "nutella" });
   });
 });

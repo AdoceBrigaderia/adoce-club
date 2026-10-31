@@ -11,7 +11,9 @@ export type SameDayOrder = {
   created_at: string;
   total: number;
   can_cancel: boolean;
-  items: { name: string; quantity: number }[];
+  can_edit_items?: boolean;
+  customer_notes?: string | null;
+  items: { flavor_id?: string; name: string; quantity: number; sauces?: { unit_number: number; sauce_id: string | null }[] }[];
 };
 
 export type SameDayCheck = { has_orders: boolean; orders: SameDayOrder[] };
@@ -50,3 +52,28 @@ export const sameDayStatusLabel: Record<string, string> = {
   ready: "Pronto para retirar",
   completed: "Entregue",
 };
+
+// Junta as fatias que ja estao no pedido com as que a pessoa acabou de por
+// no carrinho, para o editor abrir mostrando "como vai ficar".
+export function mergeOrderWithCart(
+  order: SameDayOrder,
+  cart: Record<string, number>,
+  cartSauces: Record<string, string>,
+) {
+  const quantities: Record<string, number> = {};
+  const sauces: Record<string, string> = {};
+  for (const item of order.items) {
+    if (!item.flavor_id) continue;
+    quantities[item.flavor_id] = (quantities[item.flavor_id] || 0) + item.quantity;
+    for (const choice of item.sauces || []) sauces[`${item.flavor_id}:${choice.unit_number}`] = choice.sauce_id || "none";
+  }
+  for (const [flavorId, quantity] of Object.entries(cart)) {
+    if (!quantity) continue;
+    const start = quantities[flavorId] || 0;
+    for (let unit = 1; unit <= quantity; unit += 1) {
+      sauces[`${flavorId}:${start + unit}`] = cartSauces[`${flavorId}:${unit}`] || "none";
+    }
+    quantities[flavorId] = start + quantity;
+  }
+  return { quantities, sauces };
+}

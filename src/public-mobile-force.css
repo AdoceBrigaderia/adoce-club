@@ -240,3 +240,30 @@ html body .instant-order-panel .instant-order-same-day textarea { min-height: 80
 html body .instant-order-panel .instant-order-same-day-new { padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,.6); background: transparent; color: #fff; font: 600 .9rem Montserrat, Inter, sans-serif; cursor: pointer; }
 html body .instant-order-panel .instant-order-same-day-whatsapp { display: flex; justify-content: center; align-items: center; gap: 6px; color: #fff; font-weight: 600; }
 html body .instant-order-panel .instant-order-same-day-whatsapp svg { width: 18px; height: 18px; }
+html body .instant-order-panel .instant-order-same-day-confirm { display: grid; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.14); color: #fff; }
+html body .instant-order-panel .instant-order-same-day-confirm small { font-size: .85rem; line-height: 1.4; }
+html body .instant-order-panel .instant-order-same-day .instant-order-back { color: #fff !important; opacity: 1 !important; }
+
+/* Pedido do mesmo dia: tres opcoes (observacao, fatias, novo pedido). */
+html body .instant-order-panel .instant-order-same-day-option { display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(255,255,255,.1); }
+html body .instant-order-panel .instant-order-same-day-option h3 { margin: 0; color: #fff; font: 800 1.02rem/1.25 Montserrat, Inter, system-ui, sans-serif; }
+html body .instant-order-panel .instant-order-same-day-option > p,
+html body .instant-order-panel .instant-order-same-day-option > small { margin: 0; color: #fff; font-size: .86rem; line-height: 1.4; }
+html body .instant-order-panel .instant-order-same-day-option textarea { min-height: 80px; padding: 10px; border-radius: 12px; border: 0; font: inherit; color: #3b1a0c; }
+html body .instant-order-panel .instant-order-same-day-editor { display: grid; gap: 8px; }
+html body .instant-order-panel .instant-order-same-day-editor > div { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #fff2ef; color: #3b1a0c; }
+html body .instant-order-panel .instant-order-same-day-editor > div.selected { outline: 2px solid #ef3b69; }
+html body .instant-order-panel .instant-order-same-day-editor > div > span:first-child { display: grid; }
+html body .instant-order-panel .instant-order-same-day-editor small { font-size: .78rem; color: #6b3a1f; }
+html body .instant-order-panel .instant-order-same-day-stepper { display: flex; align-items: center; gap: 8px; }
+html body .instant-order-panel .instant-order-same-day-stepper button { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; border: 1px solid #cc3d59; background: #fff; color: #a3243f; cursor: pointer; }
+html body .instant-order-panel .instant-order-same-day-stepper button:disabled { opacity: .35; cursor: default; }
+html body .instant-order-panel .instant-order-same-day-stepper svg { width: 16px; height: 16px; }
+html body .instant-order-panel .instant-order-same-day-total { margin: 0; color: #fff; }
+html body .instant-order-panel .instant-order-same-day-aware { display: grid !important; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-weight: 600 !important; font-size: .9rem; line-height: 1.4; color: #fff; }
+html body .instant-order-panel .instant-order-same-day-aware input { width: 20px; height: 20px; margin-top: 2px; }
+html body .instant-order-panel .instant-order-same-day-new:disabled { opacity: .45; cursor: default; }
+html body .instant-order-panel .instant-order-same-day-more summary { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-radius: 12px; border: 1px dashed rgba(255,255,255,.6); color: #fff; font-weight: 700; cursor: pointer; }
+html body .instant-order-panel .instant-order-same-day-more summary svg { width: 18px; height: 18px; }
+html body .instant-order-panel .instant-order-same-day-more[open] summary { margin-bottom: 8px; }
+html body .instant-order-panel .instant-order-same-day-aware span { color: #fff !important; opacity: 1 !important; }

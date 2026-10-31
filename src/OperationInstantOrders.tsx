@@ -698,8 +698,11 @@ export default function OperationInstantOrders() {
           <small>Cancelamento</small>
           <h3>Por que este pedido está sendo cancelado?</h3>
           {selected.status === "expired" ? <p>O pedido sairá desta fila e ficará no histórico de cancelados, com o motivo registrado.</p> : null}
-          <label>Motivo (mínimo 5 caracteres)
-            <textarea value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex.: cliente desistiu, sabor esgotou, pedido duplicado..." autoFocus />
+          <div className="instant-order-cancel-reasons" role="group" aria-label="Motivos mais comuns">
+            {CANCEL_REASONS.map((reason) => <button type="button" key={reason} aria-pressed={cancelReason === reason} className={cancelReason === reason ? "active" : ""} onClick={() => setCancelReason(reason)}>{reason}</button>)}
+          </div>
+          <label>Outro motivo
+            <textarea value={CANCEL_REASONS.includes(cancelReason) ? "" : cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Escreva aqui se for outro motivo (mínimo 5 caracteres)" />
           </label>
           {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
           <div>
@@ -713,6 +716,8 @@ export default function OperationInstantOrders() {
     </div> : null}
   </section>;
 }
+
+const CANCEL_REASONS = ["Pedido duplicado", "Cliente desistiu", "Sabor sem estoque", "Cliente solicitou cancelamento"];
 
 export function sameDayOrderGroups(orders: Pick<InstantOrder, "id" | "order_number" | "customer_phone" | "status" | "created_at">[]) {
   const groups = new Map<string, typeof orders>();

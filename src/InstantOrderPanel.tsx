@@ -5,7 +5,7 @@ import { trackPublicEvent } from "./analytics";
 import { buildOrderWhatsAppMessage, orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
 import { pickupBoundsForDay, type PickupWindow } from "./pickup-window";
 import { mascaraTelefone } from "./cadastro-rapido";
-import { readKnownOrders, rememberOrder, sameDayStatusLabel, type SameDayCheck } from "./same-day-orders";
+import { mergeOrderWithCart, readKnownOrders, rememberOrder, sameDayStatusLabel, type SameDayCheck } from "./same-day-orders";
 import {
   currentLocalTime,
   earliestPickupTimeForQuantity,
@@ -92,6 +92,11 @@ export default function InstantOrderPanel({
   const [sameDayAcknowledged, setSameDayAcknowledged] = useState(false);
   const [complementNote, setComplementNote] = useState("");
   const [sameDayMessage, setSameDayMessage] = useState("");
+  const [newOrderAware, setNewOrderAware] = useState(false);
+  const [editQuantities, setEditQuantities] = useState<Record<string, number>>({});
+  const [editSauces, setEditSauces] = useState<Record<string, string>>({});
+  const [notesMessage, setNotesMessage] = useState("");
+  const [itemsMessage, setItemsMessage] = useState("");
   const [sauces, setSauces] = useState<OrderSauce[]>([]);
   const [sauceChoices, setSauceChoices] = useState<Record<string, string>>({});
   const [loyaltyPreview, setLoyaltyPreview] = useState<LoyaltyPreview | null>(null);
@@ -363,28 +368,81 @@ export default function InstantOrderPanel({
     // Se a verificacao falhar, o pedido segue normalmente: a Operacao ainda
     // agrupa pedidos do mesmo celular.
     if (error || !(data as SameDayCheck)?.has_orders) return false;
-    setSameDay(data as SameDayCheck);
-    setComplementNote(notes);
+    const check = data as SameDayCheck;
+    const mine = check.orders[0];
+    setSameDay(check);
+    const savedNotes = mine?.customer_notes || "";
+    setComplementNote(mine ? [savedNotes, notes.trim() && !savedNotes.includes(notes.trim()) ? notes.trim() : ""].filter(Boolean).join("\n") : notes);
+    if (mine) {
+      const merged = mergeOrderWithCart(mine, quantities, sauceChoices);
+      setEditQuantities(merged.quantities);
+      setEditSauces(merged.sauces);
+    }
     setSameDayMessage("");
+    setNotesMessage("");
+    setItemsMessage("");
+    setNewOrderAware(false);
     setStep("same_day");
     return true;
   };
 
+  // No aparelho do pedido a observacao e reescrita; em outro aparelho so
+  // da para acrescentar um complemento, sem ver o que ja estava escrito.
   const sendComplement = async () => {
-    const known = sameDay?.orders[0] ? readKnownOrders().find((order) => order.order_number === sameDay.orders[0].order_number) : undefined;
+    const mine = sameDay?.orders[0];
+    const known = mine ? readKnownOrders().find((order) => order.order_number === mine.order_number) : undefined;
     setBusy(true);
-    const { data, error } = await requireSupabase().rpc("public_add_order_complement", {
-      requested_phone: phone,
-      requested_note: complementNote,
-      order_code: known?.order_number ?? null,
-      order_token: known?.token ?? null,
-    });
+    const { data, error } = known
+      ? await requireSupabase().rpc("public_set_order_notes", { order_code: known.order_number, order_token: known.token, requested_notes: complementNote })
+      : await requireSupabase().rpc("public_add_order_complement", { requested_phone: phone, requested_note: complementNote, order_code: null, order_token: null });
     setBusy(false);
     const response = data as { ok: boolean; message: string } | null;
-    if (error || !response) return setSameDayMessage("Não foi possível enviar agora. Tente novamente ou fale com a loja pelo WhatsApp.");
-    setSameDayMessage(response.message);
-    if (response.ok) setComplementNote("");
+    if (error || !response) return setNotesMessage("Não foi possível enviar agora. Tente novamente ou fale com a loja pelo WhatsApp.");
+    setNotesMessage(response.message);
+    if (response.ok && !known) setComplementNote("");
   };
+
+  const saveOrderItems = async () => {
+    const mine = sameDay?.orders[0];
+    const known = mine ? readKnownOrders().find((order) => order.order_number === mine.order_number) : undefined;
+    if (!mine || !known) return;
+    const requested = Object.entries(editQuantities).filter(([, quantity]) => quantity > 0).map(([flavorId, quantity]) => ({
+      flavor_id: flavorId,
+      quantity,
+      sauces: Array.from({ length: quantity }, (_, index) => {
+        const choice = editSauces[`${flavorId}:${index + 1}`];
+        return { unit_number: index + 1, sauce_id: !choice || choice === "none" ? null : choice };
+      }),
+    }));
+    if (!requested.length) return setItemsMessage("O pedido precisa ter pelo menos uma fatia. Para desistir de tudo, use \"Cancelar este pedido\".");
+    setBusy(true);
+    const { data, error } = await requireSupabase().rpc("public_edit_order_items", { order_code: known.order_number, order_token: known.token, requested_items: requested });
+    setBusy(false);
+    const response = data as { ok: boolean; message: string; total?: number } | null;
+    if (error || !response) return setItemsMessage("Não foi possível salvar agora. Tente novamente ou fale com a loja pelo WhatsApp.");
+    setItemsMessage(response.message);
+    if (response.ok) {
+      setQuantities({});
+      setSameDay((current) => current ? { ...current, orders: current.orders.map((order, index) => index ? order : {
+        ...order,
+        total: response.total ?? order.total,
+        items: requested.map((item) => ({ flavor_id: item.flavor_id, quantity: item.quantity, name: editFlavorName(item.flavor_id), sauces: item.sauces })),
+      }) } : current);
+    }
+  };
+
+  const editFlavorName = (flavorId: string) =>
+    flavors.find((flavor) => flavor.id === flavorId)?.name
+    || sameDay?.orders[0]?.items.find((item) => item.flavor_id === flavorId)?.name
+    || "Fatia";
+
+  const editTotal = useMemo(() => {
+    const order = sameDay?.orders[0];
+    const orderUnits = order?.items.reduce((count, item) => count + item.quantity, 0) || 0;
+    const fallback = order && orderUnits ? (Number(order.total) || 0) / orderUnits : 0;
+    return Object.entries(editQuantities).reduce((sum, [flavorId, quantity]) =>
+      sum + quantity * (flavors.find((flavor) => flavor.id === flavorId)?.price ?? fallback), 0);
+  }, [editQuantities, flavors, sameDay]);
 
   const cancelSameDayOrder = async (orderNumber: string) => {
     const known = readKnownOrders().find((order) => order.order_number === orderNumber);
@@ -545,24 +603,82 @@ export default function InstantOrderPanel({
           <button type="button" className="instant-order-back" onClick={() => { setStep("details"); setSameDayMessage(""); }}><ArrowLeft /> Voltar ao carrinho</button>
           <header>
             <h2 id="instant-order-title">Você já fez um pedido hoje</h2>
-            <p>{sameDay.orders.length ? "Encontramos este pedido feito neste aparelho. O que você quer fazer?" : "Já existe um pedido hoje para este número. Se esqueceu de algo, mande como complemento para não duplicar."}</p>
+            <p>{sameDay.orders.length ? "Para não duplicar, escolha abaixo o que você quer fazer com ele." : "Já existe um pedido hoje para este número. Se esqueceu de algo, mande como complemento para não duplicar."}</p>
           </header>
-          {sameDay.orders.map((order) => {
+          {sameDay.orders.slice(0, 1).map((order) => {
             const known = readKnownOrders().find((item) => item.order_number === order.order_number);
             return <article key={order.order_number} className="instant-order-same-day-order">
               <strong>{order.order_number}</strong>
-              <small>{new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Fortaleza" })} · {sameDayStatusLabel[order.status] || order.status}</small>
-              <ul>{order.items.map((item) => <li key={item.name}>{item.quantity}x {item.name}</li>)}</ul>
+              <small>{new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Fortaleza" })} · {sameDayStatusLabel[order.status] || order.status} · {money(Number(order.total) || 0)}</small>
+              <ul>{order.items.map((item) => <li key={item.flavor_id || item.name}>{item.quantity}x {item.name}</li>)}</ul>
               <div>
                 {known ? <a href={`/acompanhar?pedido=${encodeURIComponent(order.order_number)}&token=${encodeURIComponent(known.token)}`}>Ver como está meu pedido</a> : null}
                 {order.can_cancel ? <button type="button" onClick={() => void cancelSameDayOrder(order.order_number)} disabled={busy}>Cancelar este pedido</button> : null}
               </div>
             </article>;
           })}
-          <label>Esqueceu alguma informação?<textarea value={complementNote} onChange={(event) => setComplementNote(event.target.value)} placeholder="Ex.: sem calda na de Ninho, quem vai buscar é a Ana" maxLength={500} /></label>
-          <button type="button" className="instant-order-submit" onClick={() => void sendComplement()} disabled={busy || complementNote.trim().length < 2}>{busy ? "Enviando..." : "Enviar como complemento do pedido"}</button>
           {sameDayMessage ? <p className="instant-order-notice" role="status">{sameDayMessage}</p> : null}
-          <button type="button" className="instant-order-same-day-new" onClick={continueAsNewOrder} disabled={busy}>Quero acrescentar estas fatias como um novo pedido</button>
+
+          <div className="instant-order-same-day-option">
+            <h3>1. Observações do pedido</h3>
+            <p>{sameDay.orders.length ? "Acrescente ou corrija o que a loja precisa saber." : "Escreva o que esqueceu. Vai junto com o pedido que já existe."}</p>
+            <textarea aria-label="Observações do pedido" value={complementNote} onChange={(event) => setComplementNote(event.target.value)} placeholder="Ex.: sem calda na de Ninho, quem vai buscar é a Ana" maxLength={500} />
+            <button type="button" className="instant-order-submit" onClick={() => void sendComplement()} disabled={busy || (!sameDay.orders.length && complementNote.trim().length < 2)}>{busy ? "Salvando..." : sameDay.orders.length ? "Salvar observação" : "Enviar junto com o pedido"}</button>
+            {notesMessage ? <p className="instant-order-notice" role="status">{notesMessage}</p> : null}
+          </div>
+
+          <div className="instant-order-same-day-option">
+            <h3>2. Mudar as fatias deste pedido</h3>
+            {sameDay.orders[0]?.can_edit_items ? <>
+              <p>Acrescente ou tire fatias no mesmo pedido. Já incluímos as que estavam no seu carrinho.</p>
+              {[true, false].map((inOrderGroup) => {
+                const ids = Array.from(new Set([...Object.keys(editQuantities), ...flavors.map((flavor) => flavor.id)]))
+                  .filter((flavorId) => (flavorId in editQuantities) === inOrderGroup);
+                if (!ids.length) return null;
+                const rows = ids.map((flavorId) => {
+                  const flavor = flavors.find((item) => item.id === flavorId);
+                  const quantity = editQuantities[flavorId] || 0;
+                  const inOrder = sameDay.orders[0].items.find((item) => item.flavor_id === flavorId)?.quantity || 0;
+                  if (!flavor && !quantity) return null;
+                  const limit = flavor && flavor.free !== null ? flavor.free + inOrder : inOrder;
+                  return <div key={flavorId} className={quantity ? "selected" : ""}>
+                    <span><strong>{editFlavorName(flavorId)}</strong>{flavor ? <small>{money(flavor.price)} cada</small> : <small>Esgotado para novas fatias</small>}</span>
+                    <span className="instant-order-same-day-stepper">
+                      <button type="button" aria-label={`Tirar uma ${editFlavorName(flavorId)}`} disabled={!quantity} onClick={() => setEditQuantities((current) => ({ ...current, [flavorId]: Math.max(0, (current[flavorId] || 0) - 1) }))}><Minus /></button>
+                      <b>{quantity}</b>
+                      <button type="button" aria-label={`Acrescentar uma ${editFlavorName(flavorId)}`} disabled={!flavor || (flavor.free !== null && quantity >= limit)} onClick={() => setEditQuantities((current) => ({ ...current, [flavorId]: (current[flavorId] || 0) + 1 }))}><Plus /></button>
+                    </span>
+                    {quantity && sauces.length ? <details className="instant-order-sauces-inline">
+                      <summary><Droplets /> Caldas ({quantity})</summary>
+                      {Array.from({ length: quantity }, (_, index) => <label key={index}>
+                        Fatia {index + 1}
+                        <select aria-label={`Calda da fatia ${index + 1} de ${editFlavorName(flavorId)}`} value={editSauces[`${flavorId}:${index + 1}`] || "none"} onChange={(event) => setEditSauces((current) => ({ ...current, [`${flavorId}:${index + 1}`]: event.target.value }))}>
+                          <option value="none">Sem calda</option>
+                          {sauces.map((sauce) => <option key={sauce.id} value={sauce.id}>{sauce.name}</option>)}
+                        </select>
+                      </label>)}
+                    </details> : null}
+                  </div>;
+                });
+                return inOrderGroup
+                  ? <div key="in-order" className="instant-order-same-day-editor">{rows}</div>
+                  : <details key="others" className="instant-order-same-day-more"><summary><Plus /> Acrescentar outro sabor</summary><div className="instant-order-same-day-editor">{rows}</div></details>;
+              })}
+              <p className="instant-order-same-day-total">Novo total: <strong>{money(editTotal)}</strong></p>
+              <button type="button" className="instant-order-submit" onClick={() => void saveOrderItems()} disabled={busy}>{busy ? "Salvando..." : "Salvar fatias no mesmo pedido"}</button>
+              {itemsMessage ? <p className="instant-order-notice" role="status">{itemsMessage}</p> : null}
+            </> : <p>{sameDay.orders.length
+              ? "A loja já começou a cuidar deste pedido, então as fatias não podem mais ser mudadas por aqui. Fale com a gente pelo WhatsApp."
+              : "Para mudar as fatias, abra o site no mesmo celular em que fez o pedido ou fale com a loja pelo WhatsApp."}</p>}
+          </div>
+
+          <div className="instant-order-same-day-option">
+            <h3>3. Fazer outro pedido separado</h3>
+            <label className="instant-order-same-day-aware"><input type="checkbox" checked={newOrderAware} onChange={(event) => setNewOrderAware(event.target.checked)} /><span>Quero fazer mais um pedido e estou ciente de que já existe um pedido anterior em meu nome hoje.</span></label>
+            <button type="button" className="instant-order-same-day-new" onClick={continueAsNewOrder} disabled={busy || !newOrderAware || !totalQuantity}>Enviar as fatias do carrinho como novo pedido</button>
+            {!totalQuantity ? <small>Seu carrinho está vazio. Volte ao carrinho para escolher as fatias.</small> : null}
+          </div>
+
           <a className="instant-order-same-day-whatsapp" href={orderWhatsAppUrl(orderWhatsAppNumber, "Olá, Adoce! Quero falar sobre o meu pedido de hoje.")} target="_blank" rel="noreferrer"><MessageCircle /> Falar com a loja</a>
         </section> : !result && step === "sauces" ? <section className="instant-order-sauces">
           <button type="button" className="instant-order-back" onClick={() => { setStep("details"); setNotice(""); }}><ArrowLeft /> Voltar ao pedido</button>
