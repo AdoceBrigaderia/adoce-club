@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, RotateCcw, Save } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import "./operation-audit-decisions.css";
+import DuplicateStampsApologyControl from "./DuplicateStampsApologyControl";
 
 type AuditItem = {
   id: string;
@@ -25,6 +26,11 @@ const decisionOptions = ["Manter", "Descartar", "Religar", "Consolidar", "Redese
 type Draft = { decision: string; note: string };
 
 export default function OperationAuditDecisions() {
+  return new URLSearchParams(window.location.search).get("duplicateStampApology") === "1"
+    ? <DuplicateStampsApologyControl /> : <AuditDecisions />;
+}
+
+function AuditDecisions() {
   const [items, setItems] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
