@@ -2,7 +2,7 @@
 // baixa variaveis de functions mesmo com --no-build; este caminho evita isso.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, mkdirSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { resolve, join, basename } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 
@@ -22,15 +22,40 @@ const { normalizeFunctionsConfig } = await moduleAt("dist/lib/functions/config.j
 const resolved = await resolveConfig({ cwd: root, repositoryRoot: root, config: join(root, "netlify.toml"), context: "production", offline: true });
 const config = resolved.config;
 const functionsConfig = normalizeFunctionsConfig({ functionsConfig: config.functions, projectRoot: root, siteEnv: {} });
-if (!process.argv.includes("--publish")) {
+if (!process.argv.includes("--publish") && !process.argv.includes("--validate-package")) {
   console.log(JSON.stringify({ mode: "check", source: root, publish: config.build.publish, functions: config.functionsDirectory, runtime_env_requested: false }));
+  process.exit(0);
+}
+const { deploySite } = await moduleAt("dist/utils/deploy/deploy-site.js");
+const tmpDir = resolve(root, ".netlify", "secret-free-function-bundles");
+if (tmpDir !== join(root, ".netlify", "secret-free-function-bundles")) throw new Error("Diretorio de pacote invalido.");
+const command = { project: { frameworks: new Map() }, getPathInProject: path => join(root, ".netlify", path) };
+const deployOptions = {
+  config, functionsConfig, fnDir: [resolve(root, "netlify/functions")],
+  siteRoot: root, workingDir: root, tmpDir, draft: false, skipFunctionsCache: true,
+  filter: filename => filename != null && (!basename(filename).startsWith(".") || basename(filename) === ".well-known")
+    && !basename(filename).startsWith("__MACOSX") && !["_headers", "_redirects"].includes(basename(filename)),
+  statusCb: event => { if (event.phase === "stop") console.log(event.msg); },
+};
+if (process.argv.includes("--validate-package")) {
+  mkdirSync(tmpDir, { recursive: true });
+  // Exercita empacotamento, hashes, configuracao e polling sem acesso a rede.
+  const fakeApi = {
+    updateSiteDeploy: async ({ body }) => {
+      if (Object.keys(body.functions).length < 40 || !body.functions_config["duplicate-stamps-apology"]?.routes?.length
+        || !body.function_schedules.some(row => row.name === "whatsapp-scheduled-messages")) throw new Error("Pacote incompleto.");
+      console.log(JSON.stringify({ mode: "package_validation", files: Object.keys(body.files).length, functions: Object.keys(body.functions).length, schedules: body.function_schedules.length, network: false }));
+      return { id: "local-package-check", required: [], required_functions: [] };
+    },
+    getSiteDeploy: async () => ({ id: "local-package-check", state: "ready", required: [], required_functions: [] }),
+  };
+  await deploySite(command, fakeApi, "local-site", resolve(root, "dist"), { ...deployOptions, deployId: "local-package-check" });
   process.exit(0);
 }
 // Nao contorna o portao obrigatorio: testa, confere tipos e recompila aqui.
 execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", "npm run release:check"], { stdio: "inherit" });
 if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) throw new Error("Commit necessario antes de publicar.");
 const { NetlifyAPI } = await dependency("@netlify/api");
-const { deploySite } = await moduleAt("dist/utils/deploy/deploy-site.js");
 // Usa somente a autenticacao de hospedagem ja existente na CLI local.
 const account = JSON.parse(readFileSync(join(process.env.APPDATA, "netlify", "Config", "config.json"), "utf8"));
 const token = account.users[account.userId]?.auth?.token;
@@ -42,15 +67,15 @@ const api = new Proxy(new NetlifyAPI(token), { get(target, property) {
 } });
 const siteId = "bb0c96cd-5af2-4270-a9a8-b63b9637b1f4";
 const sha = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-const tmpDir = resolve(root, ".netlify", "secret-free-function-bundles");
-if (tmpDir !== join(root, ".netlify", "secret-free-function-bundles")) throw new Error("Diretorio de pacote invalido.");
 mkdirSync(tmpDir, { recursive: true });
-const created = await api.createSiteDeploy({ siteId, title: `Fonte oficial ${sha.slice(0, 7)} — sem consulta de segredos`, body: { draft: false } });
+const resumeId = process.argv.find(arg => arg.startsWith("--resume="))?.slice("--resume=".length);
+let created;
+if (resumeId) {
+  created = await api.getSiteDeploy({ siteId, deployId: resumeId });
+  if (created.site_id !== siteId || created.context !== "production" || created.published_at || created.state !== "new") throw new Error("Somente pacote de producao ainda nao publicado pode ser retomado.");
+} else created = await api.createSiteDeploy({ siteId, title: `Fonte oficial ${sha.slice(0, 7)} — sem consulta de segredos`, body: { draft: false } });
 console.log(`Deploy de producao criado: ${created.id}`);
-const command = { getPathInProject: path => join(root, ".netlify", path) };
 const result = await deploySite(command, api, siteId, resolve(root, "dist"), {
-  deployId: created.id, config, functionsConfig, fnDir: [resolve(root, "netlify/functions")],
-  siteRoot: root, workingDir: root, tmpDir, draft: false, skipFunctionsCache: true,
-  statusCb: event => { if (event.phase === "stop") console.log(event.msg); },
+  ...deployOptions, deployId: created.id,
 });
 console.log(JSON.stringify({ deploy_id: result.deployId, state: result.deploy.state, official_url: "https://www.adocebrigaderia.com.br", runtime_env_requested: false }));
