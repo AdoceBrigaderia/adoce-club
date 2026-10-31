@@ -15,9 +15,9 @@
 
 ## Etapa 2 — depende de autorização para publicar E enviar
 
-- [ ] Após autorização: aplicar exclusivamente a nova migração de auditoria; publicar uma vez no domínio oficial e validar autenticação e simulação.
-- [ ] Executar lotes manuais até esgotar pendências. Conferir SID, auditoria, falhas e reservas sem resultado, sem repetir tentativas incertas. Aceite Twilio não comprova entrega: conferir status dos SIDs no servidor.
-- [ ] Confirmar 100 registros `stamps.duplicate_apology_sent` e listar falhas. Se não atingir 100, reportar diferença e investigar antes de qualquer reenvio manual.
+- [x] Após autorização: aplicar exclusivamente a nova migração de auditoria; publicar uma vez no domínio oficial e validar autenticação e simulação.
+- [x] Executar lotes manuais até esgotar pendências. Conferir SID, auditoria, falhas e reservas sem resultado, sem repetir tentativas incertas. Aceite Twilio não comprova entrega; entrega/leitura individual permanece sem aferição no provedor.
+- [x] Confirmar 100 registros `stamps.duplicate_apology_sent` e listar falhas. Se não atingir 100, reportar diferença e investigar antes de qualquer reenvio manual.
 
 ## Etapa 3 — remoção
 
@@ -38,3 +38,5 @@
 - Proteção aplicada isoladamente e registrada no histórico remoto. Verificados os dois índices, as três políticas restritivas e a execução exclusiva do RPC por `service_role`.
 - Ruling: o deploy padrão da CLI consulta variáveis de functions mesmo sem build. Preparado publicador com os módulos oficiais da CLI, configuração offline e bloqueio de consultas de env, preservando release:check e Git limpo. O servidor recebe os pacotes; credenciais de runtime continuam na Netlify.
 - Ensaio completo do publicador sem rede: 457 arquivos, 44 funções, duas agendas preservadas e rota do aviso presente. O primeiro preparo remoto permaneceu em estado `new`, sem publicação, após falha local; o publicador permite retomar exclusivamente esse estado no mesmo site.
+- Publicado no mesmo deploy `6ae6214f7b05e4cf19a01708`, pacote `8e13789`. Releasecheck: 994 testes aprovados e 1 ignorado. Domínio oficial e recusa anônima conferidos; painel verificado em computador/celular/tablet, console sem erros.
+- Cinco lotes de 20 entre 14h15 e 14h17 de 31/10/2026 (São Paulo). Conferência independente: 100 eventos sent, 100 cartões, 100 SIDs distintos, 92/8 variantes, zero destinatários externos, zero pendências, zero falhas e zero reservas incertas. O status de entrega ao aparelho não foi consultado; o resultado significa aceite pelo provedor.
