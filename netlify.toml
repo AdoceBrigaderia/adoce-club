@@ -24,9 +24,6 @@
 [functions."twilio-whatsapp-order"]
   timeout = 20
 
-[functions."duplicate-stamps-apology"]
-  timeout = 60
-
 [[redirects]]
   from = "/documentacao"
   to = "/"

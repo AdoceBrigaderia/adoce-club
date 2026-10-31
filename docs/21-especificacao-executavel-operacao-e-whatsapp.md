@@ -859,3 +859,13 @@ Publicação autorizada: deploy `6ae6214f7b05e4cf19a01708`, com pacote do commit
 Em 31/10/2026, entre **14h15 e 14h17 (São Paulo)**, foram executados cinco lotes manuais de 20 mensagens pelo servidor. A consulta final independente confirmou **100 eventos `stamps.duplicate_apology_sent`, 100 cartões e 100 SIDs distintos**, sendo 92 textos comuns e 8 sobre a fatia cancelada. Nenhum destinatário fora do incidente; nenhum cartão pendente; lista de falhas vazia; zero reservas sem resultado. O estorno segue com 144 reversões, 233 carimbos e 100 cartões; não foi reaplicado.
 
 Classificação: **envios aceitos pela Twilio e auditados em produção**. Aceite não comprova entrega/leitura no aparelho; o status final de entrega individual não foi consultado nesta etapa. Auditoria com SID permite essa consulta posterior no provedor sem repetir envios. A retirada do mecanismo é uma etapa separada, cuja publicação exige nova autorização explícita.
+
+### Retirada preparada — aguardando autorização de publicação
+
+O código local não contém mais o endpoint, o emissor, o leitor de destinatários, o controle temporário, o serviço do navegador nem os scripts de simulação/envio desta campanha. A tela original de auditoria e `netlify.toml` voltaram exatamente ao conteúdo de `38f184e`, retirando somente os acréscimos desta tarefa. Os registros enviados, índices e políticas de auditoria foram preservados.
+
+A migração nova `20261031210000_retire_duplicate_stamp_apology_sender.sql`, **ainda não aplicada**, retira somente o RPC de reserva e acrescenta um registro de retirada; não altera carimbos, cartões, recompensas ou eventos existentes. A publicação da remoção e a aplicação dessa migração dependem de autorização específica do proprietário. Até lá, a versão publicada mantém o mecanismo, sem agendamento e com os 100 cartões bloqueados por suas reservas/envios anteriores.
+
+O teste `src/duplicate-stamps-apology-retired.test.ts` impede que o emissor ou o controle voltem ao pacote por engano. O publicador sem consulta de segredos de runtime permanece disponível para realizar a retirada autorizada. Depois dela, conferir recusa do antigo endpoint e ausência do controle no domínio oficial, sem iniciar outro deploy.
+
+Retirada local **validada automaticamente**: `release:check` aprovado, 978 testes aprovados e 1 ignorado; pacote offline com 43 funções, sem o emissor, mantendo as duas agendas anteriores. Produção continua com o pacote de envio já executado até a autorização específica de retirada.

@@ -21,7 +21,7 @@
 
 ## Etapa 3 — remoção
 
-- [ ] Remover endpoint e código de envio, manter auditoria e índices de proteção, documentar resultado, testar, commit e push.
+- [x] Remover endpoint e código de envio, manter auditoria e índices de proteção, documentar resultado, testar, commit e push.
 - [ ] Pedir autorização explícita para publicar a remoção; publicar e confirmar endpoint indisponível no domínio oficial. Git limpo e igual ao remoto.
 
 ## Decisões e evidências
@@ -40,3 +40,5 @@
 - Ensaio completo do publicador sem rede: 457 arquivos, 44 funções, duas agendas preservadas e rota do aviso presente. O primeiro preparo remoto permaneceu em estado `new`, sem publicação, após falha local; o publicador permite retomar exclusivamente esse estado no mesmo site.
 - Publicado no mesmo deploy `6ae6214f7b05e4cf19a01708`, pacote `8e13789`. Releasecheck: 994 testes aprovados e 1 ignorado. Domínio oficial e recusa anônima conferidos; painel verificado em computador/celular/tablet, console sem erros.
 - Cinco lotes de 20 entre 14h15 e 14h17 de 31/10/2026 (São Paulo). Conferência independente: 100 eventos sent, 100 cartões, 100 SIDs distintos, 92/8 variantes, zero destinatários externos, zero pendências, zero falhas e zero reservas incertas. O status de entrega ao aparelho não foi consultado; o resultado significa aceite pelo provedor.
+- Retirada local preparada: removidos emissor, endpoint, controle, serviço e scripts específicos; tela original e netlify.toml idênticos a `38f184e`. Migração `20261031210000` preparada, ainda não aplicada. Revisão independente sem achados materiais; nova autorização de produção pendente.
+- Retirada validada automaticamente: release:check aprovado (978 testes aprovados, 1 ignorado), empacotamento offline aprovado com 457 arquivos, 43 funções e as duas agendas anteriores preservadas. Nenhuma publicação da retirada realizada.

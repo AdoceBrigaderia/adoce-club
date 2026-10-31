@@ -42,7 +42,7 @@ if (process.argv.includes("--validate-package")) {
   // Exercita empacotamento, hashes, configuracao e polling sem acesso a rede.
   const fakeApi = {
     updateSiteDeploy: async ({ body }) => {
-      if (Object.keys(body.functions).length < 40 || !body.functions_config["duplicate-stamps-apology"]?.routes?.length
+      if (Object.keys(body.functions).length < 40
         || !body.function_schedules.some(row => row.name === "whatsapp-scheduled-messages")) throw new Error("Pacote incompleto.");
       console.log(JSON.stringify({ mode: "package_validation", files: Object.keys(body.files).length, functions: Object.keys(body.functions).length, schedules: body.function_schedules.length, network: false }));
       return { id: "local-package-check", required: [], required_functions: [] };
