@@ -5,9 +5,9 @@ import "./catalog-2026-overrides.css";
 
 const base = "/brand-2026/catalogo";
 const sizes = [
-  { label: "P", dimensions: "15 × 15 cm", price: "R$ 120,00", description: "Ideal para encontros menores e momentos especiais.", photo: "torta-P-recortada.png" },
-  { label: "M", dimensions: "15 × 20 cm", price: "R$ 160,00", description: "Perfeita para compartilhar com a família e amigos.", photo: "torta-M-recortada.png" },
-  { label: "G", dimensions: "12 × 25 cm", price: "R$ 200,00", description: "Para ocasiões especiais e para quem não abre mão de uma boa fatia.", photo: "torta-G-recortada.png" },
+  { label: "P", serves: "Serve de 10 a 15 fatias", dimensions: "15 × 15 cm", price: "R$ 120,00", description: "Ideal para encontros menores e momentos especiais.", photo: "torta-P-recortada.png" },
+  { label: "M", serves: "Serve de 20 a 25 fatias", dimensions: "15 × 20 cm", price: "R$ 160,00", description: "Perfeita para compartilhar com a família e amigos.", photo: "torta-M-recortada.png" },
+  { label: "G", serves: "Serve de 30 a 35 fatias", dimensions: "12 × 25 cm", price: "R$ 200,00", description: "Para ocasiões especiais e para quem não abre mão de uma boa fatia.", photo: "torta-G-recortada.png" },
 ] as const;
 const sweets = [
   { title: "Tradicionais", price: "R$ 70,00", photo: `${base}/docinhos/tradicional.png`, items: ["Brigadeiro", "Beijinho", "Casadinho", "Chocoball", "Ninho", "Amendoim", "Nesquik"] },
@@ -27,7 +27,7 @@ export default function CatalogPage2026() {
     <section className="catalog-new-hero"><div><h1>Encomendas<br />Adoce <span>♡</span></h1><p>Conheça tamanhos, valores e condições para fazer sua encomenda.</p></div></section>
     <section className="catalog-panel">
       <div className="catalog-section-title"><img src={`${base}/icones/bolo.svg`} alt="" /><div><h2>Tortas artesanais <span>♡</span></h2><p>Nossas tortas são feitas artesanalmente, com ingredientes selecionados e muito carinho em cada camada.</p></div></div>
-      <div className="catalog-size-grid">{sizes.map(size => <article key={size.label}><div className="catalog-cake-photo"><img src={`${base}/fotos-recortadas/${size.photo}`} alt={`Torta tamanho ${size.label}`} /><strong>{size.label}</strong></div><div className="catalog-size-meta"><b>{size.dimensions}</b><strong>{size.price}</strong></div><p>{size.description}</p></article>)}</div>
+      <div className="catalog-size-grid">{sizes.map(size => <article key={size.label}><div className="catalog-cake-photo"><img src={`${base}/fotos-recortadas/${size.photo}`} alt={`Torta tamanho ${size.label}`} /><strong>{size.label}</strong></div><div className="catalog-size-meta"><b>{size.dimensions}</b><strong>{size.price}</strong></div><p className="catalog-size-serves">{size.serves}</p><p>{size.description}</p></article>)}</div>
       <a className="catalog-wide-link" href="/sabores"><img src={`${base}/icones/bolo.svg`} alt="" />Clique aqui para conferir todos os sabores disponíveis para as tortas <span>→</span></a>
     </section>
     <section className="catalog-panel">

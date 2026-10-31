@@ -323,3 +323,24 @@ html body .public-app-shell-today::after {
   content: none !important;
   display: none !important;
 }
+
+/* Sabores para tortas: titulo e texto claros sobre o marrom, mesma fonte do Catalogo. */
+html body .cake-catalog .cake-flavors-heading h1 {
+  color: #fff !important;
+  font: 800 1.9rem/1.15 Montserrat, Poppins, Inter, system-ui, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+html body .cake-catalog .cake-eyebrow { color: #ff9fb6 !important; }
+html body .cake-catalog .cake-flavors-note { color: #fff !important; opacity: 1 !important; }
+html body .cake-catalog .cake-flavor-grid h2,
+html body .cake-catalog .cake-flavor-grid h3 {
+  font-family: Montserrat, Poppins, Inter, system-ui, sans-serif !important;
+  font-weight: 700 !important;
+}
+
+/* Catalogo: quantas fatias cada tamanho de torta serve. */
+html body .catalog-size-grid p.catalog-size-serves {
+  margin: 2px 0 4px !important;
+  color: #a3243f !important;
+  font: 700 .95rem/1.3 Montserrat, Inter, system-ui, sans-serif !important;
+}
