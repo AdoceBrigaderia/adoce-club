@@ -268,3 +268,58 @@ html body .instant-order-panel .instant-order-same-day-more summary svg { width:
 html body .instant-order-panel .instant-order-same-day-more[open] summary { margin-bottom: 8px; }
 html body .instant-order-panel .instant-order-same-day-aware span { color: #fff !important; opacity: 1 !important; }
 html body .instant-order-panel .instant-order-same-day-code input { min-height: 52px; padding: 10px 14px; border-radius: 12px; border: 0; text-align: center; letter-spacing: .4em; font: 800 1.4rem Montserrat, Inter, system-ui, sans-serif; color: #3b1a0c; }
+
+/* Paginas institucionais (Escuta Adoce, Termos, Privacidade): mesmo padrao
+   das demais telas publicas -- fundo marrom, titulos brancos em Montserrat e
+   cartoes rosados como os da pagina inicial. */
+html body .institutional-2026,
+html body .institutional-2026 .institutional-hero,
+html body .institutional-2026 .institutional-body {
+  background: #54250f !important;
+  background-image: none !important;
+}
+html body .institutional-2026 .institutional-hero { padding: 18px 20px 6px !important; }
+html body .institutional-2026 .institutional-hero h1 {
+  color: #fff !important;
+  font: 800 1.7rem/1.15 Montserrat, Poppins, Inter, system-ui, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+html body .institutional-2026 .institutional-hero p,
+html body .institutional-2026 .institutional-kicker,
+html body .institutional-2026 .institutional-version,
+html body .institutional-2026 .institutional-back {
+  color: #fff !important;
+  font-family: Montserrat, Inter, system-ui, sans-serif !important;
+}
+html body .institutional-2026 .institutional-kicker { color: #ff9fb6 !important; font-weight: 700 !important; }
+html body .institutional-2026 .institutional-card {
+  background: linear-gradient(115deg, #fff2ef, #fde2e0) !important;
+  border: 0 !important;
+  border-radius: 18px !important;
+}
+html body .institutional-2026 .institutional-card h2 {
+  color: #3b1a0c !important;
+  font: 700 1.05rem/1.3 Montserrat, Poppins, Inter, system-ui, sans-serif !important;
+}
+html body .institutional-2026 .institutional-card p,
+html body .institutional-2026 .institutional-card li { color: #3b1a0c !important; }
+html body .institutional-2026 .institutional-card a { color: #a3243f !important; }
+html body .institutional-2026 .institutional-legal-footer { background: #54250f !important; color: #f3ddcf !important; }
+
+/* Linha de direitos reservados no rodape de todas as paginas publicas. */
+html body .public-footer-2026 .public-footer-copyright {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, .15);
+  text-align: center;
+  color: #f3ddcf;
+  font: 500 .72rem/1.5 Montserrat, Inter, system-ui, sans-serif;
+}
+
+/* Onda rosa decorativa acima do rodape do Cardapio: removida a pedido do proprietario. */
+html body .public-app-shell-today::after {
+  content: none !important;
+  display: none !important;
+}

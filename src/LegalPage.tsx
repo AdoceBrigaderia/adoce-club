@@ -26,9 +26,8 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <section className="institutional-card">
               <h2>Quem cuida dos seus dados</h2>
               <p>
-                O tratamento é realizado por 66.349.134 FRANCISCO RUBENS PEREIRA
-                BEZERRA FILHO, CNPJ 66.349.134/0001-20, responsável pela Adoce
-                Brigaderia, em Fortaleza/CE.
+                O tratamento é realizado pela Adoce Brigaderia, CNPJ
+                68.912.733/0001-36, em Fortaleza/CE.
               </p>
             </section>
             <section className="institutional-card">
@@ -98,7 +97,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
               <h2>Contato</h2>
               <p>
                 Para exercer direitos ou tirar dúvidas, escreva para
-                <a href="mailto:fcorbz@gmail.com"> fcorbz@gmail.com</a> ou fale pelo
+                <a href="mailto:rubens@adocebrigaderia.com.br"> rubens@adocebrigaderia.com.br</a> ou fale pelo
                 WhatsApp (85) 98215-6026.
               </p>
             </section>
@@ -150,7 +149,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
               <h2>Contato</h2>
               <p>
                 Dúvidas sobre o Clube: WhatsApp (85) 98215-6026 ou
-                <a href="mailto:fcorbz@gmail.com"> fcorbz@gmail.com</a>.
+                <a href="mailto:rubens@adocebrigaderia.com.br"> rubens@adocebrigaderia.com.br</a>.
               </p>
             </section>
           </>
@@ -165,7 +164,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
         </div>
       </div>
 
-      <footer className="institutional-legal-footer">Adoce Brigaderia · Rua Professor Odílio Filho, 227 · Passaré · Fortaleza/CE</footer>
+      <footer className="institutional-legal-footer">Adoce Brigaderia<br />Fábrica: Rua Professor Odílio Filho, 227 · Passaré · Fortaleza/CE<br />Atendimento ao público: Av. da Saudade, S/N · Passaré · Fortaleza/CE</footer>
     </main>
   );
 }
