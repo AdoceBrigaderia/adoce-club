@@ -357,8 +357,8 @@ export default function InstantOrderPanel({
   };
 
   // Antes de criar outro pedido, confere se este celular ja pediu hoje.
-  const checkSameDay = async () => {
-    if (sameDayAcknowledged) return false;
+  const checkSameDay = async (force = false) => {
+    if (sameDayAcknowledged && !force) return false;
     setBusy(true);
     const { data, error } = await requireSupabase().rpc("public_same_day_orders", {
       requested_phone: phone,
@@ -456,13 +456,28 @@ export default function InstantOrderPanel({
     if (response.ok) setSameDay((current) => current ? { ...current, orders: current.orders.filter((order) => order.order_number !== orderNumber) } : current);
   };
 
+  // Liberado o novo pedido, a pessoa volta ao carrinho para escolher as fatias.
   const continueAsNewOrder = () => {
     setSameDayAcknowledged(true);
     setStep("details");
     setSameDayMessage("");
-    if (needsSauceStep) setStep("sauces");
-    else void submit();
   };
+
+  // Confere assim que o WhatsApp fica completo, antes de a pessoa montar o
+  // carrinho inteiro a toa.
+  const checkedPhone = useRef("");
+  useEffect(() => {
+    const digits = phone.replace(/\D/g, "");
+    if (!open || result || digits.length < 10) return;
+    if (checkedPhone.current === digits) return;
+    const timer = window.setTimeout(() => {
+      checkedPhone.current = digits;
+      setSameDayAcknowledged(false);
+      void checkSameDay(true);
+    }, 600);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phone, open, result]);
 
   const continueToSauces = async (event: FormEvent) => {
     event.preventDefault();
@@ -675,8 +690,7 @@ export default function InstantOrderPanel({
           <div className="instant-order-same-day-option">
             <h3>3. Fazer outro pedido separado</h3>
             <label className="instant-order-same-day-aware"><input type="checkbox" checked={newOrderAware} onChange={(event) => setNewOrderAware(event.target.checked)} /><span>Quero fazer mais um pedido e estou ciente de que já existe um pedido anterior em meu nome hoje.</span></label>
-            <button type="button" className="instant-order-same-day-new" onClick={continueAsNewOrder} disabled={busy || !newOrderAware || !totalQuantity}>Enviar as fatias do carrinho como novo pedido</button>
-            {!totalQuantity ? <small>Seu carrinho está vazio. Volte ao carrinho para escolher as fatias.</small> : null}
+            <button type="button" className="instant-order-same-day-new" onClick={continueAsNewOrder} disabled={busy || !newOrderAware}>Continuar para um novo pedido</button>
           </div>
 
           <a className="instant-order-same-day-whatsapp" href={orderWhatsAppUrl(orderWhatsAppNumber, "Olá, Adoce! Quero falar sobre o meu pedido de hoje.")} target="_blank" rel="noreferrer"><MessageCircle /> Falar com a loja</a>
