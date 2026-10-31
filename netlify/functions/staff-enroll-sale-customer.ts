@@ -71,10 +71,22 @@ export default async (request: Request) => {
     .update({ customer_name: customer.fullName.slice(0, 120), customer_phone: customer.phone, updated_at: new Date().toISOString() })
     .eq("id", orderId);
 
+  // A venda do caixa com o cliente ja identificado lanca os carimbos sozinha
+  // (staff_confirm_instant_order_payment, chave instant-order:<id>:purchase).
+  // Sem esta conferencia, o cadastro no fechamento lancava tudo de novo com
+  // outra chave e o cliente recebia carimbos em dobro (incidente 13-30/10/2026).
+  const { data: alreadyStamped } = await admin
+    .from("ledger_entries")
+    .select("id")
+    .eq("reason", "purchase")
+    .in("idempotency_key", [`instant-order:${orderId}:purchase`, `sale-order:${orderId}`, `${orderId}:purchase`])
+    .limit(1);
+  const stampsAlreadyRecorded = Boolean(alreadyStamped?.length);
+
   // Carimbos lançados como o próprio atendente (mantém a auditoria de quem lançou).
   let progress = 0;
   let newRewards = 0;
-  if (slices > 0) {
+  if (slices > 0 && !stampsAlreadyRecorded) {
     const staffClient = createClient(supabaseUrl, publishableKey, {
       global: { headers: { Authorization: `Bearer ${authorization.accessToken}` } },
       auth: { persistSession: false, autoRefreshToken: false },
@@ -91,12 +103,14 @@ export default async (request: Request) => {
     newRewards = Number(purchase?.new_rewards || 0);
   }
 
+  const stampsAdded = stampsAlreadyRecorded ? 0 : slices;
+
   await admin.from("audit_events").insert({
     actor_user_id: actorUserId,
     action: "customer.enrolled_at_sale",
     entity_type: "instant_order",
     entity_id: orderId,
-    payload: { order_number: order.order_number, profile_id: customer.profileId, new_customer: !customer.existing, stamps: slices },
+    payload: { order_number: order.order_number, profile_id: customer.profileId, new_customer: !customer.existing, stamps: stampsAdded },
   });
 
   const warnings: string[] = [];
@@ -104,7 +118,7 @@ export default async (request: Request) => {
   if (!customer.existing) {
     try {
       const access = await generateAccessLink(admin, customer.fallbackEmail);
-      const welcome = await sendClubWelcome(admin, { fullName: customer.fullName, phone: customer.phone, stamps: slices, access, actorUserId });
+      const welcome = await sendClubWelcome(admin, { fullName: customer.fullName, phone: customer.phone, stamps: stampsAdded, access, actorUserId });
       welcomeSent = welcome.ok;
       if (!welcome.ok) warnings.push(welcome.error);
     } catch {
@@ -112,9 +126,9 @@ export default async (request: Request) => {
     }
   }
   let stampsMessageSent = false;
-  if (slices > 0) {
+  if (stampsAdded > 0) {
     const stamps = await sendStampMessage(admin, {
-      fullName: customer.fullName, phone: customer.phone, stampsAdded: slices, progress, newRewards, actorUserId,
+      fullName: customer.fullName, phone: customer.phone, stampsAdded, progress, newRewards, actorUserId,
       purchaseReference: order.order_number ? `nº ${order.order_number}` : undefined,
     });
     stampsMessageSent = stamps.ok;
@@ -125,7 +139,7 @@ export default async (request: Request) => {
     profileId: customer.profileId,
     fullName: customer.fullName,
     existing: customer.existing,
-    stampsAdded: slices,
+    stampsAdded,
     progress,
     newRewards,
     welcomeSent,
