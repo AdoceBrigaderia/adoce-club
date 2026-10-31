@@ -22,7 +22,7 @@
 ## Etapa 3 — remoção
 
 - [x] Remover endpoint e código de envio, manter auditoria e índices de proteção, documentar resultado, testar, commit e push.
-- [ ] Pedir autorização explícita para publicar a remoção; publicar e confirmar endpoint indisponível no domínio oficial. Git limpo e igual ao remoto.
+- [x] Pedir autorização explícita para publicar a remoção; publicar e confirmar endpoint indisponível no domínio oficial. Git limpo e igual ao remoto.
 
 ## Decisões e evidências
 
@@ -42,3 +42,5 @@
 - Cinco lotes de 20 entre 14h15 e 14h17 de 31/10/2026 (São Paulo). Conferência independente: 100 eventos sent, 100 cartões, 100 SIDs distintos, 92/8 variantes, zero destinatários externos, zero pendências, zero falhas e zero reservas incertas. O status de entrega ao aparelho não foi consultado; o resultado significa aceite pelo provedor.
 - Retirada local preparada: removidos emissor, endpoint, controle, serviço e scripts específicos; tela original e netlify.toml idênticos a `38f184e`. Migração `20261031210000` preparada, ainda não aplicada. Revisão independente sem achados materiais; nova autorização de produção pendente.
 - Retirada validada automaticamente: release:check aprovado (978 testes aprovados, 1 ignorado), empacotamento offline aprovado com 457 arquivos, 43 funções e as duas agendas anteriores preservadas. Nenhuma publicação da retirada realizada.
+- Após nova autorização explícita do proprietário, aplicada isoladamente a migração `20261031210000` e registrada no histórico remoto. RPC removido; evento de retirada registrado; 100 envios e 100 SIDs distintos preservados, sem falhas, com os dois índices e as três políticas de auditoria mantidos.
+- Retirada publicada no deploy `6ae62569c689f1dfe40b445d`, commit de pacote `b94d125`, em 31/10/2026 às 14h29 (São Paulo). Releasecheck novamente aprovado (978/1). Domínio oficial: home200; endpoint antigo GET/POST404; caminho direto da função404. Sessão autenticada mostra auditoria original, sem controle temporário e sem erros de console. Netlify confirma 43 funções, sem emissor e com as duas agendas anteriores preservadas. Nenhum novo envio ou segundo deploy de conferência.
