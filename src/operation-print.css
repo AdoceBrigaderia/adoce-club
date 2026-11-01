@@ -20,7 +20,7 @@
 .operation-print-actions .secondary {
   background: transparent;
 }
-.thermal-receipt-brand,.thermal-checklist,.thermal-friendly-message{display:none}
+.thermal-receipt-brand,.thermal-friendly-message{display:none}
 
 @page operation-a4 {
   size: A4 portrait;
@@ -115,7 +115,6 @@
     color: #000 !important;
   }
   html[data-operation-print-format="thermal"] .thermal-receipt-brand{display:grid!important;place-items:center;gap:1mm;padding-bottom:2mm;border-bottom:2px solid #000}.thermal-receipt-brand img{width:17mm!important;height:17mm!important;object-fit:contain!important;filter:grayscale(1)}
-  html[data-operation-print-format="thermal"] .thermal-checklist{display:grid!important;grid-template-columns:1fr 1fr;gap:1.5mm;padding:2mm 0;border-top:1px dashed #000;border-bottom:1px dashed #000}.thermal-checklist strong{grid-column:1/-1}.thermal-checklist span{font-size:9pt}
   html[data-operation-print-format="thermal"] .thermal-friendly-message{display:block!important;text-align:center;font-weight:700;margin:3mm 0 8mm!important}
   html[data-operation-print-format="thermal"] .thermal-checkbox{font-size:15pt;line-height:1}
   html[data-operation-print-format="thermal"] .print-scope .instant-order-status-track,

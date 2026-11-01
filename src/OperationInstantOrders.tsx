@@ -711,7 +711,6 @@ export default function OperationInstantOrders() {
         </section> : null}
         <div className="instant-order-operation-items">{selected.instant_order_items.flatMap((item) => Array.from({ length: item.quantity }, (_, index) => { const unit = index + 1; const sauces = item.instant_order_item_sauces.filter((choice) => choice.unit_number === unit).map((choice) => choice.sauce_name).join(" e ") || "Sem calda"; return <span key={`${item.id}-${unit}`} className={item.is_reward ? "reward-item" : ""}><b className="thermal-checkbox">☐</b><span><strong>{item.flavor_name}</strong><small>Calda: {sauces}</small>{item.is_reward ? <small><Gift /> Fatia premiada do Clube Adoce</small> : null}</span><strong>{item.is_reward && Number(item.unit_price) === 0 ? "GRÁTIS" : money(Number(item.unit_price))}</strong></span>; }))}</div>
         <div className="instant-order-operation-total"><span>Total</span><strong>{money(selected.total)}</strong></div>
-        <section className="thermal-checklist"><strong>CONFERÊNCIA</strong><span>☐ Sabores</span><span>☐ Caldas</span><span>☐ Embalado</span><span>☐ Identificado</span><span>☐ Pronto</span></section>
         <p className="thermal-friendly-message">Preparado com carinho para adoçar o seu dia. Obrigado por escolher a Adoce! ♡</p>
         {selected.payment_method_label ? <p><strong>Pagamento:</strong> {selected.payment_method_label}</p> : null}
         {selected.status === "expired" ? <section className="expired-recovery-box">
