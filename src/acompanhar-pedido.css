@@ -12,20 +12,29 @@
 
 .ac-topo { display: grid; gap: 6px; }
 
+/* O topo fica direto sobre o fundo escuro do app (.public-app-shell,
+   #54250f) -- sem card por baixo. Texto marrom em cima dele some; por
+   isso este bloco usa os tokens claros, diferente do resto da tela. */
 .ac-numero {
   margin: 0;
   font-size: 0.75rem;
   letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+  color: color-mix(in srgb, var(--adoce-texto-claro) 85%, transparent);
 }
 
-.ac-topo h1 { margin: 0; font-size: 1.625rem; line-height: 1.2; font-weight: 400; }
+.ac-topo h1 { margin: 0; font-size: 1.625rem; line-height: 1.2; font-weight: 400; color: var(--adoce-branco); }
 
 .ac-agora {
   margin: 0;
   font-size: 1rem;
   line-height: 1.5;
-  color: color-mix(in srgb, var(--adoce-marrom) 78%, transparent);
+  color: var(--adoce-texto-claro);
+}
+
+.ac-data {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: color-mix(in srgb, var(--adoce-texto-claro) 80%, transparent);
 }
 
 /* ---- Linha do tempo ---- */
@@ -135,28 +144,91 @@
 
 .ac-clube {
   display: grid;
-  gap: 14px;
-  padding: 16px;
-  border-radius: 18px;
-  background: color-mix(in srgb, var(--adoce-rosa) 28%, #fff);
+  gap: var(--adoce-e4);
+  padding: var(--adoce-e5) var(--adoce-e4);
+  border-radius: var(--adoce-raio-grande);
+  background: var(--adoce-superficie-2);
+  border: 1px solid var(--adoce-borda);
 }
 
-.ac-clube-topo { display: flex; gap: 12px; align-items: flex-start; }
-.ac-clube-topo > svg { width: 22px; height: 22px; color: var(--adoce-terra); flex: 0 0 auto; margin-top: 2px; }
-.ac-clube-titulo { margin: 0; font-size: 1rem; font-weight: 700; }
-.ac-clube-sub { margin: 2px 0 0; font-size: 0.875rem; color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent); }
+.ac-clube-cabecalho { display: grid; justify-items: center; gap: var(--adoce-e2); text-align: center; }
 
-.ac-clube-pontos { display: flex; flex-wrap: wrap; gap: 6px; }
-.ac-clube-pontos span {
-  width: 18px;
-  height: 18px;
+.ac-clube-icone {
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 1.5px solid color-mix(in srgb, var(--adoce-terra) 35%, transparent);
-  background: #fff;
+  background: var(--adoce-rosa);
+  display: grid;
+  place-items: center;
 }
-.ac-clube-pontos span.cheio { background: var(--adoce-terra); border-color: var(--adoce-terra); }
+.ac-clube-icone svg { width: 26px; height: 26px; color: var(--adoce-terra); fill: var(--adoce-terra); }
 
-.ac-clube-progresso { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--adoce-terra); }
+.ac-clube-rotulo {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: var(--adoce-t-micro);
+  font-weight: 800;
+  color: var(--adoce-terra);
+}
+
+.ac-clube-titulo {
+  margin: 0;
+  font-family: var(--adoce-fonte-voz);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: var(--adoce-texto);
+}
+
+.ac-clube-sub { margin: 0; font-size: var(--adoce-t-pequeno); line-height: 1.5; color: var(--adoce-texto-suave); max-width: 340px; }
+
+.ac-clube-explicacao {
+  display: grid;
+  gap: var(--adoce-e2);
+  padding: var(--adoce-e4);
+  border-radius: var(--adoce-raio-card);
+  background: var(--adoce-rosa);
+}
+.ac-clube-explicacao span { font-size: var(--adoce-t-menor); font-weight: 700; color: var(--adoce-terra); }
+.ac-clube-explicacao p { margin: 0; font-size: var(--adoce-t-pequeno); line-height: 1.5; color: var(--adoce-texto); }
+
+.ac-clube-cartao { display: grid; gap: var(--adoce-e3); }
+.ac-clube-cartao-topo { display: flex; align-items: baseline; justify-content: space-between; }
+.ac-clube-cartao-topo span { font-family: var(--adoce-fonte-voz); font-size: var(--adoce-t-medio); color: var(--adoce-texto); }
+.ac-clube-cartao-topo strong { font-size: var(--adoce-t-pequeno); font-weight: 700; color: var(--adoce-terra); }
+
+.ac-clube-pontos { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--adoce-e2); }
+.ac-clube-pontos span {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px dashed var(--adoce-borda-forte);
+  background: var(--adoce-branco);
+  display: grid;
+  place-items: center;
+  font-size: var(--adoce-t-menor);
+  font-weight: 700;
+  color: var(--adoce-texto-fraco);
+}
+.ac-clube-pontos span svg { width: 15px; height: 15px; }
+.ac-clube-pontos span.cheio { background: var(--adoce-terra); border: none; color: #fff; }
+.ac-clube-pontos span.cheio svg { stroke: #fff; }
+.ac-clube-pontos span.premio { background: var(--adoce-superficie); border-color: var(--adoce-dourado); }
+.ac-clube-pontos span.premio svg { color: var(--adoce-dourado); fill: var(--adoce-dourado); }
+
+.ac-clube-progresso { margin: 0; text-align: center; font-size: var(--adoce-t-pequeno); color: var(--adoce-texto-suave); }
+.ac-clube-progresso strong { color: var(--adoce-texto); }
+
+.ac-clube-nota {
+  margin: 0;
+  display: flex;
+  gap: var(--adoce-e2);
+  padding: var(--adoce-e3) var(--adoce-e4);
+  border-radius: var(--adoce-raio-card);
+  background: var(--adoce-atencao-fundo);
+  color: var(--adoce-atencao-texto);
+  font-size: var(--adoce-t-menor);
+  line-height: 1.5;
+}
 
 /* ---- Retirada ---- */
 
@@ -176,6 +248,8 @@
 
 /* ---- Falar ---- */
 
+/* Sem card por baixo -- sobre o fundo escuro do shell, por isso leva
+   fundo próprio em vez de só borda. */
 .ac-falar {
   display: inline-flex;
   align-items: center;
@@ -184,6 +258,7 @@
   min-height: var(--adoce-toque);
   border: 1px solid var(--adoce-terra);
   border-radius: 999px;
+  background: var(--adoce-superficie-2);
   color: var(--adoce-terra);
   font-weight: 600;
   text-decoration: none;
@@ -195,5 +270,5 @@
   margin: 0;
   text-align: center;
   font-size: 0.8125rem;
-  color: color-mix(in srgb, var(--adoce-marrom) 58%, transparent);
+  color: color-mix(in srgb, var(--adoce-texto-claro) 70%, transparent);
 }

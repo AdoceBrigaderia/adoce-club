@@ -10,7 +10,7 @@
 // ja confirmou que separou.
 
 import { useEffect } from "react";
-import { Check, Gift, MapPin, MessageCircle } from "lucide-react";
+import { Check, Gift, Heart, MapPin, MessageCircle } from "lucide-react";
 import {
   encerramento,
   estadoDoPasso,
@@ -35,34 +35,56 @@ export type ClubProgress = {
   meta: number;
 };
 
-const CartaoClube = ({ club }: { club: ClubProgress }) => {
+const CartaoClube = ({ club, numeroPedido }: { club: ClubProgress; numeroPedido: string }) => {
   const faltam = club.progresso != null ? Math.max(club.meta - club.progresso, 0) : null;
   return (
     <section className="ac-clube">
-      <div className="ac-clube-topo">
-        <Gift aria-hidden="true" />
-        <div>
-          <p className="ac-clube-titulo">{club.novoMembro ? "Você entrou no Clube Adoce" : "Carimbo lançado no Clube Adoce"}</p>
-          <p className="ac-clube-sub">
-            {club.carimbosGanhos > 0
-              ? `+${club.carimbosGanhos} carimbo${club.carimbosGanhos > 1 ? "s" : ""} nesta compra.`
+      <div className="ac-clube-cabecalho">
+        <div className="ac-clube-icone"><Heart aria-hidden="true" /></div>
+        <span className="ac-clube-rotulo">{club.novoMembro ? "Bem-vinda(o) ao" : "Compra confirmada"}</span>
+        <h3 className="ac-clube-titulo">{club.novoMembro ? "Clube Adoce" : "Obrigada pela sua fatia!"}</h3>
+        <p className="ac-clube-sub">
+          {club.novoMembro
+            ? "Seu cadastro já foi feito automaticamente com este pedido — não precisa fazer mais nada."
+            : club.carimbosGanhos > 0
+              ? `Você ganhou +${club.carimbosGanhos} carimbo${club.carimbosGanhos > 1 ? "s" : ""} nesta compra.`
               : "Seu cadastro já está pronto."}
-          </p>
-        </div>
+        </p>
       </div>
+
+      {club.novoMembro ? (
+        <div className="ac-clube-explicacao">
+          <span>Como funciona</span>
+          <p>A cada fatia confirmada, você ganha <strong>1 carimbo</strong>. Ao completar <strong>14 carimbos</strong>, a próxima fatia é por nossa conta — automático, sem precisar resgatar nada.</p>
+        </div>
+      ) : null}
+
       {club.progresso != null ? (
-        <>
+        <div className="ac-clube-cartao">
+          <div className="ac-clube-cartao-topo"><span>Seu cartão</span><strong>{club.progresso} de {club.meta}</strong></div>
           <div className="ac-clube-pontos" aria-hidden="true">
-            {Array.from({ length: club.meta }, (_, i) => (
-              <span key={i} className={i < (club.progresso || 0) ? "cheio" : ""} />
-            ))}
+            {Array.from({ length: club.meta }, (_, i) => {
+              const preenchido = i < (club.progresso || 0);
+              const ultimo = i === club.meta - 1;
+              return (
+                <span key={i} className={preenchido ? "cheio" : ultimo ? "premio" : ""}>
+                  {preenchido ? <Check /> : ultimo ? <Gift /> : i + 1}
+                </span>
+              );
+            })}
           </div>
           <p className="ac-clube-progresso">
             {faltam === 0
               ? "Sua próxima fatia é por nossa conta!"
-              : `${club.progresso} de ${club.meta} — faltam ${faltam} para sua fatia grátis.`}
+              : `Faltam ${faltam} fatia${faltam === 1 ? "" : "s"} para sua fatia grátis.`}
           </p>
-        </>
+        </div>
+      ) : null}
+
+      {!club.novoMembro && club.carimbosGanhos > 0 ? (
+        <p className="ac-clube-nota">
+          Pedido {numeroPedido} · {club.carimbosGanhos} fatia{club.carimbosGanhos > 1 ? "s" : ""} confirmada{club.carimbosGanhos > 1 ? "s" : ""}. Os carimbos já foram lançados automaticamente no seu cartão.
+        </p>
       ) : null}
     </section>
   );
@@ -152,7 +174,7 @@ export default function AcompanharPedido({
         <p className="ac-total">{dinheiro(pedido.total)}</p>
       </section>
 
-      {club ? <CartaoClube club={club} /> : null}
+      {club ? <CartaoClube club={club} numeroPedido={pedido.numero} /> : null}
 
       {pedido.retirada && !encerrado(pedido.etapa) ? (
         <section className="ac-retirada">

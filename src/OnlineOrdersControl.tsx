@@ -1,9 +1,29 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Clock3, MapPin, MessageCircle, Power, Save, Eye } from "lucide-react";
+import { Check, Clock3, MapPin, MessageCircle, Power, Save, Eye } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { serviceState, type BusinessHour, type BusinessHourException } from "./AdoceHoje";
 import { serviceStatusMessage } from "./service-status";
 import "./online-orders-control.css";
+
+const WEEKDAY_MAP: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+const weekdayHoje = () => {
+  const value = new Intl.DateTimeFormat("en-US", { timeZone: "America/Fortaleza", weekday: "short" }).format(new Date());
+  return WEEKDAY_MAP[value] ?? 0;
+};
+const dataHojeExtenso = () =>
+  new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Fortaleza", weekday: "long", day: "2-digit", month: "long" }).format(new Date());
+const hhmm = (value: string | null) => (value || "").slice(0, 5);
+const somaDias = (data: string, dias: number) => {
+  const resultado = new Date(`${data}T12:00:00Z`);
+  resultado.setUTCDate(resultado.getUTCDate() + dias);
+  return resultado.toISOString().slice(0, 10);
+};
+const rotuloData = (data: string, hoje: string) => {
+  if (data === hoje) return "hoje";
+  if (data === somaDias(hoje, 1)) return "amanhã";
+  const [ano, mes, dia] = data.split("-");
+  return `${dia}/${mes}/${ano}`;
+};
 
 // Pedido do proprietário em 01/11/2026: ligar/desligar pedidos online,
 // escrever a mensagem que o cliente vê e escolher o horário de hoje, tudo
@@ -49,6 +69,10 @@ export default function OnlineOrdersControl() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const today = todayKey();
+  // Pedido do proprietário em 01/11/2026: o horário especial não pode ser só
+  // "de hoje" -- precisa dar pra preparar amanhã (feriado) ou um domingo
+  // futuro com antecedência, sem precisar voltar nesse painel no dia exato.
+  const [selectedDate, setSelectedDate] = useState(today);
 
   const load = useCallback(async () => {
     const supabase = requireSupabase();
@@ -68,23 +92,41 @@ export default function OnlineOrdersControl() {
     }
     setHours((hoursResult.data || []) as BusinessHour[]);
     setExceptions((exceptionsResult.data || []) as BusinessHourException[]);
-    const todayException = (exceptionsResult.data || []).find((item) => item.service_date === today) as BusinessHourException | undefined;
-    if (todayException) {
-      setUseTimeToday(true);
-      setOpensAt((todayException.opens_at || "09:00").slice(0, 5));
-      setClosesAt((todayException.closes_at || "20:00").slice(0, 5));
-      setTimeNote(todayException.message || "");
-    } else {
-      setUseTimeToday(false);
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
+  // Troca de data no seletor (ou chegada dos dados) -- preenche os campos
+  // com a exceção já salva pra aquele dia, se existir, em vez de sempre
+  // assumir "hoje".
+  useEffect(() => {
+    const existente = exceptions.find((item) => item.service_date === selectedDate);
+    if (existente) {
+      setUseTimeToday(!existente.closed);
+      setOpensAt(hhmm(existente.opens_at) || "09:00");
+      setClosesAt(hhmm(existente.closes_at) || "20:00");
+      setTimeNote(existente.message || "");
+    } else {
+      setUseTimeToday(false);
+      setOpensAt("09:00");
+      setClosesAt("20:00");
+      setTimeNote("");
+    }
+  }, [selectedDate, exceptions]);
+
+  // A confirmação some sozinha depois de um tempo, pra não ficar uma frase
+  // velha na tela parecendo que ainda vale pro que está sendo editado agora.
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const toggleOnline = async () => {
     if (!channel) return;
     setBusy(true);
+    setNotice("");
     // "closed" é o valor usado em todo o resto do sistema (inclusive na tela
     // de Produtos > Horários e canais) pra dizer "segue o horário cadastrado"
     // -- "scheduled" não existe no enum channel_status e fazia esse toggle
@@ -99,6 +141,7 @@ export default function OnlineOrdersControl() {
 
   const saveMessage = async () => {
     setBusy(true);
+    setNotice("");
     const { error } = await requireSupabase()
       .from("store_channels")
       .update({ message: draftMessage.trim() || null, pickup_location_slug: draftLocationSlug })
@@ -116,33 +159,35 @@ export default function OnlineOrdersControl() {
 
   const saveTime = async () => {
     setBusy(true);
+    setNotice("");
+    const rotulo = rotuloData(selectedDate, today);
     if (!useTimeToday) {
-      const { error } = await requireSupabase().from("business_hour_exceptions").delete().eq("channel_slug", SLUG).eq("service_date", today);
+      const { error } = await requireSupabase().from("business_hour_exceptions").delete().eq("channel_slug", SLUG).eq("service_date", selectedDate);
       setBusy(false);
       if (error) return setNotice(error.message);
-      setExceptions((current) => current.filter((item) => item.service_date !== today));
-      setNotice("Horário de hoje voltou a seguir o padrão cadastrado em Produtos > Horários e canais.");
+      setExceptions((current) => current.filter((item) => item.service_date !== selectedDate));
+      setNotice(`Horário de ${rotulo} voltou a seguir o padrão cadastrado em Produtos > Horários e canais.`);
       return;
     }
     if (!/^\d{2}:\d{2}$/.test(opensAt) || !/^\d{2}:\d{2}$/.test(closesAt)) {
       setBusy(false);
-      return setNotice("Informe os dois horários de hoje.");
+      return setNotice(`Informe os dois horários de ${rotulo}.`);
     }
-    const row = { channel_slug: SLUG, service_date: today, closed: false, opens_at: opensAt, closes_at: closesAt, message: timeNote.trim() || null };
+    const row = { channel_slug: SLUG, service_date: selectedDate, closed: false, opens_at: opensAt, closes_at: closesAt, message: timeNote.trim() || null };
     const { error } = await requireSupabase().from("business_hour_exceptions").upsert(row, { onConflict: "channel_slug,service_date" });
     setBusy(false);
     if (error) return setNotice(error.message);
-    setExceptions((current) => [...current.filter((item) => item.service_date !== today), row]);
-    setNotice("Horário de hoje salvo.");
+    setExceptions((current) => [...current.filter((item) => item.service_date !== selectedDate), row]);
+    setNotice(`Horário de ${rotulo} salvo.`);
   };
 
   // Prévia ao vivo: usa a MESMA conta que a tela do cliente usa (inclusive
   // o que ainda não foi salvo), pra nunca prometer algo que não é real.
   const draftExceptions = useMemo(() => {
-    const withoutToday = exceptions.filter((item) => item.service_date !== today);
-    if (!useTimeToday) return withoutToday;
-    return [...withoutToday, { channel_slug: SLUG, service_date: today, closed: false, opens_at: opensAt, closes_at: closesAt, message: timeNote.trim() || null }];
-  }, [exceptions, useTimeToday, opensAt, closesAt, timeNote, today]);
+    const withoutSelected = exceptions.filter((item) => item.service_date !== selectedDate);
+    if (!useTimeToday) return withoutSelected;
+    return [...withoutSelected, { channel_slug: SLUG, service_date: selectedDate, closed: false, opens_at: opensAt, closes_at: closesAt, message: timeNote.trim() || null }];
+  }, [exceptions, useTimeToday, opensAt, closesAt, timeNote, selectedDate]);
   const paused = channel?.status === "paused";
   const pickupState = serviceState("pickup", hours, draftExceptions);
   const previewMessage = serviceStatusMessage({
@@ -169,33 +214,47 @@ export default function OnlineOrdersControl() {
     : "";
   const liveLocation = locations.find((l) => l.slug === channel?.pickup_location_slug);
 
+  // Horário explícito de hoje (números, não só a frase) -- pedido do
+  // proprietário em 01/11/2026: ver exatamente que horário o site está
+  // aceitando pedidos agora, sem precisar interpretar texto.
+  const horarioHojeTexto = useMemo(() => {
+    const excecaoHoje = exceptions.find((item) => item.service_date === today);
+    if (excecaoHoje) {
+      return excecaoHoje.closed ? "Fechado hoje (exceção cadastrada)" : `${hhmm(excecaoHoje.opens_at)} às ${hhmm(excecaoHoje.closes_at)} (exceção de hoje)`;
+    }
+    const recorrentesHoje = hours.filter((item) => item.active && item.weekday === weekdayHoje());
+    if (!recorrentesHoje.length) return "Sem horário cadastrado para hoje";
+    return recorrentesHoje.map((item) => `${hhmm(item.opens_at)} às ${hhmm(item.closes_at)}`).join(" · ");
+  }, [exceptions, hours, today]);
+
   const online = !paused;
 
   return (
     <section className="online-orders-control">
       <header>
         <div>
-          <small>Pedidos online</small>
+          <small>Pedidos online · {dataHojeExtenso()}</small>
           <h2>{loading ? "Carregando…" : online ? "Ligado" : "Pausado"}</h2>
+          {!loading ? <p className="online-orders-hours-badge"><Clock3 /> {horarioHojeTexto}</p> : null}
         </div>
         <button type="button" className={online ? "online-toggle is-on" : "online-toggle is-off"} onClick={() => void toggleOnline()} disabled={busy || !channel}>
           <Power /> {online ? "Pausar pedidos online" : "Retomar pedidos online"}
         </button>
       </header>
 
-      <div className="online-orders-live">
-        <small><Eye /> Em produção agora — o que o cliente está recebendo</small>
+      {notice ? <p className="online-orders-notice" role="status"><Check /> {notice}</p> : null}
+
+      <details className="online-orders-live" open>
+        <summary><Eye /> Em produção agora — o que o cliente está recebendo</summary>
         <p className="online-orders-live-message">{loading ? "Carregando…" : liveMessage || "Nenhuma mensagem definida."}</p>
         <dl>
           <div><dt>Local de retirada</dt><dd>{liveLocation?.name || channel?.pickup_location_slug || "—"}</dd></div>
-          <div><dt>Horário programado hoje</dt><dd>{savedPickupState.open ? savedPickupState.message : savedPickupState.message || "Sem horário programado."}</dd></div>
-          <div><dt>Status</dt><dd>{paused ? "Pausado manualmente" : "Seguindo horário cadastrado"}</dd></div>
+          <div><dt>Horário aceitando pedidos hoje</dt><dd>{paused ? "Pausado manualmente" : horarioHojeTexto}</dd></div>
         </dl>
-      </div>
+      </details>
 
       <div className="online-orders-field">
         <span><MapPin /> Local de retirada de hoje</span>
-        <small className="online-orders-hint">Define onde o pedido é gravado e enviado ao cliente -- escolher uma mensagem pronta abaixo já ajusta isso automaticamente.</small>
         <select
           className="online-orders-location-select"
           value={draftLocationSlug}
@@ -206,11 +265,8 @@ export default function OnlineOrdersControl() {
             <option key={location.slug} value={location.slug}>{location.name}</option>
           ))}
         </select>
-      </div>
 
-      <label className="online-orders-field">
         <span><MessageCircle /> Mensagem para quem acessar o pedido <small>{draftMessage.length}/160</small></span>
-        <small className="online-orders-hint">Só aparece pro cliente quando os pedidos estão ligados e dentro do horário de hoje.</small>
         <div className="online-orders-preset-list">
           {MESSAGE_PRESETS.map((preset) => (
             <button
@@ -228,45 +284,48 @@ export default function OnlineOrdersControl() {
         <textarea
           className="online-orders-message-box"
           maxLength={160}
-          rows={3}
+          rows={2}
           placeholder="Ex.: Hoje só recebemos pedidos até às 18h."
           value={draftMessage}
           onChange={(e) => setDraftMessage(e.target.value)}
           disabled={busy}
         />
-        <button type="button" className="online-orders-save-message" onClick={() => void saveMessage()} disabled={busy}><Save /> Salvar mensagem e local</button>
-      </label>
+        <small className="online-orders-hint">Só aparece pro cliente com os pedidos ligados e dentro do horário de hoje. Escolher uma mensagem pronta já ajusta o local acima junto.</small>
+        <button type="button" className="online-orders-primary" onClick={() => void saveMessage()} disabled={busy}><Save /> Salvar mensagem e local</button>
+      </div>
 
       <div className="online-orders-field">
-        <span><Clock3 /> Horário de disponibilidade de hoje</span>
-        <label className="online-orders-today-toggle">
-          <input type="checkbox" checked={useTimeToday} onChange={(e) => setUseTimeToday(e.target.checked)} disabled={busy} />
-          Definir um horário só para hoje (em vez do horário cadastrado)
-        </label>
+        <span><Clock3 /> Horário especial -- qualquer dia, não só hoje</span>
+        <div className="online-orders-date-chips">
+          <button type="button" className={selectedDate === today ? "is-selected" : ""} onClick={() => setSelectedDate(today)} disabled={busy}>Hoje</button>
+          <button type="button" className={selectedDate === somaDias(today, 1) ? "is-selected" : ""} onClick={() => setSelectedDate(somaDias(today, 1))} disabled={busy}>Amanhã</button>
+          <input type="date" min={today} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value || today)} disabled={busy} />
+        </div>
+        <div className="online-orders-time-row">
+          <input type="checkbox" checked={useTimeToday} onChange={(e) => setUseTimeToday(e.target.checked)} disabled={busy} aria-label={`Definir horário especial para ${rotuloData(selectedDate, today)}`} />
+          <input type="time" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} disabled={busy || !useTimeToday} />
+          <span>até</span>
+          <input type="time" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} disabled={busy || !useTimeToday} />
+        </div>
         {useTimeToday ? (
-          <div className="online-orders-time-row">
-            <input type="time" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} disabled={busy} />
-            <span>até</span>
-            <input type="time" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} disabled={busy} />
-            <input
-              type="text"
-              placeholder="Mensagem do horário (opcional)"
-              maxLength={160}
-              value={timeNote}
-              onChange={(e) => setTimeNote(e.target.value)}
-              disabled={busy}
-            />
-          </div>
+          <input
+            className="online-orders-time-note"
+            type="text"
+            placeholder="Mensagem do horário (opcional)"
+            maxLength={160}
+            value={timeNote}
+            onChange={(e) => setTimeNote(e.target.value)}
+            disabled={busy}
+          />
         ) : null}
-        <button type="button" onClick={() => void saveTime()} disabled={busy}><Save /> Salvar horário de hoje</button>
+        <button type="button" className="online-orders-primary" onClick={() => void saveTime()} disabled={busy}><Save /> Salvar horário de {rotuloData(selectedDate, today)}</button>
       </div>
 
-      <div className="online-orders-preview">
-        <small><Eye /> Como o cliente vê na tela de pedido agora (com o que ainda não foi salvo)</small>
+      <details className="online-orders-preview">
+        <summary><Eye /> Pré-visualização de hoje (com o que ainda não foi salvo)</summary>
         <p>{previewMessage}</p>
-      </div>
-
-      {notice ? <p className="online-orders-notice" role="status">{notice}</p> : null}
+        {selectedDate !== today ? <small className="online-orders-hint">O horário especial que você está editando é de {rotuloData(selectedDate, today)} -- essa prévia só mostra hoje.</small> : null}
+      </details>
     </section>
   );
 }
