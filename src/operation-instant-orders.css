@@ -33,3 +33,7 @@
 .instant-order-cancel-reasons { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; }
 .instant-order-cancel-reasons button { padding: 10px 14px; border-radius: 999px; border: 1px solid #d9b98a; background: #fff; color: #5a2e14; font-weight: 700; cursor: pointer; }
 .instant-order-cancel-reasons button.active { background: #a3243f; border-color: #a3243f; color: #fff; }
+
+/* Aba "Conversas do WhatsApp" dentro da lista de pedidos. */
+.instant-order-view-switch button svg { width: 16px; height: 16px; vertical-align: -3px; margin-right: 4px; }
+.instant-order-whatsapp-tab { margin-top: 12px; }

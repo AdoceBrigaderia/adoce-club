@@ -16,6 +16,8 @@ import { Capacitor } from "@capacitor/core";
 import { JORNADA, type Pedido } from "./jornada-do-pedido";
 import { canStartPreparation, canReceivePayment, canCancelOrder, canApplyExistingOrderReward } from "./order-actions";
 import { confirmAction } from "./lib/confirm-dialog";
+import WhatsAppSupportInbox from "./WhatsAppSupportInbox";
+import { operationNavigateEvent, type OperationAreaRequest } from "./lib/operation-navigation";
 
 type InstantOrderStatus = "awaiting_confirmation" | "reserved" | "awaiting_payment" | "paid" | "preparing" | "ready" | "completed" | "cancelled" | "expired";
 type InstantOrder = {
@@ -127,7 +129,20 @@ export default function OperationInstantOrders() {
   // "Registrar como pago", tira essa incerteza.
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
-  const [view, setView] = useState<"active" | "expired" | "finished">("active");
+  const [view, setView] = useState<"active" | "expired" | "finished" | "whatsapp">(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("whatsappStart") ? "whatsapp" : "active");
+  const sectionRef = useRef<HTMLElement>(null);
+  // "Conversas do WhatsApp" (Hoje) abre esta aba, mesmo com o Caixa ja aberto.
+  useEffect(() => {
+    const onNavigate = (event: Event) => {
+      const request = (event as CustomEvent<OperationAreaRequest>).detail;
+      if (request?.view !== "orders" || request.channel !== "official") return;
+      setView("whatsapp");
+      window.setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+    };
+    window.addEventListener(operationNavigateEvent, onNavigate);
+    return () => window.removeEventListener(operationNavigateEvent, onNavigate);
+  }, []);
   // Os números do topo filtram a fila (antes eram só informativos).
   const [statusFilter, setStatusFilter] = useState<"all" | "awaiting_confirmation" | "awaiting_payment" | "ready">("all");
   const showStatus = (next: typeof statusFilter) => { setView("active"); setStatusFilter((current) => (current === next && next !== "all" ? "all" : next)); };
@@ -534,7 +549,7 @@ export default function OperationInstantOrders() {
     })) || [];
 
   const hasAnyOrders = orders.length > 0;
-  return <section className={`operation-instant-orders${hasAnyOrders ? "" : " operation-instant-orders-empty"}`}>
+  return <section ref={sectionRef} className={`operation-instant-orders${hasAnyOrders || view === "whatsapp" ? "" : " operation-instant-orders-empty"}`}>
     <div className="instant-order-metrics" role="group" aria-label="Filtrar pedidos por etapa">
       <button type="button" aria-pressed={view === "active" && statusFilter === "all"} className={view === "active" && statusFilter === "all" ? "active" : ""} onClick={() => showStatus("all")}><strong>{active.length}</strong><small>em andamento</small></button>
       <button type="button" aria-pressed={statusFilter === "awaiting_confirmation"} className={statusFilter === "awaiting_confirmation" ? "active" : ""} onClick={() => showStatus("awaiting_confirmation")}><strong>{orders.filter((order) => order.status === "awaiting_confirmation").length}</strong><small>para conferir</small></button>
@@ -551,13 +566,15 @@ export default function OperationInstantOrders() {
     </div> : null}
 
     {notice ? <p className="operation-commercial-notice" role="status">{notice}</p> : null}
-    {hasAnyOrders ? <><div className="instant-order-view-switch">
+    <div className="instant-order-view-switch">
       <button className={view === "active" ? "active" : ""} onClick={() => { setView("active"); setStatusFilter("all"); }}>Em andamento</button>
       <button className={view === "expired" ? "active" : ""} onClick={() => { setView("expired"); setStatusFilter("all"); }}>Prazo encerrado ({orders.filter((order) => order.status === "expired").length})</button>
       <button className={view === "finished" ? "active" : ""} onClick={() => { setView("finished"); setSelectedPrintIds([]); }}>Finalizados e reimpressão ({orders.filter((order) => ["completed", "cancelled"].includes(order.status)).length})</button>
+      <button className={view === "whatsapp" ? "active" : ""} onClick={() => setView("whatsapp")}><MessageCircle /> Conversas do WhatsApp</button>
     </div>
-    {view === "finished" ? <div className="instant-order-reprint-toolbar"><span>Selecione as comandas que deseja reimprimir.</span><button type="button" onClick={() => void printSelected()} disabled={busy || !selectedPrintIds.length}><Printer /> Reimprimir selecionados ({selectedPrintIds.length})</button></div> : null}</> : <p className="instant-order-carts-empty">Nenhum pedido no momento.</p>}
-    <div className="instant-order-operation-list">
+    {view === "finished" ? <div className="instant-order-reprint-toolbar"><span>Selecione as comandas que deseja reimprimir.</span><button type="button" onClick={() => void printSelected()} disabled={busy || !selectedPrintIds.length}><Printer /> Reimprimir selecionados ({selectedPrintIds.length})</button></div> : null}
+    {!hasAnyOrders && view !== "whatsapp" ? <p className="instant-order-carts-empty">Nenhum pedido no momento.</p> : null}
+    {view === "whatsapp" ? <div className="instant-order-whatsapp-tab"><WhatsAppSupportInbox /></div> : <div className="instant-order-operation-list">
       {filtered.map((order) => {
         const pedido: Pedido = {
           numero: order.order_number,
@@ -583,7 +600,7 @@ export default function OperationInstantOrders() {
         </button></div>;
       })}
       {!filtered.length ? <div className={`operation-empty${hasAnyOrders ? "" : " compact"}`}><ShoppingCart /><p>{statusFilter !== "all" && view === "active" ? "Nenhum pedido nesta etapa agora." : "Nenhum pedido de retirada encontrado."}</p></div> : null}
-    </div>
+    </div>}
     {selected ? <div className="instant-order-operation-layer">
       <button className="instant-order-operation-backdrop" aria-label="Fechar" onClick={() => setSelected(null)} />
       <aside className="print-scope" role="dialog" aria-modal="true" aria-label={`Pedido ${selected.order_number}`}>
