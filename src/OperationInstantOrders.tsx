@@ -722,7 +722,12 @@ export default function OperationInstantOrders() {
           {selected.status === "reserved" ? <button onClick={() => void update("preparing")} disabled={busy}><PackageCheck /> Iniciar separação</button> : null}
           {["paid", "preparing"].includes(selected.status) && selected.payment_status === "approved" ? <button onClick={() => void update("ready")} disabled={busy}><PackageCheck /> Liberar para retirada e avisar</button> : null}
           {selected.status === "ready" ? <button onClick={() => void update("completed")} disabled={busy}><Check /> Marcar como entregue</button> : null}
-          {!["completed", "cancelled", "expired"].includes(selected.status) && (selected.payment_status !== "approved" || selected.sales_channel === "operation") ? <button className="direct-finish payment-flow" onClick={() => { if (selected.sales_channel !== "operation") { void finalizeDirectly(selected.payment_method_code || "pix"); } else { setRecoveryMethod(selected.payment_method_code || "pix"); setDirectFinishOpen(true); } }} disabled={busy}><Check /> {selected.sales_channel === "operation" ? "Registrar como pago e finalizar" : <span><strong>Já pagou</strong><small>Confirmar pagamento e liberar retirada</small></span>}</button> : null}
+          {/* "Já pagou" é soberano: um clique encerra o pedido como pago e
+              finalizado, sem passar por "Ainda não pagou" antes -- muita
+              cliente já paga direto na chave Pix sem precisar de cobrança.
+              Só pede a forma de pagamento quando ela realmente não é
+              conhecida ainda (venda manual sem método definido). */}
+          {!["completed", "cancelled", "expired"].includes(selected.status) && (selected.payment_status !== "approved" || selected.sales_channel === "operation") ? <button className="direct-finish payment-flow" onClick={() => { if (selected.payment_method_code) { void finalizeDirectly(selected.payment_method_code); } else { setRecoveryMethod(recoveryMethod || "pix"); setDirectFinishOpen(true); } }} disabled={busy}><Check /> {selected.sales_channel === "operation" ? "Registrar como pago e finalizar" : <span><strong>Já pagou</strong><small>Confirmar pagamento e liberar retirada</small></span>}</button> : null}
           {!["completed", "cancelled", "expired"].includes(selected.status) ? <button className="cancel" onClick={() => setCancelOpen(true)} disabled={busy}><X /> Cancelar pedido</button> : null}
         </div>
         {cancelOpen && canCancelOrder(selected.status) ? <section className="instant-order-direct-finish">

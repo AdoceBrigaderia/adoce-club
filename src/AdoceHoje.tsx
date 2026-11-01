@@ -87,6 +87,7 @@ type Channel = {
   status: "open" | "closed" | "opening_soon" | "paused";
   message: string | null;
   next_change_at: string | null;
+  pickup_location_slug: string | null;
 };
 
 export function sortFlavorsByAvailability<T extends { available: boolean; name: string }>(items: T[]) {
@@ -570,7 +571,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         }),
         supabase
           .from("store_channels")
-          .select("slug,label,status,message,next_change_at")
+          .select("slug,label,status,message,next_change_at,pickup_location_slug")
           .order("slug"),
         supabase
           .from("business_hours")
@@ -766,6 +767,17 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
     scheduleMessage: pickupState.message,
     pausedMessage: "Retiradas pausadas no momento.",
   });
+  // Pedido do proprietário em 01/11/2026: terça a sábado, das 17h às 22h, o
+  // atendimento presencial já começou e pode atrasar o início da separação
+  // das fatias do pedido online -- avisa isso na tela de pedido (nunca na
+  // disponibilidade/preço, só um aviso de expectativa).
+  const nowFortaleza = getFortalezaNow();
+  const isPeakServiceWindow = nowFortaleza.weekday >= 2 && nowFortaleza.weekday <= 6
+    && nowFortaleza.hour >= 17 && nowFortaleza.hour < 22;
+  const peakServiceNotice = isPeakServiceWindow
+    ? "Como o atendimento presencial já começou, pode haver uma espera de até 40 minutos para o início da separação dos sabores escolhidos. Mas fique tranquila(o): sua fatia já está reservada!"
+    : "";
+  const orderPanelScheduleMessage = [pickupMessage, peakServiceNotice].filter(Boolean).join(" ");
   const anyServiceOpen = pickupOpen || open;
   // A retirada acontece no Cantinho da Adoce, no horario presencial - nao no
   // horario de reserva online, que fica aberto o dia inteiro.
@@ -1351,6 +1363,8 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         flavors={instantOrderFlavors}
         initialFlavorId={initialOrderFlavorId}
         pickupWindows={pickupWindows}
+        scheduleMessage={orderPanelScheduleMessage}
+        pickupLocationSlug={online?.pickup_location_slug || "cantinho-da-adoce"}
       />
       <WeeklyScheduleDialog
         open={scheduleOpen}

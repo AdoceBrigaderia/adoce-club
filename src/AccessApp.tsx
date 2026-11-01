@@ -3504,8 +3504,8 @@ function OperationHome({ session }: { session: Session }) {
     ...(canManageOperation
       ? [{ view: "management" as const, label: "Gestão", shortLabel: "Gestão", icon: BarChart3, open: () => void openView("management") }]
       : []),
-    ...(role === "owner"
-      ? [{ view: "audit" as const, label: "Auditoria do site", shortLabel: "Auditoria", icon: ClipboardCheck, open: () => void openView("audit") }]
+    ...(role === "owner" || role === "manager"
+      ? [{ view: "settings" as const, label: "Configurações", shortLabel: "Config.", icon: Settings2, open: () => void openView("settings") }]
       : []),
   ];
   const goBackInOperation = useCallback(() => {

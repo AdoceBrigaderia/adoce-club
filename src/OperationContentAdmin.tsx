@@ -99,6 +99,7 @@ type Channel = {
   message: string | null;
   next_change_at: string | null;
 };
+type OrderSauceRow = { id: string; name: string; active: boolean; sort_order: number };
 export type BusinessHour = {
   id: string;
   channel_slug: string;
@@ -273,6 +274,8 @@ export default function OperationContentAdmin({
     [flavors, availability, importedTodayFlavorIds],
   ).filter((flavor) => matchesText(flavor, availabilitySearch));
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [sauces, setSauces] = useState<OrderSauceRow[]>([]);
+  const [sauceBusy, setSauceBusy] = useState<string | null>(null);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
   const [editing, setEditing] = useState<Flavor | null>(null);
@@ -356,6 +359,7 @@ export default function OperationContentAdmin({
       promoResult,
       campaignResult,
       cakePriceResult,
+      sauceResult,
     ] = await Promise.all([
       supabase
         .from("flavors")
@@ -408,6 +412,7 @@ export default function OperationContentAdmin({
         .order("created_at", { ascending: false })
         .limit(50),
       supabase.from("commercial_products").select("base_price").eq("slug", "torta-g").single(),
+      supabase.from("order_sauces").select("id,name,active,sort_order").order("sort_order").order("name"),
     ]);
     const error =
       flavorResult.error ||
@@ -419,7 +424,8 @@ export default function OperationContentAdmin({
       exceptionResult.error ||
       promoResult.error ||
       campaignResult.error ||
-      cakePriceResult.error;
+      cakePriceResult.error ||
+      sauceResult.error;
     setBusy(false);
     if (error) return setNotice(error.message);
     setCakeGPrice(Number(cakePriceResult.data.base_price));
@@ -436,6 +442,7 @@ export default function OperationContentAdmin({
     setAvailability((availabilityResult.data || []) as Availability[]);
     setAvailabilityBatches((batchResult.data || []) as AdminAvailabilityBatch[]);
     setChannels((channelResult.data || []) as Channel[]);
+    setSauces((sauceResult.data || []) as OrderSauceRow[]);
     setHours((hourResult.data || []) as BusinessHour[]);
     setExceptions((exceptionResult.data || []) as BusinessHourException[]);
   }, [selectedDate]);
@@ -812,6 +819,18 @@ export default function OperationContentAdmin({
     if (error) return setNotice(error.message);
     setNotice(`${channel.label} atualizado.`);
     await load();
+  };
+
+  const toggleSauce = async (sauce: OrderSauceRow) => {
+    setSauceBusy(sauce.id);
+    const { error } = await requireSupabase()
+      .from("order_sauces")
+      .update({ active: !sauce.active })
+      .eq("id", sauce.id);
+    setSauceBusy(null);
+    if (error) return setNotice(error.message);
+    setSauces((current) => current.map((item) => (item.id === sauce.id ? { ...item, active: !sauce.active } : item)));
+    setNotice(`${sauce.name}: ${!sauce.active ? "ligada" : "desligada"} para os clientes.`);
   };
 
   const saveHour = async () => {
@@ -1480,6 +1499,33 @@ export default function OperationContentAdmin({
               </article>
             ))}
           </div>
+          <section className="admin-panel">
+            <div className="panel-heading">
+              <div>
+                <small>Caldas</small>
+                <h2>Caldas disponíveis para o pedido</h2>
+                <p>
+                  Desligue uma calda pra ela parar de aparecer na hora de montar
+                  o pedido -- sem precisar apagar nada. Qualquer calda nova
+                  cadastrada aparece aqui automaticamente.
+                </p>
+              </div>
+            </div>
+            <div className="sauce-toggle-grid">
+              {sauces.map((sauce) => (
+                <button
+                  key={sauce.id}
+                  type="button"
+                  className={sauce.active ? "sauce-toggle is-on" : "sauce-toggle is-off"}
+                  onClick={() => void toggleSauce(sauce)}
+                  disabled={sauceBusy === sauce.id}
+                >
+                  {sauce.name} <span>{sauce.active ? "Ligada" : "Desligada"}</span>
+                </button>
+              ))}
+              {!sauces.length ? <p>Nenhuma calda cadastrada ainda.</p> : null}
+            </div>
+          </section>
           <section className="admin-panel">
             <div className="panel-heading">
               <div>

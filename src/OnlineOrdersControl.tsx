@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Clock3, MessageCircle, Power, Save, Eye } from "lucide-react";
+import { Clock3, MapPin, MessageCircle, Power, Save, Eye } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { serviceState, type BusinessHour, type BusinessHourException } from "./AdoceHoje";
 import { serviceStatusMessage } from "./service-status";
@@ -14,12 +14,32 @@ import "./online-orders-control.css";
 const SLUG = "online_orders";
 const todayKey = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
 
-type ChannelState = { status: string; message: string | null };
+type ChannelState = { status: string; message: string | null; pickup_location_slug: string | null };
+type PickupLocation = { slug: string; name: string; address_text: string | null };
+
+// Pedido do proprietário em 01/11/2026: duas mensagens prontas (uma por
+// local de retirada), além da mensagem livre -- escolher uma pronta também
+// muda o local de retirada gravado nos pedidos de hoje, pra mensagem e
+// local nunca ficarem desencontrados como estavam antes.
+const MESSAGE_PRESETS: { key: string; locationSlug: string; text: string }[] = [
+  {
+    key: "fabrica",
+    locationSlug: "portao-adoce",
+    text: "Reserve agora — retirada a partir das 14:00, na Adoce Fábrica - Rua Professor Odílio Filho, 227 - Passaré - Fortaleza/CE.",
+  },
+  {
+    key: "barraca",
+    locationSlug: "cantinho-da-adoce",
+    text: "Reserve agora — retirada a partir das 18:00, na Adoce Barraca - Av. da Saudade Sem Numero, em frente ao condomínio Reserva dos Ipês - Passaré - Fortaleza/CE.",
+  },
+];
 
 export default function OnlineOrdersControl() {
   const [channel, setChannel] = useState<ChannelState | null>(null);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
+  const [locations, setLocations] = useState<PickupLocation[]>([]);
+  const [draftLocationSlug, setDraftLocationSlug] = useState("cantinho-da-adoce");
   const [draftMessage, setDraftMessage] = useState("");
   const [useTimeToday, setUseTimeToday] = useState(false);
   const [opensAt, setOpensAt] = useState("09:00");
@@ -32,16 +52,19 @@ export default function OnlineOrdersControl() {
 
   const load = useCallback(async () => {
     const supabase = requireSupabase();
-    const [channelResult, hoursResult, exceptionsResult] = await Promise.all([
-      supabase.from("store_channels").select("status,message").eq("slug", SLUG).maybeSingle(),
+    const [channelResult, hoursResult, exceptionsResult, locationsResult] = await Promise.all([
+      supabase.from("store_channels").select("status,message,pickup_location_slug").eq("slug", SLUG).maybeSingle(),
       supabase.from("business_hours").select("channel_slug,weekday,opens_at,closes_at,active,note").eq("channel_slug", SLUG),
       supabase.from("business_hour_exceptions").select("channel_slug,service_date,closed,opens_at,closes_at,message").eq("channel_slug", SLUG),
+      supabase.from("pickup_locations").select("slug,name,address_text").eq("active", true).order("sort_order"),
     ]);
     setLoading(false);
     if (channelResult.error) { setNotice(channelResult.error.message); return; }
+    setLocations((locationsResult.data || []) as PickupLocation[]);
     if (channelResult.data) {
       setChannel(channelResult.data as ChannelState);
       setDraftMessage(channelResult.data.message || "");
+      setDraftLocationSlug(channelResult.data.pickup_location_slug || "cantinho-da-adoce");
     }
     setHours((hoursResult.data || []) as BusinessHour[]);
     setExceptions((exceptionsResult.data || []) as BusinessHourException[]);
@@ -62,7 +85,11 @@ export default function OnlineOrdersControl() {
   const toggleOnline = async () => {
     if (!channel) return;
     setBusy(true);
-    const nextStatus = channel.status === "paused" ? "scheduled" : "paused";
+    // "closed" é o valor usado em todo o resto do sistema (inclusive na tela
+    // de Produtos > Horários e canais) pra dizer "segue o horário cadastrado"
+    // -- "scheduled" não existe no enum channel_status e fazia esse toggle
+    // falhar ao tentar ligar de volta.
+    const nextStatus = channel.status === "paused" ? "closed" : "paused";
     const { error } = await requireSupabase().from("store_channels").update({ status: nextStatus }).eq("slug", SLUG);
     setBusy(false);
     if (error) return setNotice(error.message);
@@ -72,11 +99,19 @@ export default function OnlineOrdersControl() {
 
   const saveMessage = async () => {
     setBusy(true);
-    const { error } = await requireSupabase().from("store_channels").update({ message: draftMessage.trim() || null }).eq("slug", SLUG);
+    const { error } = await requireSupabase()
+      .from("store_channels")
+      .update({ message: draftMessage.trim() || null, pickup_location_slug: draftLocationSlug })
+      .eq("slug", SLUG);
     setBusy(false);
     if (error) return setNotice(error.message);
-    setChannel((current) => (current ? { ...current, message: draftMessage.trim() || null } : current));
-    setNotice("Mensagem para o cliente atualizada.");
+    setChannel((current) => (current ? { ...current, message: draftMessage.trim() || null, pickup_location_slug: draftLocationSlug } : current));
+    setNotice("Mensagem e local de retirada atualizados.");
+  };
+
+  const applyPreset = (preset: (typeof MESSAGE_PRESETS)[number]) => {
+    setDraftMessage(preset.text);
+    setDraftLocationSlug(preset.locationSlug);
   };
 
   const saveTime = async () => {
@@ -118,6 +153,22 @@ export default function OnlineOrdersControl() {
     pausedMessage: "Retiradas pausadas no momento.",
   });
 
+  // O que está DE FATO em produção agora -- usa o que já foi salvo
+  // (channel.message, exceptions sem o rascunho), nunca o que ainda está
+  // sendo editado, pra nunca confundir "o que vai mudar" com "o que o
+  // cliente já está vendo".
+  const savedPickupState = serviceState("pickup", hours, exceptions);
+  const liveMessage = channel
+    ? serviceStatusMessage({
+        open: paused ? false : savedPickupState.open,
+        paused,
+        channelMessage: channel.message,
+        scheduleMessage: savedPickupState.message,
+        pausedMessage: "Retiradas pausadas no momento.",
+      })
+    : "";
+  const liveLocation = locations.find((l) => l.slug === channel?.pickup_location_slug);
+
   const online = !paused;
 
   return (
@@ -132,19 +183,58 @@ export default function OnlineOrdersControl() {
         </button>
       </header>
 
+      <div className="online-orders-live">
+        <small><Eye /> Em produção agora — o que o cliente está recebendo</small>
+        <p className="online-orders-live-message">{loading ? "Carregando…" : liveMessage || "Nenhuma mensagem definida."}</p>
+        <dl>
+          <div><dt>Local de retirada</dt><dd>{liveLocation?.name || channel?.pickup_location_slug || "—"}</dd></div>
+          <div><dt>Horário programado hoje</dt><dd>{savedPickupState.open ? savedPickupState.message : savedPickupState.message || "Sem horário programado."}</dd></div>
+          <div><dt>Status</dt><dd>{paused ? "Pausado manualmente" : "Seguindo horário cadastrado"}</dd></div>
+        </dl>
+      </div>
+
+      <div className="online-orders-field">
+        <span><MapPin /> Local de retirada de hoje</span>
+        <small className="online-orders-hint">Define onde o pedido é gravado e enviado ao cliente -- escolher uma mensagem pronta abaixo já ajusta isso automaticamente.</small>
+        <select
+          className="online-orders-location-select"
+          value={draftLocationSlug}
+          onChange={(e) => setDraftLocationSlug(e.target.value)}
+          disabled={busy}
+        >
+          {locations.map((location) => (
+            <option key={location.slug} value={location.slug}>{location.name}</option>
+          ))}
+        </select>
+      </div>
+
       <label className="online-orders-field">
-        <span><MessageCircle /> Mensagem para quem acessar o pedido</span>
+        <span><MessageCircle /> Mensagem para quem acessar o pedido <small>{draftMessage.length}/160</small></span>
         <small className="online-orders-hint">Só aparece pro cliente quando os pedidos estão ligados e dentro do horário de hoje.</small>
-        <div>
-          <input
-            maxLength={160}
-            placeholder="Ex.: Hoje só recebemos pedidos até às 18h."
-            value={draftMessage}
-            onChange={(e) => setDraftMessage(e.target.value)}
-            disabled={busy}
-          />
-          <button type="button" onClick={() => void saveMessage()} disabled={busy}><Save /> Salvar</button>
+        <div className="online-orders-preset-list">
+          {MESSAGE_PRESETS.map((preset) => (
+            <button
+              key={preset.key}
+              type="button"
+              className={draftMessage === preset.text ? "online-orders-preset-card is-selected" : "online-orders-preset-card"}
+              onClick={() => applyPreset(preset)}
+              disabled={busy}
+            >
+              <strong>{locations.find((l) => l.slug === preset.locationSlug)?.name || preset.locationSlug}</strong>
+              <span>{preset.text}</span>
+            </button>
+          ))}
         </div>
+        <textarea
+          className="online-orders-message-box"
+          maxLength={160}
+          rows={3}
+          placeholder="Ex.: Hoje só recebemos pedidos até às 18h."
+          value={draftMessage}
+          onChange={(e) => setDraftMessage(e.target.value)}
+          disabled={busy}
+        />
+        <button type="button" className="online-orders-save-message" onClick={() => void saveMessage()} disabled={busy}><Save /> Salvar mensagem e local</button>
       </label>
 
       <div className="online-orders-field">

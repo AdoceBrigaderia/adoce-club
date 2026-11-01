@@ -43,6 +43,8 @@ type SubmitResult = {
   offer_club_invite?: boolean;
   pickup_requested_time?: string;
   pickup_method?: "customer" | "driver";
+  pickup_location_slug?: string;
+  pickup_location_name?: string;
   message: string;
 };
 
@@ -70,12 +72,23 @@ export default function InstantOrderPanel({
   flavors,
   initialFlavorId,
   pickupWindows = null,
+  scheduleMessage = "",
+  pickupLocationSlug = "cantinho-da-adoce",
 }: {
   open: boolean;
   onClose: () => void;
   flavors: InstantOrderFlavor[];
   initialFlavorId?: string | null;
   pickupWindows?: PickupWindow[] | null;
+  // Mensagem/horário de retirada de hoje (igual à mostrada no resto da
+  // página) -- pedido do proprietário em 01/11/2026: mostrar isso num aviso
+  // bloqueante assim que a tela de pedido abre, antes de qualquer outra
+  // ação, e repetir como confirmação no passo final antes de enviar.
+  scheduleMessage?: string;
+  // Qual pickup_locations.slug vale para os pedidos de hoje -- decidido
+  // pela operação (painel "Pedidos online" em AdoceHoje/OnlineOrdersControl),
+  // nunca escolhido pela cliente.
+  pickupLocationSlug?: string;
 }) {
   // Limites do campo cobrem da primeira abertura ao ultimo fechamento; a
   // validacao no envio e que recusa o vao entre duas janelas.
@@ -90,6 +103,10 @@ export default function InstantOrderPanel({
   const [step, setStep] = useState<"details" | "sauces" | "same_day">("details");
   const [sameDay, setSameDay] = useState<SameDayCheck | null>(null);
   const [sameDayAcknowledged, setSameDayAcknowledged] = useState(false);
+  // Precisa reaparecer toda vez que a tela abre -- não é "só uma vez por
+  // sessão": se o horário mudou de uma venda pra outra, a cliente precisa
+  // ver de novo antes de montar o pedido.
+  const [introAcknowledged, setIntroAcknowledged] = useState(false);
   const [complementNote, setComplementNote] = useState("");
   const [sameDayMessage, setSameDayMessage] = useState("");
   const [newOrderAware, setNewOrderAware] = useState(false);
@@ -119,6 +136,11 @@ export default function InstantOrderPanel({
     if (!open || !initialFlavorId) return;
     setQuantities((current) => ({ ...current, [initialFlavorId]: Math.max(current[initialFlavorId] || 0, 1) }));
   }, [flavors, initialFlavorId, open]);
+  // Toda vez que a tela de pedido abre, o aviso de horário/mensagem de hoje
+  // precisa aparecer de novo antes de qualquer outra ação.
+  useEffect(() => {
+    if (open) setIntroAcknowledged(false);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     void requireSupabase().auth.getSession().then(async ({ data }) => {
@@ -309,7 +331,7 @@ export default function InstantOrderPanel({
         })),
       requested_notes: notes.trim(),
     };
-    const serializedPayload = JSON.stringify({ ...requestPayload, paymentMethod, wantsReward, rewardFlavorId, rewardSauceId, pickupTime, pickupMethod });
+    const serializedPayload = JSON.stringify({ ...requestPayload, paymentMethod, wantsReward, rewardFlavorId, rewardSauceId, pickupTime, pickupMethod, pickupLocationSlug });
     if (operationPayload.current && operationPayload.current !== serializedPayload) {
       operationKey.current = crypto.randomUUID();
     }
@@ -324,6 +346,7 @@ export default function InstantOrderPanel({
       } : null,
       requested_pickup_time: pickupTime,
       requested_pickup_method: pickupMethod,
+      requested_pickup_location_slug: pickupLocationSlug,
     });
     setBusy(false);
     if (error) {
@@ -355,6 +378,9 @@ export default function InstantOrderPanel({
       total: response.total || displayTotal,
       pickupTime,
       pickupMethod,
+      location: response.pickup_label && response.pickup_address
+        ? `${response.pickup_label} — ${response.pickup_address}`
+        : undefined,
     });
     window.location.assign(orderWhatsAppUrl(orderWhatsAppNumber, message));
   };
@@ -560,6 +586,19 @@ export default function InstantOrderPanel({
   };
 
   if (!open) return null;
+  if (scheduleMessage && !introAcknowledged) {
+    return (
+      <div className="instant-order-layer">
+        <div className="instant-order-backdrop" />
+        <div className="instant-order-schedule-intro">
+          <Clock3 />
+          <h2>Antes de montar seu pedido</h2>
+          <p>{scheduleMessage}</p>
+          <button type="button" onClick={() => setIntroAcknowledged(true)}>OK, entendi</button>
+        </div>
+      </div>
+    );
+  }
   const whatsappMessage = result?.order_number
     ? buildOrderWhatsAppMessage({
       orderNumber: result.order_number,
@@ -574,6 +613,9 @@ export default function InstantOrderPanel({
       total: result.total || displayTotal,
       pickupTime,
       pickupMethod,
+      location: result.pickup_label && result.pickup_address
+        ? `${result.pickup_label} — ${result.pickup_address}`
+        : undefined,
     })
     : "Olá, Adoce! Quero montar um pedido de fatias para retirada.";
 
@@ -646,6 +688,7 @@ export default function InstantOrderPanel({
             </div> : null}
             {loyaltyPreview?.recognized && Number(loyaltyPreview.reward_choices || 0) > 0 ? <label className="instant-order-reward-choice"><input type="checkbox" checked={wantsReward} onChange={(event) => { setWantsReward(event.target.checked); if (!event.target.checked) { setRewardFlavorId(""); setRewardSauceId(""); } }} /><span><Gift /><span><strong>Quero receber minha fatia-presente neste pedido</strong><small>Você escolhe o sabor e a calda na próxima etapa. Ela só será resgatada após o pagamento.</small></span></span></label> : null}
             <p className="instant-order-payment-note"><strong>Pagamento por Pix.</strong> Enviaremos as orientações depois que a Adoce confirmar a disponibilidade.</p>
+            {scheduleMessage ? <p className="instant-order-schedule-confirm" role="status"><Clock3 /><span><strong>Confira o horário antes de enviar:</strong> {scheduleMessage}</span></p> : null}
             <fieldset className="instant-order-pickup-choice"><legend>Quem fará a retirada?</legend><label><input type="radio" name="pickup-method" checked={pickupMethod === "customer"} onChange={() => setPickupMethod("customer")} /> Eu mesma(o)</label><label><input type="radio" name="pickup-method" checked={pickupMethod === "driver"} onChange={() => setPickupMethod("driver")} /> Entregador de aplicativo</label></fieldset>
             <label>Observação <small>(opcional)</small><textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Alguma informação importante para a Adoce" /></label>
             {notice ? <p className="instant-order-notice" role="alert">{notice}</p> : null}
@@ -777,7 +820,7 @@ export default function InstantOrderPanel({
           {loyaltyPreview?.recognized ? <div className="instant-order-club-success"><Heart /><span><strong>{totalQuantity} carimbo(s) reservado(s) para esta compra</strong><small>Eles entram no seu cartão assim que o pagamento for confirmado.{loyaltyPreview.will_unlock_reward ? " Esta compra também completa seu cartão e libera sua fatia-presente." : ""}</small></span></div> : null}
           {result!.reward_requested ? <div className="instant-order-reward-success"><Gift /><span><strong>Sua fatia-presente entrou no pedido</strong><small>{result!.reward_flavor_name}{result!.reward_sauce_name ? ` · ${result!.reward_sauce_name}` : ""}. Ela será resgatada e baixada do estoque quando o pagamento for confirmado.</small></span></div> : null}
           <dl><div><dt>Total</dt><dd>{money(result!.total || 0)}</dd></div><div><dt>Retirada</dt><dd>{result!.pickup_requested_time || pickupTime}</dd></div><div><dt>Próximo passo</dt><dd>Confira o WhatsApp</dd></div></dl>
-          {result!.pickup_address ? <div className="instant-order-pickup"><MapPin /><span><strong>{result!.pickup_label}</strong><small>{result!.pickup_address}</small></span><button type="button" onClick={() => void navigator.clipboard.writeText(result!.pickup_address || "")}><Copy /> Copiar</button></div> : null}
+          {result!.pickup_address ? <div className="instant-order-pickup"><MapPin /><span><strong>{result!.pickup_label}</strong><small>{result!.pickup_address}</small>{result!.pickup_location_name ? <small>Pra chegar, é só escrever "{result!.pickup_location_name}" no Maps, Waze ou Uber.</small> : null}</span><button type="button" onClick={() => void navigator.clipboard.writeText(result!.pickup_address || "")}><Copy /> Copiar</button></div> : null}
           <a href={orderWhatsAppUrl(orderWhatsAppNumber, whatsappMessage)} target="_blank" rel="noreferrer"><MessageCircle /> Finalizar pelo WhatsApp</a>
           {result!.token ? <a className="instant-order-track" href={`/acompanhar?pedido=${encodeURIComponent(result!.order_number || "")}&token=${encodeURIComponent(result!.token)}`}>Acompanhar meu pedido</a> : null}
           <button type="button" className="instant-order-finish" onClick={reset}>Concluir</button>

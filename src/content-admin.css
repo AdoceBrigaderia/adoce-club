@@ -304,6 +304,35 @@
 .channel-grid label {
   margin: 0.8rem 0;
 }
+.sauce-toggle-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.sauce-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid #e7cdbd;
+  padding: 0.5rem 0.95rem;
+  font-weight: 700;
+  background: #fff;
+  color: #35130d;
+}
+.sauce-toggle span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 800;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+.sauce-toggle.is-on span { background: #edf6f0; color: #2f6b47; }
+.sauce-toggle.is-off { opacity: 0.65; }
+.sauce-toggle.is-off span { background: #fcebea; color: #9f2a35; }
+.sauce-toggle:disabled { opacity: 0.5; }
+
 .hour-form {
   display: grid;
   grid-template-columns: 1.3fr 0.8fr 0.8fr 0.8fr auto;

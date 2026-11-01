@@ -43,7 +43,7 @@
 
 .online-orders-field { display: grid; gap: 0.4rem; }
 .online-orders-field > span {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.35rem;
   font-weight: 700;
@@ -51,7 +51,69 @@
   font-size: 0.85rem;
 }
 .online-orders-field > span svg { width: 15px; height: 15px; }
+.online-orders-field > span small { margin-left: auto; color: #a7806f; font-weight: 500; }
 .online-orders-hint { color: #a7806f; font-weight: 500; font-size: 0.75rem; }
+.online-orders-message-box {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+  border: 1px solid #e7cdbd;
+  border-radius: 10px;
+  background: #fffaf5;
+  padding: 0.6rem 0.7rem;
+  font: inherit;
+  line-height: 1.4;
+}
+.online-orders-save-message { align-self: flex-start; }
+.online-orders-location-select {
+  min-height: 44px;
+  border: 1px solid #e7cdbd;
+  border-radius: 10px;
+  background: #fffaf5;
+  padding: 0 0.7rem;
+  font: inherit;
+  color: #35130d;
+}
+.online-orders-preset-list { display: grid; gap: 0.5rem; }
+.online-orders-preset-card {
+  display: grid;
+  gap: 0.25rem;
+  text-align: left;
+  border: 1px solid #e7cdbd;
+  border-radius: 12px;
+  background: #fff4e8;
+  color: #6a382d;
+  padding: 0.55rem 0.75rem;
+}
+.online-orders-preset-card strong { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.02em; }
+.online-orders-preset-card span { font-size: 0.82rem; font-weight: 500; line-height: 1.4; color: #5a3b2e; }
+.online-orders-preset-card.is-selected { border-color: #2f6b47; background: #edf6f0; }
+.online-orders-preset-card.is-selected strong { color: #2f6b47; }
+.online-orders-preset-card:disabled { opacity: 0.6; }
+
+.online-orders-live {
+  background: #fdf3ea;
+  border: 1px solid #e7cdbd;
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  display: grid;
+  gap: 0.5rem;
+}
+.online-orders-live small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #a7806f;
+  font-weight: 700;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+.online-orders-live small svg { width: 13px; height: 13px; }
+.online-orders-live-message { margin: 0; color: #35130d; font-weight: 700; font-size: 1rem; }
+.online-orders-live dl { margin: 0; display: grid; gap: 0.35rem; }
+.online-orders-live dl > div { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.82rem; }
+.online-orders-live dt { color: #a7806f; font-weight: 600; }
+.online-orders-live dd { margin: 0; color: #35130d; font-weight: 700; text-align: right; }
 .online-orders-field > div {
   display: flex;
   gap: 0.5rem;
