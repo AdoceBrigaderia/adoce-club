@@ -50,6 +50,7 @@
 .mg-card h3 { margin: 0; font: 700 1.05rem Inter, system-ui, sans-serif; }
 .mg-subtitle { margin-top: 18px !important; }
 .mg-sub { margin: 2px 0 12px; color: var(--mg-muted); font-size: 13px; }
+.mg-online-sales-summary { margin: 0; font-size: 18px; color: var(--mg-series); }
 
 .mg-vbars { height: 190px; display: grid; gap: 5px; align-items: end; padding-bottom: 22px; border-bottom: 1px solid #eadfd6; }
 .mg-bar { position: relative; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--mg-series); }

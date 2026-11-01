@@ -14,6 +14,7 @@ import { countCustomerProfiles } from "./customer-search";
 import { supportRequest } from "./WhatsAppSupportInbox";
 import RemotePrintTrigger from "./RemotePrintTrigger";
 import { openOperationArea } from "./lib/operation-navigation";
+import OnlineOrdersControl from "./OnlineOrdersControl";
 import "./operation-dashboard.css";
 
 export type DashboardDestination =
@@ -300,6 +301,8 @@ export default function OperationDashboard({
         {pendingChats ? <b>{pendingChats}</b> : null}
         <ArrowRight aria-hidden="true" />
       </button>
+
+      <OnlineOrdersControl />
 
       <div className="operation-dashboard-metrics">
         <button

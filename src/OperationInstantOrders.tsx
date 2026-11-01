@@ -17,7 +17,7 @@ import { JORNADA, type Pedido } from "./jornada-do-pedido";
 import { canStartPreparation, canReceivePayment, canCancelOrder, canApplyExistingOrderReward } from "./order-actions";
 import { confirmAction } from "./lib/confirm-dialog";
 import WhatsAppSupportInbox from "./WhatsAppSupportInbox";
-import { operationNavigateEvent, type OperationAreaRequest } from "./lib/operation-navigation";
+import { operationNavigateEvent, openOperationArea, type OperationAreaRequest } from "./lib/operation-navigation";
 
 type InstantOrderStatus = "awaiting_confirmation" | "reserved" | "awaiting_payment" | "paid" | "preparing" | "ready" | "completed" | "cancelled" | "expired";
 type InstantOrder = {
@@ -132,12 +132,19 @@ export default function OperationInstantOrders() {
   const [view, setView] = useState<"active" | "expired" | "finished" | "whatsapp">(() =>
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("whatsappStart") ? "whatsapp" : "active");
   const sectionRef = useRef<HTMLElement>(null);
+  // Pedido pra abrir assim que a lista carregar (ex.: veio de "Abrir pedido"
+  // na exclusão forçada de um lote de disponibilidade com reserva).
+  const [pendingOpenOrderId, setPendingOpenOrderId] = useState<string | null>(null);
   // "Conversas do WhatsApp" (Hoje) abre esta aba, mesmo com o Caixa ja aberto.
+  // O telefone (quando veio do botão "Conversar no WhatsApp" de um pedido)
+  // já chega pela URL via whatsappStart -- WhatsAppSupportInbox lê sozinho.
   useEffect(() => {
     const onNavigate = (event: Event) => {
       const request = (event as CustomEvent<OperationAreaRequest>).detail;
-      if (request?.view !== "orders" || request.channel !== "official") return;
-      setView("whatsapp");
+      if (request?.view !== "orders") return;
+      if (request.channel === "official") setView("whatsapp");
+      else setView("active");
+      if (request.orderId) setPendingOpenOrderId(request.orderId);
       window.setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
     };
     window.addEventListener(operationNavigateEvent, onNavigate);
@@ -269,6 +276,13 @@ export default function OperationInstantOrders() {
     setLoyalty(context);
     return context;
   };
+
+  useEffect(() => {
+    if (!pendingOpenOrderId) return;
+    const match = orders.find((order) => order.id === pendingOpenOrderId);
+    if (match) { openOrder(match); setPendingOpenOrderId(null); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, pendingOpenOrderId]);
 
   const openOrder = (order: InstantOrder) => {
     setSelected(order);
@@ -727,7 +741,17 @@ export default function OperationInstantOrders() {
             <button type="button" className="cancel" onClick={() => void update("cancelled", cancelReason.trim())} disabled={busy || cancelReason.trim().length < 5}><X /> {busy ? "Cancelando..." : "Confirmar cancelamento"}</button>
           </div>
         </section> : null}
-        <p>Para conversar com o cliente, use o atendimento do WhatsApp oficial na área Hoje.</p>
+        {selected.customer_phone ? (
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => openOperationArea({ view: "orders", channel: "official", phone: selected.customer_phone })}
+          >
+            <MessageCircle /> Conversar com a cliente no WhatsApp oficial
+          </button>
+        ) : (
+          <p>Pedido sem telefone cadastrado para conversar pelo WhatsApp.</p>
+        )}
         {selected.reserved_until ? <p className="instant-order-reservation"><Clock3 /> Reserva até {dateTime(selected.reserved_until)}</p> : null}
       </aside>
     </div> : null}

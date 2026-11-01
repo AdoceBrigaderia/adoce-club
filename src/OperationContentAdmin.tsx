@@ -28,6 +28,8 @@ import ShoppingBatchSuggestions from "./ShoppingBatchSuggestions";
 import ProductionReleasePanel from "./ProductionReleasePanel";
 import { currentLocalTime, normalizeTime, type AvailabilityBatch } from "./availability-batches";
 import { weekStart, shiftDate } from "./lib/shopping-week";
+import { openOperationArea } from "./lib/operation-navigation";
+import { formatCurrency } from "./lib/cost-format";
 import "./content-admin.css";
 
 export type AdminTab = "catalog" | "today" | "operation";
@@ -76,6 +78,13 @@ export type Availability = {
 type AdminAvailabilityBatch = AvailabilityBatch & {
   service_date: string;
   active: boolean;
+};
+type AffectedBatchOrder = {
+  order_id: string;
+  order_number: string;
+  customer_name: string | null;
+  sales_channel: string | null;
+  quantity: number;
 };
 type WeekBatchRow = {
   flavor_id: string;
@@ -215,11 +224,11 @@ export default function OperationContentAdmin({
   session: Session;
   role: string;
   initialTab?: AdminTab;
-  initialAvailabilityFilter?: "all" | "low";
+  initialAvailabilityFilter?: "all" | "low" | "unlisted";
   allowedTabs?: AdminTab[];
 }) {
   const [tab, setTab] = useState<AdminTab>(initialTab);
-  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "low">(initialAvailabilityFilter);
+  const [availabilityFilter, setAvailabilityFilter] = useState<"all" | "low" | "unlisted">(initialAvailabilityFilter);
   const [availabilitySearch, setAvailabilitySearch] = useState("");
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [images, setImages] = useState<FlavorImage[]>([]);
@@ -234,6 +243,7 @@ export default function OperationContentAdmin({
     [weekAnchor],
   );
   const [batchDrafts, setBatchDrafts] = useState<Record<string, { time: string; quantity: string }>>({});
+  const [existingBatchDrafts, setExistingBatchDrafts] = useState<Record<string, { time: string; quantity: string }>>({});
   const sortedAvailabilityFlavors = useMemo(
     () => sortFlavorsByAvailability(flavors, availability),
     [flavors, availability],
@@ -245,9 +255,10 @@ export default function OperationContentAdmin({
     }).map((item) => item.flavor_id)),
     [availability],
   );
-  // Só mostra sabores que já foram importados do planejamento de compras pra
-  // esse dia (têm linha em flavor_availability hoje) — o resto do catálogo
-  // (sabores nunca liberados) não aparece aqui pra não poluir a lista.
+  // A lista principal só mostra sabores já importados do planejamento de
+  // compras pra esse dia (têm linha em flavor_availability hoje) — o resto
+  // do catálogo fica na aba "Sabores sem lote hoje", pra não poluir a lista
+  // normal mas continuar acessível pra quem quiser liberar um sabor extra.
   const importedTodayFlavorIds = useMemo(
     () => new Set(availability.map((item) => item.flavor_id)),
     [availability],
@@ -256,6 +267,11 @@ export default function OperationContentAdmin({
     ? sortedAvailabilityFlavors.filter((flavor) => lowStockFlavorIds.has(flavor.id))
     : sortedAvailabilityFlavors
   ).filter((flavor) => importedTodayFlavorIds.has(flavor.id) && matchesText(flavor, availabilitySearch));
+  const unlistedTodayFlavors = useMemo(
+    () => sortFlavorsByAvailability(flavors, availability)
+      .filter((flavor) => !importedTodayFlavorIds.has(flavor.id)),
+    [flavors, availability, importedTodayFlavorIds],
+  ).filter((flavor) => matchesText(flavor, availabilitySearch));
   const [channels, setChannels] = useState<Channel[]>([]);
   const [hours, setHours] = useState<BusinessHour[]>([]);
   const [exceptions, setExceptions] = useState<BusinessHourException[]>([]);
@@ -274,7 +290,37 @@ export default function OperationContentAdmin({
   }, [productFormOpen, editing]);
   const [draft, setDraft] = useState({ ...emptyFlavor });
   const [cakeGPrice, setCakeGPrice] = useState<number | null>(null);
+  type CakeSizeCost = { whole_cost: number | null; yield_quantity: number; yield_unit: string } | null;
+  type CalculatedFlavorCosts = {
+    slice: { unit_cost: number | null; source: string | null } | null;
+    sizes: Partial<Record<"G" | "M" | "P", CakeSizeCost>> | null;
+  };
+  const [calculatedCosts, setCalculatedCosts] = useState<CalculatedFlavorCosts | null>(null);
+  // Custo calculado direto da ficha técnica (insumo + embalagem / rendimento
+  // da torta) -- só leitura aqui; nunca grava cópia, sempre busca de novo ao
+  // abrir o sabor. Enquanto não houver ficha, fica em branco (nunca inventa).
+  useEffect(() => {
+    if (!editing) { setCalculatedCosts(null); return; }
+    let cancelled = false;
+    const supabase = requireSupabase();
+    void Promise.all([
+      supabase.rpc("flavor_unit_cost_breakdown", { target_flavor_id: editing.id }),
+      supabase.rpc("flavor_cake_costs", { target_flavor_id: editing.id }),
+    ]).then(([sliceResult, sizesResult]) => {
+      if (cancelled) return;
+      setCalculatedCosts({
+        slice: (sliceResult.data as CalculatedFlavorCosts["slice"]) || null,
+        sizes: (sizesResult.data as CalculatedFlavorCosts["sizes"]) || null,
+      });
+    });
+    return () => { cancelled = true; };
+  }, [editing?.id]);
   const [galleryFlavor, setGalleryFlavor] = useState<Flavor | null>(null);
+  const [batchDeletionConfirm, setBatchDeletionConfirm] = useState<{
+    flavor: Flavor;
+    batch: AdminAvailabilityBatch;
+    affectedOrders: AffectedBatchOrder[];
+  } | null>(null);
   const [pendingImage, setPendingImage] = useState<PendingFlavorImage | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -659,15 +705,34 @@ export default function OperationContentAdmin({
     await loadWeekOverview();
   };
 
+  // O campo de horário de um lote existente precisa ser controlado pelo
+  // React (não "defaultValue" solto): em alguns aparelhos/navegadores o
+  // seletor nativo de <input type="time"> não confirma o dígito recém
+  // digitado a tempo do clique em Salvar, e o FormData acaba enviando o
+  // valor antigo -- o operador via o aviso de sucesso, mas com o horário
+  // de antes. Mantendo o valor em estado garante que o que está na tela é
+  // sempre exatamente o que é salvo.
+  const existingBatchDraft = (batch: AdminAvailabilityBatch) =>
+    existingBatchDrafts[batch.id] ?? {
+      time: normalizeTime(batch.available_from),
+      quantity: String(batch.quantity_available),
+    };
+
   const saveAvailabilityBatch = async (
     flavor: Flavor,
     batch: AdminAvailabilityBatch | null,
     event: FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const availableFrom = String(form.get("available_from") || "");
-    const quantity = Number(form.get("quantity_available"));
+    // Mesmo default exibido no campo (currentLocalTime()) quando o campo de
+    // novo lote nunca foi tocado -- sem isso, clicar "Adicionar lote" sem
+    // mexer no horário rejeitava com "informe o horário" apesar de um
+    // horário já estar visível na tela.
+    const draft = batch
+      ? existingBatchDraft(batch)
+      : { time: batchDrafts[flavor.id]?.time ?? currentLocalTime(), quantity: batchDrafts[flavor.id]?.quantity ?? "" };
+    const availableFrom = String(draft.time || "");
+    const quantity = Number(draft.quantity);
     if (!/^\d{2}:\d{2}$/.test(availableFrom)) {
       return setNotice("Informe o horário em que o lote ficará pronto.");
     }
@@ -687,6 +752,13 @@ export default function OperationContentAdmin({
     );
     setBusy(false);
     if (error) return setNotice(error.message);
+    if (batch) {
+      setExistingBatchDrafts((current) => {
+        const next = { ...current };
+        delete next[batch.id];
+        return next;
+      });
+    }
     setBatchDrafts((current) => ({
       ...current,
       [flavor.id]: { time: currentLocalTime(), quantity: "" },
@@ -701,15 +773,27 @@ export default function OperationContentAdmin({
   const deleteAvailabilityBatch = async (
     flavor: Flavor,
     batch: AdminAvailabilityBatch,
+    force = false,
   ) => {
     setBusy(true);
-    const { error } = await requireSupabase().rpc(
+    const { data, error } = await requireSupabase().rpc(
       "staff_delete_flavor_availability_batch",
-      { target_batch_id: batch.id },
+      { target_batch_id: batch.id, force },
     );
     setBusy(false);
     if (error) return setNotice(error.message);
-    setNotice(`${flavor.name}: lote das ${normalizeTime(batch.available_from)} removido.`);
+    const result = data as { deleted: boolean; affected_orders: AffectedBatchOrder[] };
+    // Nunca bloqueia: sem confirmação ainda, só mostra quem seria afetado.
+    if (!result.deleted) {
+      setBatchDeletionConfirm({ flavor, batch, affectedOrders: result.affected_orders || [] });
+      return;
+    }
+    setBatchDeletionConfirm(null);
+    setNotice(
+      result.affected_orders?.length
+        ? `${flavor.name}: lote das ${normalizeTime(batch.available_from)} removido. ${result.affected_orders.length} pedido(s) ficaram com reserva deste lote — confira.`
+        : `${flavor.name}: lote das ${normalizeTime(batch.available_from)} removido.`,
+    );
     await load();
     await loadWeekOverview();
   };
@@ -945,6 +1029,29 @@ export default function OperationContentAdmin({
                 <p>Preço oficial da torta G para todos os demais sabores: {cakeGPrice == null ? "carregando…" : cakeGPrice.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
               </>}
               {canSeeCosts ? <label>Custo da fatia (só a gerência vê)<input inputMode="decimal" value={draft.unit_cost} onChange={(e) => setDraft({ ...draft, unit_cost: e.target.value })} /></label> : null}
+              {canSeeCosts && editing ? (
+                <div className="calculated-cost-preview">
+                  <strong>Custo calculado pela ficha técnica</strong>
+                  <p>
+                    Fatia: {calculatedCosts?.slice?.unit_cost != null ? formatCurrency(calculatedCosts.slice.unit_cost) : "—"}
+                    {calculatedCosts?.slice?.source === "recipe" ? " (da ficha técnica)" : calculatedCosts?.slice?.source === "manual_flavor_costs" ? " (valor manual acima)" : ""}
+                    {(() => {
+                      const price = Number(draft.base_price.replace(",", "."));
+                      const cost = calculatedCosts?.slice?.unit_cost;
+                      if (!price || cost == null) return null;
+                      const margin = price - cost;
+                      const marginPercent = (margin / price) * 100;
+                      return <> · Margem: {formatCurrency(margin)} ({marginPercent.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%)</>;
+                    })()}
+                  </p>
+                  <p>
+                    Torta G: {calculatedCosts?.sizes?.G?.whole_cost != null ? formatCurrency(calculatedCosts.sizes.G.whole_cost) : "—"}
+                    {" · "}Torta M: {calculatedCosts?.sizes?.M?.whole_cost != null ? formatCurrency(calculatedCosts.sizes.M.whole_cost) : "—"}
+                    {" · "}Torta P: {calculatedCosts?.sizes?.P?.whole_cost != null ? formatCurrency(calculatedCosts.sizes.P.whole_cost) : "—"}
+                  </p>
+                  <small>Custos em branco: ainda não há ficha técnica cadastrada para esse tamanho.</small>
+                </div>
+              ) : null}
               <label className="wide">
                 Chamada curta <span>{draft.short_description.length}/90</span>
                 <input
@@ -1148,8 +1255,38 @@ export default function OperationContentAdmin({
           <div className="availability-filter" role="group" aria-label="Filtrar itens por situação do estoque">
             <button type="button" className={availabilityFilter === "all" ? "active" : ""} onClick={() => setAvailabilityFilter("all")}>Todos os itens</button>
             <button type="button" className={availabilityFilter === "low" ? "active warning" : ""} onClick={() => setAvailabilityFilter("low")}>{lowStockFlavorIds.size} com estoque baixo</button>
+            <button type="button" className={availabilityFilter === "unlisted" ? "active" : ""} onClick={() => setAvailabilityFilter("unlisted")}>{unlistedTodayFlavors.length} sem lote hoje</button>
           </div>
           {availabilityFilter === "low" ? <p className="availability-filter-notice" role="status">Exibindo somente itens disponíveis com até 3 unidades livres.</p> : null}
+          {availabilityFilter === "unlisted" ? <p className="availability-filter-notice" role="status">Sabores do catálogo que ainda não têm nenhuma disponibilidade lançada hoje. Escolha uma situação pra incluir um deles na lista acima.</p> : null}
+          {availabilityFilter === "unlisted" ? (
+            <div className="availability-list">
+              {unlistedTodayFlavors.map((flavor) => (
+                <article key={flavor.id}>
+                  <span className="availability-dot unavailable" />
+                  <div>
+                    <strong>{flavor.name}</strong>
+                    <small>Sem disponibilidade lançada hoje</small>
+                  </div>
+                  <select
+                    aria-label={`Incluir ${flavor.name} hoje`}
+                    value=""
+                    onChange={(e) => {
+                      const status = e.target.value as AvailabilityStatus;
+                      if (status) void setTodayStatus(flavor, status).then(() => setAvailabilityFilter("all"));
+                    }}
+                    disabled={busy}
+                  >
+                    <option value="" disabled>Incluir como…</option>
+                    {Object.entries(availabilityLabels).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </article>
+              ))}
+              {!unlistedTodayFlavors.length ? <div className="availability-filter-empty"><Check /><strong>Todo o catálogo já tem disponibilidade lançada hoje.</strong></div> : null}
+            </div>
+          ) : (
           <div className="availability-list">
             {visibleAvailabilityFlavors.map((flavor) => {
                 const current =
@@ -1205,7 +1342,11 @@ export default function OperationContentAdmin({
                               <input
                                 name="available_from"
                                 type="time"
-                                defaultValue={normalizeTime(batch.available_from)}
+                                value={existingBatchDraft(batch).time}
+                                onChange={(event) => setExistingBatchDrafts((current) => ({
+                                  ...current,
+                                  [batch.id]: { ...existingBatchDraft(batch), time: event.target.value },
+                                }))}
                                 disabled={busy}
                                 required
                               />
@@ -1218,14 +1359,18 @@ export default function OperationContentAdmin({
                                 min="1"
                                 max="9999"
                                 step="1"
-                                defaultValue={batch.quantity_available}
+                                value={existingBatchDraft(batch).quantity}
+                                onChange={(event) => setExistingBatchDrafts((current) => ({
+                                  ...current,
+                                  [batch.id]: { ...existingBatchDraft(batch), quantity: event.target.value },
+                                }))}
                                 disabled={busy}
                                 required
                               />
                             </label>
                             <small>{batch.quantity_reserved || 0} reservada(s)</small>
                             <button type="submit" disabled={busy} aria-label={`Salvar lote de ${flavor.name}`}><Save /></button>
-                            <button type="button" disabled={busy || Boolean(batch.quantity_reserved)} onClick={() => void deleteAvailabilityBatch(flavor, batch)} aria-label={`Excluir lote de ${flavor.name}`}><Trash2 /></button>
+                            <button type="button" disabled={busy} onClick={() => void deleteAvailabilityBatch(flavor, batch)} aria-label={`Excluir lote de ${flavor.name}`}><Trash2 /></button>
                           </form>
                         ))}
                       <form
@@ -1237,8 +1382,8 @@ export default function OperationContentAdmin({
                           <input
                             name="available_from"
                             type="time"
-                            value={batchDrafts[flavor.id]?.time || currentLocalTime()}
-                            onChange={(event) => setBatchDrafts((current) => ({ ...current, [flavor.id]: { time: event.target.value, quantity: current[flavor.id]?.quantity || "" } }))}
+                            value={batchDrafts[flavor.id]?.time ?? currentLocalTime()}
+                            onChange={(event) => setBatchDrafts((current) => ({ ...current, [flavor.id]: { time: event.target.value, quantity: current[flavor.id]?.quantity ?? "" } }))}
                             disabled={busy}
                             required
                           />
@@ -1251,8 +1396,8 @@ export default function OperationContentAdmin({
                             min="1"
                             max="9999"
                             step="1"
-                            value={batchDrafts[flavor.id]?.quantity || ""}
-                            onChange={(event) => setBatchDrafts((current) => ({ ...current, [flavor.id]: { time: current[flavor.id]?.time || currentLocalTime(), quantity: event.target.value } }))}
+                            value={batchDrafts[flavor.id]?.quantity ?? ""}
+                            onChange={(event) => setBatchDrafts((current) => ({ ...current, [flavor.id]: { time: current[flavor.id]?.time ?? currentLocalTime(), quantity: event.target.value } }))}
                             placeholder="Ex.: 8"
                             disabled={busy}
                             required
@@ -1271,6 +1416,7 @@ export default function OperationContentAdmin({
               })}
             {availabilityFilter === "low" && !visibleAvailabilityFlavors.length ? <div className="availability-filter-empty"><Check /><strong>Nenhum item com estoque baixo.</strong><small>Todos os itens controlados têm mais de 3 unidades livres.</small></div> : null}
           </div>
+          )}
         </section>
       )}
 
@@ -1663,6 +1809,65 @@ export default function OperationContentAdmin({
                 <figcaption>Foto exclusiva da torta inteira G</figcaption>
               </figure>
             )}
+          </div>
+        </div>
+      )}
+      {batchDeletionConfirm && (
+        <div className="operation-modal" role="dialog" aria-modal="true" aria-label="Excluir lote com reserva">
+          <div className="gallery-modal">
+            <button className="modal-close" onClick={() => setBatchDeletionConfirm(null)}>
+              <X />
+            </button>
+            <small>Excluir lote com fatia reservada</small>
+            <h2>
+              {batchDeletionConfirm.flavor.name} · {normalizeTime(batchDeletionConfirm.batch.available_from)}
+            </h2>
+            {batchDeletionConfirm.affectedOrders.length ? (
+              <>
+                <p>
+                  Este lote tem {batchDeletionConfirm.affectedOrders.length} pedido(s) com fatia reservada. A exclusão é aceita
+                  mesmo assim — nada nos pedidos é alterado automaticamente. Resolva cada um manualmente.
+                </p>
+                <div className="availability-list">
+                  {batchDeletionConfirm.affectedOrders.map((order) => (
+                    <article key={order.order_id}>
+                      <div>
+                        <strong>Pedido {order.order_number}</strong>
+                        <small>
+                          {order.customer_name || "Cliente sem nome"} · {order.quantity} fatia(s)
+                          {order.sales_channel && order.sales_channel !== "operation" ? " · pedido online" : ""}
+                        </small>
+                      </div>
+                      <button
+                        type="button"
+                        className="admin-secondary"
+                        onClick={() => {
+                          setBatchDeletionConfirm(null);
+                          openOperationArea({ view: "orders", orderId: order.order_id });
+                        }}
+                      >
+                        Abrir pedido
+                      </button>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p>Este lote não tem mais fatias reservadas no momento. Pode excluir.</p>
+            )}
+            <div style={{ display: "flex", gap: "10px", marginTop: "14px" }}>
+              <button type="button" className="admin-secondary" onClick={() => setBatchDeletionConfirm(null)} disabled={busy}>
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="availability-clear-week"
+                disabled={busy}
+                onClick={() => void deleteAvailabilityBatch(batchDeletionConfirm.flavor, batchDeletionConfirm.batch, true)}
+              >
+                <Trash2 /> Excluir mesmo assim
+              </button>
+            </div>
           </div>
         </div>
       )}

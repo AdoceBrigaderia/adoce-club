@@ -3464,7 +3464,7 @@ function OperationHome({ session }: { session: Session }) {
         void openView("attend");
       } else if (request.view === "orders") {
         openCommercial("sales");
-        if (request.channel === "official") window.history.replaceState(null, "", "/operacao/caixa?whatsappStart=1");
+        if (request.channel === "official") window.history.replaceState(null, "", `/operacao/caixa?whatsappStart=${encodeURIComponent(request.phone || "1")}`);
       } else {
         void openView("dashboard");
       }

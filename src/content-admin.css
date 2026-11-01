@@ -481,6 +481,18 @@
   display: block;
   margin-top: 0.2rem;
 }
+.calculated-cost-preview {
+  background: #fff4e8;
+  border: 1px solid #e7cdbd;
+  border-radius: 15px;
+  padding: 0.8rem 1rem;
+  margin: 0.4rem 0 1rem;
+  color: #6a382d;
+  font-size: 0.85rem;
+}
+.calculated-cost-preview strong { display: block; margin-bottom: 0.3rem; }
+.calculated-cost-preview p { margin: 0.2rem 0; }
+.calculated-cost-preview small { display: block; margin-top: 0.3rem; color: #a7806f; }
 .gallery-modal {
   position: relative;
   width: min(760px, calc(100vw - 2rem));

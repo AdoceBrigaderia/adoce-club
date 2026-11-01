@@ -108,19 +108,50 @@ export async function supportRequest(path = "", init?: RequestInit) {
   return payload;
 }
 
+// Cache só do navegador (sessionStorage), por aba: mostra a última lista e
+// a última conversa aberta na hora, sem esperar a rede, enquanto atualiza
+// por trás. Pedido do proprietário em 01/11/2026 -- a tela demorava pra
+// aparecer toda vez que ele voltava pra aba de conversas.
+const THREADS_CACHE_KEY = (view: "active" | "history") => `adoce-whatsapp-threads-${view}`;
+const THREAD_CACHE_KEY = (id: string) => `adoce-whatsapp-thread-${id}`;
+function readCache<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(key: string, value: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* sessionStorage indisponível (aba privada, cota cheia etc.) -- cache é só conforto */
+  }
+}
+
+const initialThreadIdFromUrl = () => {
+  if (typeof window === "undefined") return "";
+  const requested = new URLSearchParams(window.location.search).get("whatsapp") || "";
+  return UUID.test(requested) ? requested : "";
+};
+
 export default function WhatsAppSupportInbox() {
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const [threads, setThreads] = useState<SupportThreadSummary[]>([]);
+  const [threads, setThreads] = useState<SupportThreadSummary[]>(() => readCache<SupportThreadSummary[]>(THREADS_CACHE_KEY("active")) || []);
   const [hasMoreThreads, setHasMoreThreads] = useState(false);
   const nextThreadsCursorRef = useRef<{ at: string; id: string } | null>(null);
   const loadSequenceRef = useRef(0);
   const [selectedThreadIds, setSelectedThreadIds] = useState<Set<string>>(new Set());
   const [view, setView] = useState<"active" | "history">("active");
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState("");
-  const [thread, setThread] = useState<SupportThread | null>(null);
+  const [selectedId, setSelectedId] = useState(initialThreadIdFromUrl);
+  const [thread, setThread] = useState<SupportThread | null>(() => {
+    const id = initialThreadIdFromUrl();
+    return id ? readCache<SupportThread>(THREAD_CACHE_KEY(id)) : null;
+  });
   const threadRef = useRef<SupportThread | null>(null);
-  const selectedRef = useRef("");
+  const selectedRef = useRef(initialThreadIdFromUrl());
   const nearBottomRef = useRef(true);
   const [reply, setReply] = useState("");
   const [scheduleAt, setScheduleAt] = useState(nextHourValue);
@@ -134,7 +165,7 @@ export default function WhatsAppSupportInbox() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderChunksRef = useRef<Blob[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !readCache<SupportThreadSummary[]>(THREADS_CACHE_KEY("active")));
   const [notice, setNotice] = useState("");
   const [orderHealth, setOrderHealth] = useState<OrderNotificationHealth | null>(null);
 
@@ -150,6 +181,7 @@ export default function WhatsAppSupportInbox() {
         ? { ...payload.thread, messages: [...payload.thread.messages, ...existing.messages] }
         : payload.thread || null;
       threadRef.current = next;
+      if (next) writeCache(THREAD_CACHE_KEY(threadId), next);
       return next;
     });
     if (payload.thread) setThreads((items) => items.map((item) => item.id === threadId
@@ -166,7 +198,11 @@ export default function WhatsAppSupportInbox() {
       const payload = await supportRequest(`${base}${cursor ? `&cursorAt=${encodeURIComponent(cursor.at)}&cursorId=${cursor.id}` : ""}`);
       if (sequence !== loadSequenceRef.current) return;
       const nextThreads = (payload.threads || []) as SupportThreadSummary[];
-      setThreads((existing) => append ? [...existing, ...nextThreads.filter((item) => !existing.some((old) => old.id === item.id))] : nextThreads);
+      setThreads((existing) => {
+        const merged = append ? [...existing, ...nextThreads.filter((item) => !existing.some((old) => old.id === item.id))] : nextThreads;
+        if (!append) writeCache(THREADS_CACHE_KEY(view), merged);
+        return merged;
+      });
       setHasMoreThreads(Boolean(payload.hasMore));
       nextThreadsCursorRef.current = payload.nextCursor || null;
       setOrderHealth(payload.orderNotificationHealth || null);
@@ -197,8 +233,13 @@ export default function WhatsAppSupportInbox() {
     setSelectedThreadIds(new Set());
   }, [view]);
 
+  // Só a 1a chamada é "quiet" (sem spinner) quando já tem lista em cache --
+  // trocar de aba (ativas/histórico) depois continua mostrando o loading
+  // normalmente, já que não tem cache pronto pra essa outra lista.
+  const firstLoadRef = useRef(threads.length > 0);
   useEffect(() => {
-    void load();
+    void load(firstLoadRef.current);
+    firstLoadRef.current = false;
   }, [load]);
 
   useEffect(() => {

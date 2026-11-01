@@ -8,7 +8,7 @@ export type StampSale = { orderNumber: string; quantity: number };
 export type OperationAreaRequest =
   | { view: "products"; contentTab?: "catalog" | "today" }
   | { view: "attend"; stampSale?: StampSale }
-  | { view: "orders"; channel?: "presential" | "official" }
+  | { view: "orders"; channel?: "presential" | "official"; phone?: string; orderId?: string }
   | { view: "dashboard" };
 
 export function openOperationArea(request: OperationAreaRequest) {

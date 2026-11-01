@@ -255,8 +255,12 @@ export default function OperationManagement() {
 
           {tab === "sabores" ? (
             <div className="mg-card"><h3>Vendas por sabor</h3><p className="mg-sub">Do mais vendido para o menos vendido · custo e margem aparecem quando o custo do sabor estiver cadastrado em Produtos</p>
-              <table className="mg-table"><thead><tr><th>Sabor</th><th className="num">Fatias</th><th className="num">Cortesias</th><th className="num">Receita</th><th className="num">Custo</th><th className="num">Margem</th></tr></thead>
-                <tbody>{report.flavors.map((f) => { const margin = f.cost == null ? null : n(f.revenue) - n(f.cost); return <tr key={f.name}><td>{f.name}</td><td className="num">{f.sold}</td><td className="num">{n(f.rewards)}</td><td className="num">{money(f.revenue)}</td><td className="num">{f.cost == null ? "—" : money(f.cost)}</td><td className="num">{margin == null ? "—" : money(margin)}</td></tr>; })}</tbody></table>
+              <table className="mg-table"><thead><tr><th>Sabor</th><th className="num">Fatias</th><th className="num">Cortesias</th><th className="num">Receita</th><th className="num">Custo</th><th className="num">Margem</th><th className="num">Margem %</th></tr></thead>
+                <tbody>{report.flavors.map((f) => {
+                  const margin = f.cost == null ? null : n(f.revenue) - n(f.cost);
+                  const marginPercent = margin == null || !n(f.revenue) ? null : (margin / n(f.revenue)) * 100;
+                  return <tr key={f.name}><td>{f.name}</td><td className="num">{f.sold}</td><td className="num">{n(f.rewards)}</td><td className="num">{money(f.revenue)}</td><td className="num">{f.cost == null ? "—" : money(f.cost)}</td><td className="num">{margin == null ? "—" : money(margin)}</td><td className="num">{marginPercent == null ? "—" : `${marginPercent.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}</td></tr>;
+                })}</tbody></table>
               {report.losses.length ? <><h3 className="mg-subtitle">Perdas no período</h3><table className="mg-table"><tbody>{report.losses.map((l) => <tr key={l.name}><td>{l.name}</td><td className="num">{l.quantity} fatias</td><td className="num">{l.cost == null ? "—" : money(l.cost)}</td></tr>)}</tbody></table></> : null}
             </div>
           ) : null}
@@ -335,7 +339,21 @@ export default function OperationManagement() {
 
 function SessionsTable({ report, onReprint, onReopen, full = false }: { report: ManagementReport; onReprint: (id: string) => void; onReopen: (id: string, number: number) => void; full?: boolean }) {
   const today = fortalezaDateKey(new Date());
+  // Venda online (site) não passa por sessão de caixa física -- não tem
+  // dinheiro pra contar na gaveta. Mostrado à parte, nunca somado na
+  // conferência (esperado/contado/diferença) das sessões abaixo.
+  const onlineChannels = report.channels.filter((channel) => channel.channel !== "operation");
+  const onlineCount = onlineChannels.reduce((sum, channel) => sum + n(channel.count), 0);
+  const onlineRevenue = onlineChannels.reduce((sum, channel) => sum + n(channel.revenue), 0);
   return (
+    <>
+    {full && onlineCount ? (
+      <div className="mg-card">
+        <h3>Vendas online do período</h3>
+        <p className="mg-sub">Pagas fora do caixa físico (site) — já contam na receita do dia, mas sem dinheiro físico pra conferir aqui.</p>
+        <p className="mg-online-sales-summary"><strong>{onlineCount}</strong> {onlineCount === 1 ? "venda" : "vendas"} · <strong>{money(onlineRevenue)}</strong></p>
+      </div>
+    ) : null}
     <div className="mg-card">
       <h3>Caixas do período</h3><p className="mg-sub">Cada caixa tem número único e sequencial</p>
       {report.sessions.length ? (
@@ -363,5 +381,6 @@ function SessionsTable({ report, onReprint, onReopen, full = false }: { report: 
         </div>
       ) : <p className="mg-empty">Nenhum caixa no período.</p>}
     </div>
+    </>
   );
 }
