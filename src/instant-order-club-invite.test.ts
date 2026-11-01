@@ -7,8 +7,8 @@ const migration = readFileSync(new URL("../supabase/migrations/20260723012027_li
 describe("aviso informativo do Clube depois do pedido", () => {
   it("avisa quando o pedido aceito não encontrou cadastro -- cadastro agora é automático, não opcional", () => {
     expect(panel).toContain("Boolean(response.offer_club_invite)");
-    expect(panel).toContain("Você já faz parte do Clube Adoce");
-    expect(panel).toContain("Os carimbos entram assim que confirmarmos o pagamento");
+    expect(panel).toContain("Boas-vindas ao Clube Adoce!");
+    expect(panel).toContain("Seu cadastro é automático e os carimbos aparecem após a confirmação do pagamento.");
     expect(panel).toContain("seu pedido já foi recebido normalmente");
   });
 

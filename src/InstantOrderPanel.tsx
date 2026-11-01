@@ -366,25 +366,9 @@ export default function InstantOrderPanel({
       quantity: totalQuantity,
       checkout_mode: response.checkout_mode,
     });
-    const whatsappItems = selectedUnits.map((unit) => {
-      const sauceId = sauceChoices[unit.key];
-      return {
-        name: unit.flavor.name,
-        sauce: sauceId === "none" ? "Sem calda" : (sauces.find((sauce) => sauce.id === sauceId)?.name || "Sem calda"),
-      };
-    });
-    const message = buildOrderWhatsAppMessage({
-      orderNumber: response.order_number || "PEDIDO",
-      customerName: name,
-      items: whatsappItems,
-      total: response.total || displayTotal,
-      pickupTime,
-      pickupMethod,
-      location: response.pickup_label && response.pickup_address
-        ? `${response.pickup_label} — ${response.pickup_address}`
-        : undefined,
-    });
-    window.location.assign(orderWhatsAppUrl(orderWhatsAppNumber, message));
+    // Pedido do proprietário em 01/11/2026: não abrir o WhatsApp sozinho --
+    // a cliente decide se e quando clica em "Finalizar pelo WhatsApp" (botão
+    // na tela de sucesso, que já monta a mesma mensagem).
   };
 
   // Antes de criar outro pedido, confere se este celular ja pediu hoje.
@@ -623,10 +607,11 @@ export default function InstantOrderPanel({
         <button type="button" className="instant-order-club-invite-close" aria-label="Fechar" onClick={() => setShowClubInvite(false)}><X /></button>
         <img src="/site/clube-convite-pedido.webp" alt="Cartão fidelidade com carimbos e uma fatia de torta como recompensa" />
         <div>
-          <span><Heart /> Um carinho para suas próximas escolhas</span>
-          <h2 id="club-invite-title">Você já faz parte do Clube Adoce</h2>
-          <p>Seu cadastro é feito automaticamente com este pedido. Cada fatia confirmada vale um carimbo — ao completar 14, a próxima fatia é por nossa conta.</p>
-          <strong>Os carimbos entram assim que confirmarmos o pagamento.</strong>
+          <span><Heart /> Sua primeira compra merece um carinho especial!</span>
+          <h2 id="club-invite-title">Boas-vindas ao Clube Adoce!</h2>
+          <p>Com seu primeiro pedido, você já começa a juntar carimbos para ganhar uma fatia grátis.</p>
+          <p><strong>Funciona assim:</strong> cada fatia comprada vale 1 carimbo. Juntou 14? Você ganha uma fatia tradicional por nossa conta!</p>
+          <strong>Seu cadastro é automático e os carimbos aparecem após a confirmação do pagamento.</strong>
           <div><button type="button" onClick={() => setShowClubInvite(false)}><Gift /> Entendi</button></div>
           <small>É gratuito e seu pedido já foi recebido normalmente.</small>
         </div>

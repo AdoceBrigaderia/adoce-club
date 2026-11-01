@@ -78,7 +78,9 @@ html body .instant-order-panel > label,
 html body .instant-order-panel .instant-order-identify > label,
 html body .instant-order-panel fieldset legend,
 html body .instant-order-panel .instant-order-pickup-choice label,
-html body .instant-order-panel .instant-order-explanation {
+html body .instant-order-panel .instant-order-explanation,
+html body .instant-order-panel .instant-order-success h2,
+html body .instant-order-panel .instant-order-success > p {
   color: #fff !important;
 }
 

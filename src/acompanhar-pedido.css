@@ -64,7 +64,7 @@
 .ac-passo-nome {
   font-size: 0.6875rem;
   line-height: 1.2;
-  color: color-mix(in srgb, var(--adoce-marrom) 55%, transparent);
+  color: color-mix(in srgb, var(--adoce-texto-claro) 85%, transparent);
 }
 
 .ac-feito .ac-bolinha { border-color: var(--adoce-terra); background: var(--adoce-terra); color: #fff; }
@@ -75,7 +75,7 @@
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--adoce-rosa) 65%, transparent);
 }
 
-.ac-passo.ac-agora .ac-passo-nome { color: var(--adoce-terra); font-weight: 700; }
+.ac-passo.ac-agora .ac-passo-nome { color: var(--adoce-branco); font-weight: 700; }
 
 .ac-seguir {
   margin: 0;

@@ -639,15 +639,19 @@ export default function OperationInstantOrders() {
         <div className="thermal-receipt-brand"><img src="/site/logo.webp" alt="Adoce Brigaderia" /><strong>ADOCE BRIGADERIA</strong></div>
         <small>{selected.order_number}</small><h2>{nomeLegivel(selected.customer_name)}</h2>
         {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
-        <div className="operation-print-actions">
-          <button type="button" className="drawer-print" disabled={busy} onClick={() => void printSingleThermal(selected)}><Printer /> Imprimir cupom 58 mm</button>
-          <button type="button" className="drawer-print secondary" onClick={() => printOperation("a4")}><Printer /> A4 ou salvar em PDF</button>
+        {selected.customer_phone ? (
+          <button type="button" className="instant-order-whatsapp-top" onClick={() => { const phone = selected.customer_phone; setSelected(null); openOperationArea({ view: "orders", channel: "official", phone }); }}>
+            <MessageCircle /> Conversar no WhatsApp oficial
+          </button>
+        ) : null}
+        <div className="instant-order-info-card">
+          <p>{formatarTelefoneBR(selected.customer_phone)} · {labels[selected.status]}</p>
+          <p><strong>Pedido em</strong> {formatarDataHora(selected.created_at)}{selected.pickup_label ? <> · <strong>Retirada</strong> {selected.pickup_label}</> : null}{selected.pickup_requested_time ? <> · <strong>Horário</strong> {selected.pickup_requested_time.slice(0, 5)} · {selected.pickup_method === "driver" ? "entregador de aplicativo" : "cliente"}</> : null}</p>
+          {selected.pickup_address ? <p><strong>Local da retirada:</strong> {selected.pickup_address}</p> : null}
         </div>
-        <p>{formatarTelefoneBR(selected.customer_phone)} · {labels[selected.status]}</p>
-        <p><strong>Pedido em</strong> {formatarDataHora(selected.created_at)}{selected.pickup_label ? <> · <strong>Retirada</strong> {selected.pickup_label}</> : null}{selected.pickup_requested_time ? <> · <strong>Horário</strong> {selected.pickup_requested_time.slice(0, 5)} · {selected.pickup_method === "driver" ? "entregador de aplicativo" : "cliente"}</> : null}</p>
-        {selected.pickup_address ? <p><strong>Local da retirada:</strong> {selected.pickup_address}</p> : null}
         {sameCustomerToday.get(selected.id) ? <p className="instant-order-same-customer">{sameCustomerToday.get(selected.id)!.position}º pedido deste cliente hoje. Confira também: {sameCustomerToday.get(selected.id)!.others.join(", ")}</p> : null}
         {selected.customer_notes ? <p className="thermal-pickup-note">{selected.customer_notes}</p> : null}
+        <button type="button" className="drawer-print" disabled={busy} onClick={() => void printSingleThermal(selected)}><Printer /> Imprimir cupom 58 mm</button>
         <ol className="instant-order-status-track" aria-label="Andamento do pedido">
           {operationalSteps.map((step, index) => {
             const currentIndex = operationalSteps.findIndex((candidate) => candidate.status === selected.status);
@@ -763,17 +767,6 @@ export default function OperationInstantOrders() {
             <button type="button" className="cancel" onClick={() => void update("cancelled", cancelReason.trim())} disabled={busy || cancelReason.trim().length < 5}><X /> {busy ? "Cancelando..." : "Confirmar cancelamento"}</button>
           </div>
         </section> : null}
-        {selected.customer_phone ? (
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => openOperationArea({ view: "orders", channel: "official", phone: selected.customer_phone })}
-          >
-            <MessageCircle /> Conversar com a cliente no WhatsApp oficial
-          </button>
-        ) : (
-          <p>Pedido sem telefone cadastrado para conversar pelo WhatsApp.</p>
-        )}
         {selected.reserved_until ? <p className="instant-order-reservation"><Clock3 /> Reserva até {dateTime(selected.reserved_until)}</p> : null}
       </aside>
     </div> : null}

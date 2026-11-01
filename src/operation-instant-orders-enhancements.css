@@ -207,9 +207,12 @@
 .instant-order-operation-layer label { font-size: 13px; }
 
 @media screen {
-  .instant-order-operation-layer > aside > .drawer-close { order: -10; }
-  .instant-order-operation-layer > aside > small { order: -9; }
-  .instant-order-operation-layer > aside > h2 { order: -8; }
+  .instant-order-operation-layer > aside > .drawer-close { order: -12; }
+  .instant-order-operation-layer > aside > small { order: -11; }
+  .instant-order-operation-layer > aside > h2 { order: -10; }
+  /* Pedido do proprietário em 01/11/2026: falar com a cliente é a primeira
+     coisa que a operação precisa poder fazer, sempre visível sem rolar. */
+  .instant-order-operation-layer > aside > .instant-order-whatsapp-top { order: -9; }
   .instant-order-operation-layer > aside > .instant-order-direct-error { order: -7; }
   .instant-order-operation-layer > aside > .instant-order-operation-actions { order: -6; }
   .instant-order-operation-layer > aside > .instant-order-direct-finish,
@@ -220,6 +223,36 @@
   .instant-order-operation-actions button.cancel { background: #fff; color: #9f2a35; border: 1px solid #e3b1b5; }
   .instant-order-operation-layer .drawer-close { width: 44px; height: 44px; }
 }
+
+/* Pedido do proprietário em 01/11/2026: a tela de pedido estava tudo numa
+   cor só, sem prioridade -- falar no WhatsApp precisa pular aos olhos (verde
+   do próprio app), e as informações de contato/retirada precisam de um
+   bloco próprio em vez de parágrafos soltos iguais ao resto. */
+.instant-order-whatsapp-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: #25d366;
+  color: #fff;
+  font-weight: 900;
+  font-size: 15px;
+}
+.instant-order-whatsapp-top svg { width: 19px; }
+.instant-order-whatsapp-top:active { background: #1fb959; }
+
+.instant-order-info-card {
+  display: grid;
+  gap: 4px;
+  padding: 11px 13px;
+  border: 1px solid #ead2c4;
+  border-radius: 11px;
+  background: #fffaf5;
+}
+.instant-order-info-card p { margin: 0; font-size: 13px; color: #5a3f36; }
 
 @media screen and (min-width: 1280px) {
   .instant-order-operation-layer > aside { width: min(640px, 46vw); }
