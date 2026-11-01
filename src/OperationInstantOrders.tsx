@@ -18,6 +18,7 @@ import { canStartPreparation, canReceivePayment, canCancelOrder, canApplyExistin
 import { confirmAction } from "./lib/confirm-dialog";
 import WhatsAppSupportInbox from "./WhatsAppSupportInbox";
 import { operationNavigateEvent, openOperationArea, type OperationAreaRequest } from "./lib/operation-navigation";
+import { enrollFieldsError, enrollSaleCustomer } from "./sale-club-enroll";
 
 type InstantOrderStatus = "awaiting_confirmation" | "reserved" | "awaiting_payment" | "paid" | "preparing" | "ready" | "completed" | "cancelled" | "expired";
 type InstantOrder = {
@@ -482,10 +483,26 @@ export default function OperationInstantOrders() {
         setNotice(`Não foi possível finalizar: ${error.message}`);
         return;
       }
-      const stampsAdded = Number(data?.stamps_added || 0);
+      let stampsAdded = Number(data?.stamps_added || 0);
       const rewardRedeemed = Boolean(data?.reward_redeemed);
       void dispatchOrderNotifications(order.id);
-      setNotice(`${order.order_number}: ${data?.ready_for_pickup ? "pagamento confirmado e pedido liberado para retirada. Confira no histórico o envio da mensagem para a cliente" : "venda finalizada"}. Pagamento, estoque e financeiro foram atualizados.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}`);
+      // Pedido do proprietário em 01/11/2026: todo pedido online pago deve
+      // obrigatoriamente cadastrar a cliente no Clube (se ainda não for) e
+      // lançar o carimbo por fatia -- não pode mais depender da cliente
+      // clicar em "Quero fazer parte". Reaproveita o mesmo fluxo já usado
+      // no fechamento da venda manual (enrollSaleCustomer), que já é
+      // seguro contra duplicar carimbo quando o perfil já existia.
+      let clubNotice = "";
+      if (!enrollFieldsError(order.customer_name, order.customer_phone)) {
+        try {
+          const enrolled = await enrollSaleCustomer(order.id, order.customer_name, order.customer_phone);
+          if (enrolled.stampsAdded > stampsAdded) stampsAdded = enrolled.stampsAdded;
+          clubNotice = enrolled.existing ? "" : " Cadastro no Clube Adoce feito automaticamente.";
+        } catch (enrollError) {
+          clubNotice = ` Atenção: não foi possível cadastrar/carimbar no Clube Adoce automaticamente (${enrollError instanceof Error ? enrollError.message : "falha de conexão"}).`;
+        }
+      }
+      setNotice(`${order.order_number}: ${data?.ready_for_pickup ? "pagamento confirmado e pedido liberado para retirada. Confira no histórico o envio da mensagem para a cliente" : "venda finalizada"}. Pagamento, estoque e financeiro foram atualizados.${stampsAdded ? ` ${stampsAdded} carimbo(s) foram lançados no Clube Adoce.` : ""}${rewardRedeemed ? " A fatia premiada também foi registrada." : ""}${clubNotice}`);
       setDirectFinishOpen(false);
       setSelected(null);
       await load();

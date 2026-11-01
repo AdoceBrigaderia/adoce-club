@@ -145,4 +145,7 @@
 .instant-order-schedule-intro{position:relative;z-index:1;max-width:420px;margin:auto;top:50%;transform:translateY(-50%);background:#fffaf4;border-radius:20px;padding:32px 26px;text-align:center;box-shadow:0 24px 70px rgba(35,14,8,.35);display:grid;gap:12px;justify-items:center}.instant-order-schedule-intro svg{width:36px;height:36px;color:#e15c57}.instant-order-schedule-intro h2{font:600 1.6rem/1.1 'Playfair Display',Georgia,serif;margin:0}.instant-order-schedule-intro p{color:#5b4038;line-height:1.5;margin:0}.instant-order-schedule-intro button{border:0;background:#f26965;color:#fff;min-height:48px;padding:0 28px;border-radius:12px;font-weight:900}
 .instant-order-schedule-confirm{display:flex;gap:8px;align-items:flex-start;margin:0;padding:10px 12px;background:#fff4e8;border:1px solid #ead4c8;border-radius:12px;font-size:.85rem;color:#6a382d}.instant-order-schedule-confirm svg{width:16px;height:16px;flex-shrink:0;margin-top:2px;color:#e15c57}
 .instant-order-name{margin:18px 0 8px}
+.instant-order-name.is-locked{opacity:.45}
+.instant-order-name.is-locked input{pointer-events:none;background:#f3ece6}
+.instant-order-flavors.is-locked{opacity:.4;pointer-events:none;user-select:none}
 .instant-order-payment-note{margin:0;padding:12px 14px;border-radius:12px;background:#fff0e7;color:#5b261a;line-height:1.5}

@@ -131,6 +131,33 @@
   font-weight: 700;
 }
 
+/* ---- Clube Adoce ---- */
+
+.ac-clube {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--adoce-rosa) 28%, #fff);
+}
+
+.ac-clube-topo { display: flex; gap: 12px; align-items: flex-start; }
+.ac-clube-topo > svg { width: 22px; height: 22px; color: var(--adoce-terra); flex: 0 0 auto; margin-top: 2px; }
+.ac-clube-titulo { margin: 0; font-size: 1rem; font-weight: 700; }
+.ac-clube-sub { margin: 2px 0 0; font-size: 0.875rem; color: color-mix(in srgb, var(--adoce-marrom) 72%, transparent); }
+
+.ac-clube-pontos { display: flex; flex-wrap: wrap; gap: 6px; }
+.ac-clube-pontos span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--adoce-terra) 35%, transparent);
+  background: #fff;
+}
+.ac-clube-pontos span.cheio { background: var(--adoce-terra); border-color: var(--adoce-terra); }
+
+.ac-clube-progresso { margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--adoce-terra); }
+
 /* ---- Retirada ---- */
 
 .ac-retirada {

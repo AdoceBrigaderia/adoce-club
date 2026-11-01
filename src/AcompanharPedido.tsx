@@ -28,11 +28,52 @@ const dinheiro = (valor: number) =>
     .format(valor)
     .replace(/[\u00A0\u202F\u2007]/g, " ");
 
+export type ClubProgress = {
+  novoMembro: boolean;
+  carimbosGanhos: number;
+  progresso: number | null;
+  meta: number;
+};
+
+const CartaoClube = ({ club }: { club: ClubProgress }) => {
+  const faltam = club.progresso != null ? Math.max(club.meta - club.progresso, 0) : null;
+  return (
+    <section className="ac-clube">
+      <div className="ac-clube-topo">
+        <Gift aria-hidden="true" />
+        <div>
+          <p className="ac-clube-titulo">{club.novoMembro ? "Você entrou no Clube Adoce" : "Carimbo lançado no Clube Adoce"}</p>
+          <p className="ac-clube-sub">
+            {club.carimbosGanhos > 0
+              ? `+${club.carimbosGanhos} carimbo${club.carimbosGanhos > 1 ? "s" : ""} nesta compra.`
+              : "Seu cadastro já está pronto."}
+          </p>
+        </div>
+      </div>
+      {club.progresso != null ? (
+        <>
+          <div className="ac-clube-pontos" aria-hidden="true">
+            {Array.from({ length: club.meta }, (_, i) => (
+              <span key={i} className={i < (club.progresso || 0) ? "cheio" : ""} />
+            ))}
+          </div>
+          <p className="ac-clube-progresso">
+            {faltam === 0
+              ? "Sua próxima fatia é por nossa conta!"
+              : `${club.progresso} de ${club.meta} — faltam ${faltam} para sua fatia grátis.`}
+          </p>
+        </>
+      ) : null}
+    </section>
+  );
+};
+
 export default function AcompanharPedido({
   pedido,
   retiradaEm,
   criadoEm,
   whatsapp = fallbackOrderWhatsApp,
+  club = null,
 }: {
   pedido: Pedido;
   /** Momento combinado da retirada, ISO. */
@@ -40,6 +81,8 @@ export default function AcompanharPedido({
   /** Momento real em que a reserva foi registrada, ISO. */
   criadoEm?: string | null;
   whatsapp?: string;
+  /** Progresso no Clube Adoce, só quando o pagamento já foi confirmado. */
+  club?: ClubProgress | null;
 }) {
   const vista = vistaDoCliente(pedido);
   const etapas = etapasVisiveis();
@@ -108,6 +151,8 @@ export default function AcompanharPedido({
         </ul>
         <p className="ac-total">{dinheiro(pedido.total)}</p>
       </section>
+
+      {club ? <CartaoClube club={club} /> : null}
 
       {pedido.retirada && !encerrado(pedido.etapa) ? (
         <section className="ac-retirada">

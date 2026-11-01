@@ -4,18 +4,17 @@ import { describe, expect, it } from "vitest";
 const panel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
 const migration = readFileSync(new URL("../supabase/migrations/20260723012027_link_instant_order_by_phone_and_offer_club.sql", import.meta.url), "utf8");
 
-describe("convite opcional ao Clube depois do pedido", () => {
-  it("só oferece o Clube quando o pedido aceito não encontrou cadastro", () => {
+describe("aviso informativo do Clube depois do pedido", () => {
+  it("avisa quando o pedido aceito não encontrou cadastro -- cadastro agora é automático, não opcional", () => {
     expect(panel).toContain("Boolean(response.offer_club_invite)");
-    expect(panel).toContain("Você já conhece o Clube Adoce?");
-    expect(panel).toContain("Quero fazer parte");
-    expect(panel).toContain("Agora não");
+    expect(panel).toContain("Você já faz parte do Clube Adoce");
+    expect(panel).toContain("Os carimbos entram assim que confirmarmos o pagamento");
     expect(panel).toContain("seu pedido já foi recebido normalmente");
   });
 
-  it("leva nome e celular para o cadastro sem cadastrar por conta própria", () => {
-    expect(panel).toContain('sessionStorage.setItem("adoce-club-order-invite"');
-    expect(panel).toContain('window.location.href = "/cadastro"');
+  it("não redireciona mais para cadastro manual -- a inscrição é automática na confirmação do pagamento", () => {
+    expect(panel).not.toContain('sessionStorage.setItem("adoce-club-order-invite"');
+    expect(panel).not.toContain('window.location.href = "/cadastro"');
   });
 
   it("associa por celular no servidor sem devolver dados do membro", () => {

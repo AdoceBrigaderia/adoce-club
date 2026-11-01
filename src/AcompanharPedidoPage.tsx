@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import AcompanharPedido from "./AcompanharPedido";
+import AcompanharPedido, { type ClubProgress } from "./AcompanharPedido";
 import type { Etapa, Pedido } from "./jornada-do-pedido";
 import { useOrderWhatsAppNumber } from "./order-whatsapp";
 
@@ -12,6 +12,11 @@ type OrderResponse = {
   pickup_label: string | null;
   pickup_address: string | null;
   items: Array<{ name: string; quantity: number; unit_price: number; status: string }>;
+  club_member: boolean;
+  club_new_member: boolean;
+  club_stamps_added: number;
+  club_progress: number | null;
+  club_track_goal: number;
 };
 
 const horaCurta = (iso: string | null) => {
@@ -34,6 +39,16 @@ const paraPedido = (order: OrderResponse): Pedido => ({
     : null,
   pago: order.payment_status === "approved",
 });
+
+const paraClube = (order: OrderResponse): ClubProgress | null => {
+  if (!order.club_member || order.payment_status !== "approved") return null;
+  return {
+    novoMembro: order.club_new_member,
+    carimbosGanhos: order.club_stamps_added,
+    progresso: order.club_progress,
+    meta: order.club_track_goal || 14,
+  };
+};
 
 export default function AcompanharPedidoPage() {
   const params = new URLSearchParams(location.search);
@@ -71,5 +86,5 @@ export default function AcompanharPedidoPage() {
 
   if (carregando) return <main className="acompanha"><p>Carregando seu pedido...</p></main>;
   if (erro || !order) return <main className="acompanha"><p role="alert">{erro || "Pedido não encontrado."}</p></main>;
-  return <AcompanharPedido pedido={paraPedido(order)} retiradaEm={order.reserved_until} criadoEm={null} whatsapp={whatsapp} />;
+  return <AcompanharPedido pedido={paraPedido(order)} retiradaEm={order.reserved_until} criadoEm={null} whatsapp={whatsapp} club={paraClube(order)} />;
 }

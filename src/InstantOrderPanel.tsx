@@ -235,8 +235,10 @@ export default function InstantOrderPanel({
   }, [open, phone, totalQuantity]);
 
   // Sem nome e WhatsApp não dá para separar nem reservar a fatia, então a
-  // identificação vem antes de montar o pedido.
-  const identified = hasFirstAndLastName(name) && phone.replace(/\D/g, "").length >= 10;
+  // identificação vem antes de montar o pedido -- em etapas: nome e
+  // sobrenome primeiro, depois o WhatsApp, só então o resto do carrinho.
+  const nameOk = hasFirstAndLastName(name);
+  const identified = nameOk && phone.replace(/\D/g, "").length >= 10;
 
   const changeQuantity = (flavor: InstantOrderFlavor, delta: number) => {
     if (delta > 0 && !identified) {
@@ -580,11 +582,6 @@ export default function InstantOrderPanel({
     onClose();
   };
 
-  const joinClub = () => {
-    sessionStorage.setItem("adoce-club-order-invite", JSON.stringify({ name: name.trim(), phone }));
-    window.location.href = "/cadastro";
-  };
-
   if (!open) return null;
   if (scheduleMessage && !introAcknowledged) {
     return (
@@ -623,15 +620,15 @@ export default function InstantOrderPanel({
     <div className="instant-order-layer">
       <button className="instant-order-backdrop" aria-label="Fechar pedido" onClick={onClose} />
       {showClubInvite ? <section className="instant-order-club-invite" role="dialog" aria-modal="true" aria-labelledby="club-invite-title">
-        <button type="button" className="instant-order-club-invite-close" aria-label="Agora não" onClick={() => setShowClubInvite(false)}><X /></button>
+        <button type="button" className="instant-order-club-invite-close" aria-label="Fechar" onClick={() => setShowClubInvite(false)}><X /></button>
         <img src="/site/clube-convite-pedido.webp" alt="Cartão fidelidade com carimbos e uma fatia de torta como recompensa" />
         <div>
           <span><Heart /> Um carinho para suas próximas escolhas</span>
-          <h2 id="club-invite-title">Você já conhece o Clube Adoce?</h2>
-          <p>Cada fatia confirmada vale um carimbo. Ao completar 14, você ganha uma fatia para adoçar o seu dia.</p>
-          <strong>Quer participar?</strong>
-          <div><button type="button" onClick={joinClub}><Gift /> Quero fazer parte</button><button type="button" onClick={() => setShowClubInvite(false)}>Agora não</button></div>
-          <small>É opcional, gratuito e seu pedido já foi recebido normalmente.</small>
+          <h2 id="club-invite-title">Você já faz parte do Clube Adoce</h2>
+          <p>Seu cadastro é feito automaticamente com este pedido. Cada fatia confirmada vale um carimbo — ao completar 14, a próxima fatia é por nossa conta.</p>
+          <strong>Os carimbos entram assim que confirmarmos o pagamento.</strong>
+          <div><button type="button" onClick={() => setShowClubInvite(false)}><Gift /> Entendi</button></div>
+          <small>É gratuito e seu pedido já foi recebido normalmente.</small>
         </div>
       </section> : null}
       <aside className="instant-order-panel" role="dialog" aria-modal={showClubInvite ? undefined : "true"} aria-hidden={showClubInvite || undefined} aria-labelledby="instant-order-title">
@@ -643,15 +640,18 @@ export default function InstantOrderPanel({
           </header>
           <div className="instant-order-identify">
             <label className="instant-order-name">Nome e sobrenome<input required minLength={5} autoComplete="name" placeholder="Nome e sobrenome" value={name} onChange={(event) => setName(event.target.value)} /></label>
-            <label className="instant-order-name">WhatsApp com DDD<input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} /></label>
+            <label className={nameOk ? "instant-order-name" : "instant-order-name is-locked"}>
+              WhatsApp com DDD
+              <input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} disabled={!nameOk} />
+            </label>
           </div>
           {!flavors.length ? <div className="instant-order-empty">
             <ShoppingBag />
             <strong>Seu carrinho está vazio</strong>
             <p>Quando houver fatias disponíveis, escolha os sabores e volte aqui para concluir.</p>
             <a href="/cardapio" onClick={onClose}>Ver sabores</a>
-          </div> : <div className="instant-order-flavors">
-            {!identified ? <p className="instant-order-identify-first" role="status">Informe seu nome e o WhatsApp acima para escolher as fatias.</p> : null}
+          </div> : <div className={identified ? "instant-order-flavors" : "instant-order-flavors is-locked"} aria-disabled={!identified}>
+            {!identified ? <p className="instant-order-identify-first" role="status">{nameOk ? "Informe seu WhatsApp acima para escolher as fatias." : "Informe seu nome e sobrenome acima para escolher as fatias."}</p> : null}
             {flavors.map((flavor) => {
               const quantity = quantities[flavor.id] || 0;
               const readyAt = earliestPickupTimeForQuantity(flavor.batches, quantity, currentLocalTime());
