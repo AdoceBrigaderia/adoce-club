@@ -38,7 +38,7 @@ begin
 
   insert into public.cash_movements (cash_session_id, store_id, register_id, kind, direction, payment_method_code, amount, order_id, notes, created_by)
   select m.cash_session_id, m.store_id, m.register_id, 'refund', 'out', 'pix', 16, v_order.id,
-         'Acerto: 2a fatia era a fatia grátis do Clube; cliente pagou R$ 16,00.', null
+         'Acerto: 2a fatia era a fatia grátis do Clube; cliente pagou R$ 16,00.', m.created_by
   from public.cash_movements m where m.order_id = v_order.id and m.kind = 'sale' limit 1;
 
   update public.instant_order_items
