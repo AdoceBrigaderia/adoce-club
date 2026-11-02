@@ -504,6 +504,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
   const [instantOrderOpen, setInstantOrderOpen] = useState(false);
   const cartAutoOpened = useRef(false);
   const [initialOrderFlavorId, setInitialOrderFlavorId] = useState<string | null>(null);
+  const [initialOrderPhone, setInitialOrderPhone] = useState<string | null>(null);
   const [updated, setUpdated] = useState(false);
   const whatsappNumber = useOrderWhatsAppNumber();
   const orderLink = (flavor?: string) => orderWhatsAppUrl(
@@ -805,8 +806,9 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
   useEffect(() => {
     if (!openCartOnLoad || cartAutoOpened.current) return;
     cartAutoOpened.current = true;
-    const requestedFlavorId = new URLSearchParams(location.search || location.hash.split("?")[1] || "").get("flavor");
-    setInitialOrderFlavorId(requestedFlavorId);
+    const requestedParams = new URLSearchParams(location.search || location.hash.split("?")[1] || "");
+    setInitialOrderFlavorId(requestedParams.get("flavor"));
+    setInitialOrderPhone(requestedParams.get("telefone"));
     setInstantOrderOpen(true);
     trackPublicEvent("instant_order_open", { source: "cart" });
   }, [openCartOnLoad]);
@@ -1362,6 +1364,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         onClose={() => { if (openCartOnLoad) { window.location.href = "/"; return; } setInstantOrderOpen(false); }}
         flavors={instantOrderFlavors}
         initialFlavorId={initialOrderFlavorId}
+        initialPhone={initialOrderPhone}
         pickupWindows={pickupWindows}
         scheduleMessage={orderPanelScheduleMessage}
         pickupLocationSlug={online?.pickup_location_slug || "cantinho-da-adoce"}

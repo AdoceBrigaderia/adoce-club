@@ -22,6 +22,12 @@ export const isFullName = (value: string) =>
   value.trim().length <= 140 &&
   value.trim().split(/\s+/).filter((part) => part.replace(/[^\p{L}]/gu, "").length >= 2).length >= 2;
 
+// Frase como "Hoje tem bolo ?" passa em isFullName (duas palavras com 2+
+// letras) e virava pedido de verdade com esse texto como nome do cliente.
+// Qualquer interrogação aqui é tratada como pergunta, nunca como nome ou
+// início de pedido.
+export const looksLikeQuestion = (value: string) => /[?？]/.test(value);
+
 export function parseItemSelection(value: string, flavors: BotFlavor[]) {
   const cleaned = normalizeCommand(value);
   const parts = cleaned.split(/[,;\n]+/).map((part) => part.trim()).filter(Boolean);

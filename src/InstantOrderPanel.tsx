@@ -71,6 +71,7 @@ export default function InstantOrderPanel({
   onClose,
   flavors,
   initialFlavorId,
+  initialPhone,
   pickupWindows = null,
   scheduleMessage = "",
   pickupLocationSlug = "cantinho-da-adoce",
@@ -79,6 +80,10 @@ export default function InstantOrderPanel({
   onClose: () => void;
   flavors: InstantOrderFlavor[];
   initialFlavorId?: string | null;
+  // Vem do link que o bot do WhatsApp manda (?telefone=...) -- decisão do
+  // proprietário em 02/11/2026: o bot não registra mais pedido sozinho, só
+  // direciona para o carrinho do site, já com o WhatsApp preenchido.
+  initialPhone?: string | null;
   pickupWindows?: PickupWindow[] | null;
   // Mensagem/horário de retirada de hoje (igual à mostrada no resto da
   // página) -- pedido do proprietário em 01/11/2026: mostrar isso num aviso
@@ -136,6 +141,10 @@ export default function InstantOrderPanel({
     if (!open || !initialFlavorId) return;
     setQuantities((current) => ({ ...current, [initialFlavorId]: Math.max(current[initialFlavorId] || 0, 1) }));
   }, [flavors, initialFlavorId, open]);
+  useEffect(() => {
+    if (!open || !initialPhone) return;
+    setPhone((current) => current || mascaraTelefone(initialPhone));
+  }, [open, initialPhone]);
   // Toda vez que a tela de pedido abre, o aviso de horário/mensagem de hoje
   // precisa aparecer de novo antes de qualquer outra ação.
   useEffect(() => {

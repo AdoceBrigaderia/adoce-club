@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import orderWebhook from "../netlify/functions/twilio-whatsapp-order";
 import {
   isFullName,
+  looksLikeQuestion,
   parseItemSelection,
   parsePickupTime,
   twiml,
@@ -36,6 +37,16 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(parsePickupTime("19:30", "18:00")).toBe("19:30");
     expect(parsePickupTime("17:59", "18:00")).toBeNull();
     expect(parsePickupTime("25:00", "18:00")).toBeNull();
+  });
+
+  it("reconhece pergunta mesmo quando passaria como nome completo", () => {
+    // Regressão: "Hoje tem bolo ?" tem duas palavras com 2+ letras e passava
+    // em isFullName, virando pedido de verdade com a pergunta como nome do
+    // cliente (FAT-20261102-1607, cancelado manualmente pela equipe).
+    expect(isFullName("Hoje tem bolo ?")).toBe(true);
+    expect(looksLikeQuestion("Hoje tem bolo ?")).toBe(true);
+    expect(looksLikeQuestion("Vocês têm torta hoje?")).toBe(true);
+    expect(looksLikeQuestion("Maria da Silva")).toBe(false);
   });
 
   it("escapa a resposta TwiML e nÃ£o permite injetar XML", () => {
@@ -104,5 +115,21 @@ describe("pedido automatizado pelo WhatsApp", () => {
     expect(endpoint).toContain("server_submit_whatsapp_order");
     expect(endpoint).not.toContain("console.log(body");
     expect(endpoint).not.toContain("console.log(phone");
+    expect(endpoint).toContain("looksLikeQuestion(body)");
+  });
+
+  it("não registra mais pedido sozinho: manda o link do carrinho com o WhatsApp preenchido", () => {
+    // Decisão do proprietário em 02/11/2026: muito pedido pelo WhatsApp era
+    // só uma pergunta sem compra de verdade. startConversation() agora só
+    // responde com o link do carrinho, sem perguntar nome nem salvar o
+    // passo "name" (que colocaria o cliente de volta no fluxo antigo).
+    const endpoint = source("../netlify/functions/twilio-whatsapp-order.ts");
+    const startConversationBody = endpoint.slice(
+      endpoint.indexOf("const startConversation = async () => {"),
+      endpoint.indexOf("const offerExistingOrderChoice"),
+    );
+    expect(startConversationBody).toContain("/carrinho?telefone=");
+    expect(startConversationBody).not.toContain('save("name"');
+    expect(startConversationBody).not.toContain("qual é seu nome");
   });
 });

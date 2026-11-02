@@ -1,9 +1,11 @@
 import { downloadAndStoreTwilioMedia } from "./_shared/whatsapp-media";
 import twilio from "twilio";
 import { env, hmacHex, normalizeBrazilPhone, serviceClient } from "./_shared/whatsapp-auth";
+import { PRODUCTION_SITE_ORIGIN } from "./_shared/production-origin";
 import {
   catalogMessage,
   isFullName,
+  looksLikeQuestion,
   normalizeCommand,
   optionsMessage,
   orderSummary,
@@ -297,14 +299,30 @@ export default async (request: Request) => {
       return await finish(catalogMessage(flavors));
     };
 
-    const startConversation = async () => {
+    // Decisão do proprietário em 02/11/2026: muitos clientes mandam uma
+    // pergunta ("Hoje tem bolo?") em vez de um pedido de verdade. Antes
+    // disso, qualquer frase de 2+ palavras passava em isFullName e virava
+    // pedido completo com a pergunta como nome do cliente. Agora responde
+    // a pergunta com a disponibilidade real, sem iniciar o fluxo de pedido.
+    const answerAvailabilityQuestion = async () => {
       const catalog = await loadCatalog();
-      const specialFlavors = catalog.flavors.filter((flavor) => flavor.price !== 16);
-      const priceIntroduction = specialFlavors.length
-        ? `As fatias tradicionais custam R$ 16,00. ${specialFlavors.map((flavor) => `${flavor.name} custa ${Number(flavor.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`).join("; ")}.`
-        : "Cada fatia custa R$ 16,00.";
-      await save("name", {});
-      return await finish(`Oi! Que bom ter você por aqui 🍰\n\nJá conhece as fatias da Adoce? ${priceIntroduction}\n\nNão fazemos entregas. Seu pedido pode ser retirado aqui por você ou por um motorista de aplicativo que você solicitar.\n\nPara começar, qual é seu nome e sobrenome?`);
+      const flavors = catalog.flavors.slice(0, 20);
+      if (!flavors.length) {
+        return await finish("No momento não há fatias disponíveis para pedido automático. Envie *ATENDENTE* para falar com a equipe ou tente novamente mais tarde.");
+      }
+      const names = flavors.map((flavor) => flavor.name).join(", ");
+      return await finish(`Sim! Hoje temos: ${names}.\n\nPara montar seu pedido, envie *PEDIDO*.`);
+    };
+
+    // Decisão do proprietário em 02/11/2026: o WhatsApp não registra mais
+    // pedido sozinho -- muito pedido virava só uma pergunta ("tem bolo?")
+    // sem compra de verdade. Agora só manda o link do carrinho do site, já
+    // com o WhatsApp preenchido (e o nome, se já tiver cadastro no Clube
+    // Adoce -- o carrinho busca sozinho).
+    const startConversation = async () => {
+      await clear();
+      const cartUrl = `${PRODUCTION_SITE_ORIGIN}/carrinho?telefone=${phone.replace(/^\+55/, "")}`;
+      return await finish(`Para montar seu pedido é só acessar o carrinho do site -- já abre com seu WhatsApp preenchido:\n${cartUrl}\n\nQualquer dúvida, envie *ATENDENTE*.`);
     };
 
     const offerExistingOrderChoice = async () => {
@@ -330,7 +348,7 @@ export default async (request: Request) => {
     );
     if (conversationError) throw new Error(`conversation:${conversationError.code}`);
     const conversation = (loaded || null) as Conversation;
-    if (!conversation) return await offerExistingOrderChoice();
+    if (!conversation) return looksLikeQuestion(body) ? await answerAvailabilityQuestion() : await offerExistingOrderChoice();
     if (conversation.step === "handoff")
       return await finish("A automaÃ§Ã£o estÃ¡ pausada para este atendimento. Envie *MENU* para recomeÃ§ar.");
     if (conversation.step === "completed")
@@ -346,6 +364,14 @@ export default async (request: Request) => {
       return await finish("Escolha uma opção:\n\n1. Falar sobre pedido existente\n2. Fazer uma nova compra");
     }
     if (conversation.step === "name") {
+      if (looksLikeQuestion(body)) {
+        const catalog = await loadCatalog();
+        const flavors = catalog.flavors.slice(0, 20);
+        const availability = flavors.length
+          ? `Sim! Hoje temos: ${flavors.map((flavor) => flavor.name).join(", ")}.`
+          : "No momento não há fatias disponíveis para pedido automático.";
+        return await finish(`${availability}\n\nPara continuar seu pedido, me diga seu nome e sobrenome.`);
+      }
       if (!isFullName(body)) return await finish("Informe seu nome e sobrenome. Exemplo: *Maria da Silva*.");
       return await startMenu(body.trim());
     }
