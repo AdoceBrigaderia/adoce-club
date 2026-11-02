@@ -7,6 +7,11 @@ describe("identificação e fidelidade no caixa", () => {
     expect(normalizeCashPhone("+55 85 98765-4321")).toBe("5585987654321");
   });
 
+  it("completa o 9 de celular quando falta, para encontrar o mesmo cliente", () => {
+    expect(normalizeCashPhone("85 8765-4321")).toBe("5585987654321");
+    expect(normalizeCashPhone("+55 85 8765-4321")).toBe("5585987654321");
+  });
+
   it("busca por nome, sobrenome e últimos dígitos sem disparar consultas vazias", () => {
     expect(shouldSearchCustomers("Ma")).toBe(true);
     expect(shouldSearchCustomers("4321")).toBe(true);

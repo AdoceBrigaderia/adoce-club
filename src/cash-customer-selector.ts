@@ -11,7 +11,13 @@ export type CashCustomer = {
 export const normalizeCashPhone = (value: string) => {
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
-  return digits.startsWith("55") ? digits : `55${digits}`;
+  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
+  const national = withCountry.slice(2);
+  // Celular brasileiro tem 11 dígitos nacionais (DDD + 9 + 8 dígitos). Sem
+  // o 9 (10 dígitos), o mesmo cliente comparava como um número diferente e
+  // nunca era encontrado ao digitar o celular no caixa.
+  const withNine = national.length === 10 ? `${national.slice(0, 2)}9${national.slice(2)}` : national;
+  return `55${withNine}`;
 };
 
 const normalizeText = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
