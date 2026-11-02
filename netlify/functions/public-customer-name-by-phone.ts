@@ -47,13 +47,9 @@ export default async (request: Request) => {
     const { data, error } = await admin.rpc("server_public_lookup_customer_name_by_phone", {
       requested_phone: phone,
     });
-    if (error) {
-      console.error("customer name lookup rpc error", JSON.stringify(error));
-      return json({ full_name: null });
-    }
+    if (error) return json({ full_name: null });
     return json({ full_name: (data as string | null) || null });
-  } catch (error) {
-    console.error("customer name lookup failed", error instanceof Error ? error.message : String(error));
+  } catch {
     return json({ full_name: null });
   }
 };
