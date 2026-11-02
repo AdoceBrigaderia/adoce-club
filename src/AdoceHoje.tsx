@@ -1053,7 +1053,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
             <div className="today-card-grid">
               {selectedCompactDay.items.map((flavor) => (
                 <article className="today-flavor-card" key={flavor.id}>
-                  <div className="today-card-image">
+                  <button className="today-card-image product-image-trigger" type="button" onClick={() => setSelectedFlavor(flavor)} aria-label={`Conhecer o sabor ${flavor.name}`}>
                     <img src={flavor.image} alt={`Fatia ${flavor.name}`} loading="lazy" />
                     <span className="today-status-pill available">
                       {selectedCompactDay.isToday
@@ -1062,7 +1062,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
                           ? `A partir das ${selectedCompactDay.availableFrom.slice(0, 5)}`
                           : "Produção confirmada"}
                     </span>
-                  </div>
+                  </button>
                   <div className="today-card-body">
                     <div>
                       <div className="today-stock-count">
@@ -1108,12 +1108,12 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
           <div className="today-card-grid">
             {visible.map((flavor) => (
               <article className="today-flavor-card" key={flavor.id}>
-                <div className="today-card-image">
+                <button className="today-card-image product-image-trigger" type="button" onClick={() => setSelectedFlavor(flavor)} aria-label={`Conhecer o sabor ${flavor.name}`}>
                   <img src={flavor.image} alt={`Fatia ${flavor.name}`} loading="lazy" />
                   <span className="today-status-pill available">
                     {flavor.status === "preorder_only" ? "Hoje às 19h30" : "Disponível hoje"}
                   </span>
-                </div>
+                </button>
                 <div className="today-card-body">
                   <div>
                     <div className="today-card-status"><span className="now" /> Disponível hoje</div>

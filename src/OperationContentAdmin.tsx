@@ -4,6 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   Check,
   Clock3,
+  Download,
   Eye,
   ImagePlus,
   PackageOpen,
@@ -64,6 +65,7 @@ type PendingFlavorImage = {
   flavor: Flavor;
   file: File;
   role: "cover" | "gallery" | "whole_cake";
+  mediaId?: string;
 };
 export type AvailabilityStatus =
   "available" | "last_units" | "sold_out" | "preorder_only" | "unavailable";
@@ -601,9 +603,66 @@ export default function OperationContentAdmin({
     setPendingImage({ flavor, file, role });
   };
 
+  const fetchImageAsFile = async (url: string, filename: string): Promise<File> => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Não foi possível carregar a foto para editar.");
+    const blob = await response.blob();
+    return new File([blob], filename, { type: blob.type || "image/jpeg" });
+  };
+
+  const editGalleryImage = async (image: FlavorImage) => {
+    if (!galleryFlavor) return;
+    setBusy(true);
+    try {
+      const sourceUrl = image.original_image_path || image.image_path;
+      const file = await fetchImageAsFile(sourceUrl, `foto-${image.id}.jpg`);
+      setPendingImage({
+        flavor: galleryFlavor,
+        file,
+        role: image.image_role === "cover" ? "cover" : "gallery",
+        mediaId: image.id,
+      });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Não foi possível abrir a foto para edição.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const editWholeCakeImage = async (flavor: Flavor) => {
+    if (!flavor.whole_cake_image_path) return;
+    setBusy(true);
+    try {
+      const sourceUrl = flavor.whole_cake_original_image_path || flavor.whole_cake_image_path;
+      const file = await fetchImageAsFile(sourceUrl, `torta-g-${flavor.id}.jpg`);
+      setPendingImage({ flavor, file, role: "whole_cake" });
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Não foi possível abrir a foto para edição.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeWholeCakeImage = async (flavor: Flavor) => {
+    if (
+      !(await confirmAction(
+        "Remover a foto da torta inteira G? O produto fica sem essa foto até você enviar outra.",
+        { destructive: true, confirmLabel: "Remover" },
+      ))
+    )
+      return;
+    const { error } = await requireSupabase().rpc("manager_clear_dynamic_image_asset", {
+      requested_asset_kind: "whole-cake",
+      requested_owner_id: flavor.id,
+    });
+    if (error) return setNotice(error.message);
+    setNotice("Foto da torta inteira G removida.");
+    await load();
+  };
+
   const applyFlavorImage = async (edited: EditedProductImage) => {
     if (!pendingImage) return;
-    const { flavor, file, role } = pendingImage;
+    const { flavor, file, role, mediaId } = pendingImage;
     const isWholeCake = role === "whole_cake";
     const current = images.filter(
       (item) => item.flavor_id === flavor.id && item.active,
@@ -642,7 +701,7 @@ export default function OperationContentAdmin({
           requested_owner_id: flavor.id,
           requested_image_url: uploaded.imageUrl,
           requested_original_image_url: uploaded.originalImageUrl,
-          requested_media_id: null,
+          requested_media_id: mediaId || null,
           requested_alt_text: altText,
           requested_caption: "",
           requested_role: role,
@@ -1783,9 +1842,27 @@ export default function OperationContentAdmin({
             <div className="gallery-grid">
               {gallery.map((image) => (
                 <figure key={image.id}>
-                  <img src={image.image_path} alt={image.alt_text} />
+                  <button
+                    type="button"
+                    className="gallery-image-edit-trigger"
+                    onClick={() => void editGalleryImage(image)}
+                    aria-label="Editar esta foto"
+                    title="Clique para editar (cortar, enquadrar, melhorar a luz)"
+                  >
+                    <img src={image.image_path} alt={image.alt_text} />
+                  </button>
                   <figcaption>
                     {image.image_role === "cover" ? "Principal" : "Galeria"}
+                    <a
+                      href={image.original_image_path || image.image_path}
+                      target="_blank"
+                      rel="noreferrer"
+                      download
+                      title="Baixar foto original"
+                      aria-label="Baixar foto original"
+                    >
+                      <Download />
+                    </a>
                     <button onClick={() => void removeImage(image)}>
                       <Trash2 />
                     </button>
@@ -1848,11 +1925,34 @@ export default function OperationContentAdmin({
             </div>
             {galleryFlavor.whole_cake_image_path && (
               <figure className="whole-cake-preview">
-                <img
-                  src={galleryFlavor.whole_cake_image_path}
-                  alt={`Torta inteira G ${galleryFlavor.name}`}
-                />
-                <figcaption>Foto exclusiva da torta inteira G</figcaption>
+                <button
+                  type="button"
+                  className="gallery-image-edit-trigger"
+                  onClick={() => void editWholeCakeImage(galleryFlavor)}
+                  aria-label="Editar foto da torta inteira G"
+                  title="Clique para editar (cortar, enquadrar, melhorar a luz)"
+                >
+                  <img
+                    src={galleryFlavor.whole_cake_image_path}
+                    alt={`Torta inteira G ${galleryFlavor.name}`}
+                  />
+                </button>
+                <figcaption>
+                  Foto exclusiva da torta inteira G
+                  <a
+                    href={galleryFlavor.whole_cake_original_image_path || galleryFlavor.whole_cake_image_path}
+                    target="_blank"
+                    rel="noreferrer"
+                    download
+                    title="Baixar foto original"
+                    aria-label="Baixar foto original"
+                  >
+                    <Download />
+                  </a>
+                  <button onClick={() => void removeWholeCakeImage(galleryFlavor)} title="Excluir foto da torta inteira G" aria-label="Excluir foto da torta inteira G">
+                    <Trash2 />
+                  </button>
+                </figcaption>
               </figure>
             )}
           </div>

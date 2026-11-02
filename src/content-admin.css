@@ -560,10 +560,64 @@
   align-items: center;
   padding: 0.65rem;
 }
-.gallery-grid figcaption button {
+.gallery-grid figcaption button,
+.gallery-grid figcaption a {
   border: 0;
   background: transparent;
   color: #b94642;
+  display: inline-flex;
+  padding: 0;
+  cursor: pointer;
+}
+.gallery-grid figcaption a {
+  color: #8d6a5c;
+}
+.gallery-image-edit-trigger {
+  display: block;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.gallery-image-edit-trigger img {
+  display: block;
+}
+.whole-cake-preview {
+  margin: 1rem 0 0;
+  max-width: 320px;
+  background: #fff;
+  border: 1px solid #ead6c8;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.whole-cake-preview img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+.whole-cake-preview figcaption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem;
+  color: #4c241a;
+  font-size: 0.82rem;
+}
+.whole-cake-preview figcaption button,
+.whole-cake-preview figcaption a {
+  border: 0;
+  background: transparent;
+  color: #b94642;
+  display: inline-flex;
+  padding: 0;
+  cursor: pointer;
+  flex: none;
+}
+.whole-cake-preview figcaption a {
+  color: #8d6a5c;
 }
 .upload-row {
   display: grid;
