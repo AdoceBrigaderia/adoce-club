@@ -156,6 +156,29 @@ export default function InstantOrderPanel({
     }).catch(() => undefined);
   }, [open]);
 
+  // Decisão do proprietário em 02/11/2026: ao completar o WhatsApp, procura
+  // automaticamente se é um cadastro do Clube Adoce e preenche o nome
+  // sozinho -- sem login, sem código. Não dispara se a pessoa já digitou
+  // (ou já veio preenchido) um nome; nunca sobrescreve o que foi digitado.
+  useEffect(() => {
+    if (!open || name.trim()) return;
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length < 10) return;
+    const timer = window.setTimeout(() => {
+      fetch("/api/pedidos/cliente-por-telefone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: digits }),
+      })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload: { full_name?: string | null } | null) => {
+          if (payload?.full_name) setName((current) => current || payload.full_name || "");
+        })
+        .catch(() => undefined);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [open, phone, name]);
+
   useEffect(() => {
     if (!open) return;
     const close = (event: KeyboardEvent) => event.key === "Escape" && onClose();
