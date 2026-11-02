@@ -1009,17 +1009,6 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         <section className="today-flavors today-flavors-loading" id="sabores" aria-busy="true"><p>Carregando o cardápio...</p></section>
       ) : (
       <section className="today-flavors" id="sabores">
-        {compact && !showingTodayGrid && selectedCompactDay && (
-        <div className="today-compact-intro">
-          <p className="today-compact-date">{fullDayLabel(selectedCompactDay.date)}</p>
-          <h1 className="today-compact-title">Cardápio da semana</h1>
-          <p className="today-compact-subtitle">
-            {selectedCompactDay.isPast
-              ? "Esse dia já passou — confira a produção de hoje ou dos próximos dias."
-              : "Hoje ainda não tem produção liberada — veja o que já está planejado para os próximos dias."}
-          </p>
-        </div>
-        )}
         {compact && compactWeekDays.length > 0 && (
           <div className="today-week-tabs" role="tablist" aria-label="Escolher o dia da semana">
             {compactWeekDays.map((day, index) => (
