@@ -4,7 +4,7 @@ import { publicContactLinks, publicContactWhatsAppMessage, shouldShowPublicConta
 describe("contatos públicos da Adoce", () => {
   it("usa os canais oficiais e o segundo WhatsApp com mensagem inicial", () => {
     expect(publicContactLinks.facebook).toBe("https://www.facebook.com/adocebrigaderia");
-    expect(publicContactLinks.instagram).toBe("https://www.instagram.com/_adocebrigaderia_/");
+    expect(publicContactLinks.instagram).toBe("https://www.instagram.com/cantinhodaadoce/");
     expect(publicContactLinks.whatsappSecondary).toContain("wa.me/5585982156026");
     expect(publicContactWhatsAppMessage).toContain("Vim pelo site da Adoce");
   });

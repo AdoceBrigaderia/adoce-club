@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Clock3, MapPin, Phone, X } from "lucide-react";
+import { FaInstagram } from "react-icons/fa";
 import { orderWhatsAppUrl } from "./order-whatsapp";
+import { publicContactLinks } from "./public-contact-links";
 import "./public-footer-2026.css";
 
 const WHATSAPP_NUMBER = "5585981994370";
@@ -28,6 +30,15 @@ export default function PublicFooter() {
       >
         <Phone aria-hidden="true" />
         <span>Contato</span>
+      </a>
+      <a
+        className="public-footer-item"
+        href={publicContactLinks.instagram}
+        target="_blank"
+        rel="noreferrer"
+      >
+        <FaInstagram aria-hidden="true" />
+        <span>Instagram</span>
       </a>
 
       <p className="public-footer-copyright">

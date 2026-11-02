@@ -2,7 +2,7 @@ const whatsappMessage = "Olá! Vim pelo site da Adoce e gostaria de atendimento.
 
 export const publicContactLinks = {
   facebook: "https://www.facebook.com/adocebrigaderia",
-  instagram: "https://www.instagram.com/_adocebrigaderia_/",
+  instagram: "https://www.instagram.com/cantinhodaadoce/",
   whatsappSecondary: `https://wa.me/5585982156026?text=${encodeURIComponent(whatsappMessage)}`,
 } as const;
 
