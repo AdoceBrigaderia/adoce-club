@@ -1361,11 +1361,14 @@ body:has(.public-mobile-nav) {
 }
 
 .today-page .today-card-body p,
-.today-page .today-stock-count,
 .today-page .today-premium,
 .today-page .today-illustrative,
 .today-page .today-gallery-button {
   display: none !important;
+}
+
+.today-page .today-stock-count {
+  display: inline-flex !important;
 }
 
 .today-page .today-card-status {

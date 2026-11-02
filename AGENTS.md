@@ -11,12 +11,15 @@ reservada de verdade: `flavor_availability` (e o trigger
 `recalcular_reserva_de_fatias`, e o carregamento de sabores do caixa em
 `OperationManualSale.tsx` (`load()`, `setQuantity`). Já regrediu mais de uma vez.
 
-- Antes de alterar qualquer parte deste motor — função SQL, trigger, RPC, ou o código
-  de carregamento/filtro de sabores do caixa — é obrigatório **pedir confirmação
-  explícita ao proprietário três vezes**: (1) ao propor o diagnóstico da causa raiz,
-  (2) ao propor a mudança específica antes de editar qualquer arquivo ou aplicar
-  qualquer migração, e (3) imediatamente antes de aplicar em produção. Nunca pular
-  nem combinar essas três confirmações numa só pergunta.
+- A tripla confirmação NÃO bloqueia investigar, diagnosticar ou corrigir o código
+  deste motor — isso segue o fluxo normal (implementar, validar, publicar com
+  autorização, como qualquer outra mudança). Ela vale só para declarar o problema
+  como **definitivamente resolvido**: só o proprietário pode marcar uma correção
+  deste motor como encerrada, e só depois de confirmar três vezes, em momentos
+  diferentes (ex.: logo após corrigir, depois de um uso real no dia a dia, e depois
+  de alguns dias sem recorrência) que o problema não voltou. Até a terceira
+  confirmação dele, qualquer correção aqui continua "implementada, ainda não
+  totalmente validada" — nunca "resolvido" nas respostas.
 - Vale também para ajustes manuais de dado (ex.: UPDATE direto em
   `flavor_availability` para desbloquear uma venda): são permitidos para destravar um
   caso pontual, mas não substituem a revisão e as três confirmações antes de mudar o

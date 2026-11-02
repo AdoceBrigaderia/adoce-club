@@ -1065,6 +1065,9 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
                   </div>
                   <div className="today-card-body">
                     <div>
+                      <div className="today-stock-count">
+                        {flavor.freeQuantity} fatia(s) disponível(is) para reserva
+                      </div>
                       <h3>{flavor.name}</h3>
                       <p>{flavor.note}</p>
                       <strong className="today-card-price">
@@ -1114,6 +1117,11 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
                 <div className="today-card-body">
                   <div>
                     <div className="today-card-status"><span className="now" /> Disponível hoje</div>
+                    {flavor.quantityAvailable !== null && flavor.quantityAvailable !== undefined ? (
+                      <div className="today-stock-count">
+                        {Math.max(flavor.quantityAvailable - (flavor.quantityReserved || 0), 0)} fatia(s) disponível(is) para reserva
+                      </div>
+                    ) : null}
                     <h3>{flavor.name}</h3>
                     <p>{flavor.note}</p>
                     <strong className="today-card-price">
