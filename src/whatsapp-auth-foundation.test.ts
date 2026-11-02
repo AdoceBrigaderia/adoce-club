@@ -100,6 +100,15 @@ describe("fundação do login por WhatsApp", () => {
     expect(maskPhone(phone || "")).toBe("+55 •• •••••-1234");
   });
 
+  it("completa o 9 de celular quando falta, para não duplicar o cliente", () => {
+    // Regressão: "+558587163179" (10 dígitos nacionais, sem o 9) gerava um
+    // hash diferente do mesmo celular com o 9, criando um atendimento
+    // duplicado em vez de continuar a conversa já existente com o cliente.
+    expect(normalizeBrazilPhone("+558587163179")).toBe("+5585987163179");
+    expect(normalizeBrazilPhone("8587163179")).toBe("+5585987163179");
+    expect(normalizeBrazilPhone("(85) 8716-3179")).toBe("+5585987163179");
+  });
+
   it("gera HMAC estável e não usa o telefone em claro", async () => {
     const digest = await hmacHex("segredo-de-teste", "phone:+5585999991234");
     expect(digest).toMatch(/^[a-f0-9]{64}$/);

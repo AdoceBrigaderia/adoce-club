@@ -39,9 +39,14 @@ export const allowedOrigin = (request: Request) => {
 export const normalizeBrazilPhone = (value: string) => {
   const digits = value.replace(/\D/g, "");
   const national = digits.startsWith("55") ? digits.slice(2) : digits;
-  return national.length === 10 || national.length === 11
-    ? `+55${national}`
-    : null;
+  // Celular brasileiro tem 11 dígitos nacionais (DDD + 9 + 8 dígitos). Um
+  // número com 10 dígitos aqui é o mesmo celular sem o "9" -- comum quando
+  // alguém digita de cabeça ou copia um cadastro antigo. Sem completar o
+  // "9", esse número vira um hash diferente do mesmo cliente (todo uso desta
+  // função é WhatsApp/SMS, nunca telefone fixo) e duplica o atendimento em
+  // vez de continuar a conversa já existente.
+  if (national.length === 10) return `+55${national.slice(0, 2)}9${national.slice(2)}`;
+  return national.length === 11 ? `+55${national}` : null;
 };
 
 export const isValidFullName = (value: string) => {
