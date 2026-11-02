@@ -636,7 +636,7 @@ export default function OperationInstantOrders() {
       <button className="instant-order-operation-backdrop" aria-label="Fechar" onClick={() => setSelected(null)} />
       <aside className="print-scope" role="dialog" aria-modal="true" aria-label={`Pedido ${selected.order_number}`}>
         <button className="drawer-close" onClick={() => setSelected(null)} aria-label="Fechar"><X /></button>
-        <div className="thermal-receipt-brand"><img src="/site/logo.webp" alt="Adoce Brigaderia" /><strong>ADOCE BRIGADERIA</strong></div>
+        <div className="thermal-receipt-brand"><img src="/site/logo.webp" alt="Cantinho da Adoce" /><strong>CANTINHO DA ADOCE</strong></div>
         <small>{selected.order_number}</small><h2>{nomeLegivel(selected.customer_name)}</h2>
         {notice ? <p className="instant-order-direct-error" role="alert">{notice}</p> : null}
         {selected.customer_phone ? (

@@ -38,7 +38,7 @@ const key = (id: string) => `adoce-thermal-printed:${id}`;
 export function buildThermalReceipt(order: ThermalOrder) {
   const lines = [
     "[LOGO ADOCE]",
-    "ADOCE BRIGADERIA",
+    "CANTINHO DA ADOCE",
     `PEDIDO ${order.order_number}`,
     "--------------------------------",
     order.customer_name,

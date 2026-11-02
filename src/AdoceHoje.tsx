@@ -464,9 +464,9 @@ const maps =
 function Brand() {
   return (
     <a className="today-brand" href="/">
-      <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
+      <img src="/brand-2026/logo-adoce-transparente.png" alt="Cantinho da Adoce" />
       <span>
-        <strong>Adoce Brigaderia</strong>
+        <strong>Cantinho da Adoce</strong>
         <small>Festival de Fatias</small>
       </span>
     </a>
@@ -513,7 +513,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
       : "Olá, Adoce! Quero conhecer os sabores disponíveis hoje.",
   );
   useEffect(() => {
-    document.title = "Fatias · Adoce Brigaderia";
+    document.title = "Fatias · Cantinho da Adoce";
   }, []);
   const dateLabel = useMemo(
     () =>

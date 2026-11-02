@@ -11,7 +11,7 @@ export type SiteVisualAssetDefinition = {
 };
 
 export const SITE_VISUAL_ASSETS: SiteVisualAssetDefinition[] = [
-  { key: "/site/logo.webp", label: "Logo oficial", section: "Marca", description: "Cabeçalhos, rodapés, operação e compartilhamentos.", alt: "Adoce Brigaderia", aspectWidth: 1, aspectHeight: 1, outputWidth: 900, fitMode: "contain" },
+  { key: "/site/logo.webp", label: "Logo oficial", section: "Marca", description: "Cabeçalhos, rodapés, operação e compartilhamentos.", alt: "Cantinho da Adoce", aspectWidth: 1, aspectHeight: 1, outputWidth: 900, fitMode: "contain" },
   { key: "/site/trufado-de-ninho-home-20260803.png", label: "Fatia principal da Home", section: "Página inicial", description: "Produto em destaque no primeiro bloco da página pública.", alt: "Fatias Trufado de Ninho preparadas pela Adoce", aspectWidth: 1, aspectHeight: 1, outputWidth: 1400, fitMode: "cover" },
   { key: "/site/beth-fundadora.png", label: "Foto da Beth", section: "Página inicial", description: "História e origem da Adoce.", alt: "Beth, fundadora e confeiteira da Adoce", aspectWidth: 4, aspectHeight: 5, outputWidth: 1200, fitMode: "stretch" },
   { key: "/site/clube-cartao-destaque-v2.webp", label: "Cartão do Clube Adoce", section: "Página inicial", description: "Imagem principal do benefício do Clube.", alt: "Cartão do Clube Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" },
@@ -28,7 +28,7 @@ export const SITE_VISUAL_ASSETS: SiteVisualAssetDefinition[] = [
   { key: "/site/adoce-hoje-barraquinha-ilustracao.webp", label: "Ilustração do Cantinho da Adoce", section: "Adoce Hoje", description: "Representa o Festival de Fatias no Cantinho da Adoce.", alt: "Ilustração do Cantinho da Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" },
   { key: "/site/adoce-hoje-exemplo-desktop.png", label: "Exemplo do Adoce Hoje — computador", section: "Adoce Hoje", description: "Imagem ilustrativa usada na página inicial.", alt: "Exemplo ilustrativo da página Adoce Hoje", aspectWidth: 16, aspectHeight: 10, outputWidth: 1800, fitMode: "stretch" },
   { key: "/site/adoce-hoje-exemplo-mobile.png", label: "Exemplo do Adoce Hoje — celular", section: "Adoce Hoje", description: "Versão móvel do exemplo ilustrativo.", alt: "Exemplo ilustrativo da página Adoce Hoje no celular", aspectWidth: 9, aspectHeight: 16, outputWidth: 1000, fitMode: "stretch" },
-  { key: "/site/politica-de-pedidos.jpeg", label: "Política de pedidos", section: "Informações comerciais", description: "Arte com regras de encomendas e atendimento.", alt: "Política de pedidos da Adoce Brigaderia", aspectWidth: 4, aspectHeight: 3, outputWidth: 1600, fitMode: "stretch" },
+  { key: "/site/politica-de-pedidos.jpeg", label: "Política de pedidos", section: "Informações comerciais", description: "Arte com regras de encomendas e atendimento.", alt: "Política de pedidos da Cantinho da Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1600, fitMode: "stretch" },
   { key: "/site/hero-cake.webp", label: "Fatia de apoio do Clube", section: "Clube Adoce", description: "Imagem histórica usada em telas de acesso e materiais.", alt: "Fatia artesanal da Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" },
   { key: "/adoce-hoje/sabores-hoje.webp", label: "Arte de sabores de hoje", section: "Adoce Hoje", description: "Exemplo visual da comunicação diária de sabores.", alt: "Sabores do Festival de Fatias", aspectWidth: 4, aspectHeight: 5, outputWidth: 1200, fitMode: "stretch" },
 ];

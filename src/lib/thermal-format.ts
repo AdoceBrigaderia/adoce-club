@@ -62,7 +62,7 @@ export const channelLabel = (code: string) =>
 /** Remove os marcadores para mostrar o cupom na tela. */
 export const plainText = (lines: string[]) => lines.map((line) => line.replace(/^#[HB] /, "")).join("\n");
 
-export const header = (...titleLines: string[]) => [highlight("ADOCE BRIGADERIA"), ...titleLines.map((line) => `#B ${center(line)}`)];
+export const header = (...titleLines: string[]) => [highlight("CANTINHO DA ADOCE"), ...titleLines.map((line) => `#B ${center(line)}`)];
 
 export const footer = (lines: string[] = []) => [...lines, "", ""];
 

@@ -58,7 +58,7 @@ export default function FichaTermica({
   return (
     <article className="ficha58" aria-label="Ficha de entrega">
       <header className="f-marca">
-        <img className="f-logo" src="/site/logo.webp" alt="Adoce Brigaderia" />
+        <img className="f-logo" src="/site/logo.webp" alt="Cantinho da Adoce" />
         <p className="f-sub">CONFEITARIA ARTESANAL</p>
         <p className="f-sub">Fortaleza — CE</p>
       </header>

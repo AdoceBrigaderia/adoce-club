@@ -42,32 +42,32 @@ export default function App(){
       document.title = location.pathname.startsWith("/operacao") || routeHash.startsWith("#operacao")
         ? "Adoce Operação"
           : routeHash.startsWith("#cardapio") || routeHash.startsWith("#adoce-hoje")
-            ? "Fatias · Adoce Brigaderia"
+            ? "Fatias · Cantinho da Adoce"
           : routeHash.startsWith("#sabores")
-            ? "Sabores · Adoce Brigaderia"
+            ? "Sabores · Cantinho da Adoce"
           : routeHash.startsWith("#cadastro") || routeHash.startsWith("#clube/cadastro")
             ? "Cadastro · Clube Adoce"
           : routeHash.startsWith("#docinhos")
-            ? "Docinhos · Adoce Brigaderia"
+            ? "Docinhos · Cantinho da Adoce"
           : routeHash.startsWith("#carrinho")
-            ? "Seu pedido · Adoce Brigaderia"
+            ? "Seu pedido · Cantinho da Adoce"
           : routeHash.startsWith("#encomendas")
-            ? "Tortas · Adoce Brigaderia"
+            ? "Tortas · Cantinho da Adoce"
                 : routeHash.startsWith("#politica-de-pedidos")
-                  ? "Política de pedidos · Adoce Brigaderia"
+                  ? "Política de pedidos · Cantinho da Adoce"
                 : routeHash.startsWith("#clube")
-                  ? "Clube Adoce · Adoce Brigaderia"
+                  ? "Clube Adoce · Cantinho da Adoce"
             : routeHash.startsWith("#privacidade")
-              ? "Política de Privacidade · Adoce Brigaderia"
+              ? "Política de Privacidade · Cantinho da Adoce"
                 : routeHash.startsWith("#termos")
                   ? "Termos do Clube Adoce"
                 : routeHash.startsWith("#fale-com-a-adoce")
                   ? "Fale com a Adoce"
                 : routeHash.startsWith("#catalogo")
-                  ? "Catálogo de Tortas e Docinhos 2026 · Adoce Brigaderia"
+                  ? "Catálogo de Tortas e Docinhos 2026 · Cantinho da Adoce"
                 : routeHash.startsWith("#acompanhar")
-                  ? "Acompanhar pedido · Adoce Brigaderia"
-                : "Adoce Brigaderia | Fatias artesanais e Clube Adoce em Fortaleza";
+                  ? "Acompanhar pedido · Cantinho da Adoce"
+                : "Cantinho da Adoce | Fatias artesanais e Clube Adoce em Fortaleza";
       window.scrollTo({ top: 0, behavior: "instant" });
     };
     handleHashChange();

@@ -31,7 +31,7 @@ export default function PublicFooter() {
       </a>
 
       <p className="public-footer-copyright">
-        © {new Date().getFullYear()} Adoce Brigaderia · CNPJ 68.912.733/0001-36<br />
+        © {new Date().getFullYear()} Cantinho da Adoce · CNPJ 68.912.733/0001-36<br />
         Todos os direitos reservados.
       </p>
 

@@ -42,7 +42,7 @@ export default function OrderPolicyPage() {
         <section className="institutional-card">
           <h2>O que podemos preparar em cada dia</h2>
           <p>Confira a regra correspondente ao dia do pedido. A disponibilidade final é confirmada pela equipe durante o atendimento.</p>
-          <p><CalendarCheck style={{ display: "inline", width: 18, marginRight: 6 }} /><strong>Segunda a quarta-feira — Todos os produtos Adoce.</strong> São aceitos pedidos de todos os produtos da Adoce Brigaderia.</p>
+          <p><CalendarCheck style={{ display: "inline", width: 18, marginRight: 6 }} /><strong>Segunda a quarta-feira — Todos os produtos Adoce.</strong> São aceitos pedidos de todos os produtos da Cantinho da Adoce.</p>
           <p><CakeSlice style={{ display: "inline", width: 18, marginRight: 6 }} /><strong>Quinta a sábado — Tortas do Festival de Fatias.</strong> São aceitas somente tortas com sabores, modelos e tamanhos iguais aos disponíveis no Festival de Fatias. Consulte os sabores da semana.</p>
           <p><CalendarX style={{ display: "inline", width: 18, marginRight: 6 }} /><strong>Domingos — Sem encomendas.</strong> Não realizamos encomendas. O atendimento fica disponível apenas para delivery de fatias.</p>
         </section>

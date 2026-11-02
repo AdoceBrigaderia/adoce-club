@@ -112,7 +112,7 @@ export async function prepareMetaItem(product: CatalogProductRow, productBaseUrl
     price: formatMetaPrice(product.base_price),
     link: `${productBaseUrl.replace(/\/$/, "")}/?produto=${encodeURIComponent(product.slug)}`,
     image_link: product.image_url!,
-    brand: "Adoce Brigaderia",
+    brand: "Cantinho da Adoce",
     product_type: segmentNames[product.segment],
   };
   return {

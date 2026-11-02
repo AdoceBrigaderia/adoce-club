@@ -45,7 +45,7 @@ const notificationCopy = (name: string, action: string, reason: string) => {
     subject: action === "reactivate" || action === "cancel_deletion"
       ? "Seu acesso ao Clube Adoce foi reativado"
       : "Atualização importante no seu cadastro do Clube Adoce",
-    text: `Olá, ${firstName}.\n\n${statusText}\n\nMotivo informado: ${reasonText[reason] || reasonText.other}.\n\nSe precisar revisar esta decisão ou corrigir seus dados, responda a este e-mail ou fale com a Adoce pelos canais oficiais.\n\nAdoce Brigaderia`,
+    text: `Olá, ${firstName}.\n\n${statusText}\n\nMotivo informado: ${reasonText[reason] || reasonText.other}.\n\nSe precisar revisar esta decisão ou corrigir seus dados, responda a este e-mail ou fale com a Adoce pelos canais oficiais.\n\nCantinho da Adoce`,
   };
 };
 

@@ -19,7 +19,7 @@ const firstRow = (data: unknown): PilotCustomer | null =>
   Array.isArray(data) && data.length ? (data[0] as PilotCustomer) : null;
 
 function PilotBrand() {
-  return <div className="brand"><img src="/site/logo.webp" alt="Adoce Brigaderia"/><div><strong>Clube Adoce</strong><span>Piloto do festival</span></div></div>;
+  return <div className="brand"><img src="/site/logo.webp" alt="Cantinho da Adoce"/><div><strong>Clube Adoce</strong><span>Piloto do festival</span></div></div>;
 }
 
 function FestivalStaff() {

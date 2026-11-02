@@ -615,10 +615,10 @@ function Brand({ label }: { label: string }) {
   const homeHref = label === "Adoce Operação" ? "/operacao" : "/";
   return (
     <a className="access-brand" href={homeHref}>
-      <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
+      <img src="/brand-2026/logo-adoce-transparente.png" alt="Cantinho da Adoce" />
       <span>
         <strong>{label}</strong>
-        <small>Adoce Brigaderia</small>
+        <small>Cantinho da Adoce</small>
       </span>
     </a>
   );
@@ -2067,7 +2067,7 @@ function CustomerHome({ session }: { session: Session }) {
         </header>
         <section className="club-onboarding-shell">
           <div className="club-onboarding-copy">
-            <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
+            <img src="/brand-2026/logo-adoce-transparente.png" alt="Cantinho da Adoce" />
             <span>Último passo</span>
             <h1>Vamos concluir sua entrada no Clube.</h1>
             <p>

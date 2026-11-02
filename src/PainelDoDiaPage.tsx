@@ -36,18 +36,25 @@ export default function PainelDoDiaPage() {
     setCarregando(true);
     const supabase = requireSupabase();
     const hoje = todayInFortaleza();
-    const [flavorsResult, availabilityResult, plannedResult, ordersResult, itemsResult, channelsResult, hoursResult, exceptionsResult] =
+    const [flavorsResult, availabilityResult, plannedResult, ordersResult, channelsResult, hoursResult, exceptionsResult] =
       await Promise.all([
         supabase.from("flavors").select("id,name,base_price").eq("active", true),
         supabase.from("flavor_availability").select("flavor_id,quantity_available,quantity_reserved,status").eq("service_date", hoje),
         supabase.from("weekly_service_menu").select("flavor_id,quantity_planned").eq("service_date", hoje),
         supabase.from("instant_orders").select("id,order_number,customer_name,total,created_at,reserved_until,status")
           .gte("created_at", `${hoje}T00:00:00-03:00`).lte("created_at", `${hoje}T23:59:59-03:00`),
-        supabase.from("instant_order_items").select("order_id,quantity"),
         supabase.from("store_channels").select("slug,status"),
         supabase.from("business_hours").select("channel_slug,weekday,opens_at,closes_at,active,note"),
         supabase.from("business_hour_exceptions").select("channel_slug,service_date,closed,opens_at,closes_at,message").eq("service_date", hoje),
       ]);
+    // Pedido do proprietário em 01/11/2026: os itens vinham de uma busca na
+    // tabela inteira sem filtro -- o Supabase corta em 1000 linhas por
+    // padrão, e os pedidos de hoje (os mais novos) ficavam de fora do corte,
+    // sempre aparecendo com 0 fatias. Agora filtra só pelos pedidos do dia.
+    const orderIds = (ordersResult.data || []).map((order) => order.id);
+    const itemsResult = orderIds.length
+      ? await supabase.from("instant_order_items").select("order_id,quantity").in("order_id", orderIds)
+      : { data: [] as { order_id: string; quantity: number }[], error: null as null };
     const firstError =
       flavorsResult.error || availabilityResult.error || plannedResult.error ||
       ordersResult.error || itemsResult.error || channelsResult.error || hoursResult.error || exceptionsResult.error;

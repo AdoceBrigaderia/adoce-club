@@ -334,9 +334,8 @@ export default function OperationDashboard({
         <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span>Encomendas<small>Pedidos futuros e retiradas</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span>Produção de hoje<small>Liberar sabores e quantidades</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("painel-do-dia")}><LayoutDashboard /><span>Painel do dia (novo)<small>Visão única: ações, sabores e pedidos</small></span><ArrowRight /></button>
+        <RemotePrintTrigger />
       </div>
-
-      <RemotePrintTrigger />
     </section>
   );
 }

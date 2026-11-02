@@ -21,8 +21,8 @@ describe("navegação pública Mobile First", () => {
     expect(app).toContain("<PublicTopBar />");
   });
 
-  it("identifica a marca geral como Adoce Brigaderia", () => {
-    expect(header).toContain("Adoce Brigaderia");
+  it("identifica a marca geral como Cantinho da Adoce", () => {
+    expect(header).toContain("Cantinho da Adoce");
     expect(header).not.toContain("<strong>Clube Adoce</strong>");
     expect(header).toContain('firstName = member?.firstName || "Cliente"');
     expect(header).toContain('progress = member?.progress || 0');

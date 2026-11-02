@@ -26,7 +26,7 @@ export default function CakeCatalogPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    document.title = "Tortas · Adoce Brigaderia";
+    document.title = "Tortas · Cantinho da Adoce";
     let active = true;
     void (async () => {
       const db = requireSupabase();

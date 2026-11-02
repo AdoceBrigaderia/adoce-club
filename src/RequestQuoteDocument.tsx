@@ -89,9 +89,9 @@ export default function RequestQuoteDocument({ data }: { data: QuoteData }) {
   return (
     <article className="quote-document" aria-label={`Orçamento ${data.requestNumber}`}>
       <header className="quote-header">
-        <img src="/site/logo.webp" alt="Adoce Brigaderia" />
+        <img src="/site/logo.webp" alt="Cantinho da Adoce" />
         <div>
-          <strong>Adoce Brigaderia</strong>
+          <strong>Cantinho da Adoce</strong>
           <span>Confeitaria artesanal · Fortaleza — CE</span>
         </div>
         <div className="quote-number">

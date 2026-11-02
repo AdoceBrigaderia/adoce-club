@@ -60,8 +60,13 @@ export default function PainelDoDia({
   const resumo = useMemo(() => resumoDoDia(estado), [estado]);
   const acoes = useMemo(() => acoesDoDia(estado), [estado]);
   const sabores = useMemo(() => saboresOrdenados(estado.sabores), [estado.sabores]);
+  // Pedido do proprietário em 01/11/2026: os mais recentes primeiro -- é o
+  // que acabou de chegar que precisa de atenção, não o que já foi há horas.
   const pedidos = useMemo(
-    () => estado.pedidos.filter((p) => p.status !== "cancelado"),
+    () => estado.pedidos
+      .filter((p) => p.status !== "cancelado")
+      .slice()
+      .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm)),
     [estado.pedidos],
   );
 

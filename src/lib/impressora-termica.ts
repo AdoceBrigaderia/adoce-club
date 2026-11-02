@@ -144,7 +144,7 @@ const dinheiro = (v: number) =>
 export function montarTexto(ficha: Ficha): string[] {
   const linhas: string[] = [];
 
-  linhas.push(centralizar("ADOCE BRIGADERIA"));
+  linhas.push(centralizar("CANTINHO DA ADOCE"));
   linhas.push(centralizar("Confeitaria artesanal"));
   linhas.push("");
   linhas.push(centralizar(ficha.numero));

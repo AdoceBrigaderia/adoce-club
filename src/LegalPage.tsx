@@ -26,7 +26,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <section className="institutional-card">
               <h2>Quem cuida dos seus dados</h2>
               <p>
-                O tratamento é realizado pela Adoce Brigaderia, CNPJ
+                O tratamento é realizado pela Cantinho da Adoce, CNPJ
                 68.912.733/0001-36, em Fortaleza/CE.
               </p>
             </section>
@@ -107,7 +107,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
             <section className="institutional-card">
               <h2>Participação</h2>
               <p>
-                O Clube Adoce é o programa de fidelidade gratuito da Adoce Brigaderia.
+                O Clube Adoce é o programa de fidelidade gratuito da Cantinho da Adoce.
                 O participante deve informar dados verdadeiros, manter seu acesso seguro
                 e comunicar qualquer uso indevido.
               </p>
@@ -164,7 +164,7 @@ export default function LegalPage({ kind }: { kind: "terms" | "privacy" }) {
         </div>
       </div>
 
-      <footer className="institutional-legal-footer">Adoce Brigaderia<br />Fábrica: Rua Professor Odílio Filho, 227 · Passaré · Fortaleza/CE<br />Atendimento ao público: Av. da Saudade, S/N · Passaré · Fortaleza/CE</footer>
+      <footer className="institutional-legal-footer">Cantinho da Adoce<br />Fábrica: Rua Professor Odílio Filho, 227 · Passaré · Fortaleza/CE<br />Atendimento ao público: Av. da Saudade, S/N · Passaré · Fortaleza/CE</footer>
     </main>
   );
 }

@@ -32,8 +32,8 @@ export default function PublicHeader({
         <span>Olá,</span> <strong>{firstName}!</strong>
       </a>
 
-      <a className="public-brand" href="/" aria-label="Adoce Brigaderia — início">
-        <img src="/brand-2026/logo-adoce-transparente.png" alt="Adoce Brigaderia" />
+      <a className="public-brand" href="/" aria-label="Cantinho da Adoce — início">
+        <img src="/brand-2026/logo-adoce-transparente.png" alt="Cantinho da Adoce" />
       </a>
 
       <div className="public-header-actions">
