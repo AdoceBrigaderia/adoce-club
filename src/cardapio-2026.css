@@ -121,15 +121,6 @@ body:has(.public-app-shell-today) {
   background: var(--cardapio-rosa) url('/brand-2026/cardapio/adoce_cardapio_assets/svg/decoracoes/onda-rosa.svg') center / 100% 100% no-repeat;
 }
 
-.public-app-shell-today .today-compact-intro::after {
-  content: '';
-  position: absolute;
-  right: 55px;
-  top: 23px;
-  width: 125px;
-  height: 100px;
-  background: url('/brand-2026/cardapio/adoce_cardapio_assets/svg/decoracoes/selo-fatias.svg') center / contain no-repeat;
-}
 
 .public-app-shell-today .today-compact-date { margin: 0 0 8px; color: #b83b4e; font-size: .88rem; }
 .public-app-shell-today .today-compact-title {
@@ -194,8 +185,7 @@ body:has(.public-app-shell-today) {
   .public-app-shell-today .public-member-status { right: 58px; top: 89px; }
   .public-app-shell-today .public-member-progress { min-width: 88px; min-height: 36px; font-size: .78rem; }
   .public-app-shell-today .today-page > .today-flavors { padding: 0 14px 100px !important; }
-  .public-app-shell-today .today-compact-intro { min-height: 132px; margin: 0 -14px; padding: 28px 110px 24px 20px; }
-  .public-app-shell-today .today-compact-intro::after { right: 10px; top: 20px; width: 78px; height: 76px; opacity: .9; }
+  .public-app-shell-today .today-compact-intro { min-height: 132px; margin: 0 -14px; padding: 28px 20px 24px; }
   .public-app-shell-today .today-compact-title { max-width: none; font-size: 2rem; }
   .public-app-shell-today .today-week-tabs { padding-top: 14px; }
   .public-app-shell-today .today-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
