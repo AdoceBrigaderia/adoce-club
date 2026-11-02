@@ -458,10 +458,15 @@ export default function WhatsAppSupportInbox() {
     [threads, view],
   );
   // Avisos automáticos (carimbo, confirmação de pedido etc.) viram uma linha
-  // aqui mesmo sem o cliente nunca ter respondido. Isso não é atendimento —
-  // não aparece em "Em atendimento", só mensura quem de fato está
-  // conversando com a Adoce.
-  const visibleThreads = useMemo(() => threads.filter((item) => threadBelongsToView(item, view) && (view === "history" || item.has_customer_messages) && (
+  // aqui mesmo sem o cliente nunca ter respondido, pelo mesmo mecanismo das
+  // conversas de verdade. Isso não é atendimento — não aparece em "Em
+  // atendimento", só mensura quem de fato está conversando com a Adoce.
+  // Conversas iniciadas pelo robô (Festival de Fatias, Orçamento) são
+  // diferentes: são tentativas reais de atendimento, e "Acompanhe o robô" é
+  // o propósito desta tela — por isso aparecem mesmo antes do cliente
+  // responder, só os avisos automáticos (automation_mode "human") ficam de
+  // fora até o cliente responder.
+  const visibleThreads = useMemo(() => threads.filter((item) => threadBelongsToView(item, view) && (view === "history" || item.has_customer_messages || item.automation_mode === "bot") && (
     !search.trim() || item.phone_last4.includes(search.trim()) ||
     (item.phone_e164 || "").includes(search.replace(/\D/g, "") || "#") ||
     (item.customer_name || "").toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")) ||
