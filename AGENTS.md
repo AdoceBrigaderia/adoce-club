@@ -2,6 +2,31 @@
 
 Os arquivos Markdown listados em `docs/documentation-manifest.json` são a fonte oficial da documentação.
 
+## Motor de reservas e baixa de estoque — zona de tripla confirmação (decisão do proprietário em 02/11/2026)
+
+As tabelas/funções a seguir controlam se um sabor pode ser vendido e se uma fatia é
+reservada de verdade: `flavor_availability` (e o trigger
+`normalize_flavor_availability_status`), `cash_draft_reservations`, as funções
+`staff_set_cash_draft_reservation`, `staff_release_cash_draft_reservation`,
+`recalcular_reserva_de_fatias`, e o carregamento de sabores do caixa em
+`OperationManualSale.tsx` (`load()`, `setQuantity`). Já regrediu mais de uma vez.
+
+- Antes de alterar qualquer parte deste motor — função SQL, trigger, RPC, ou o código
+  de carregamento/filtro de sabores do caixa — é obrigatório **pedir confirmação
+  explícita ao proprietário três vezes**: (1) ao propor o diagnóstico da causa raiz,
+  (2) ao propor a mudança específica antes de editar qualquer arquivo ou aplicar
+  qualquer migração, e (3) imediatamente antes de aplicar em produção. Nunca pular
+  nem combinar essas três confirmações numa só pergunta.
+- Vale também para ajustes manuais de dado (ex.: UPDATE direto em
+  `flavor_availability` para desbloquear uma venda): são permitidos para destravar um
+  caso pontual, mas não substituem a revisão e as três confirmações antes de mudar o
+  código/trigger que causou o problema.
+- Antes de propor qualquer mudança neste motor, ler o histórico de regressões: `git
+  log --oneline -- src/OperationManualSale.tsx` e as migrações
+  `20261028090659_release_other_cash_drafts.sql`,
+  `20261025053000_enforce_zero_stock_unavailable.sql`, e qualquer migração mais nova
+  que toque `flavor_availability`, `cash_draft_reservations` ou `cash_sessions`.
+
 ## Fonte única obrigatória — decisão do proprietário em 08/10/2026
 
 - Toda atualização deste site deve acontecer exclusivamente em `D:\AdoceOnLine`.
