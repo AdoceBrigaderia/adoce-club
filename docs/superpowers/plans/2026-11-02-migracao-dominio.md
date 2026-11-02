@@ -34,3 +34,9 @@ Pontos de revisão: callbacks anteriores ainda em trânsito; navegação para ro
 ### Atualização após liberação do editor
 
 O editor foi liberado durante esta sessão. Em aproximadamente 01h43 foram gravados os dois registros A/CNAME acima. O estado de bloqueio descrito anteriormente é histórico; agora aguarda-se publicação/propagação DNS e emissão do certificado. Pacote validado offline: 457 arquivos, 43 funções e 2 agendamentos, sem acesso à rede nem deploy.
+
+### Pendência externa na conferência seguinte
+
+Os registros persistidos foram conferidos após reabrir o editor do Registro.br: A `cantinhodaadoce.com.br → 75.2.60.5` e CNAME `www.cantinhodaadoce.com.br → adocebrigaderia.netlify.app`. Entretanto, consultas diretas aos dois servidores autoritativos e consultas públicas Cloudflare/Google ainda não recebem esses registros (SOA serial `2026306190`, A vazio e www NXDOMAIN). Uma solicitação de certificado via API Netlify retornou HTTP 422; certificado existente continua emitido somente para os dois hosts antigos. Não repetir publicação nem ativar redirects enquanto novo DNS/HTTPS não estiver pronto.
+
+O deploy publicado permanece `6ae80e2b215b6916fa722c40` (02/11/2026 04:15:12 UTC); não houve publicação durante esta migração. Site URL remoto do Supabase permanece antigo. Próximo passo: aguardar DNS, emitir/conferir certificado novo+antigo, publicar commit validado e efetivar novo principal e Site URL. Autorização original continua válida. A documentação oficial do Registro.br sobre a espera é https://registro.br/tecnologia/caracteristicas-tecnicas/.
