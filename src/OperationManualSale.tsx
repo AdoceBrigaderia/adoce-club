@@ -91,7 +91,14 @@ export default function OperationManualSale({ onCreated }: { onCreated: () => vo
       requireSupabase().rpc("staff_get_business_workspace"),
       requireSupabase().rpc("staff_list_payroll_employees"),
     ]);
-    setFlavors((flavorData || []).map((flavor) => { const availability = availabilityData?.find((row) => row.flavor_id === flavor.id); const stock=Number(availability?.quantity_available || 0),reserved=Number(availability?.quantity_reserved || 0),free=Math.max(0,stock-reserved),own=Number(quantitiesRef.current[flavor.id] || 0); return { id: flavor.id, name: flavor.name, short_name: flavor.short_name || flavor.name.split(/\s+/).slice(0, 3).join(" "), base_price: Number(flavor.base_price), stock, reserved, free, remaining: free+own }; }).filter((flavor) => flavor.remaining > 0));
+    // O caixa só pode vender o que o servidor também aceita reservar: um sabor
+    // "Indisponível"/"Esgotado" no painel de hoje é sempre recusado pelo
+    // staff_set_cash_draft_reservation, mesmo com estoque livre. Mostrar esse
+    // sabor como se desse pra adicionar (sem filtrar por status) deixava a
+    // pessoa montar um carrinho que o servidor rejeitava na primeira
+    // revalidação (ex.: ao voltar o foco da aba) -- parecia bug de reserva,
+    // mas é só o cadastro de disponibilidade do dia que não foi atualizado.
+    setFlavors((flavorData || []).map((flavor) => { const availability = availabilityData?.find((row) => row.flavor_id === flavor.id); const stock=Number(availability?.quantity_available || 0),reserved=Number(availability?.quantity_reserved || 0),free=Math.max(0,stock-reserved),own=Number(quantitiesRef.current[flavor.id] || 0),sellable=!["unavailable","sold_out"].includes(availability?.status || ""); return { id: flavor.id, name: flavor.name, short_name: flavor.short_name || flavor.name.split(/\s+/).slice(0, 3).join(" "), base_price: Number(flavor.base_price), stock, reserved, free: sellable ? free : 0, remaining: (sellable ? free : 0)+own }; }).filter((flavor) => flavor.remaining > 0));
     const activeMethods = ((settingsData?.payment_methods || []) as Method[]).filter((item) => item.active); setMethods(activeMethods); if (!activeMethods.some((item) => item.code === method)) setMethod(activeMethods[0]?.code || "");
     setSauces((sauceData || []) as Sauce[]);
     setPayrollEmployees(((employeeData || []) as Array<{employee_id:string;full_name:string}>).map(employee=>({id:employee.employee_id,name:employee.full_name})));
