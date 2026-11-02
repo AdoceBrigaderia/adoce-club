@@ -42,7 +42,7 @@ describe("arquitetura da Adoce Operação", () => {
   it("abre pelo painel orientado a pendências e atalhos", () => {
     expect(access).toContain(': "dashboard"');
     expect(dashboard).toContain("Precisa de atenção");
-    expect(dashboard).toContain("Outras tarefas");
+    expect(dashboard).toContain("operation-dashboard-grid");
     expect(dashboard).toContain("attentionItems");
     expect(dashboard).toContain('from("flavor_availability")');
   });

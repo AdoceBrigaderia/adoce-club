@@ -304,7 +304,10 @@ export default function OperationDashboard({
 
       <OnlineOrdersControl />
 
-      <div className="operation-dashboard-metrics">
+      {/* Pedido do proprietário em 02/11/2026: métricas e atalhos juntos
+          num grid só, pra aproveitar o espaço em vez de duas tiras
+          separadas com vão vazio entre elas. */}
+      <div className="operation-dashboard-grid">
         <button
           type="button"
           onClick={() => onNavigate("availability")}
@@ -327,13 +330,9 @@ export default function OperationDashboard({
         <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>{data.activeRequests}</strong><small>encomendas em aberto</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("customers")}><Users /><span><strong>{data.members}</strong><small>clientes cadastrados</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("low-stock")} className={data.lowStock ? "is-warning" : ""}><AlertTriangle /><span><strong>{data.lowStock}</strong><small>itens com estoque baixo</small></span><ArrowRight /></button>
-      </div>
-
-      <div className="operation-dashboard-shortcuts">
-        <div><small>Acesso rápido</small><h2>Outras tarefas</h2></div>
-        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span>Encomendas<small>Pedidos futuros e retiradas</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span>Produção de hoje<small>Liberar sabores e quantidades</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("painel-do-dia")}><LayoutDashboard /><span>Painel do dia (novo)<small>Visão única: ações, sabores e pedidos</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>Encomendas</strong><small>Pedidos futuros e retiradas</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span><strong>Produção de hoje</strong><small>Liberar sabores e quantidades</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("painel-do-dia")}><LayoutDashboard /><span><strong>Painel do dia (novo)</strong><small>Visão única: ações, sabores e pedidos</small></span><ArrowRight /></button>
         <RemotePrintTrigger />
       </div>
     </section>
