@@ -1,6 +1,6 @@
 import type {ProcurementItem} from "./shopping-procurement";
-export type ShoppingWeek = {cakes:Record<string,number>;daily:Record<string,number>;extras:Record<string,number>;stock:Record<string,number>;selected:Record<string,boolean>;inCart?:Record<string,boolean>;quoteUnits?:Record<string,number>;quoteWeight?:Record<string,number>;quotePrice?:Record<string,number>;procurement?:Record<string,ProcurementItem>;requiredDays?:Record<string,boolean>};
-export const emptyShoppingWeek=():ShoppingWeek=>({cakes:{},daily:{},extras:{},stock:{},selected:{}});
+export type ShoppingWeek = {cakes:Record<string,number>;daily:Record<string,number>;extras:Record<string,number>;stock:Record<string,number>;selected:Record<string,boolean>;inCart?:Record<string,boolean>;quoteUnits?:Record<string,number>;quoteWeight?:Record<string,number>;quotePrice?:Record<string,number>;procurement?:Record<string,ProcurementItem>;requiredDays?:Record<string,boolean>;selectedFlavors?:Record<string,boolean>};
+export const emptyShoppingWeek=():ShoppingWeek=>({cakes:{},daily:{},extras:{},stock:{},selected:{},selectedFlavors:{}});
 export function localShoppingDate(){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());}
 export function shiftDate(date:string,days:number){const value=new Date(`${date}T12:00:00Z`);value.setUTCDate(value.getUTCDate()+days);return value.toISOString().slice(0,10);}
 export function weekStart(date:string){const day=new Date(`${date}T12:00:00Z`).getUTCDay();return shiftDate(date,-((day+6)%7));}
@@ -53,6 +53,15 @@ export function diffShoppingWeekDrafts(saved:ShoppingWeek,draft:ShoppingWeek){
   }
  }
  return changes;
+}
+// Sabor fica visível na tabela de planejamento quando explicitamente marcado
+// na nova seção "Selecionar sabores da semana". Sem marcação explícita (semana
+// já planejada antes desta funcionalidade existir), o sabor com produção
+// registrada continua visível, para não esconder dados já existentes.
+export function isFlavorSelectedForWeek(plan:ShoppingWeek,flavorId:string,totals:Record<string,number>){
+ const explicit=plan.selectedFlavors?.[flavorId];
+ if(explicit!==undefined)return explicit;
+ return (totals[flavorId]||0)>0;
 }
 export function requiredDayWarnings(plan:ShoppingWeek,start:string,flavors:{id:string}[],batterColors:Record<string,string|null>){
  const warnings:{date:string;flavorCount:number;whiteCount:number}[]=[];

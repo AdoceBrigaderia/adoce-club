@@ -8,7 +8,7 @@ import ShoppingWeekTable from "./ShoppingWeekTable";
 import TabletShoppingList from "./TabletShoppingList";
 import PurchaseWeeklyReport from "./PurchaseWeeklyReport";
 import ThermalShoppingPreview, {brandedThermalLines} from "./ThermalShoppingPreview";
-import {weekStart,localShoppingDate,weekDates,shiftDate,shortShoppingDate,weeklyTotals,dailyTotals,weeklyMenuReceipt,shoppingWeekOptions,dayLabel} from "./lib/shopping-week";
+import {weekStart,localShoppingDate,weekDates,shiftDate,shortShoppingDate,weeklyTotals,dailyTotals,weeklyMenuReceipt,shoppingWeekOptions,dayLabel,isFlavorSelectedForWeek} from "./lib/shopping-week";
 import { formatCurrency } from "./lib/cost-format";
 
 type FlavorEconomics = { salePrice: number | null; unitCost: number | null; marginPercent: number | null; slicesPerCake: number | null };
@@ -53,6 +53,8 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, flav
  };
  const handleSave=async()=>{if(await save())await runSync(false);};
  const batterColors=useMemo(()=>Object.fromEntries(flavors.map(flavor=>[flavor.id,predominantBatterColor(flavor.id,workspace)])),[flavors,workspace]);
+ const weekFlavorOptions=useMemo(()=>flavors.filter(flavor=>flavor.active||cakes[flavor.id]>0).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR")),[flavors,cakes]);
+ const visibleFlavorIds=useMemo(()=>new Set(weekFlavorOptions.filter(flavor=>isFlavorSelectedForWeek(plan,flavor.id,cakes)).map(flavor=>flavor.id)),[weekFlavorOptions,plan,cakes]);
  const demand=useMemo(()=>planDemand(workspace,demandCakes),[workspace,demandCakes]);
  const combined=useMemo(()=>planDemand(workspace,demandCakes,saved.extras),[workspace,demandCakes,saved.extras]);
  const total=Object.values(cakes).reduce((sum,value)=>sum+(Number.isSafeInteger(value)&&value>0?value:0),0);
@@ -86,8 +88,11 @@ export default function CostShoppingPlanner({ workspace, invoices, flavors, flav
   {reportMode?<PurchaseWeeklyReport invoices={invoices} items={workspace.items}/>:tabletMode?<TabletShoppingList rows={rows} plan={plan} week={week} disabled={!ready} onChange={change} onBack={()=>setTabletMode(false)}/>:<>
   <div className="adoce-items-filters"><label>Ordenar itens<select value={sort} onChange={event=>setSort(event.target.value)}><option value="name">Nome A–Z</option><option value="code">Código</option><option value="quantity">Maior quantidade necessária</option></select></label></div>
   <div className="adoce-shopping-week-controls"><label>Selecionar semana<select value={week} disabled={saving} onChange={event=>changeWeek(event.target.value)}>{[...new Set(weeks.map(option=>option.group))].map(group=><optgroup label={group} key={group}>{weeks.filter(option=>option.group===group).map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</optgroup>)}</select></label><button type="button" disabled={saving} onClick={()=>changeWeek(shiftDate(week,-7))}>Semana anterior</button><button type="button" disabled={saving} onClick={()=>changeWeek(weekStart(localShoppingDate()))}>Semana vigente</button><button type="button" disabled={saving} onClick={()=>changeWeek(shiftDate(week,7))}>Próxima semana</button><button type="button" disabled={!ready||saving||total>0} onClick={()=>void copyPrevious(shiftDate(week,-7))}>Copiar semana anterior como modelo</button></div>
+  <h4>Selecionar sabores da semana</h4>
+  <p>Marque os sabores que serão produzidos nesta semana. Só os sabores marcados aparecem na tabela de planejamento abaixo; desmarcar não apaga os dias já planejados.</p>
+  <div className="adoce-flavor-select-grid">{weekFlavorOptions.map(flavor=><label key={flavor.id}><input disabled={!ready} type="checkbox" checked={isFlavorSelectedForWeek(plan,flavor.id,cakes)} onChange={event=>change("selectedFlavors",flavor.id,event.target.checked)} />{flavor.name}</label>)}</div>
   <h4>Semana de {shortShoppingDate(week)} a {shortShoppingDate(shiftDate(week,6))}</h4>
-  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} disabled={!ready} onChange={change} batterColors={batterColors} flavorEconomics={flavorEconomics}/>
+  <ShoppingWeekTable week={week} plan={plan} totals={cakes} flavors={flavors} visibleFlavorIds={visibleFlavorIds} disabled={!ready} onChange={change} batterColors={batterColors} flavorEconomics={flavorEconomics}/>
   <div className="adoce-shopping-day-filter">
    <h4>Comprar para quais dias?</h4>
    <p>Por padrão a lista de compras soma a semana inteira. Marque só os dias que você vai comprar agora para ver somente o necessário para eles.</p>
