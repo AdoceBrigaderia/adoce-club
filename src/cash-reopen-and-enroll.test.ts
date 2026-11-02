@@ -61,4 +61,12 @@ describe("cadastro no Clube no fechamento da venda", () => {
     expect(messages).toContain("cada fatia comprada vale 1 carimbo e, ao juntar 14 carimbos, você ganha uma fatia tradicional grátis");
     expect(messages).toContain('env("TWILIO_CLUB_WELCOME_CONTENT_SID")');
   });
+
+  it("cliente que já era do Clube também recebe a mensagem de carimbo, sem lançar de novo no ledger", () => {
+    const fn = read("netlify/functions/staff-enroll-sale-customer.ts");
+    expect(fn).toContain("const stampsAdded = slices > 0 ? slices : 0;");
+    expect(fn).not.toContain("const stampsAdded = stampsAlreadyRecorded ? 0 : slices;");
+    expect(fn).toContain("} else if (slices > 0 && stampsAlreadyRecorded) {");
+    expect(fn).toContain("metadata as { result?: { progress?: number; new_rewards?: number } } | null)?.result");
+  });
 });

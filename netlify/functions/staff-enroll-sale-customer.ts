@@ -77,7 +77,7 @@ export default async (request: Request) => {
   // outra chave e o cliente recebia carimbos em dobro (incidente 13-30/10/2026).
   const { data: alreadyStamped } = await admin
     .from("ledger_entries")
-    .select("id")
+    .select("id,metadata")
     .eq("reason", "purchase")
     .in("idempotency_key", [`instant-order:${orderId}:purchase`, `sale-order:${orderId}`, `${orderId}:purchase`])
     .limit(1);
@@ -101,9 +101,17 @@ export default async (request: Request) => {
     if (purchaseError) return json({ error: `Cadastro feito, mas os carimbos não foram lançados: ${purchaseError.message}` }, 502);
     progress = Number(purchase?.progress || 0);
     newRewards = Number(purchase?.new_rewards || 0);
+  } else if (slices > 0 && stampsAlreadyRecorded) {
+    // Carimbos já lançados pelo outro fluxo: não grava nada de novo no ledger
+    // (evitaria o incidente de carimbo em dobro), só lê o resultado que já
+    // ficou salvo naquele lançamento pra poder avisar o cliente agora —
+    // é exatamente esse aviso que faltava para quem já era do Clube Adoce.
+    const savedResult = (alreadyStamped?.[0]?.metadata as { result?: { progress?: number; new_rewards?: number } } | null)?.result;
+    progress = Number(savedResult?.progress ?? 0);
+    newRewards = Number(savedResult?.new_rewards ?? 0);
   }
 
-  const stampsAdded = stampsAlreadyRecorded ? 0 : slices;
+  const stampsAdded = slices > 0 ? slices : 0;
 
   await admin.from("audit_events").insert({
     actor_user_id: actorUserId,
