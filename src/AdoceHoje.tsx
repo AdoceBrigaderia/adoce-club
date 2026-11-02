@@ -1087,14 +1087,13 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
                       </strong>
                     </div>
                   </div>
-                  <a
+                  <button
+                    type="button"
                     className="today-order-flavor"
-                    href={orderLink(`${flavor.name} (${fullDayLabel(selectedCompactDay.date)})`)}
-                    target="_blank"
-                    rel="noreferrer"
+                    onClick={() => openInstantOrder(flavor.id)}
                   >
-                    <MessageCircle /> <span>Reservar no WhatsApp</span>
-                  </a>
+                    <ShoppingBag /> <span>Reservar no carrinho</span>
+                  </button>
                 </article>
               ))}
             </div>
