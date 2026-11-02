@@ -7,7 +7,7 @@ const access = {
   fullName: "Ana Paula Rocha",
   email: "ana@example.com",
   phone: "+55 85 99999-9999",
-  loginUrl: "https://www.adocebrigaderia.com.br/clube/acesso-direto?email=ana%40example.com&code=123456",
+  loginUrl: "https://www.cantinhodaadoce.com.br/clube/acesso-direto?email=ana%40example.com&code=123456",
 };
 
 describe("código assistido pela operação", () => {

@@ -6,6 +6,20 @@ status: Proposta técnica
 
 # Publicação e domínio
 
+## Migração autorizada em 02/11/2026 — Cantinho da Adoce
+
+O proprietário aprovou expressamente a migração de produção para `https://www.cantinhodaadoce.com.br`, incluindo DNS, HTTPS e redirecionamentos. Esta decisão substitui o endereço principal citado nas seções históricas abaixo; continua existindo somente um projeto de produção, sem homologação online.
+
+- Domínio principal: `www.cantinhodaadoce.com.br`.
+- DNS externo no Registro.br: A da raiz para `75.2.60.5`; CNAME `www` para `adocebrigaderia.netlify.app`.
+- `cantinhodaadoce.com.br`, `adocebrigaderia.com.br` e `www.adocebrigaderia.com.br`: redirecionamento permanente 301 para o principal, preservando caminho e parâmetros.
+- As rotas `/api/*` continuam atendidas pelo mesmo backend no domínio anterior, antes das regras de redirecionamento, para preservar integrações existentes, assinaturas de webhooks e aplicativos instalados. Não são um segundo ambiente.
+- Atualizar links gerados, origem permitida, API nativa, SEO, sitemap e URLs de autenticação sem alterar e-mails, chave Pix ou identificadores existentes de clientes.
+- Callbacks de mensagens já enviadas aceitam assinaturas válidas para o endereço antigo ou novo; continuam rejeitando assinaturas de outros domínios.
+- Sessões, permissões de notificação e passkeys são vinculadas ao domínio pelo navegador. Pode ser necessário entrar novamente e reativar notificações no novo endereço; credenciais passkey antigas não são transferíveis entre domínios.
+
+Validação: testes de origem e callbacks, `npm run release:check`, conferência local em computador/celular/tablet, certificado dos quatro hosts e redirecionamento com caminho e parâmetros no domínio oficial. Estado nesta preparação: implementado localmente, configuração externa em andamento; ainda não validado em produção.
+
 ## Decisão definitiva de 24/10/2026: somente produção online
 
 O único ambiente online permitido para este produto é `https://www.adocebrigaderia.com.br`. O antigo site de homologação foi desativado definitivamente. É proibido recriá-lo, publicar aliases, Deploy Previews ou branch deploys, bem como conectar qualquer endereço alternativo aos dados e credenciais de produção.

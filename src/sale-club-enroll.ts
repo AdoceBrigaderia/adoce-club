@@ -32,7 +32,7 @@ export function enrollSummary(result: SaleEnrollResult) {
   const parts = [result.existing ? `${first} já era do Clube.` : `${first} cadastrado(a) no Clube.`];
   if (result.stampsAdded > 0) parts.push(`${stamps} lançado(s)${result.newRewards ? ` e ${result.newRewards} fatia(s) grátis liberada(s)` : ""}.`);
   if (!result.existing && result.welcomeSent) parts.push("Boas-vindas com o link para criar a senha enviadas pelo WhatsApp.");
-  if (result.temporaryPassword) parts.push(`WhatsApp indisponível: informe ao cliente a senha temporária ${result.temporaryPassword} para entrar em adocebrigaderia.com.br/clube.`);
+  if (result.temporaryPassword) parts.push(`WhatsApp indisponível: informe ao cliente a senha temporária ${result.temporaryPassword} para entrar em cantinhodaadoce.com.br/clube.`);
   parts.push(...result.warnings);
   return parts.join(" ");
 }

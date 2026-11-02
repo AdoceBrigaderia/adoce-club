@@ -3,7 +3,7 @@ import path from "node:path";
 
 const ROOT = process.cwd();
 const DIST = path.join(ROOT, "dist");
-const ORIGIN = "https://www.adocebrigaderia.com.br";
+const ORIGIN = "https://www.cantinhodaadoce.com.br";
 const SPECIAL_SLUGS = new Map([["Trufado de Ninho", "trufado-de-ninho-com-morangos"]]);
 
 function loadLocalEnv(text) {

@@ -1,5 +1,5 @@
 import { writeFileSync } from 'node:fs';
-const base = 'https://www.adocebrigaderia.com.br';
+const base = 'https://www.cantinhodaadoce.com.br';
 const response = await fetch(base + '/operacao');
 const html = await response.text();
 const entry = [...html.matchAll(/src="(\/assets\/[^"\s]+\.js)"/g)][0]?.[1];

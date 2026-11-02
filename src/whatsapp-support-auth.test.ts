@@ -41,7 +41,7 @@ describe("autorizacao do atendimento humano pelo WhatsApp", () => {
     };
 
     const result = await authorizeStaffRequest(
-      new Request("https://www.adocebrigaderia.com.br/api/whatsapp/support", {
+      new Request("https://www.cantinhodaadoce.com.br/api/whatsapp/support", {
         headers: { Authorization: "Bearer valid-session" },
       }),
       admin as never,
@@ -53,7 +53,7 @@ describe("autorizacao do atendimento humano pelo WhatsApp", () => {
 
   it("recusa a caixa humana quando nao existe sessao operacional", async () => {
     const result = await authorizeStaffRequest(
-      new Request("https://www.adocebrigaderia.com.br/api/whatsapp/support"),
+      new Request("https://www.cantinhodaadoce.com.br/api/whatsapp/support"),
       {} as never,
     );
 

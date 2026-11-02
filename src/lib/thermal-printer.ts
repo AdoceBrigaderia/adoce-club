@@ -104,7 +104,7 @@ export async function printThermalOrder(order: ThermalOrder, force = false) {
       trocoPix: Number(order.change_pix_amount || 0),
       contaTrocoPix: order.change_pix_source || undefined,
       clubeResumo: "Com 14 carimbos, ganhe 1 fatia de presente grátis - exceto pudim.",
-      clubeUrl: "https://www.adocebrigaderia.com.br/clube/entrar",
+      clubeUrl: "https://www.cantinhodaadoce.com.br/clube/entrar",
       retirada: order.pickup_requested_time
         ? `${order.pickup_label || "Cantinho da Adoce"} · ${order.pickup_requested_time.slice(0, 5)}`
         : null,

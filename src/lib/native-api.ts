@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 
-export const productionApiOrigin = "https://www.adocebrigaderia.com.br";
+export const productionApiOrigin = "https://www.cantinhodaadoce.com.br";
 
 export function resolveApiRequestUrl(input: RequestInfo | URL, nativePlatform: boolean) {
   if (!nativePlatform || typeof input !== "string" || !input.startsWith("/api/")) {

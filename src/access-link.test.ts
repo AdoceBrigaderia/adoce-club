@@ -8,7 +8,7 @@ describe("link temporario de acesso do Clube", () => {
       "123456",
     );
     expect(access.loginUrl).toBe(
-      "https://www.adocebrigaderia.com.br/clube/acesso-direto?email=cliente%40membro.adocebrigaderia.com.br&code=123456",
+      "https://www.cantinhodaadoce.com.br/clube/acesso-direto?email=cliente%40membro.adocebrigaderia.com.br&code=123456",
     );
     expect(new URL(access.loginUrl).pathname).toBe("/clube/acesso-direto");
   });

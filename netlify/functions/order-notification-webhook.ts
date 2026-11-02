@@ -5,7 +5,7 @@ type ClaimedRecipient = { recipient_key: "rubens" | "beth"; attempt: number };
 type Order = { id: string; order_number: string; customer_name: string };
 
 const MAX_BODY_BYTES = 8192;
-const ORDER_LINK = "https://www.adocebrigaderia.com.br/operacao/pedidos?tipo=vendas";
+const ORDER_LINK = "https://www.cantinhodaadoce.com.br/operacao/pedidos?tipo=vendas";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const constantTimeTextEqual = (left: string, right: string) => {

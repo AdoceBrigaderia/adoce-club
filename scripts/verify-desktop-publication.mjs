@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-const base = 'https://www.adocebrigaderia.com.br';
+const base = 'https://www.cantinhodaadoce.com.br';
 const local = fs.readFileSync('dist/index.html', 'utf8');
 const entry = local.match(/src="([^"]+\/index-[^"]+\.js)"/)[1];
 const response = await fetch(base + '/operacao', {headers: {'cache-control':'no-cache'}});

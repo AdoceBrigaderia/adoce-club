@@ -37,7 +37,7 @@ export type SiteVisualPageLink = { label: string; url: string };
 
 const publicPage = (label: string, route = "/"): SiteVisualPageLink => ({
   label,
-  url: `https://www.adocebrigaderia.com.br${route}`,
+  url: `https://www.cantinhodaadoce.com.br${route}`,
 });
 
 export const SITE_VISUAL_PAGE_LINKS: Record<string, SiteVisualPageLink[]> = {

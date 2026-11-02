@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /documentacao
 
-Sitemap: https://www.adocebrigaderia.com.br/sitemap.xml
+Sitemap: https://www.cantinhodaadoce.com.br/sitemap.xml

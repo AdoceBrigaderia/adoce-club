@@ -97,5 +97,9 @@ const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><met
 <main class="content"><section class="hero"><div class="hero-copy"><h1>${esc(manifest.title)}</h1><p>${esc(manifest.subtitle)}</p><div class="meta"><span>Versão ${esc(manifest.version)}</span><span>Atualizado em ${esc(manifest.updatedAt)}</span><span>Fonte oficial: Markdown</span></div></div>${cake?`<img class="cake" src="${cake}" alt="Fatia artesanal da Adoce">`:""}</section>
 <section class="summary"><div><span>Progresso atual</span><strong>0 a 13 carimbos</strong></div><div><span>Prêmios disponíveis</span><strong>Acumuláveis</strong></div><div><span>Cartões completados</span><strong>Histórico permanente</strong></div></section>
 <section class="toc"><h2>Índice da documentação</h2><div class="toc-grid">${toc}</div></section><div class="empty">Nenhuma seção corresponde à busca.</div>${articles}<footer class="footer"><p><strong>Clube Adoce — documentação consolidada.</strong> Gerada automaticamente a partir de ${sources}.</p><p>Arquivo autocontido para leitura offline e compartilhamento.</p></footer></main></div><script>(${runtime.toString()})();</script></body></html>`;
-fs.writeFileSync(path.join(docsDir,"clube-adoce-documentacao.html"),html,"utf8");
+const outputPath = path.join(docsDir,"clube-adoce-documentacao.html");
+// Evita reabrir/truncar o HTML sem alterações durante prebuild e build.
+if (!fs.existsSync(outputPath) || fs.readFileSync(outputPath,"utf8") !== html) {
+  fs.writeFileSync(outputPath,html,"utf8");
+}
 console.log("Documentação HTML atualizada.");

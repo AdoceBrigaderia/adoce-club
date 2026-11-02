@@ -18,6 +18,8 @@ type AnalyticsProperties = Partial<Record<
 >>;
 
 const productionHosts = new Set([
+  "cantinhodaadoce.com.br",
+  "www.cantinhodaadoce.com.br",
   "adocebrigaderia.com.br",
   "www.adocebrigaderia.com.br",
   "clube.adocebrigaderia.com.br",

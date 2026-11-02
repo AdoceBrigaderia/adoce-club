@@ -20,6 +20,7 @@ export default async (request: Request) => {
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
   const origin = request.headers.get("origin");
   if (origin && !new Set([
+    "https://www.cantinhodaadoce.com.br",
     "https://www.adocebrigaderia.com.br",
     "https://clube.adocebrigaderia.com.br",
     "http://localhost:5173",

@@ -24,7 +24,7 @@ describe("avisos obrigatórios de novos pedidos", () => {
     expect(endpoint).toContain("TWILIO_QUOTE_STAFF_TO");
     expect(endpoint).toContain('"1": order.order_number');
     expect(endpoint).toContain('"2": order.customer_name');
-    expect(endpoint).toContain("https://www.adocebrigaderia.com.br/operacao/pedidos?tipo=vendas");
+    expect(endpoint).toContain("https://www.cantinhodaadoce.com.br/operacao/pedidos?tipo=vendas");
     expect(endpoint).toContain("server_complete_order_staff_notification");
     expect(endpoint).not.toContain("console.log(order");
     expect(endpoint).not.toContain("console.log(destination");

@@ -35,7 +35,7 @@ describe("mapeamento do catálogo Meta", () => {
   });
 
   it("cria payload completo com identificador permanente", async () => {
-    const result = await prepareMetaItem(product(), "https://www.adocebrigaderia.com.br");
+    const result = await prepareMetaItem(product(), "https://www.cantinhodaadoce.com.br");
     expect(result?.method).toBe("CREATE");
     expect(result?.data).toMatchObject({
       id: "torta-morango",
@@ -46,22 +46,22 @@ describe("mapeamento do catálogo Meta", () => {
   });
 
   it("não envia produto novo que não está marcado para WhatsApp", async () => {
-    expect(await prepareMetaItem(product({ exibir_whatsapp: false }), "https://www.adocebrigaderia.com.br")).toBeNull();
+    expect(await prepareMetaItem(product({ exibir_whatsapp: false }), "https://www.cantinhodaadoce.com.br")).toBeNull();
   });
 
   it("mantém item anterior e atualiza somente disponibilidade quando desativado", async () => {
-    const result = await prepareMetaItem(product({ active: false, meta_payload_hash: "hash-anterior" }), "https://www.adocebrigaderia.com.br");
+    const result = await prepareMetaItem(product({ active: false, meta_payload_hash: "hash-anterior" }), "https://www.cantinhodaadoce.com.br");
     expect(result).toMatchObject({ method: "UPDATE", operation: "availability", data: { availability: "out of stock" } });
   });
 
   it("rejeita produto sem preço ou sem imagem pública HTTPS", async () => {
-    await expect(prepareMetaItem(product({ base_price: null }), "https://www.adocebrigaderia.com.br")).rejects.toThrow("preço");
-    await expect(prepareMetaItem(product({ image_url: "http://localhost/foto.webp" }), "https://www.adocebrigaderia.com.br")).rejects.toThrow("imagem");
+    await expect(prepareMetaItem(product({ base_price: null }), "https://www.cantinhodaadoce.com.br")).rejects.toThrow("preço");
+    await expect(prepareMetaItem(product({ image_url: "http://localhost/foto.webp" }), "https://www.cantinhodaadoce.com.br")).rejects.toThrow("imagem");
   });
 
   it("gera hash idempotente para os mesmos dados", async () => {
-    const first = await prepareMetaItem(product(), "https://www.adocebrigaderia.com.br");
-    const second = await prepareMetaItem(product(), "https://www.adocebrigaderia.com.br");
+    const first = await prepareMetaItem(product(), "https://www.cantinhodaadoce.com.br");
+    const second = await prepareMetaItem(product(), "https://www.cantinhodaadoce.com.br");
     expect(first?.payloadHash).toBe(second?.payloadHash);
   });
 });
@@ -80,7 +80,7 @@ describe("cliente da Meta", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "limite" } }), { status: 429 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ handles: ["lote-1"] }), { status: 200 }));
     const client = new MetaCatalogClient("EA-token-secreto-que-nao-pode-vazar", "catalogo-1", "24.0", fetcher as typeof fetch);
-    const prepared = await prepareMetaItem(product(), "https://www.adocebrigaderia.com.br");
+    const prepared = await prepareMetaItem(product(), "https://www.cantinhodaadoce.com.br");
     const result = await client.submitItem(prepared!);
     expect(result.handle).toBe("lote-1");
     expect(fetcher).toHaveBeenCalledTimes(2);
@@ -90,7 +90,7 @@ describe("cliente da Meta", () => {
   it("não repete token inválido", async () => {
     const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: { message: "Invalid OAuth access token" } }), { status: 401 }));
     const client = new MetaCatalogClient("token-invalido", "catalogo-1", "24.0", fetcher as typeof fetch);
-    const prepared = await prepareMetaItem(product(), "https://www.adocebrigaderia.com.br");
+    const prepared = await prepareMetaItem(product(), "https://www.cantinhodaadoce.com.br");
     await expect(client.submitItem(prepared!)).rejects.toMatchObject({ status: 401, temporary: false });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });

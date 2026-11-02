@@ -9,7 +9,7 @@ describe("cache do aplicativo", () => {
     const handlers = new Map<string, (event: any) => void>();
     const deleted: string[] = [];
     const self = {
-      location: { origin: "https://www.adocebrigaderia.com.br" },
+      location: { origin: "https://www.cantinhodaadoce.com.br" },
       addEventListener: (name: string, handler: (event: any) => void) => handlers.set(name, handler),
       clients: { claim: () => undefined },
       skipWaiting: () => undefined,
@@ -22,7 +22,7 @@ describe("cache do aplicativo", () => {
 
     let intercepted = false;
     const event = (path: string) => ({
-      request: { method: "GET", url: `https://www.adocebrigaderia.com.br${path}`, mode: "cors" },
+      request: { method: "GET", url: `https://www.cantinhodaadoce.com.br${path}`, mode: "cors" },
       respondWith: () => { intercepted = true; },
     });
     handlers.get("fetch")!(event("/api/whatsapp/support?view=active"));

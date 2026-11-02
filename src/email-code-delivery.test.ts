@@ -54,11 +54,11 @@ describe("código de acesso por e-mail", () => {
 
     try {
       const response = await requestEmailCodeEndpoint(
-        new Request("https://www.adocebrigaderia.com.br/api/request-email-code", {
+        new Request("https://www.cantinhodaadoce.com.br/api/request-email-code", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Origin: "https://www.adocebrigaderia.com.br",
+            Origin: "https://www.cantinhodaadoce.com.br",
           },
           body: JSON.stringify({
             email: "cliente@example.com",

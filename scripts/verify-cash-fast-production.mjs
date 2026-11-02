@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-const base = "https://www.adocebrigaderia.com.br";
+const base = "https://www.cantinhodaadoce.com.br";
 const response = await fetch(`${base}/operacao`);
 if(response.status !== 200) throw Error("Operação indisponível no domínio oficial");
 const html = await response.text();

@@ -4052,7 +4052,7 @@ function OperationHome({ session }: { session: Session }) {
                     <p className="access-message">
                       O envio automático não saiu ({acessoDoBalcao.whatsappStatus || "não configurado"}).
                       Diga a senha temporária abaixo para {acessoDoBalcao.fullName.split(/\s+/)[0]} entrar em{" "}
-                      <code>{acessoDoBalcao.loginUrl ? "adocebrigaderia.com.br/clube/entrar" : "adocebrigaderia.com.br"}</code>{" "}
+                      <code>{acessoDoBalcao.loginUrl ? "cantinhodaadoce.com.br/clube/entrar" : "cantinhodaadoce.com.br"}</code>{" "}
                       com o próprio WhatsApp. No primeiro acesso o site pede uma senha nova.
                     </p>
                   )}

@@ -206,7 +206,7 @@ export function montarTexto(ficha: Ficha): string[] {
   linhas.push(centralizar("CLUBE ADOCE"));
   linhas.push(...quebrarLinha(ficha.clubeResumo || "Com 14 carimbos, ganhe 1 fatia de presente grátis - exceto pudim."));
   linhas.push(centralizar("Aponte a camera para entrar"));
-  linhas.push(centralizar("adocebrigaderia.com.br/clube/entrar"));
+  linhas.push(centralizar("cantinhodaadoce.com.br/clube/entrar"));
   linhas.push("");
   // Discreta, no fim, e sempre com o rotulo. Sem rotulo ela vira data do pedido
   // na cabeca de quem le com pressa.
@@ -235,7 +235,7 @@ export function montarBytes(ficha: Ficha): Uint8Array {
   }
 
   // ESC/POS QR Code (modelo 2), armazenado e impresso no fim do cupom.
-  const url = ficha.clubeUrl || "https://www.adocebrigaderia.com.br/clube/entrar";
+  const url = ficha.clubeUrl || "https://www.cantinhodaadoce.com.br/clube/entrar";
   const dados = Array.from(new TextEncoder().encode(url));
   const tamanho = dados.length + 3;
   const pl = tamanho & 0xff;

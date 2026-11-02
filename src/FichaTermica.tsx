@@ -43,7 +43,7 @@ const telefoneBonito = (valor: string) => {
 
 export default function FichaTermica({
   data,
-  linkDoClube = "https://www.adocebrigaderia.com.br/clube",
+  linkDoClube = "https://www.cantinhodaadoce.com.br/clube",
   instagram = "@_adocebrigaderia_",
 }: {
   data: QuoteData;

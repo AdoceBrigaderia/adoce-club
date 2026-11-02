@@ -78,4 +78,4 @@ console.log(`Deploy de producao criado: ${created.id}`);
 const result = await deploySite(command, api, siteId, resolve(root, "dist"), {
   ...deployOptions, deployId: created.id,
 });
-console.log(JSON.stringify({ deploy_id: result.deployId, state: result.deploy.state, official_url: "https://www.adocebrigaderia.com.br", runtime_env_requested: false }));
+console.log(JSON.stringify({ deploy_id: result.deployId, state: result.deploy.state, official_url: "https://www.cantinhodaadoce.com.br", runtime_env_requested: false }));

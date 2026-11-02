@@ -46,7 +46,7 @@ export async function deliverCustomerNotices(admin:NonNullable<ReturnType<typeof
       const template=env("TWILIO_CUSTOMER_ORDER_STAGE_CONTENT_SID");
       if(!withinWindow&&!template) {await recordHistory(`[Não enviado: modelo aprovado necessário fora da janela de atendimento]\n${messageBody}`);await finish("failed",null,"template_required");break;}
       const body=orderStageMessage(notice.snapshot,pixKey);
-      const callback=`https://www.adocebrigaderia.com.br/api/twilio/customer-order-status?notice_id=${notice.id}&attempt=${notice.attempt}`;
+      const callback=`https://www.cantinhodaadoce.com.br/api/twilio/customer-order-status?notice_id=${notice.id}&attempt=${notice.attempt}`;
       sendStarted=true;
       const message=await client.messages.create({from,to,statusCallback:callback,
         ...(withinWindow?{body}:{contentSid:template!,contentVariables:JSON.stringify({

@@ -1,7 +1,9 @@
-export const PRODUCTION_SITE_ORIGIN = "https://www.adocebrigaderia.com.br";
+export const PRODUCTION_SITE_ORIGIN = "https://www.cantinhodaadoce.com.br";
 
 const allowedOrigins = new Set([
   PRODUCTION_SITE_ORIGIN,
+  "https://cantinhodaadoce.com.br",
+  "https://www.adocebrigaderia.com.br",
   "https://adocebrigaderia.com.br",
   "https://clube.adocebrigaderia.com.br",
   "https://operacao.adocebrigaderia.com.br",

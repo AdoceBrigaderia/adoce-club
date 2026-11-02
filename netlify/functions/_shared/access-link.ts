@@ -38,7 +38,7 @@ export const buildAccessLink = (
   const parsedBase = new URL(baseUrl);
   if (
     parsedBase.protocol !== "https:" ||
-    parsedBase.hostname !== "www.adocebrigaderia.com.br"
+    parsedBase.origin !== PRODUCTION_SITE_ORIGIN
   ) {
     throw new Error("access_link_invalid_origin");
   }

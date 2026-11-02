@@ -25,6 +25,49 @@
   timeout = 20
 
 [[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Callbacks de serviços e aplicativos antigos continuam no mesmo backend.
+# Páginas e arquivos públicos migram preservando caminho e query string.
+[[redirects]]
+  from = "https://adocebrigaderia.com.br/*"
+  to = "https://www.cantinhodaadoce.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://adocebrigaderia.com.br/*"
+  to = "https://www.cantinhodaadoce.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://www.adocebrigaderia.com.br/*"
+  to = "https://www.cantinhodaadoce.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.adocebrigaderia.com.br/*"
+  to = "https://www.cantinhodaadoce.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "https://cantinhodaadoce.com.br/*"
+  to = "https://www.cantinhodaadoce.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://cantinhodaadoce.com.br/*"
+  to = "https://www.cantinhodaadoce.com.br/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/documentacao"
   to = "/"
   status = 301
@@ -37,11 +80,6 @@
 [[redirects]]
   from = "/404"
   to = "/404.html"
-  status = 200
-
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
   status = 200
 
 [[redirects]]
