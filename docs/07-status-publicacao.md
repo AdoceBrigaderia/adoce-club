@@ -6,6 +6,20 @@ status: Produção em evolução
 
 # Status da publicação
 
+## 02/11/2026 — migração de domínio publicada
+
+O endereço principal de produção passou a ser `https://www.cantinhodaadoce.com.br`, no mesmo projeto Netlify (`bb0c96cd-5af2-4270-a9a8-b63b9637b1f4`). O deploy único desta migração foi `6ae85fdf7753c5556984ea9e`, publicado às 07h03 de São Paulo. Autorização expressa do proprietário registrada neste chat em 02/11/2026.
+
+- DNS Registro.br: A da raiz `75.2.60.5`; CNAME `www` para `adocebrigaderia.netlify.app`.
+- HTTPS válido para os dois domínios, com e sem `www`; certificado atual expira em 31/01/2027 e permanece gerenciado pelo Netlify.
+- Endereços antigos e nova raiz redirecionam para o novo principal, preservando caminhos e parâmetros.
+- APIs no domínio antigo permanecem funcionais para integrações existentes; chamadas sem método/autorização adequada continuam protegidas, sem redirecionar callbacks.
+- Supabase: Site URL atualizado para o novo principal; destino de retorno novo permitido; usuários, e-mails existentes, Pix e outras configurações preservados.
+- `release:check`: 173 arquivos de teste aprovados; 985 testes aprovados, 1 ignorado; tipos, compilação, SEO e preservação da Operação aprovados.
+- Conferência em produção: 16 verificações HTTP/HTTPS, seis combinações de redirecionamento, páginas principais, sitemap/canonical, APIs protegidas e igualdade do pacote JavaScript publicado com o build local. Navegação e telas de entrada conferidas no navegador, sem novos avisos/erros capturados.
+- Limite da validação: não foram executados cadastro, venda, envio de mensagem ou impressão. A Operação carregou o painel Hoje em uma sessão autenticada no domínio novo, em viewport de tablet. Sessões e permissões locais de outros aparelhos podem precisar ser renovadas. O painel informava tablet/impressora offline; o funcionamento físico desses aparelhos não foi validado nesta migração.
+- Publicação manual: uma futura publicação automática do repositório conectado pode substituir o pacote. Atualizações devem partir da fonte principal com as regras de domínio mantidas. Os registros de endereço antigo nas seções abaixo são históricos.
+
 ## 24/10/2026 — incidente de link para homologação e decisão de ambiente único
 
 Foi confirmado que uma versão publicada das Netlify Functions havia capturado `SITE_URL` apontando para o antigo ambiente de homologação. No cadastro de cliente pela Operação, a geração segura do link recusava essa origem, mas a mensagem manual de contingência continuava usando o valor incorreto e podia copiar para o WhatsApp um endereço de homologação. O problema também expôs que contextos de preview e branch deploy compartilhavam as credenciais públicas e o projeto Supabase da produção.

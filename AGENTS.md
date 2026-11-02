@@ -13,7 +13,7 @@ Os arquivos Markdown listados em `docs/documentation-manifest.json` são a fonte
 
 ## Ambiente online único e autorização de produção — decisão do proprietário em 24/10/2026
 
-- O único ambiente online permitido é a produção do mesmo projeto Netlify. Atualmente ela está em `https://www.adocebrigaderia.com.br`; a migração para `https://www.cantinhodaadoce.com.br` foi autorizada expressamente pelo proprietário em 02/11/2026 e aguarda DNS/HTTPS e validação final. Após a migração, o domínio anterior permanece vinculado exclusivamente para redirecionar páginas e manter callbacks de serviços já configurados.
+- O único ambiente online permitido é a produção do mesmo projeto Netlify. O endereço principal é `https://www.cantinhodaadoce.com.br`, após migração autorizada expressamente pelo proprietário e publicada/validada em 02/11/2026. O domínio anterior permanece vinculado exclusivamente para redirecionar páginas e manter callbacks de serviços já configurados.
 - O antigo site de homologação online está definitivamente desativado e não pode ser recriado, reutilizado, referenciado ou receber deploy.
 - São proibidos Deploy Previews, branch deploys, aliases públicos de revisão e qualquer site online de teste conectado aos dados ou credenciais deste produto.
 - Desenvolvimento, testes e validações anteriores à produção acontecem somente na pasta principal e em ambiente local. Dados reais não podem ser expostos em uma URL alternativa.

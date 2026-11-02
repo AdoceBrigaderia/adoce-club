@@ -7,12 +7,12 @@
 - [x] Confirmar fonte única, documentação, estado Git e configuração atual.
 - [x] Testar falhas das novas origens e da compatibilidade de callbacks assinados.
 - [x] Atualizar origem oficial, links, SEO e regras de redirecionamento; preservar APIs, e-mails e Pix.
-- [ ] Configurar DNS Registro.br e certificado cobrindo novos e antigos hosts.
-- [ ] Ajustar URLs de autenticação sem substituir outras configurações remotas.
+- [x] Configurar DNS Registro.br e certificado cobrindo novos e antigos hosts.
+- [x] Ajustar URLs de autenticação sem substituir outras configurações remotas.
 - [x] Executar release:check: 173 arquivos, 985 testes aprovados e 1 ignorado; tipos, build, SEO e preservação da Operação aprovados. Conferidas Home em computador, navegação e login do Clube em celular 390×844 e entrada da Operação em tablet 820×1180, sem avisos/erros capturados no console. Login autenticado não exercitado nesta migração.
-- [ ] Registrar commit e publicar o pacote aprovado uma única vez.
-- [ ] Definir novo principal no mesmo site Netlify; conferir domínio oficial e 301 com caminhos/parâmetros, APIs protegidas e certificado.
-- [ ] Registrar evidências e limitações reais.
+- [x] Registrar commit e publicar o pacote aprovado uma única vez.
+- [x] Definir novo principal no mesmo site Netlify; conferir domínio oficial e 301 com caminhos/parâmetros, APIs protegidas e certificado.
+- [x] Registrar evidências e limitações reais.
 
 Pontos de revisão: callbacks anteriores ainda em trânsito; navegação para rotas internas; query strings de links existentes; rejeição de origens externas; necessidade de nova sessão no novo domínio.
 
@@ -40,3 +40,15 @@ O editor foi liberado durante esta sessão. Em aproximadamente 01h43 foram grava
 Os registros persistidos foram conferidos após reabrir o editor do Registro.br: A `cantinhodaadoce.com.br → 75.2.60.5` e CNAME `www.cantinhodaadoce.com.br → adocebrigaderia.netlify.app`. Entretanto, consultas diretas aos dois servidores autoritativos e consultas públicas Cloudflare/Google ainda não recebem esses registros (SOA serial `2026306190`, A vazio e www NXDOMAIN). Uma solicitação de certificado via API Netlify retornou HTTP 422; certificado existente continua emitido somente para os dois hosts antigos. Não repetir publicação nem ativar redirects enquanto novo DNS/HTTPS não estiver pronto.
 
 O deploy publicado permanece `6ae80e2b215b6916fa722c40` (02/11/2026 04:15:12 UTC); não houve publicação durante esta migração. Site URL remoto do Supabase permanece antigo. Próximo passo: aguardar DNS, emitir/conferir certificado novo+antigo, publicar commit validado e efetivar novo principal e Site URL. Autorização original continua válida. A documentação oficial do Registro.br sobre a espera é https://registro.br/tecnologia/caracteristicas-tecnicas/.
+
+## Conclusão em 02/11/2026 — produção
+
+DNS disponível na retomada. O erro HTTP 422 na API de certificado foi esclarecido: `POST /ssl` é inadequado para renovar certificado existente sem enviar um certificado próprio. A operação correta para o certificado gerenciado é `POST /ssl/renew` (documentação https://open-api.netlify.com/); executada com sucesso. O certificado agora cobre os quatro hosts, com validade até 31/01/2027.
+
+Deploy único `6ae85fdf7753c5556984ea9e`, estado ready, publicado em `2026-11-02T10:03:57.846Z` (07h03 de São Paulo), a partir da fonte principal limpa. `release:check` repetido imediatamente antes da publicação: 985 aprovados, 1 ignorado, tipos/build e preservação da Operação aprovados. Nenhum segredo remoto consultado no fluxo de publicação.
+
+Principal Netlify e Site URL Supabase alterados para `https://www.cantinhodaadoce.com.br`. Aliases mantidos: nova raiz e dois hosts antigos. 16 verificações de produção aprovadas, incluindo seis cadeias de redirect com caminho/query, cinco páginas/arquivos, quatro endpoints de API por método inválido e correspondência do bundle publicado ao local. Evidência local em `.netlify/domain-migration-verification.json`.
+
+A documentação final foi atualizada após a conferência, sem gerar outro deploy. Não houve push Git nesta migração: a branch local já continha commits anteriores ainda não enviados; eles foram preservados. Próximas publicações devem preservar a configuração atual de domínio.
+
+Conferência visual final: Home e Clube no domínio novo, alternância cadastro/entrada no celular, painel Hoje autenticado da Operação em tablet 820×1180. Sem erros/avisos capturados no console. Nenhum dado operacional alterado. O painel indicava tablet/impressora offline, não testados fisicamente. Viewport restaurado e página pública nova deixada aberta.

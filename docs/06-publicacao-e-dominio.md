@@ -1,7 +1,7 @@
 ---
 title: Publicação e domínio
-description: Estratégia de hospedagem, DNS, HTTPS e lançamento em adocebrigaderia.com.br.
-status: Proposta técnica
+description: Hospedagem, DNS, HTTPS e migração para cantinhodaadoce.com.br.
+status: Publicado em produção
 ---
 
 # Publicação e domínio
@@ -18,9 +18,9 @@ O proprietário aprovou expressamente a migração de produção para `https://w
 - Callbacks de mensagens já enviadas aceitam assinaturas válidas para o endereço antigo ou novo; continuam rejeitando assinaturas de outros domínios.
 - Sessões, permissões de notificação e passkeys são vinculadas ao domínio pelo navegador. Pode ser necessário entrar novamente e reativar notificações no novo endereço; credenciais passkey antigas não são transferíveis entre domínios.
 
-Validação: testes de origem e callbacks, `npm run release:check`, conferência local em computador/celular/tablet, certificado dos quatro hosts e redirecionamento com caminho e parâmetros no domínio oficial. Estado nesta preparação: implementado localmente, configuração externa em andamento; ainda não validado em produção.
+Validação: testes de origem e callbacks, `npm run release:check`, conferência local em computador/celular/tablet, certificado dos quatro hosts e redirecionamento com caminho e parâmetros no domínio oficial. Estado em 02/11/2026: publicado e validado em produção no deploy `6ae85fdf7753c5556984ea9e`, com DNS propagado, certificado emitido para os quatro hosts, domínio principal Netlify e Site URL Supabase atualizados. Os seis redirecionamentos (HTTP/HTTPS dos três hosts secundários) preservam caminho e parâmetros. O pacote remoto corresponde ao build local validado. A Home e o Clube foram conferidos em computador/celular; a Operação carregou o painel Hoje em uma sessão autenticada no novo domínio, em viewport de tablet, sem alterar dados. Não foram testados cadastro, venda, envio de mensagem ou impressão nesta migração.
 
-## Decisão definitiva de 24/10/2026: somente produção online
+## Histórico — decisão de 24/10/2026: somente produção online
 
 O único ambiente online permitido para este produto é `https://www.adocebrigaderia.com.br`. O antigo site de homologação foi desativado definitivamente. É proibido recriá-lo, publicar aliases, Deploy Previews ou branch deploys, bem como conectar qualquer endereço alternativo aos dados e credenciais de produção.
 
