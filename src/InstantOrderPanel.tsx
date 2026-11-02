@@ -235,14 +235,20 @@ export default function InstantOrderPanel({
   }, [open, phone, totalQuantity]);
 
   // Sem nome e WhatsApp não dá para separar nem reservar a fatia, então a
-  // identificação vem antes de montar o pedido -- em etapas: nome e
-  // sobrenome primeiro, depois o WhatsApp, só então o resto do carrinho.
+  // identificação vem antes de montar o pedido -- em etapas: WhatsApp
+  // primeiro (decisão do proprietário em 02/11/2026), depois nome e
+  // sobrenome, só então o resto do carrinho. Quem já tem conta e está
+  // logada tem nome e WhatsApp preenchidos sozinhos (efeito acima). Para
+  // quem não está logada, o nome não é preenchido sozinho a partir do
+  // WhatsApp digitado: isso exporia o nome de qualquer pessoa para quem
+  // souber o número dela, sem provar que é a dona do WhatsApp.
+  const phoneOk = phone.replace(/\D/g, "").length >= 10;
   const nameOk = hasFirstAndLastName(name);
-  const identified = nameOk && phone.replace(/\D/g, "").length >= 10;
+  const identified = nameOk && phoneOk;
 
   const changeQuantity = (flavor: InstantOrderFlavor, delta: number) => {
     if (delta > 0 && !identified) {
-      setNotice("Primeiro informe seu nome e sobrenome e o WhatsApp com DDD para escolher as fatias.");
+      setNotice("Primeiro informe seu WhatsApp com DDD e seu nome e sobrenome para escolher as fatias.");
       return;
     }
     setNotice("");
@@ -624,11 +630,11 @@ export default function InstantOrderPanel({
             <h2 id="instant-order-title">Carrinho</h2>
           </header>
           <div className="instant-order-identify">
-            <label className="instant-order-name">Nome e sobrenome<input required minLength={5} autoComplete="name" placeholder="Nome e sobrenome" value={name} onChange={(event) => setName(event.target.value)} /></label>
-            <label className={nameOk ? "instant-order-name" : "instant-order-name is-locked"}>
+            <label className="instant-order-name">
               WhatsApp com DDD
-              <input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} disabled={!nameOk} />
+              <input required inputMode="tel" autoComplete="tel" placeholder="(85) 99999-9999" value={mascaraTelefone(phone)} onChange={(event) => setPhone(mascaraTelefone(event.target.value))} />
             </label>
+            <label className={phoneOk ? "instant-order-name" : "instant-order-name is-locked"}>Nome e sobrenome<input required minLength={5} autoComplete="name" placeholder="Nome e sobrenome" value={name} onChange={(event) => setName(event.target.value)} disabled={!phoneOk} /></label>
           </div>
           {!flavors.length ? <div className="instant-order-empty">
             <ShoppingBag />
@@ -636,7 +642,7 @@ export default function InstantOrderPanel({
             <p>Quando houver fatias disponíveis, escolha os sabores e volte aqui para concluir.</p>
             <a href="/cardapio" onClick={onClose}>Ver sabores</a>
           </div> : <div className={identified ? "instant-order-flavors" : "instant-order-flavors is-locked"} aria-disabled={!identified}>
-            {!identified ? <p className="instant-order-identify-first" role="status">{nameOk ? "Informe seu WhatsApp acima para escolher as fatias." : "Informe seu nome e sobrenome acima para escolher as fatias."}</p> : null}
+            {!identified ? <p className="instant-order-identify-first" role="status">{phoneOk ? "Informe seu nome e sobrenome acima para escolher as fatias." : "Informe seu WhatsApp acima para escolher as fatias."}</p> : null}
             {flavors.map((flavor) => {
               const quantity = quantities[flavor.id] || 0;
               const readyAt = earliestPickupTimeForQuantity(flavor.batches, quantity, currentLocalTime());
