@@ -90,6 +90,15 @@ produto) mora em **uma única tabela, uma única coluna**, nunca duplicado nem c
   decisão de produto um catálogo precisar ser uma peça de marketing estática (não ligada ao banco), isso precisa
   estar escrito explicitamente no código e na documentação do capítulo correspondente, com o processo manual de
   atualização descrito — nunca por omissão.
+  - **Exceção dentro da exceção, decisão do proprietário em 03/11/2026**: os preços das tortas P/M/G exibidos em
+    `CatalogPage2026.tsx` (`/catalogo`) deixaram de ser texto fixo. O catálogo busca
+    `commercial_products.base_price` (slugs `torta-p`/`torta-m`/`torta-g`) ao carregar e só usa o texto fixo do
+    array `sizes` como valor de exibição antes da resposta chegar (ou se a busca falhar) — nunca como fonte de
+    verdade. A fonte única desses três preços é editável em Operação → Configurações → Preços
+    (`PricingSettings.tsx`), junto com o preço padrão de fatia (que é aplicado em massa a todas as linhas de
+    `flavors.base_price` pela RPC `manager_bulk_set_flavor_price`, sem criar coluna nova). Os preços dos docinhos
+    nessa mesma página continuam texto fixo de verdade, sem fonte no banco — essa parte da exceção original
+    permanece.
 - O inventário completo de telas/funções do sistema, usado como base para a reformulação da marca, está em
   `docs/25-inventario-funcional-completo.md` e na tela `/operacao/auditoria` (tabela `product_audit_items` no
   Supabase). Qualquer IA que continuar este trabalho deve ler esse documento antes de propor remoção, fusão ou

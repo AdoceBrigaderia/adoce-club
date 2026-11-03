@@ -19,6 +19,7 @@ import "./cash-register-layout.css";
 import "./operation-shell.css";
 import "./operation-desktop.css";
 const OperationCommerceSettings = lazy(() => import("./OperationCommerceSettings"));
+const PricingSettings = lazy(() => import("./PricingSettings"));
 const OperationManagement = lazy(() => import("./OperationManagement"));
 const OperationPurchasingInventory = lazy(() => import("./OperationPurchasingInventory"));
 import {
@@ -4638,6 +4639,9 @@ function OperationHome({ session }: { session: Session }) {
               <NativePrinterSettings />
               <Suspense fallback={<p>Carregando configurações...</p>}>
                 <OperationCommerceSettings />
+              </Suspense>
+              <Suspense fallback={<p>Carregando preços...</p>}>
+                <PricingSettings />
               </Suspense>
               <Suspense fallback={<p>Carregando reserva online...</p>}>
                 <OperationCommerceSettings area="orders" />

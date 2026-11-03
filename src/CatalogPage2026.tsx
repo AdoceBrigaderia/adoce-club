@@ -1,14 +1,23 @@
+import { useEffect, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
+import { isSupabaseConfigured, requireSupabase } from "./lib/supabase";
 import "./catalog-2026.css";
 import "./catalog-2026-overrides.css";
 
 const base = "/brand-2026/catalogo";
+// Os preços de P/M/G abaixo são só o valor exibido antes da foto carregar --
+// a fonte única de verdade é commercial_products (slugs torta-p/torta-m/
+// torta-g), editável em Operação > Configurações > Preços. Este catálogo é
+// uma peça estática por decisão de produto (ver AGENTS.md), mas o preço
+// precisa ser o mesmo em todo lugar -- por isso é buscado no banco assim
+// que a página carrega, e só cai para este valor fixo se a busca falhar.
 const sizes = [
-  { label: "P", serves: "Serve de 10 a 15 fatias", dimensions: "15 × 15 cm", price: "R$ 120,00", description: "Ideal para encontros menores e momentos especiais.", photo: "torta-P-recortada.png" },
-  { label: "M", serves: "Serve de 20 a 25 fatias", dimensions: "15 × 20 cm", price: "R$ 160,00", description: "Perfeita para compartilhar com a família e amigos.", photo: "torta-M-recortada.png" },
-  { label: "G", serves: "Serve de 30 a 35 fatias", dimensions: "12 × 25 cm", price: "R$ 200,00", description: "Para ocasiões especiais e para quem não abre mão de uma boa fatia.", photo: "torta-G-recortada.png" },
+  { slug: "torta-p", label: "P", serves: "Serve de 10 a 15 fatias", dimensions: "15 × 15 cm", price: "R$ 120,00", description: "Ideal para encontros menores e momentos especiais.", photo: "torta-P-recortada.png" },
+  { slug: "torta-m", label: "M", serves: "Serve de 20 a 25 fatias", dimensions: "15 × 20 cm", price: "R$ 160,00", description: "Perfeita para compartilhar com a família e amigos.", photo: "torta-M-recortada.png" },
+  { slug: "torta-g", label: "G", serves: "Serve de 30 a 35 fatias", dimensions: "12 × 25 cm", price: "R$ 200,00", description: "Para ocasiões especiais e para quem não abre mão de uma boa fatia.", photo: "torta-G-recortada.png" },
 ] as const;
+const moneyLabel = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const sweets = [
   { title: "Tradicionais", price: "R$ 70,00", photo: `${base}/docinhos/tradicional.png`, items: ["Brigadeiro", "Beijinho", "Casadinho", "Chocoball", "Ninho", "Amendoim", "Nesquik"] },
   { title: "Especiais", price: "R$ 90,00", photo: `${base}/docinhos/especial.png`, items: ["Churros", "Ninho com Nutella", "Surpresa de Uva", "Confeito M&M's", "Ferrero Rocher"] },
@@ -23,11 +32,27 @@ const steps = [
 export default function CatalogPage2026() {
   const whatsappNumber = useOrderWhatsAppNumber();
   const whatsapp = orderWhatsAppUrl(whatsappNumber, "Olá, Adoce! Vi o catálogo e gostaria de fazer uma encomenda.");
+  const [livePrices, setLivePrices] = useState<Partial<Record<(typeof sizes)[number]["slug"], string>>>({});
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let active = true;
+    void requireSupabase()
+      .from("commercial_products")
+      .select("slug,base_price")
+      .in("slug", sizes.map((size) => size.slug))
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setLivePrices(Object.fromEntries(data.map((item) => [item.slug, moneyLabel(Number(item.base_price))])));
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   return <main className="catalog-new">
     <section className="catalog-new-hero"><div><h1>Encomendas<br />Adoce <span>♡</span></h1><p>Conheça tamanhos, valores e condições para fazer sua encomenda.</p></div></section>
     <section className="catalog-panel">
       <div className="catalog-section-title"><img src={`${base}/icones/bolo.svg`} alt="" /><div><h2>Tortas artesanais <span>♡</span></h2><p>Nossas tortas são feitas artesanalmente, com ingredientes selecionados e muito carinho em cada camada.</p></div></div>
-      <div className="catalog-size-grid">{sizes.map(size => <article key={size.label}><div className="catalog-cake-photo"><img src={`${base}/fotos-recortadas/${size.photo}`} alt={`Torta tamanho ${size.label}`} /><strong>{size.label}</strong></div><div className="catalog-size-meta"><b>{size.dimensions}</b><strong>{size.price}</strong></div><p className="catalog-size-serves">{size.serves}</p><p>{size.description}</p></article>)}</div>
+      <div className="catalog-size-grid">{sizes.map(size => <article key={size.label}><div className="catalog-cake-photo"><img src={`${base}/fotos-recortadas/${size.photo}`} alt={`Torta tamanho ${size.label}`} /><strong>{size.label}</strong></div><div className="catalog-size-meta"><b>{size.dimensions}</b><strong>{livePrices[size.slug] || size.price}</strong></div><p className="catalog-size-serves">{size.serves}</p><p>{size.description}</p></article>)}</div>
       <a className="catalog-wide-link" href="/sabores"><img src={`${base}/icones/bolo.svg`} alt="" />Clique aqui para conferir todos os sabores disponíveis para as tortas <span>→</span></a>
     </section>
     <section className="catalog-panel">
