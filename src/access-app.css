@@ -808,6 +808,21 @@
   align-items: end;
   gap: 25px;
 }
+.operation-settings-flat {
+  display: grid;
+  gap: 36px;
+}
+.operation-settings-flat > .operation-title {
+  margin-bottom: -8px;
+}
+.operation-settings-flat > * + * {
+  padding-top: 32px;
+  border-top: 1px solid #ead4c8;
+}
+.operation-settings-flat > .operation-title {
+  padding-top: 0;
+  border-top: 0;
+}
 .operation-title > div > span {
   color: var(--access-coral-dark);
   font-weight: 850;

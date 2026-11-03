@@ -2686,7 +2686,6 @@ function OperationHome({ session }: { session: Session }) {
   const [manualQr, setManualQr] = useState("");
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<"store" | "hours" | "team" | "visual" | "online">("store");
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const customerResultsRef = useRef<HTMLDivElement | null>(null);
@@ -2708,7 +2707,7 @@ function OperationHome({ session }: { session: Session }) {
   }, []);
   useLayoutEffect(() => {
     scrollOperationToTop();
-  }, [view, commercialTab, contentTab, productArea, settingsTab, selected?.profile_id, scrollOperationToTop]);
+  }, [view, commercialTab, contentTab, productArea, selected?.profile_id, scrollOperationToTop]);
   useEffect(() => {
     let active = true;
     void (async () => {
@@ -4625,7 +4624,7 @@ function OperationHome({ session }: { session: Session }) {
             <Suspense fallback={<p>Carregando o painel do dia...</p>}><PainelDoDiaPage /></Suspense>
           )}
           {view === "settings" && (role === "owner" || role === "manager") && (
-            <div className="operation-settings-workspace">
+            <div className="operation-settings-workspace operation-settings-flat">
               <div className="operation-title">
                 <div>
                   <span>Administração essencial</span>
@@ -4633,43 +4632,26 @@ function OperationHome({ session }: { session: Session }) {
                   <p>Regras da loja, pagamentos e equipe em um único lugar.</p>
                 </div>
               </div>
-              <nav className="content-tabs" aria-label="Áreas de configurações">
-                <button className={settingsTab === "store" ? "active" : ""} onClick={() => setSettingsTab("store")}><Settings2 /> Loja e pagamentos</button>
-                <button className={settingsTab === "hours" ? "active" : ""} onClick={() => setSettingsTab("hours")}><Clock3 /> Funcionamento</button>
-                {role === "owner" ? <button className={settingsTab === "team" ? "active" : ""} onClick={() => setSettingsTab("team")}><ShieldCheck /> Equipe</button> : null}
-                <button className={settingsTab === "visual" ? "active" : ""} onClick={() => setSettingsTab("visual")}><Images /> Fotos do site</button>
-                <button className={settingsTab === "online" ? "active" : ""} onClick={() => setSettingsTab("online")}><ShoppingCart /> Reserva online</button>
-              </nav>
-              {settingsTab === "store" ? (
-                <>
-                  <NativePrinterSettings />
-                  <Suspense fallback={<p>Carregando configurações...</p>}>
-                    <OperationCommerceSettings />
-                  </Suspense>
-                </>
-              ) : null}
-              {settingsTab === "online" ? (
-                <Suspense fallback={<p>Carregando reserva online...</p>}>
-                  <OperationCommerceSettings area="orders" />
-                </Suspense>
-              ) : null}
-              {settingsTab === "hours" ? (
-                <Suspense fallback={<p>Carregando funcionamento...</p>}>
-                  <OperationContentAdmin session={session} role={role} initialTab="operation" allowedTabs={["operation"]} />
-                </Suspense>
-              ) : null}
-              {settingsTab === "team" && role === "owner" ? (
+              <Suspense fallback={<p>Carregando funcionamento...</p>}>
+                <OperationContentAdmin session={session} role={role} initialTab="operation" allowedTabs={["operation"]} />
+              </Suspense>
+              <NativePrinterSettings />
+              <Suspense fallback={<p>Carregando configurações...</p>}>
+                <OperationCommerceSettings />
+              </Suspense>
+              <Suspense fallback={<p>Carregando reserva online...</p>}>
+                <OperationCommerceSettings area="orders" />
+              </Suspense>
+              <Suspense fallback={<p>Carregando fotos do site...</p>}>
+                <OperationVisualSettings
+                  session={session}
+                  onOpenFlavorImages={() => { setProductArea("flavors"); setContentTab("catalog"); void openView("products"); }}
+                  onOpenProductImages={() => openCommercial("catalog")}
+                />
+              </Suspense>
+              {role === "owner" ? (
                 <Suspense fallback={<p>Carregando cadastro da equipe...</p>}>
                   <StaffProfileAdmin session={session} staff={team} />
-                </Suspense>
-              ) : null}
-              {settingsTab === "visual" ? (
-                <Suspense fallback={<p>Carregando fotos do site...</p>}>
-                  <OperationVisualSettings
-                    session={session}
-                    onOpenFlavorImages={() => { setProductArea("flavors"); setContentTab("catalog"); void openView("products"); }}
-                    onOpenProductImages={() => openCommercial("catalog")}
-                  />
                 </Suspense>
               ) : null}
             </div>

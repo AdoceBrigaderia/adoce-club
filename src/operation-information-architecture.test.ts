@@ -78,7 +78,7 @@ describe("arquitetura da Adoce Operação", () => {
   it("reinicia todas as telas da operação no topo", () => {
     expect(access).toContain("const scrollOperationToTop = useCallback(() =>");
     expect(access).toContain("useLayoutEffect(() =>");
-    expect(access).toContain("[view, commercialTab, contentTab, productArea, settingsTab, selected?.profile_id, scrollOperationToTop]");
+    expect(access).toContain("[view, commercialTab, contentTab, productArea, selected?.profile_id, scrollOperationToTop]");
     expect(access).toContain('window.history.scrollRestoration = "manual"');
     expect(access).toContain('window.addEventListener("pageshow", resetOnPageShow)');
   });
@@ -106,7 +106,7 @@ describe("arquitetura da Adoce Operação", () => {
     expect(access).toContain('initialTab="sales"');
     expect(access).toContain('allowedTabs={["sales"]}');
     expect(access).toContain('allowedTabs={["catalog"]}');
-    expect(access).toContain('setSettingsTab("online")');
+    expect(access).toContain('<OperationCommerceSettings area="orders" />');
   });
 
   it("mantém em Configurações somente ajustes permanentes", () => {

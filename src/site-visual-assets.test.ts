@@ -21,9 +21,9 @@ describe("central de imagens institucionais", () => {
     });
   });
 
-  it("define a primeira foto da Home como uma moldura quadrada de preenchimento total", () => {
-    const hero = SITE_VISUAL_ASSETS.find((asset) => asset.key === "/site/trufado-de-ninho-home-20260803.png");
-    expect(hero).toMatchObject({ aspectWidth: 1, aspectHeight: 1, outputWidth: 1400, fitMode: "cover" });
+  it("define a foto de apoio do Clube como um corte 4:3 de preenchimento", () => {
+    const hero = SITE_VISUAL_ASSETS.find((asset) => asset.key === "/site/hero-cake.webp");
+    expect(hero).toMatchObject({ aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" });
   });
 
   it("mostra na central a URL clicável de cada página que usa a imagem", () => {
@@ -33,18 +33,35 @@ describe("central de imagens institucionais", () => {
     expect(source).toContain('target="_blank"');
   });
 
-  it("inclui os principais visuais fixos que não pertencem ao catálogo", () => {
+  it("só inclui fotos que algum componente do site realmente usa hoje", () => {
     const keys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));
     [
       "/site/logo.webp",
+      "/site/clube-convite-pedido.webp",
+      "/site/hero-cake.webp",
+      "/site/adoce-hoje-retirada-ilustracao.webp",
+      "/site/adoce-hoje-barraquinha-ilustracao.webp",
+      "/adoce-hoje/sabores-hoje.webp",
+    ].forEach((key) => expect(keys.has(key), key).toBe(true));
+    // Removidas em 03/11/2026 por não serem renderizadas em nenhuma página:
+    // a Home não usa mais nenhuma foto fixa, a política de pedidos é só
+    // texto, e o Pede Junto foi desativado (sem rota no site).
+    [
       "/site/trufado-de-ninho-home-20260803.png",
       "/site/beth-fundadora.png",
       "/site/clube-cartao-destaque-v2.webp",
+      "/site/clube-aprovado-mobile-claro.png",
+      "/site/clube-aprovado-mobile-escuro.png",
+      "/site/clube-aprovado-desktop.png",
       "/site/pede-junto-pacotes.webp",
-      "/site/adoce-hoje-retirada-ilustracao.webp",
-      "/site/adoce-hoje-barraquinha-ilustracao.webp",
+      "/site/pede-junto-trabalho.webp",
+      "/site/pede-junto-condominio.webp",
+      "/site/pede-junto-faculdade.webp",
+      "/site/pede-junto-clinica.webp",
+      "/site/adoce-hoje-exemplo-desktop.png",
+      "/site/adoce-hoje-exemplo-mobile.png",
       "/site/politica-de-pedidos.jpeg",
-    ].forEach((key) => expect(keys.has(key), key).toBe(true));
+    ].forEach((key) => expect(keys.has(key), key).toBe(false));
   });
 
   it("mantém RLS e escrita restrita a gerentes na migração", () => {

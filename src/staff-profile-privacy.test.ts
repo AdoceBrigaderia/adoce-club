@@ -19,8 +19,8 @@ describe("ficha privada da equipe", () => {
   });
 
   it("só abre a ficha completa para o papel owner", () => {
-    expect(app).toContain('settingsTab === "team" && role === "owner"');
-    expect(app).toContain('role === "owner" ? <button className={settingsTab === "team" ? "active" : ""}');
+    expect(app).toMatch(/role === "owner" \? \(\s*<Suspense fallback={<p>Carregando cadastro da equipe/);
+    expect(app).toContain("<StaffProfileAdmin session={session} staff={team} />");
     expect(app).not.toContain('view === "team"');
   });
 

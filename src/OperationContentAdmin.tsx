@@ -1004,6 +1004,7 @@ export default function OperationContentAdmin({
           <Eye /> Ver como cliente
         </a>
       </div> : null}
+      {allowedTabs.length > 1 && (
       <nav className="content-tabs" aria-label="Áreas da administração">
         {allowedTabs.includes("catalog") ? <button
           className={tab === "catalog" ? "active" : ""}
@@ -1037,6 +1038,7 @@ export default function OperationContentAdmin({
           </button>
         ) : null}
       </nav>
+      )}
 
       {tab === "catalog" && (
         <>
@@ -1501,7 +1503,9 @@ export default function OperationContentAdmin({
       {tab === "operation" && (
         <>
           <div className="channel-grid">
-            {channels.map((channel, index) => (
+            {channels.filter((channel) => channel.slug !== "store").map((channel) => {
+              const index = channels.indexOf(channel);
+              return (
               <article className="admin-panel" key={channel.slug}>
                 <Store />
                 <h3>{channel.label}</h3>
@@ -1556,7 +1560,8 @@ export default function OperationContentAdmin({
                   <Save /> Atualizar
                 </button>
               </article>
-            ))}
+              );
+            })}
           </div>
           <section className="admin-panel">
             <div className="panel-heading">
