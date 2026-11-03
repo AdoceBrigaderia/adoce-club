@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Clock3, Copy, Droplets, Gift, Heart, MapPin, MessageCircle, Minus, Plus, ShoppingBag, X } from "lucide-react";
+import { ArrowLeft, Check, Clock3, Copy, Droplets, Gift, Heart, MapPin, MessageCircle, Minus, Package, Plus, ShoppingBag, X } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { trackPublicEvent } from "./analytics";
 import { buildOrderWhatsAppMessage, orderWhatsAppUrl, useOrderWhatsAppNumber } from "./order-whatsapp";
@@ -16,6 +16,13 @@ import {
 import "./instant-order.css";
 import "./instant-order-enhancements.css";
 import "./instant-order-empty.css";
+
+export type PickupLocationCard = {
+  name: string;
+  address: string;
+  timeLabel: string;
+  icon: "pin" | "package";
+};
 
 export type InstantOrderFlavor = {
   id: string;
@@ -75,6 +82,7 @@ export default function InstantOrderPanel({
   pickupWindows = null,
   scheduleMessage = "",
   closedTodayLabel,
+  pickupLocationCard,
   pickupLocationSlug = "cantinho-da-adoce",
 }: {
   open: boolean;
@@ -95,6 +103,11 @@ export default function InstantOrderPanel({
   // "finished_today" do serviceState) -- troca o aviso bloqueante genérico
   // pelo texto exato pedido pelo proprietário em 02/11/2026.
   closedTodayLabel?: string;
+  // Card de confirmação (horário + local) mostrado uma vez, bloqueando o
+  // envio, antes de finalizar o pedido -- decisão do proprietário em
+  // 02/11/2026. Ausente quando a retirada de hoje não está aberta (o aviso
+  // bloqueante de abertura/fechamento já cobre esses casos).
+  pickupLocationCard?: PickupLocationCard;
   // Qual pickup_locations.slug vale para os pedidos de hoje -- decidido
   // pela operação (painel "Pedidos online" em AdoceHoje/OnlineOrdersControl),
   // nunca escolhido pela cliente.
@@ -117,6 +130,8 @@ export default function InstantOrderPanel({
   // sessão": se o horário mudou de uma venda pra outra, a cliente precisa
   // ver de novo antes de montar o pedido.
   const [introAcknowledged, setIntroAcknowledged] = useState(false);
+  const [pickupConfirmAcknowledged, setPickupConfirmAcknowledged] = useState(false);
+  const [showPickupConfirm, setShowPickupConfirm] = useState(false);
   const [complementNote, setComplementNote] = useState("");
   const [sameDayMessage, setSameDayMessage] = useState("");
   const [newOrderAware, setNewOrderAware] = useState(false);
@@ -154,6 +169,12 @@ export default function InstantOrderPanel({
   // precisa aparecer de novo antes de qualquer outra ação.
   useEffect(() => {
     if (open) setIntroAcknowledged(false);
+  }, [open]);
+  useEffect(() => {
+    if (open) {
+      setPickupConfirmAcknowledged(false);
+      setShowPickupConfirm(false);
+    }
   }, [open]);
   useEffect(() => {
     if (!open) return;
@@ -576,6 +597,20 @@ export default function InstantOrderPanel({
     event.preventDefault();
     if (!detailsAreReady()) return;
     if (await checkSameDay()) return;
+    if (pickupLocationCard && !pickupConfirmAcknowledged) {
+      setShowPickupConfirm(true);
+      return;
+    }
+    if (needsSauceStep) {
+      setStep("sauces");
+      return;
+    }
+    void submit();
+  };
+
+  const confirmPickupAndContinue = () => {
+    setPickupConfirmAcknowledged(true);
+    setShowPickupConfirm(false);
     if (needsSauceStep) {
       setStep("sauces");
       return;
@@ -633,6 +668,35 @@ export default function InstantOrderPanel({
           <h2>Antes de montar seu pedido</h2>
           <p>{scheduleMessage}</p>
           <button type="button" onClick={() => setIntroAcknowledged(true)}>OK, entendi</button>
+        </div>
+      </div>
+    );
+  }
+  if (showPickupConfirm && pickupLocationCard) {
+    return (
+      <div className="instant-order-layer">
+        <div className="instant-order-backdrop" />
+        <div className="instant-order-pickup-confirm">
+          {pickupLocationCard.icon === "package" ? <Package /> : <MapPin />}
+          <h2>Antes de finalizar seu pedido</h2>
+          <p>Confira onde e quando retirar seu pedido:</p>
+          <div className="instant-order-pickup-confirm-card">
+            <div>
+              <Clock3 />
+              <span>
+                <strong>Horário de retirada</strong>
+                <b>A partir das {pickupLocationCard.timeLabel}</b>
+              </span>
+            </div>
+            <div>
+              {pickupLocationCard.icon === "package" ? <Package /> : <MapPin />}
+              <span>
+                <strong>{pickupLocationCard.name}</strong>
+                <b>{pickupLocationCard.address}</b>
+              </span>
+            </div>
+          </div>
+          <button type="button" onClick={confirmPickupAndContinue}>Entendi, continuar meu pedido</button>
         </div>
       </div>
     );

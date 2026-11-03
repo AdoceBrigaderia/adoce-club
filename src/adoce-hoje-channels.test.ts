@@ -104,6 +104,39 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(page).toContain("pickupState.phase === \"finished_today\" && !pickupPaused");
   });
 
+  it("calcula o horário de abertura para o card de confirmação de retirada", () => {
+    const hours: BusinessHour[] = [
+      {
+        channel_slug: "online_orders",
+        weekday: 2,
+        opens_at: "18:00:00",
+        closes_at: "22:00:00",
+        active: true,
+        note: null,
+      },
+    ];
+    const open = serviceState("pickup", hours, [], {
+      weekday: 2,
+      hour: 19,
+      date: "2026-07-21",
+    });
+    expect(open).toMatchObject({ open: true, openingLabel: "18h" });
+  });
+
+  it("mostra o card de confirmação de retirada (horário + local, lidos de pickup_locations) antes de enviar o pedido", () => {
+    const panel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
+    expect(panel).toContain("Antes de finalizar seu pedido");
+    expect(panel).toContain("Confira onde e quando retirar seu pedido:");
+    expect(panel).toContain("Horário de retirada");
+    expect(panel).toContain("A partir das {pickupLocationCard.timeLabel}");
+    expect(panel).toContain("{pickupLocationCard.name}");
+    expect(panel).toContain("{pickupLocationCard.address}");
+    expect(panel).toContain("Entendi, continuar meu pedido");
+    expect(panel).toContain("if (pickupLocationCard && !pickupConfirmAcknowledged)");
+    expect(page).toContain('from("pickup_locations").select("slug,name,address_text")');
+    expect(page).not.toMatch(/const\s+pickupLocationCard\s*=[\s\S]{0,40}["']Adoce (Fábrica|Barraca)["']/);
+  });
+
   it("não oferece localização do Cantinho da Adoce fechado no atalho móvel", () => {
     expect(page).toContain("Sabores da semana");
     expect(page).toContain('open ? (');

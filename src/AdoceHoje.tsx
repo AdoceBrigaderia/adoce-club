@@ -89,6 +89,11 @@ type Channel = {
   next_change_at: string | null;
   pickup_location_slug: string | null;
 };
+type PickupLocation = {
+  slug: string;
+  name: string;
+  address_text: string | null;
+};
 
 export function sortFlavorsByAvailability<T extends { available: boolean; name: string }>(items: T[]) {
   return [...items].sort(
@@ -344,6 +349,7 @@ export function serviceState(
           ? ("finished_today" as const)
           : ("unavailable" as const),
     closingLabel: finishedToday ? closeHourLabel(lastWindow.end) : undefined,
+    openingLabel: firstWindow ? closeHourLabel(firstWindow.start) : undefined,
     message:
       active?.label ||
       (exception?.closed
@@ -487,6 +493,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
     fallback.map((flavor) => ({ ...flavor, available: false })),
   );
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [pickupLocations, setPickupLocations] = useState<PickupLocation[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHour[]>([]);
   const [hourExceptions, setHourExceptions] = useState<BusinessHourException[]>(
     [],
@@ -562,6 +569,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         { data: weeklyMenuData },
         { data: weekBatchData },
         { data: cakePriceData },
+        { data: pickupLocationData },
       ] = await Promise.all([
         supabase
           .from("flavors")
@@ -618,6 +626,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
             })
           : Promise.resolve({ data: null }),
         supabase.from("commercial_products").select("base_price").eq("slug", "torta-g").maybeSingle(),
+        supabase.from("pickup_locations").select("slug,name,address_text").eq("active", true),
       ]);
       const wholeCakePrice = cakePriceData?.base_price ? Number(cakePriceData.base_price) : undefined;
       if (catalog?.length) {
@@ -660,6 +669,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         );
       }
       if (channelData) setChannels(channelData as Channel[]);
+      if (pickupLocationData) setPickupLocations(pickupLocationData as PickupLocation[]);
       if (hoursData) setBusinessHours(hoursData as BusinessHour[]);
       if (exceptionData)
         setHourExceptions(exceptionData as BusinessHourException[]);
@@ -778,6 +788,22 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
   const pickupClosedTodayLabel =
     pickupState.phase === "finished_today" && !pickupPaused
       ? pickupState.closingLabel
+      : undefined;
+  // Pedido do proprietário em 02/11/2026: antes de enviar o pedido, mostrar
+  // um card de confirmação com o horário e o local de retirada de hoje --
+  // nome/endereço sempre lidos de pickup_locations (fonte única), nunca
+  // copiados ou reescritos aqui.
+  const activePickupLocation = pickupLocations.find(
+    (location) => location.slug === (online?.pickup_location_slug || "cantinho-da-adoce"),
+  );
+  const pickupLocationCard =
+    pickupOpen && activePickupLocation && pickupState.openingLabel
+      ? {
+          name: activePickupLocation.name,
+          address: activePickupLocation.address_text || "",
+          timeLabel: pickupState.openingLabel,
+          icon: (activePickupLocation.slug === "cantinho-da-adoce" ? "pin" : "package") as "pin" | "package",
+        }
       : undefined;
   // Pedido do proprietário em 01/11/2026: terça a sábado, das 17h às 22h, o
   // atendimento presencial já começou e pode atrasar o início da separação
@@ -1375,6 +1401,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         pickupWindows={pickupWindows}
         scheduleMessage={orderPanelScheduleMessage}
         closedTodayLabel={pickupClosedTodayLabel}
+        pickupLocationCard={pickupLocationCard}
         pickupLocationSlug={online?.pickup_location_slug || "cantinho-da-adoce"}
       />
       <WeeklyScheduleDialog
