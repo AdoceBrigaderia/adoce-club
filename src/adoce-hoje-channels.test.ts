@@ -89,8 +89,19 @@ describe("canais independentes do Adoce Hoje", () => {
 
     expect(serviceHeadline("pickup", before)).toBe("A retirada abre mais tarde");
     expect(before.message).toContain("abre hoje às 09:00");
+    expect(before.closingLabel).toBeUndefined();
     expect(serviceHeadline("pickup", after)).toBe("Retirada encerrada hoje");
     expect(after.message).toContain("encerrou o atendimento de hoje às 22:00");
+    expect(after.closingLabel).toBe("22h");
+  });
+
+  it("troca o aviso bloqueante pelo texto exato quando a retirada já encerrou hoje", () => {
+    const panel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
+    expect(panel).toContain("Retiradas encerradas por hoje");
+    expect(panel).toContain("O horário de retirada de pedidos terminou às {closedTodayLabel}.");
+    expect(panel).toContain("Você ainda pode fazer seu pedido para retirada no próximo dia de funcionamento.");
+    expect(panel).toContain("Entendi, continuar");
+    expect(page).toContain("pickupState.phase === \"finished_today\" && !pickupPaused");
   });
 
   it("não oferece localização do Cantinho da Adoce fechado no atalho móvel", () => {

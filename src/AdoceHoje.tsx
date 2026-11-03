@@ -235,6 +235,12 @@ function clockLabel(value: number) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+function closeHourLabel(value: number) {
+  const hours = Math.floor(value);
+  const minutes = Math.round((value - hours) * 60);
+  return minutes ? `${hours}h${String(minutes).padStart(2, "0")}` : `${hours}h`;
+}
+
 function dateAfter(date: string, days: number) {
   const result = new Date(`${date}T12:00:00Z`);
   result.setUTCDate(result.getUTCDate() + days);
@@ -337,6 +343,7 @@ export function serviceState(
         : finishedToday
           ? ("finished_today" as const)
           : ("unavailable" as const),
+    closingLabel: finishedToday ? closeHourLabel(lastWindow.end) : undefined,
     message:
       active?.label ||
       (exception?.closed
@@ -768,6 +775,10 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
     scheduleMessage: pickupState.message,
     pausedMessage: "Retiradas pausadas no momento.",
   });
+  const pickupClosedTodayLabel =
+    pickupState.phase === "finished_today" && !pickupPaused
+      ? pickupState.closingLabel
+      : undefined;
   // Pedido do proprietário em 01/11/2026: terça a sábado, das 17h às 22h, o
   // atendimento presencial já começou e pode atrasar o início da separação
   // das fatias do pedido online -- avisa isso na tela de pedido (nunca na
@@ -1363,6 +1374,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         initialPhone={initialOrderPhone}
         pickupWindows={pickupWindows}
         scheduleMessage={orderPanelScheduleMessage}
+        closedTodayLabel={pickupClosedTodayLabel}
         pickupLocationSlug={online?.pickup_location_slug || "cantinho-da-adoce"}
       />
       <WeeklyScheduleDialog

@@ -74,6 +74,7 @@ export default function InstantOrderPanel({
   initialPhone,
   pickupWindows = null,
   scheduleMessage = "",
+  closedTodayLabel,
   pickupLocationSlug = "cantinho-da-adoce",
 }: {
   open: boolean;
@@ -90,6 +91,10 @@ export default function InstantOrderPanel({
   // bloqueante assim que a tela de pedido abre, antes de qualquer outra
   // ação, e repetir como confirmação no passo final antes de enviar.
   scheduleMessage?: string;
+  // Preenchido só quando a retirada de hoje já encerrou (fase
+  // "finished_today" do serviceState) -- troca o aviso bloqueante genérico
+  // pelo texto exato pedido pelo proprietário em 02/11/2026.
+  closedTodayLabel?: string;
   // Qual pickup_locations.slug vale para os pedidos de hoje -- decidido
   // pela operação (painel "Pedidos online" em AdoceHoje/OnlineOrdersControl),
   // nunca escolhido pela cliente.
@@ -606,6 +611,20 @@ export default function InstantOrderPanel({
 
   if (!open) return null;
   if (scheduleMessage && !introAcknowledged) {
+    if (closedTodayLabel) {
+      return (
+        <div className="instant-order-layer">
+          <div className="instant-order-backdrop" />
+          <div className="instant-order-schedule-intro">
+            <Clock3 />
+            <h2>Retiradas encerradas por hoje</h2>
+            <p>O horário de retirada de pedidos terminou às {closedTodayLabel}.</p>
+            <p>Você ainda pode fazer seu pedido para retirada no próximo dia de funcionamento.</p>
+            <button type="button" onClick={() => setIntroAcknowledged(true)}>Entendi, continuar</button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="instant-order-layer">
         <div className="instant-order-backdrop" />
