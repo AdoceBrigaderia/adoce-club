@@ -194,4 +194,13 @@ describe("canais independentes do Adoce Hoje", () => {
       /\.today-hero-copy > \.today-live,[\s\S]*?\.today-hero-copy > \.today-lead\s*{\s*display:\s*none;/,
     );
   });
+
+  it("troca o aviso bloqueante pelo texto exato quando a retirada está pausada hoje", () => {
+    const panel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
+    expect(panel).toContain("Pedidos encerrados por hoje");
+    expect(panel).toContain("No momento, não estamos recebendo novos pedidos.");
+    expect(panel).toContain("As reservas antecipadas serão liberadas no próximo dia de funcionamento.");
+    expect(panel).toMatch(/if \(pausedTodayNotice\) {[\s\S]*?Pedidos encerrados por hoje/);
+    expect(page).toContain("pausedTodayNotice={pickupPaused}");
+  });
 });

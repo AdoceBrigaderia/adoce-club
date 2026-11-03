@@ -82,6 +82,7 @@ export default function InstantOrderPanel({
   pickupWindows = null,
   scheduleMessage = "",
   closedTodayLabel,
+  pausedTodayNotice = false,
   pickupLocationCard,
   pickupLocationSlug = "cantinho-da-adoce",
 }: {
@@ -103,6 +104,10 @@ export default function InstantOrderPanel({
   // "finished_today" do serviceState) -- troca o aviso bloqueante genérico
   // pelo texto exato pedido pelo proprietário em 02/11/2026.
   closedTodayLabel?: string;
+  // true quando a retirada de hoje está pausada manualmente pela Operação
+  // (online?.status === "paused") -- troca o aviso bloqueante genérico pelo
+  // texto exato pedido pelo proprietário em 02/11/2026.
+  pausedTodayNotice?: boolean;
   // Card de confirmação (horário + local) mostrado uma vez, bloqueando o
   // envio, antes de finalizar o pedido -- decisão do proprietário em
   // 02/11/2026. Ausente quando a retirada de hoje não está aberta (o aviso
@@ -646,6 +651,22 @@ export default function InstantOrderPanel({
 
   if (!open) return null;
   if (scheduleMessage && !introAcknowledged) {
+    if (pausedTodayNotice) {
+      return (
+        <div className="instant-order-layer">
+          <div className="instant-order-backdrop" />
+          <div className="instant-order-schedule-intro">
+            <span className="instant-order-icon-circle">
+              <Clock3 />
+            </span>
+            <h2>Pedidos encerrados por hoje</h2>
+            <p>No momento, não estamos recebendo novos pedidos.</p>
+            <p>As reservas antecipadas serão liberadas no próximo dia de funcionamento.</p>
+            <button type="button" onClick={() => setIntroAcknowledged(true)}>Entendi</button>
+          </div>
+        </div>
+      );
+    }
     if (closedTodayLabel) {
       return (
         <div className="instant-order-layer">
