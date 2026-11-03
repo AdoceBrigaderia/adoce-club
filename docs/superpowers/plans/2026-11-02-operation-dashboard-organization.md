@@ -18,3 +18,7 @@ Preservar destinos dos atalhos, consultas e gravações existentes; nenhuma conf
 ## Verificação
 
 Revisão independente sem achados críticos ou importantes. Comentários antigos da grade atualizados. Validação visual local usa os componentes reais com consultas/gravações simuladas, sem autenticação ou dados pessoais reais. Nenhum deploy, alteração no banco ou comando de impressão real.
+
+## Publicação autorizada
+
+Proprietário autorizou publicação e commit no chat. Commit de implementação `12dec32`, enviado à branch oficial. Deploy de produção `6ae938cc0a4c48538e87959f` publicado em 02/11/2026 às 22h29 de São Paulo. Domínio oficial e arquivos do pacote da Operação conferidos por HTTP e igualdade de conteúdo; painel autenticado ainda requer conferência visual em produção.
