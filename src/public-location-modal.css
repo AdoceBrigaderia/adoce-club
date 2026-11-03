@@ -1,0 +1,135 @@
+.public-location-card {
+  position: relative;
+  max-width: 400px;
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  background: #fff9f3;
+  color: #3b1f12;
+  border-radius: 24px;
+  padding: 30px 22px 24px;
+  text-align: center;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  box-shadow: 0 24px 70px rgba(59, 31, 18, .35);
+}
+.public-location-icon {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #fbe3dd;
+  color: #3b1f12;
+}
+.public-location-icon svg { width: 28px; height: 28px; }
+.public-location-card h3 { margin: 0; font: 700 1.6rem/1.1 'Playfair Display', Georgia, serif; }
+.public-location-subtitle { margin: 0; color: #6a4a3a; font-size: .98rem; }
+.public-location-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 260px;
+  color: #e89a91;
+}
+.public-location-divider span { flex: 1; height: 1px; background: #e89a91; }
+.public-location-divider svg { width: 16px; height: 16px; fill: #e89a91; flex-shrink: 0; }
+.public-location-address {
+  width: 100%;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  text-align: left;
+  background: #fbe3dd;
+  border-radius: 16px;
+  padding: 16px;
+}
+.public-location-address > svg {
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #3b1f12;
+}
+.public-location-address div { display: grid; gap: 2px; }
+.public-location-address strong { font-size: 1.05rem; }
+.public-location-address span { color: #3b1f12; line-height: 1.3; }
+.public-location-address small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: #c2615a;
+  font-weight: 700;
+}
+.public-location-address small svg { width: 13px; height: 13px; flex-shrink: 0; }
+.public-location-question { margin: 0; font-weight: 800; font-size: 1.05rem; }
+.public-location-apps {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.public-location-app {
+  min-height: 44px;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 14px 6px;
+  border: 0;
+  border-radius: 16px;
+  background: #fbe3dd;
+  color: #3b1f12;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: .78rem;
+  cursor: pointer;
+}
+.public-location-app-icon {
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-weight: 900;
+  font-size: .8rem;
+}
+.public-location-app-icon svg { width: 22px; height: 22px; }
+.public-location-app-icon.maps { background: #fff; color: #ea4335; }
+.public-location-app-icon.waze { background: #33ccff; color: #fff; font-size: 1.15rem; }
+.public-location-app-icon.uber { background: #000; color: #fff; font-size: .72rem; letter-spacing: -.02em; }
+.public-location-app-icon.ninety-nine { background: #ffcc00; color: #1a1a1a; font-size: 1rem; }
+.public-location-99-note {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  text-align: left;
+  background: #fbe3dd;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.public-location-99-note svg { width: 18px; height: 18px; flex-shrink: 0; margin-top: 2px; color: #c2615a; }
+.public-location-99-note p { margin: 0; font-size: .85rem; line-height: 1.4; color: #3b1f12; }
+.public-location-copy-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #e89a91;
+  color: #fff;
+  font-weight: 700;
+  font-size: .85rem;
+}
+.public-location-copy-notice svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+@media (max-width: 360px) {
+  .public-location-apps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

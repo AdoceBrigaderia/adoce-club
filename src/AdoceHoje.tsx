@@ -23,6 +23,7 @@ import WeeklyScheduleDialog, { type WeeklyMenuItem } from "./WeeklyScheduleDialo
 import { trackPublicEvent } from "./analytics";
 import InstantOrderPanel from "./InstantOrderPanel";
 import { pickupWindowsForDay } from "./pickup-window";
+import { cantinhoDaAdoceLocation } from "./public-location";
 import PublicCatalogNav from "./PublicCatalogNav";
 import ProductImageViewer, { type ProductImage } from "./ProductImageViewer";
 import SliceAvailabilityAlert from "./SliceAvailabilityAlert";
@@ -471,8 +472,7 @@ const fallback: Flavor[] = [
   },
 ];
 
-const maps =
-  "https://www.google.com/maps/search/?api=1&query=Festival%20de%20Fatias%20Adoce%20Brigaderia";
+const maps = cantinhoDaAdoceLocation.googleMapsUrl;
 
 function Brand() {
   return (
