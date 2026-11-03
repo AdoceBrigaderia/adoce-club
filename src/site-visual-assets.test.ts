@@ -16,7 +16,7 @@ describe("central de imagens institucionais", () => {
       expect(["stretch", "cover", "contain"]).toContain(asset.fitMode);
       expect(SITE_VISUAL_PAGE_LINKS[asset.key]?.length).toBeGreaterThan(0);
       SITE_VISUAL_PAGE_LINKS[asset.key].forEach((destination) => {
-        expect(destination.url).toMatch(/^https:\/\/www\.cantinhodaadoce\.com\.br\/(?:[-a-z]+)?$/);
+        expect(destination.url).toMatch(/^https:\/\/www\.cantinhodaadoce\.com\.br\/(?:[-a-z]+(?:\/[-a-z]+)?)?$/);
       });
     });
   });
@@ -28,25 +28,28 @@ describe("central de imagens institucionais", () => {
     expect(source).toContain('target="_blank"');
   });
 
-  it("só inclui fotos confirmadas ao vivo numa página pública de verdade", () => {
+  it("só inclui fotos confirmadas ao vivo num lugar de verdade (site público ou documento impresso)", () => {
     // Segunda revisão, 03/11/2026: a primeira passada ainda tinha confiado
     // demais em grep de código. Esta usa evidência de DOM ao vivo em
     // produção (ou prova equivalente de que a classe/elemento que usaria a
-    // imagem não existe em nenhum componente).
+    // imagem não existe em nenhum componente). Terceira correção, mesma
+    // data: logo.webp voltou -- não controla o cabeçalho do site, mas é a
+    // logo real do recibo térmico e do PDF de orçamento; removê-la tirava
+    // do proprietário a única forma de trocar essa logo impressa. A
+    // descrição foi corrigida para dizer isso com precisão, em vez de
+    // prometer controle do site.
     const keys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));
     [
+      "/site/logo.webp",
       "/site/clube-convite-pedido.webp",
       "/site/adoce-hoje-retirada-ilustracao.webp",
       "/site/adoce-hoje-barraquinha-ilustracao.webp",
     ].forEach((key) => expect(keys.has(key), key).toBe(true));
-    expect(keys.size).toBe(3);
+    expect(keys.size).toBe(4);
     // Removidas na primeira passada em 03/11/2026 (Página inicial, Pede
     // Junto Adoce, Política de pedidos) -- continuam fora.
-    // Removidas na segunda passada, mesma data, por terem função zero numa
-    // página pública de verdade (confirmado ao vivo, não só por grep):
-    // - logo.webp: o cabeçalho público usa /brand-2026/logo-*.png; este só
-    //   aparece em recibo térmico e PDF de orçamento (documentos impressos,
-    //   não uma foto "do site").
+    // Removidas na segunda passada, mesma data, por terem função zero em
+    // qualquer lugar (confirmado ao vivo, não só por grep):
     // - hero-cake.webp: a classe CSS que o usaria (.access-auth-copy) não
     //   existe em nenhum componente -- confirmado que o elemento não existe
     //   no DOM de /entrar em produção.
@@ -67,19 +70,25 @@ describe("central de imagens institucionais", () => {
       "/site/adoce-hoje-exemplo-desktop.png",
       "/site/adoce-hoje-exemplo-mobile.png",
       "/site/politica-de-pedidos.jpeg",
-      "/site/logo.webp",
       "/site/hero-cake.webp",
       "/adoce-hoje/sabores-hoje.webp",
     ].forEach((key) => expect(keys.has(key), key).toBe(false));
   });
 
-  it("confirma que o logo público não depende da Central de imagens (/site/logo.webp)", () => {
+  it("descreve a logo com precisão: impressos, não cabeçalho do site", () => {
     const header = readFileSync(new URL("./PublicHeader.tsx", import.meta.url), "utf8");
     const topBar = readFileSync(new URL("./PublicTopBar.tsx", import.meta.url), "utf8");
     expect(header).toContain("/brand-2026/logo-adoce-transparente.png");
     expect(topBar).toContain("/brand-2026/logo-cantinho-adoce.png");
     expect(header).not.toContain("/site/logo.webp");
     expect(topBar).not.toContain("/site/logo.webp");
+    const ficha = readFileSync(new URL("./FichaTermica.tsx", import.meta.url), "utf8");
+    const quote = readFileSync(new URL("./RequestQuoteDocument.tsx", import.meta.url), "utf8");
+    expect(ficha).toContain("/site/logo.webp");
+    expect(quote).toContain("/site/logo.webp");
+    const logo = SITE_VISUAL_ASSETS.find((asset) => asset.key === "/site/logo.webp");
+    expect(logo?.description).toContain("recibo térmico");
+    expect(logo?.description).not.toContain("Cabeçalhos, rodapés, operação e compartilhamentos");
   });
 
   it("confirma que .access-auth-copy (hero-cake.webp) não existe em nenhum componente", () => {
