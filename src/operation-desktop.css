@@ -1,24 +1,5 @@
 /* Organização de desktop; navegação permanece em operation-shell.css. */
 @media (min-width: 1280px) {
-  .operation-home .operation-dashboard-v4 {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
-    grid-template-areas: "heading heading" "heroes status" "priority whatsapp" "metrics metrics" "shortcuts printer";
-    gap: 20px;
-  }
-  .operation-home .operation-dashboard-v4:has(> .operation-dashboard-notice) {
-    grid-template-areas: "heading heading" "notice notice" "heroes status" "priority whatsapp" "metrics metrics" "shortcuts printer";
-  }
-  .operation-home .operation-dashboard-heading { grid-area: heading; }
-  .operation-home .operation-dashboard-notice { grid-area: notice; }
-  .operation-home .operation-dashboard-heroes { grid-area: heroes; }
-  .operation-home .operation-dashboard-v4 .operation-device-status { grid-area: status; margin: 0; align-content: center; }
-  .operation-home .operation-dashboard-priority { grid-area: priority; margin: 0; }
-  .operation-home .operation-dashboard-whatsapp { grid-area: whatsapp; margin: 0; }
-  .operation-home .operation-dashboard-metrics { grid-area: metrics; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .operation-home .operation-dashboard-shortcuts { grid-area: shortcuts; margin: 0; }
-  .operation-home .operation-dashboard-v4 > .native-printer-settings { grid-area: printer; margin: 0; align-content: center; }
-  .operation-home .operation-dashboard-heroes button { min-height: 126px; }
   .operation-home .operation-management { max-width: none; }
   .operation-home .operation-management .mg-grid-2 { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
   .operation-home .operation-management .mg-kpis { gap: 16px; }
@@ -38,7 +19,6 @@
   .operation-home .commerce-settings-grid .commerce-tool-card > label { max-width: 680px; }
 }
 @media (min-width: 1600px) {
-  .operation-home .operation-dashboard-metrics { grid-template-columns: repeat(7, minmax(0, 1fr)); }
   .operation-home .commerce-settings-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .operation-home .commerce-settings-grid > .commerce-tool-card:last-child { grid-column: 1 / -1; }
   .operation-home .payment-method-settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }

@@ -37,11 +37,7 @@
 .operation-dashboard-priority small { font-size: .78rem; text-transform: uppercase; letter-spacing: .1em; }
 .operation-dashboard-priority strong { color: #ff746e; font: 700 2rem/1 'Playfair Display',Georgia,serif; }
 .operation-dashboard-priority p { margin: 0; color: #f5d9d0; }
-/* Pedido do proprietário em 02/11/2026: métricas e atalhos juntos num grid
-   só (antes eram duas tiras separadas, cada uma forçando a própria largura
-   de coluna e deixando vão vazio entre elas). Cartões compactos que se
-   ajeitam sozinhos conforme o espaço disponível, sem depender de contagem
-   fixa de colunas por breakpoint. */
+/* Grade base dos indicadores; a organização responsiva atual está no painel v5. */
 .operation-dashboard-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .65rem; align-items: start; }
 .operation-dashboard-grid > button {
   min-height: 5.5rem;
@@ -63,10 +59,6 @@
 .operation-dashboard-grid span { display: grid; gap: .15rem; min-width: 0; }
 .operation-dashboard-grid strong { color: #ef6763; font: 700 1.5rem/1.1 'Playfair Display',Georgia,serif; min-width: 0; overflow-wrap: break-word; }
 .operation-dashboard-grid small { color: #8e5c50; font-size: .76rem; line-height: 1.3; min-width: 0; }
-/* O botão de imprimir pendentes é o único que não é um <button> simples
-   (tem descrição + ação própria dentro) -- ocupa a própria célula sem
-   esticar pra combinar com os vizinhos menores. */
-.operation-dashboard-grid > .native-printer-settings { margin: 0; }
 @media (max-width: 680px) {
   .operation-dashboard-heading, .operation-dashboard-priority { align-items: flex-start; flex-direction: column; }
   .operation-dashboard-heading button { width: 100%; justify-content: center; }
@@ -158,4 +150,73 @@
 
 @media (min-width: 1024px) {
   .operation-dashboard-v4 .operation-dashboard-shortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Painel Hoje: ordem de leitura única, sem áreas implícitas de desktop. */
+.operation-home .operation-dashboard.operation-dashboard-v5 {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.operation-dashboard.operation-dashboard-v5 > * { order: 0; grid-area: auto; min-width: 0; }
+.operation-dashboard-v5 .operation-dashboard-heading h1 { font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.15; }
+.operation-dashboard-v5 .operation-dashboard-heading { display: flex; flex-direction: column; align-items: stretch; }
+.operation-dashboard-v5 .operation-dashboard-heading button { width: 100%; min-width: 44px; min-height: 44px; height: auto; padding: 12px 16px; overflow: visible; font-size: .85rem; }
+.operation-dashboard-v5 .operation-dashboard-heading button span { font-size: .75rem; }
+.operation-dashboard-v5 .operation-dashboard-heading button svg { margin: 0; flex: 0 0 auto; }
+.operation-dashboard-v5 .operation-device-status { margin: 0; }
+.operation-dashboard-v5 .operation-dashboard-heroes button { min-height: 88px; border-radius: 16px; padding: 16px; }
+.operation-dashboard-v5 .operation-dashboard-heroes strong { font: 750 1.1rem/1.3 var(--font-body, Inter, system-ui, sans-serif); }
+.operation-dashboard-v5 .operation-dashboard-heroes small { display: block; margin-top: 4px; font-size: .85rem; }
+.operation-dashboard-v5 .operation-dashboard-heroes svg { width: 24px; height: 24px; }
+.operation-dashboard-attention { display: grid; gap: 12px; min-width: 0; }
+.operation-dashboard-v5 .operation-dashboard-attention > * { order: 0; grid-area: auto; min-width: 0; }
+.operation-dashboard-v5 .operation-dashboard-priority { flex-direction: column; align-items: stretch; padding: 16px; gap: 12px; }
+.operation-dashboard-v5 .operation-dashboard-priority > div { justify-content: space-between; }
+.operation-dashboard-v5 .operation-dashboard-priority > div > svg { width: 20px; }
+.operation-dashboard-v5 .operation-dashboard-priority span { flex: 1; justify-content: space-between; }
+.operation-dashboard-v5 .operation-dashboard-priority small { font-size: .75rem; letter-spacing: .04em; }
+.operation-dashboard-v5 .operation-dashboard-priority strong { font: 750 1.3rem/1.2 var(--font-body, Inter, system-ui, sans-serif); }
+.operation-dashboard-v5 .operation-dashboard-priority ul { flex: none; }
+.operation-dashboard-v5 .operation-dashboard-priority p { font-size: .9rem; }
+.operation-dashboard-v5 .operation-dashboard-whatsapp { margin: 0; min-width: 0; }
+.operation-dashboard-v5 .operation-dashboard-whatsapp small { font-size: .85rem; }
+.operation-dashboard-section-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; margin-bottom: 12px; }
+.operation-dashboard-section-heading h2 { margin: 0; color: #351b13; font: 750 1.05rem/1.4 var(--font-body, Inter, system-ui, sans-serif); }
+.operation-dashboard-section-heading > span { color: #73574c; font-size: .8rem; }
+.operation-dashboard-v5 .operation-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 10px; }
+.operation-dashboard-v5 .operation-dashboard-grid > button { min-width: 0; min-height: 108px; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 14px; position: relative; }
+.operation-dashboard-v5 .operation-dashboard-grid > button > svg:first-child { grid-column: 2; grid-row: 1; color: #927569; width: 18px; height: 18px; }
+.operation-dashboard-v5 .operation-dashboard-grid > button > span { grid-column: 1; grid-row: 1 / 3; gap: 8px; }
+.operation-dashboard-v5 .operation-dashboard-grid > button > svg:last-child { grid-column: 2; grid-row: 2; align-self: end; }
+.operation-dashboard-v5 .operation-dashboard-grid strong { font: 750 1.85rem/1 var(--font-body, Inter, system-ui, sans-serif); color: #44271c; overflow-wrap: normal; }
+.operation-dashboard-v5 .operation-dashboard-grid small { font-size: .8rem; color: #73574c; line-height: 1.4; }
+.operation-dashboard-v5 .operation-dashboard-grid .is-warning strong { color: #a44f1b; }
+.operation-dashboard-tools-grid { display: grid; gap: 10px; }
+.operation-dashboard-tools-grid > button { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 86px; padding: 16px; border: 1px solid #ead1c3; border-radius: 16px; background: #fffdfb; color: #44271c; text-align: left; }
+.operation-dashboard-tools-grid > button > svg { width: 21px; height: 21px; }
+.operation-dashboard-tools-grid > button > svg:last-child { width: 17px; color: #927569; }
+.operation-dashboard-tools-grid span { display: grid; gap: 5px; min-width: 0; }
+.operation-dashboard-tools-grid strong { font: 750 .95rem/1.3 var(--font-body, Inter, system-ui, sans-serif); }
+.operation-dashboard-tools-grid small { color: #73574c; font-size: .8rem; line-height: 1.4; }
+.operation-dashboard-v5 .native-printer-settings { margin: 12px 0 0; min-width: 0; }
+.operation-dashboard-v5 .native-printer-settings strong { font: 750 .95rem/1.4 var(--font-body, Inter, system-ui, sans-serif); }
+.operation-dashboard-v5 .native-printer-settings small { font-size: .8rem; line-height: 1.5; }
+.operation-dashboard-v5 button { cursor: pointer; }
+.operation-dashboard-v5 button:disabled { cursor: wait; }
+.operation-dashboard-v5 button:focus-visible, .operation-dashboard-v5 summary:focus-visible { outline: 3px solid #a44f1b; outline-offset: 3px; }
+@media (min-width: 640px) {
+  .operation-dashboard-v5 .operation-dashboard-heading { flex-direction: row; align-items: center; }
+  .operation-dashboard-v5 .operation-dashboard-heading button { width: auto; flex-shrink: 0; }
+  .operation-dashboard-tools-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .operation-dashboard-v5 .operation-dashboard-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .operation-dashboard-attention { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: stretch; }
+  .operation-dashboard-v5 .operation-dashboard-priority ul { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .operation-dashboard-v5 .operation-dashboard-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .operation-dashboard-v5 .native-printer-settings { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
+}
+@media (min-width: 1440px) {
+  .operation-dashboard-v5 .operation-dashboard-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }

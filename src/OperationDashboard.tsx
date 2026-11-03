@@ -229,7 +229,7 @@ export default function OperationDashboard({
   const devicesOffline = !tabletOnline || !printerOnline;
 
   return (
-    <section className="operation-dashboard operation-dashboard-v4">
+    <section className="operation-dashboard operation-dashboard-v4 operation-dashboard-v5">
       <header className="operation-dashboard-heading">
         <div>
           <span>Visão do dia</span>
@@ -255,6 +255,8 @@ export default function OperationDashboard({
         {deviceStale && deviceStatus ? <small>Sem contato com o tablet desde {new Date(deviceStatus.last_seen_at).toLocaleTimeString("pt-BR")}. Confira se o tablet do balcão está ligado, com internet e com o app aberto.</small> : null}
       </div>
 
+      <OnlineOrdersControl />
+
       <div className="operation-dashboard-heroes">
         <button type="button" className="operation-hero-sale" onClick={() => onNavigate("sales")}>
           <ShoppingCart />
@@ -274,6 +276,7 @@ export default function OperationDashboard({
         </button>
       </div>
 
+      <div className="operation-dashboard-attention" aria-label="Atenção e atendimento">
       <div className={attentionItems.length ? "operation-dashboard-priority has-items" : "operation-dashboard-priority"}>
         <div>
           <AlertTriangle aria-hidden="true" />
@@ -302,12 +305,14 @@ export default function OperationDashboard({
         <ArrowRight aria-hidden="true" />
       </button>
 
-      <OnlineOrdersControl />
+      </div>
 
-      {/* Pedido do proprietário em 02/11/2026: métricas e atalhos juntos
-          num grid só, pra aproveitar o espaço em vez de duas tiras
-          separadas com vão vazio entre elas. */}
-      <div className="operation-dashboard-grid">
+      <section className="operation-dashboard-summary" aria-labelledby="dashboard-summary-title">
+        <div className="operation-dashboard-section-heading">
+          <h2 id="dashboard-summary-title">Resumo do dia</h2>
+          <span>Toque em um número para ver os detalhes</span>
+        </div>
+      <div className="operation-dashboard-grid" aria-busy={busy}>
         <button
           type="button"
           onClick={() => onNavigate("availability")}
@@ -330,11 +335,21 @@ export default function OperationDashboard({
         <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>{data.activeRequests}</strong><small>encomendas em aberto</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("customers")}><Users /><span><strong>{data.members}</strong><small>clientes cadastrados</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("low-stock")} className={data.lowStock ? "is-warning" : ""}><AlertTriangle /><span><strong>{data.lowStock}</strong><small>itens com estoque baixo</small></span><ArrowRight /></button>
+      </div>
+      </section>
+
+      <section className="operation-dashboard-tools" aria-labelledby="dashboard-tools-title">
+        <div className="operation-dashboard-section-heading">
+          <h2 id="dashboard-tools-title">Atalhos da operação</h2>
+          <span>Produção, pedidos e impressão</span>
+        </div>
+        <div className="operation-dashboard-tools-grid">
         <button type="button" onClick={() => onNavigate("requests")}><PackageCheck /><span><strong>Encomendas</strong><small>Pedidos futuros e retiradas</small></span><ArrowRight /></button>
         <button type="button" onClick={() => onNavigate("availability")}><PackageCheck /><span><strong>Produção de hoje</strong><small>Liberar sabores e quantidades</small></span><ArrowRight /></button>
-        <button type="button" onClick={() => onNavigate("painel-do-dia")}><LayoutDashboard /><span><strong>Painel do dia (novo)</strong><small>Visão única: ações, sabores e pedidos</small></span><ArrowRight /></button>
+        <button type="button" onClick={() => onNavigate("painel-do-dia")}><LayoutDashboard /><span><strong>Painel do dia</strong><small>Visão única: ações, sabores e pedidos</small></span><ArrowRight /></button>
+        </div>
         <RemotePrintTrigger />
-      </div>
+      </section>
     </section>
   );
 }

@@ -240,3 +240,44 @@
   font-weight: 800 !important;
 }
 .online-orders-primary:disabled { opacity: 0.6; }
+
+/* Resumo salvo e editor recolhido: abrir/fechar não grava configuração. */
+.online-orders-control { min-width: 0; gap: 14px; }
+.online-orders-live h3 { margin: 0; display: flex; align-items: center; gap: 6px; color: #765447; font: 700 .75rem/1.4 var(--font-body, Inter, system-ui, sans-serif); }
+.online-orders-live h3 svg { width: 16px; height: 16px; flex-shrink: 0; }
+.online-orders-live dt { color: #765447; }
+.online-orders-live dd { overflow-wrap: anywhere; }
+.online-orders-settings { border-top: 1px solid #ead6c8; padding-top: 2px; min-width: 0; }
+.online-orders-settings > summary { min-height: 60px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; cursor: pointer; list-style: none; color: #44271c; padding: 12px 0; }
+.online-orders-settings > summary::-webkit-details-marker { display: none; }
+.online-orders-settings > summary > svg { width: 20px; height: 20px; flex-shrink: 0; }
+.online-orders-settings > summary > span { display: grid; gap: 4px; flex: 1; min-width: 160px; }
+.online-orders-settings > summary strong { font: 750 .9rem/1.4 var(--font-body, Inter, system-ui, sans-serif); }
+.online-orders-settings > summary small { font-size: .78rem; color: #765447; }
+.online-orders-settings > summary b { font-size: .72rem; font-weight: 700; color: #89501c; background: #fff0d8; border-radius: 8px; padding: 6px 8px; }
+.online-orders-settings[open] > summary > svg:last-child { transform: rotate(180deg); }
+.online-orders-settings-body { display: grid; gap: 18px; padding: 4px 0 2px; min-width: 0; }
+.online-orders-settings-body > .online-orders-field { min-width: 0; align-content: start; border: 1px solid #ead6c8; border-radius: 14px; padding: 14px; gap: 10px; }
+.online-orders-settings-body h3 { margin: 0 0 2px; color: #44271c; font: 750 .95rem/1.4 var(--font-body, Inter, system-ui, sans-serif); display: flex; align-items: center; gap: 6px; }
+.online-orders-settings-body h3 svg { width: 17px; height: 17px; }
+.online-orders-settings-body .online-orders-preset-list { display: grid; grid-template-columns: minmax(0, 1fr); }
+.online-orders-settings-body .online-orders-preset-card { display: grid; padding: 12px; min-width: 0; }
+.online-orders-settings-body .online-orders-preset-card span { overflow-wrap: anywhere; }
+.online-orders-settings-body .online-orders-field input,
+.online-orders-settings-body .online-orders-field select { min-width: 0; max-width: 100%; }
+.online-orders-settings-body .online-orders-date-chips input { flex: 1 1 150px; min-height: 44px; }
+.online-orders-settings-body .online-orders-time-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6px; }
+.online-orders-settings-body .online-orders-time-row input[type="time"] { width: 100%; min-width: 0; font: inherit; font-size: .85rem; padding: 0 4px; }
+.online-orders-settings-body .online-orders-hint { color: #765447; line-height: 1.5; }
+.online-orders-unsaved { color: #89501c; font-size: .78rem; line-height: 1.4; }
+.online-orders-settings-body .online-orders-primary { min-height: 44px; justify-content: center; }
+.online-orders-settings-body .online-orders-preview { grid-column: 1 / -1; }
+.online-orders-control header h2 { font: 750 1.4rem/1.3 var(--font-body, Inter, system-ui, sans-serif); }
+.online-orders-control header small { color: #765447; }
+.online-orders-control .online-toggle { min-height: 44px; }
+@media (min-width: 900px) {
+  .online-orders-settings-body { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+  .online-orders-live dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .online-orders-live dl > div { display: grid; gap: 4px; }
+  .online-orders-live dd { text-align: left; }
+}

@@ -6,6 +6,15 @@ status: Em implementação prioritária
 
 # Operação e administração
 
+## 02/11/2026 — reorganização local do painel Hoje
+
+O painel passa a exibir a situação dos pedidos online e o resumo salvo no site no topo. O editor de local de retirada, mensagem e horários especiais fica recolhido em **Ajustar retirada, mensagem e horários**. Abrir ou fechar esse editor não salva nem descarta o rascunho; alterações pendentes recebem uma indicação própria. O resumo **Como está no site agora** continua consultando somente os valores já salvos.
+
+Pendências e WhatsApp ficam agrupados, seguidos por **Resumo do dia** com indicadores numéricos uniformes e **Atalhos da operação** com produção, encomendas e painel do dia. A impressão de pendentes mantém sua ação própria. A estrutura é contínua em celular, tablet e computador, sem as áreas implícitas da grade antiga de desktop. Consultas, destinos de navegação e ações de gravação existentes são preservados.
+
+Estado: validado automaticamente (`release:check`: 1.000 testes aprovados, 1 ignorado, tipos e compilação aprovados) e visualmente em ambiente local com dados fictícios, nos tamanhos de computador (1440 px), tablet (800 px) e celular (390 px). Conferidos abertura/fechamento do editor, rascunho separado dos valores salvos, salvamento simulado, horário de amanhã, estados de carregamento, vazio e erro, ausência de rolagem lateral e console. A primeira tentativa no navegador interno ficou em branco; a conferência foi realizada no Brave conectado. Não foram executadas gravações reais ou impressão física. Publicação e validação em produção dependem de autorização do proprietário.
+
+
 ## Planejamento compartilhado de compras — 11/10/2026
 
 O planejamento mantém as quantidades de tortas G por sabor e por dia, em semanas independentes de segunda-feira a domingo. A tabela mostra sabor, sete dias com suas datas, total por sabor e total de cada dia. O menu **Selecionar semana** apresenta semanas completas agrupadas por mês e ano, como **Outubro — semana 1 · 05/10 a 11/10** e **Outubro — semana 2 · 12/10 a 18/10**. A semana pertence ao mês de sua segunda-feira; o intervalo continua completo quando atravessa o mês ou o ano. É possível voltar à semana vigente, avançar e programar semanas futuras. Cada semana fica salva até a gestão alterá-la. **Copiar semana anterior como modelo** transfere sabores, quantidades e extras para os dias equivalentes, sem sobrescrever uma semana já cadastrada e sem copiar o estoque informado. Quantidades antigas ainda sem dia aparecem como **A distribuir** e são distribuídas ao preencher dias, sem duplicar o total. Quantidades, seleção, extras e estoque informado são compartilhados no banco entre os aparelhos da gestão; alterações de campos diferentes preservam uma à outra. A tela informa carregamento, salvamento e falhas, atualiza o planejamento a cada cinco segundos e ao retornar à janela. Os dados são exclusivos de proprietários e gerentes. O estoque informado serve ao planejamento, sem alterar o estoque operacional.

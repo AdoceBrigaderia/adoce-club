@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Clock3, MapPin, MessageCircle, Power, Save, Eye } from "lucide-react";
+import { Check, Clock3, MapPin, MessageCircle, Power, Save, Eye, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { requireSupabase } from "./lib/supabase";
 import { serviceState, type BusinessHour, type BusinessHourException } from "./AdoceHoje";
 import { serviceStatusMessage } from "./service-status";
@@ -228,9 +228,22 @@ export default function OnlineOrdersControl() {
   }, [exceptions, hours, today]);
 
   const online = !paused;
+  const messageChanged = Boolean(channel) && (
+    draftMessage.trim() !== (channel?.message || "") ||
+    draftLocationSlug !== (channel?.pickup_location_slug || "cantinho-da-adoce")
+  );
+  const savedException = exceptions.find((item) => item.service_date === selectedDate);
+  const timeChanged = useTimeToday !== Boolean(savedException && !savedException.closed) || (
+    useTimeToday && (
+      opensAt !== (hhmm(savedException?.opens_at || null) || "09:00") ||
+      closesAt !== (hhmm(savedException?.closes_at || null) || "20:00") ||
+      timeNote.trim() !== (savedException?.message || "")
+    )
+  );
+  const hasUnsavedChanges = messageChanged || timeChanged;
 
   return (
-    <section className="online-orders-control">
+    <section className="online-orders-control" aria-label="Situação dos pedidos online">
       <header>
         <div>
           <small>Pedidos online · {dataHojeExtenso()}</small>
@@ -244,19 +257,29 @@ export default function OnlineOrdersControl() {
 
       {notice ? <p className="online-orders-notice" role="status"><Check /> {notice}</p> : null}
 
-      <details className="online-orders-live" open>
-        <summary><Eye /> Em produção agora — o que o cliente está recebendo</summary>
+      <div className="online-orders-live">
+        <h3><Eye aria-hidden="true" /> Como está no site agora</h3>
         <p className="online-orders-live-message">{loading ? "Carregando…" : liveMessage || "Nenhuma mensagem definida."}</p>
         <dl>
           <div><dt>Local de retirada</dt><dd>{liveLocation?.name || channel?.pickup_location_slug || "—"}</dd></div>
           <div><dt>Horário aceitando pedidos hoje</dt><dd>{paused ? "Pausado manualmente" : horarioHojeTexto}</dd></div>
         </dl>
-      </details>
+      </div>
 
+      <details className="online-orders-settings">
+        <summary>
+          <SlidersHorizontal aria-hidden="true" />
+          <span><strong>Ajustar retirada, mensagem e horários</strong><small>Abra para editar as configurações dos pedidos</small></span>
+          {hasUnsavedChanges ? <b>Alterações não salvas</b> : null}
+          <ChevronDown aria-hidden="true" />
+        </summary>
+        <div className="online-orders-settings-body">
       <div className="online-orders-field">
+        <h3>Local e mensagem</h3>
         <span><MapPin /> Local de retirada de hoje</span>
         <select
           className="online-orders-location-select"
+          aria-label="Local de retirada de hoje"
           value={draftLocationSlug}
           onChange={(e) => setDraftLocationSlug(e.target.value)}
           disabled={busy}
@@ -283,6 +306,7 @@ export default function OnlineOrdersControl() {
         </div>
         <textarea
           className="online-orders-message-box"
+          aria-label="Mensagem para quem acessar o pedido"
           maxLength={160}
           rows={2}
           placeholder="Ex.: Hoje só recebemos pedidos até às 18h."
@@ -291,25 +315,28 @@ export default function OnlineOrdersControl() {
           disabled={busy}
         />
         <small className="online-orders-hint">Só aparece pro cliente com os pedidos ligados e dentro do horário de hoje. Escolher uma mensagem pronta já ajusta o local acima junto.</small>
+        {messageChanged ? <small className="online-orders-unsaved">Local e mensagem com alterações ainda não salvas.</small> : null}
         <button type="button" className="online-orders-primary" onClick={() => void saveMessage()} disabled={busy}><Save /> Salvar mensagem e local</button>
       </div>
 
       <div className="online-orders-field">
-        <span><Clock3 /> Horário especial -- qualquer dia, não só hoje</span>
+        <h3><Clock3 aria-hidden="true" /> Horário especial</h3>
+        <small className="online-orders-hint">Escolha hoje, amanhã ou outra data.</small>
         <div className="online-orders-date-chips">
           <button type="button" className={selectedDate === today ? "is-selected" : ""} onClick={() => setSelectedDate(today)} disabled={busy}>Hoje</button>
           <button type="button" className={selectedDate === somaDias(today, 1) ? "is-selected" : ""} onClick={() => setSelectedDate(somaDias(today, 1))} disabled={busy}>Amanhã</button>
-          <input type="date" min={today} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value || today)} disabled={busy} />
+          <input type="date" aria-label="Data do horário especial" min={today} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value || today)} disabled={busy} />
         </div>
         <div className="online-orders-time-row">
           <input type="checkbox" checked={useTimeToday} onChange={(e) => setUseTimeToday(e.target.checked)} disabled={busy} aria-label={`Definir horário especial para ${rotuloData(selectedDate, today)}`} />
-          <input type="time" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} disabled={busy || !useTimeToday} />
+          <input type="time" aria-label="Início do horário especial" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} disabled={busy || !useTimeToday} />
           <span>até</span>
-          <input type="time" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} disabled={busy || !useTimeToday} />
+          <input type="time" aria-label="Fim do horário especial" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} disabled={busy || !useTimeToday} />
         </div>
         {useTimeToday ? (
           <input
             className="online-orders-time-note"
+            aria-label="Mensagem do horário especial"
             type="text"
             placeholder="Mensagem do horário (opcional)"
             maxLength={160}
@@ -318,6 +345,7 @@ export default function OnlineOrdersControl() {
             disabled={busy}
           />
         ) : null}
+        {timeChanged ? <small className="online-orders-unsaved">Horário com alterações ainda não salvas.</small> : null}
         <button type="button" className="online-orders-primary" onClick={() => void saveTime()} disabled={busy}><Save /> Salvar horário de {rotuloData(selectedDate, today)}</button>
       </div>
 
@@ -325,6 +353,8 @@ export default function OnlineOrdersControl() {
         <summary><Eye /> Pré-visualização de hoje (com o que ainda não foi salvo)</summary>
         <p>{previewMessage}</p>
         {selectedDate !== today ? <small className="online-orders-hint">O horário especial que você está editando é de {rotuloData(selectedDate, today)} -- essa prévia só mostra hoje.</small> : null}
+      </details>
+        </div>
       </details>
     </section>
   );
