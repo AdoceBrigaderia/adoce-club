@@ -1503,7 +1503,12 @@ export default function OperationContentAdmin({
       {tab === "operation" && (
         <>
           <div className="channel-grid">
-            {channels.filter((channel) => channel.slug !== "store").map((channel) => {
+            {/* "preorders" (Encomendas) fica de fora: status/mensagem desse
+                canal nunca são lidos em lugar nenhum -- só os horários
+                recorrentes dele valem, e esses continuam editáveis abaixo,
+                no formulário de Horários recorrentes. Confirmado em
+                03/11/2026 varrendo todo uso de "preorders" no código. */}
+            {channels.filter((channel) => channel.slug === "in_person" || channel.slug === "online_orders").map((channel) => {
               const index = channels.indexOf(channel);
               return (
               <article className="admin-panel" key={channel.slug}>

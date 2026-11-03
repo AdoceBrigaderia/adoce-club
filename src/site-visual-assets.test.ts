@@ -21,11 +21,6 @@ describe("central de imagens institucionais", () => {
     });
   });
 
-  it("define a foto de apoio do Clube como um corte 4:3 de preenchimento", () => {
-    const hero = SITE_VISUAL_ASSETS.find((asset) => asset.key === "/site/hero-cake.webp");
-    expect(hero).toMatchObject({ aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" });
-  });
-
   it("mostra na central a URL clicável de cada página que usa a imagem", () => {
     const source = readFileSync(new URL("./OperationVisualSettings.tsx", import.meta.url), "utf8");
     expect(source).toContain("SITE_VISUAL_PAGE_LINKS[definition.key].map");
@@ -33,19 +28,30 @@ describe("central de imagens institucionais", () => {
     expect(source).toContain('target="_blank"');
   });
 
-  it("só inclui fotos que algum componente do site realmente usa hoje", () => {
+  it("só inclui fotos confirmadas ao vivo numa página pública de verdade", () => {
+    // Segunda revisão, 03/11/2026: a primeira passada ainda tinha confiado
+    // demais em grep de código. Esta usa evidência de DOM ao vivo em
+    // produção (ou prova equivalente de que a classe/elemento que usaria a
+    // imagem não existe em nenhum componente).
     const keys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));
     [
-      "/site/logo.webp",
       "/site/clube-convite-pedido.webp",
-      "/site/hero-cake.webp",
       "/site/adoce-hoje-retirada-ilustracao.webp",
       "/site/adoce-hoje-barraquinha-ilustracao.webp",
-      "/adoce-hoje/sabores-hoje.webp",
     ].forEach((key) => expect(keys.has(key), key).toBe(true));
-    // Removidas em 03/11/2026 por não serem renderizadas em nenhuma página:
-    // a Home não usa mais nenhuma foto fixa, a política de pedidos é só
-    // texto, e o Pede Junto foi desativado (sem rota no site).
+    expect(keys.size).toBe(3);
+    // Removidas na primeira passada em 03/11/2026 (Página inicial, Pede
+    // Junto Adoce, Política de pedidos) -- continuam fora.
+    // Removidas na segunda passada, mesma data, por terem função zero numa
+    // página pública de verdade (confirmado ao vivo, não só por grep):
+    // - logo.webp: o cabeçalho público usa /brand-2026/logo-*.png; este só
+    //   aparece em recibo térmico e PDF de orçamento (documentos impressos,
+    //   não uma foto "do site").
+    // - hero-cake.webp: a classe CSS que o usaria (.access-auth-copy) não
+    //   existe em nenhum componente -- confirmado que o elemento não existe
+    //   no DOM de /entrar em produção.
+    // - sabores-hoje.webp: só aparece quando um sabor ativo não tem foto
+    //   própria; hoje nenhum sabor ativo está nessa situação.
     [
       "/site/trufado-de-ninho-home-20260803.png",
       "/site/beth-fundadora.png",
@@ -61,7 +67,24 @@ describe("central de imagens institucionais", () => {
       "/site/adoce-hoje-exemplo-desktop.png",
       "/site/adoce-hoje-exemplo-mobile.png",
       "/site/politica-de-pedidos.jpeg",
+      "/site/logo.webp",
+      "/site/hero-cake.webp",
+      "/adoce-hoje/sabores-hoje.webp",
     ].forEach((key) => expect(keys.has(key), key).toBe(false));
+  });
+
+  it("confirma que o logo público não depende da Central de imagens (/site/logo.webp)", () => {
+    const header = readFileSync(new URL("./PublicHeader.tsx", import.meta.url), "utf8");
+    const topBar = readFileSync(new URL("./PublicTopBar.tsx", import.meta.url), "utf8");
+    expect(header).toContain("/brand-2026/logo-adoce-transparente.png");
+    expect(topBar).toContain("/brand-2026/logo-cantinho-adoce.png");
+    expect(header).not.toContain("/site/logo.webp");
+    expect(topBar).not.toContain("/site/logo.webp");
+  });
+
+  it("confirma que .access-auth-copy (hero-cake.webp) não existe em nenhum componente", () => {
+    const access = readFileSync(new URL("./AccessApp.tsx", import.meta.url), "utf8");
+    expect(access).not.toContain("access-auth-copy");
   });
 
   it("mantém RLS e escrita restrita a gerentes na migração", () => {

@@ -11,20 +11,26 @@ export type SiteVisualAssetDefinition = {
 };
 
 // Fonte única das fotos institucionais editáveis pela Operação (central de
-// imagens). Só entram aqui imagens que algum componente do site realmente
-// renderiza hoje -- confirmado em 03/11/2026 varrendo o código por cada
-// arquivo. Página inicial, Informações comerciais e Pede Junto Adoce foram
-// removidas inteiras: nenhuma das fotos daquelas seções aparecia em lugar
-// nenhum (a Home não usa nenhuma foto mais, a página de política de
-// pedidos é só texto, e o Pede Junto foi desativado -- migração
-// 20261007034349_retire_pede_junto.sql -- e não tem mais rota no site).
+// imagens). Só entram aqui imagens que foram CONFIRMADAS ao vivo (DOM da
+// página em produção, não só grep de código) como realmente exibidas numa
+// página pública de verdade -- revisão de 03/11/2026, segunda passada, mais
+// rigorosa que a primeira.
+//
+// Removidas nesta passada, mesmo aparecendo em algum arquivo .tsx:
+// - /site/logo.webp: o cabeçalho de toda página pública usa
+//   /brand-2026/logo-*.png, não este arquivo. Este só aparece em recibo
+//   térmico do caixa e no PDF de orçamento de encomenda -- documentos
+//   impressos/gerados pela Operação, não uma foto "do site".
+// - /site/hero-cake.webp: a classe CSS que usa essa imagem
+//   (.access-auth-copy) não existe em nenhum componente -- confirmado que
+//   o elemento não existe no DOM de /entrar em produção. CSS morto.
+// - /adoce-hoje/sabores-hoje.webp: só aparece quando um sabor ativo não tem
+//   foto própria -- hoje nenhum sabor ativo está nessa situação, então não
+//   aparece em lugar nenhum agora. Fica só como fallback no código.
 export const SITE_VISUAL_ASSETS: SiteVisualAssetDefinition[] = [
-  { key: "/site/logo.webp", label: "Logo oficial", section: "Marca", description: "Cabeçalhos, rodapés, operação e compartilhamentos.", alt: "Cantinho da Adoce", aspectWidth: 1, aspectHeight: 1, outputWidth: 900, fitMode: "contain" },
   { key: "/site/clube-convite-pedido.webp", label: "Convite ao Clube após pedido", section: "Clube Adoce", description: "Imagem exibida quando um cliente ainda não participa do Clube.", alt: "Benefícios do Clube Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1200, fitMode: "stretch" },
-  { key: "/site/hero-cake.webp", label: "Fatia de apoio do Clube", section: "Clube Adoce", description: "Imagem de fundo nas telas de acesso e conta do Clube Adoce.", alt: "Fatia artesanal da Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" },
   { key: "/site/adoce-hoje-retirada-ilustracao.webp", label: "Ilustração da retirada", section: "Adoce Hoje", description: "Representa retirada na Adoce sem sugerir entrada no local.", alt: "Ilustração de retirada de pedido na Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" },
   { key: "/site/adoce-hoje-barraquinha-ilustracao.webp", label: "Ilustração do Cantinho da Adoce", section: "Adoce Hoje", description: "Representa o Festival de Fatias no Cantinho da Adoce.", alt: "Ilustração do Cantinho da Adoce", aspectWidth: 4, aspectHeight: 3, outputWidth: 1400, fitMode: "stretch" },
-  { key: "/adoce-hoje/sabores-hoje.webp", label: "Arte de sabores de hoje", section: "Adoce Hoje", description: "Aparece quando um sabor ainda não tem foto própria cadastrada.", alt: "Sabores do Festival de Fatias", aspectWidth: 4, aspectHeight: 5, outputWidth: 1200, fitMode: "stretch" },
 ];
 
 export type SiteVisualPageLink = { label: string; url: string };
@@ -35,17 +41,9 @@ const publicPage = (label: string, route = "/"): SiteVisualPageLink => ({
 });
 
 export const SITE_VISUAL_PAGE_LINKS: Record<string, SiteVisualPageLink[]> = {
-  "/site/logo.webp": [
-    publicPage("Página inicial"),
-    publicPage("Adoce Hoje", "/adoce-hoje"),
-    publicPage("Clube Adoce", "/clube"),
-    publicPage("Adoce Operação", "/operacao"),
-  ],
   "/site/clube-convite-pedido.webp": [publicPage("Carrinho — após enviar um pedido", "/carrinho")],
-  "/site/hero-cake.webp": [publicPage("Entrar no Clube Adoce", "/entrar")],
-  "/site/adoce-hoje-retirada-ilustracao.webp": [publicPage("Adoce Hoje", "/adoce-hoje")],
-  "/site/adoce-hoje-barraquinha-ilustracao.webp": [publicPage("Adoce Hoje", "/adoce-hoje")],
-  "/adoce-hoje/sabores-hoje.webp": [publicPage("Adoce Hoje", "/adoce-hoje")],
+  "/site/adoce-hoje-retirada-ilustracao.webp": [publicPage("Carrinho", "/carrinho")],
+  "/site/adoce-hoje-barraquinha-ilustracao.webp": [publicPage("Carrinho", "/carrinho")],
 };
 
 export const siteVisualAssetKeys = new Set(SITE_VISUAL_ASSETS.map((asset) => asset.key));

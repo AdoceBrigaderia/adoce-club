@@ -223,4 +223,14 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(trigger).toContain("slug = 'online_orders' and status = 'paused'");
     expect(trigger).toContain("pedidos online estão pausados no momento");
   });
+
+  it("tira o cartão de Encomendas do grid de Funcionamento (status/mensagem desse canal não é lido em lugar nenhum)", () => {
+    // Confirmado em 03/11/2026: só os horários recorrentes de "preorders"
+    // valem de verdade (usados pela Operação ao lançar uma encomenda
+    // manual via validatePreorderWindow); o status/mensagem do canal em si
+    // nunca é consultado em nenhum componente, público ou interno.
+    const content = readFileSync(new URL("./OperationContentAdmin.tsx", import.meta.url), "utf8");
+    expect(content).toContain('channel.slug === "in_person" || channel.slug === "online_orders"');
+    expect(content).toContain('channels.filter((channel) => channel.slug !== "store").map((c) =>');
+  });
 });
