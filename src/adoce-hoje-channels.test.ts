@@ -203,4 +203,24 @@ describe("canais independentes do Adoce Hoje", () => {
     expect(panel).toMatch(/if \(pausedTodayNotice\) {[\s\S]*?Pedidos encerrados por hoje/);
     expect(page).toContain("pausedTodayNotice={pickupPaused}");
   });
+
+  it("nunca libera o carrinho preenchível enquanto a retirada de hoje não está aberta de verdade", () => {
+    // Regressão relatada em 02/11/2026: o aviso de "pedidos encerrados"
+    // aparecia, mas ao fechar o aviso o carrinho continuava funcionando e
+    // deixava a cliente montar um pedido que o servidor ia recusar.
+    const panel = readFileSync(new URL("./InstantOrderPanel.tsx", import.meta.url), "utf8");
+    expect(panel).toContain("const introButtonAction = canOrderNow ? () => setIntroAcknowledged(true) : onClose;");
+    expect(panel).toContain("if (scheduleMessage && (!canOrderNow || !introAcknowledged)) {");
+    expect(panel).toContain("if (!canOrderNow) return setNotice(\"Pedidos encerrados no momento. Tente novamente no próximo horário de funcionamento.\");");
+    expect(page).toContain("canOrderNow={pickupOpen}");
+  });
+
+  it("recusa o pedido no banco quando a retirada está pausada, mesmo que o aviso do site seja contornado", () => {
+    const trigger = readFileSync(
+      new URL("../supabase/migrations/20261103004937_reject_online_order_when_paused.sql", import.meta.url),
+      "utf8",
+    );
+    expect(trigger).toContain("slug = 'online_orders' and status = 'paused'");
+    expect(trigger).toContain("pedidos online estão pausados no momento");
+  });
 });

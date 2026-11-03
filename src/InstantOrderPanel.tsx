@@ -83,6 +83,7 @@ export default function InstantOrderPanel({
   scheduleMessage = "",
   closedTodayLabel,
   pausedTodayNotice = false,
+  canOrderNow = true,
   pickupLocationCard,
   pickupLocationSlug = "cantinho-da-adoce",
 }: {
@@ -108,6 +109,13 @@ export default function InstantOrderPanel({
   // (online?.status === "paused") -- troca o aviso bloqueante genérico pelo
   // texto exato pedido pelo proprietário em 02/11/2026.
   pausedTodayNotice?: boolean;
+  // false sempre que a retirada de hoje não está realmente aberta agora
+  // (fechada por horário, pausada manualmente, ainda não abriu). Nesse caso
+  // o aviso bloqueante nunca libera o carrinho preenchível -- fechar o aviso
+  // fecha a tela toda, em vez de deixar a cliente montar um pedido que o
+  // servidor vai recusar de qualquer forma. Corrige regressão relatada em
+  // 02/11/2026: o carrinho continuava aparecendo depois do aviso.
+  canOrderNow?: boolean;
   // Card de confirmação (horário + local) mostrado uma vez, bloqueando o
   // envio, antes de finalizar o pedido -- decisão do proprietário em
   // 02/11/2026. Ausente quando a retirada de hoje não está aberta (o aviso
@@ -376,6 +384,7 @@ export default function InstantOrderPanel({
   const needsSauceStep = wantsReward;
 
   const submit = async () => {
+    if (!canOrderNow) return setNotice("Pedidos encerrados no momento. Tente novamente no próximo horário de funcionamento.");
     if (!allSaucesChosen) return setNotice("Escolha uma opção de calda para cada fatia.");
     if (!rewardChoiceReady) return setNotice("Escolha o sabor e a calda da sua fatia-presente.");
     if (!pickupTime) return setNotice("Escolha o horário desejado para a retirada.");
@@ -650,7 +659,11 @@ export default function InstantOrderPanel({
   };
 
   if (!open) return null;
-  if (scheduleMessage && !introAcknowledged) {
+  // Enquanto a retirada de hoje não está realmente aberta, o aviso nunca
+  // libera o carrinho preenchível -- fechar o aviso fecha a tela toda
+  // (onClose), nunca "continua" para um pedido que o servidor vai recusar.
+  const introButtonAction = canOrderNow ? () => setIntroAcknowledged(true) : onClose;
+  if (scheduleMessage && (!canOrderNow || !introAcknowledged)) {
     if (pausedTodayNotice) {
       return (
         <div className="instant-order-layer">
@@ -662,7 +675,7 @@ export default function InstantOrderPanel({
             <h2>Pedidos encerrados por hoje</h2>
             <p>No momento, não estamos recebendo novos pedidos.</p>
             <p>As reservas antecipadas serão liberadas no próximo dia de funcionamento.</p>
-            <button type="button" onClick={() => setIntroAcknowledged(true)}>Entendi</button>
+            <button type="button" onClick={introButtonAction}>Entendi</button>
           </div>
         </div>
       );
@@ -676,7 +689,7 @@ export default function InstantOrderPanel({
             <h2>Retiradas encerradas por hoje</h2>
             <p>O horário de retirada de pedidos terminou às {closedTodayLabel}.</p>
             <p>Você ainda pode fazer seu pedido para retirada no próximo dia de funcionamento.</p>
-            <button type="button" onClick={() => setIntroAcknowledged(true)}>Entendi, continuar</button>
+            <button type="button" onClick={introButtonAction}>Fechar</button>
           </div>
         </div>
       );
@@ -688,7 +701,7 @@ export default function InstantOrderPanel({
           <Clock3 />
           <h2>Antes de montar seu pedido</h2>
           <p>{scheduleMessage}</p>
-          <button type="button" onClick={() => setIntroAcknowledged(true)}>OK, entendi</button>
+          <button type="button" onClick={introButtonAction}>{canOrderNow ? "OK, entendi" : "Fechar"}</button>
         </div>
       </div>
     );

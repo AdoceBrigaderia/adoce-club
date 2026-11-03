@@ -1402,6 +1402,7 @@ export default function AdoceHoje({ openCartOnLoad = false, compact = false, cat
         scheduleMessage={orderPanelScheduleMessage}
         closedTodayLabel={pickupClosedTodayLabel}
         pausedTodayNotice={pickupPaused}
+        canOrderNow={pickupOpen}
         pickupLocationCard={pickupLocationCard}
         pickupLocationSlug={online?.pickup_location_slug || "cantinho-da-adoce"}
       />
